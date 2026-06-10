@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Photo Manager">
+<meta name="theme-color" content="#0d0505">
+<title>Rick Parma – Photo Manager</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#0d0505; --surface:#1a0c0c; --surface2:#241414; --border:#2e1a1a;
+    --blue:#8DB2E5; --blue-dim:rgba(141,178,229,0.15); --blue-border:rgba(141,178,229,0.35);
+    --text:#f0e8e8; --text-dim:rgba(240,232,232,0.45); --red:#e05555; --green:#4caf7d;
+  }
+  html, body { height:100%; background:var(--bg); color:var(--text); font-family:Arial,Helvetica,sans-serif; overscroll-behavior:none; }
+  .app { display:flex; flex-direction:column; height:100dvh; max-width:480px; margin:0 auto; }
+  .header { padding:16px 16px 12px; padding-top:max(env(safe-area-inset-top),16px); background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+  .header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .app-title { font-size:11px; font-weight:900; letter-spacing:0.18em; text-transform:uppercase; color:var(--blue); }
+  .count-badge { font-size:11px; color:var(--text-dim); letter-spacing:0.08em; }
+  .input-row { display:flex; gap:8px; }
+  .url-input { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:13px; color:var(--text); outline:none; min-width:0; transition:border-color 0.2s; }
+  .url-input::placeholder { color:var(--text-dim); }
+  .url-input:focus { border-color:var(--blue-border); }
+  .add-btn { background:var(--blue); color:#0d0505; border:none; border-radius:8px; width:42px; font-size:22px; font-weight:900; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:background 0.15s,transform 0.1s; -webkit-tap-highlight-color:transparent; }
+  .add-btn:active { transform:scale(0.94); background:#aecbf0; }
+  .add-btn:disabled { opacity:0.4; cursor:default; }
+  .status { font-size:11px; letter-spacing:0.06em; padding:6px 0 0; min-height:20px; }
+  .status.ok { color:var(--green); } .status.err { color:var(--red); } .status.info { color:var(--text-dim); }
+  .resolving { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--blue); padding:6px 0 0; min-height:20px; }
+  .spinner { width:12px; height:12px; border:2px solid var(--blue-border); border-top-color:var(--blue); border-radius:50%; animation:spin 0.7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .list-wrap { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:10px 16px; }
+  .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:10px; color:var(--text-dim); text-align:center; }
+  .empty-state .icon { font-size:40px; opacity:0.3; }
+  .empty-state p { font-size:13px; line-height:1.5; letter-spacing:0.04em; }
+  .photo-item { display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px; margin-bottom:8px; }
+  .photo-item.drag-over { border-color:var(--blue); background:var(--blue-dim); }
+  .thumb-preview { width:44px; height:58px; border-radius:5px; object-fit:cover; flex-shrink:0; background:var(--surface2); }
+  .thumb-error { width:44px; height:58px; border-radius:5px; background:var(--surface2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:18px; opacity:0.4; }
+  .item-info { flex:1; min-width:0; }
+  .item-num { font-size:10px; color:var(--blue); letter-spacing:0.1em; font-weight:700; margin-bottom:2px; }
+  .item-url { font-size:10px; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item-actions { display:flex; flex-direction:column; gap:4px; flex-shrink:0; }
+  .icon-btn { width:30px; height:30px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; -webkit-tap-highlight-color:transparent; color:var(--text-dim); }
+  .icon-btn:active { background:var(--border); }
+  .icon-btn.del:active { background:rgba(224,85,85,0.2); border-color:var(--red); color:var(--red); }
+  .drag-handle { cursor:grab; color:var(--text-dim); font-size:16px; padding:0 2px; flex-shrink:0; }
+  .footer { padding:12px 16px; padding-bottom:max(env(safe-area-inset-bottom),12px); background:var(--surface); border-top:1px solid var(--border); display:flex; gap:8px; flex-shrink:0; }
+  .copy-btn { flex:1; background:var(--blue); color:#0d0505; border:none; border-radius:8px; padding:13px; font-size:13px; font-weight:900; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; transition:background 0.15s,transform 0.1s; -webkit-tap-highlight-color:transparent; }
+  .copy-btn:active { transform:scale(0.97); background:#aecbf0; }
+  .copy-btn:disabled { opacity:0.35; cursor:default; }
+  .clear-btn { background:var(--surface2); color:var(--red); border:1px solid var(--border); border-radius:8px; padding:13px 14px; font-size:13px; cursor:pointer; -webkit-tap-highlight-color:transparent; flex-shrink:0; }
+  .clear-btn:active { background:rgba(224,85,85,0.15); }
+  .toast { position:fixed; bottom:90px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--blue); color:#0d0505; font-size:13px; font-weight:700; padding:10px 20px; border-radius:20px; opacity:0; transition:opacity 0.25s,transform 0.25s; pointer-events:none; white-space:nowrap; z-index:100; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  .loading-screen { position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; z-index:200; }
+  .loading-screen .spinner { width:24px; height:24px; border-width:3px; }
+  .loading-screen p { font-size:11px; color:var(--text-dim); letter-spacing:0.12em; text-transform:uppercase; }
+</style>
+</head>
+<body>
+
+<!-- Loading screen shown while storage loads -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="spinner"></div>
+  <p>Loading gallery…</p>
+</div>
+
+<div class="app" id="appWrap" style="display:none">
+  <div class="header">
+    <div class="header-top">
+      <div class="app-title">📷 Photo Gallery Manager</div>
+      <div class="count-badge" id="countBadge">0 photos</div>
+    </div>
+    <div class="input-row">
+      <input class="url-input" id="urlInput" type="url" inputmode="url" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Paste any Google Photos or image URL…">
+      <button class="add-btn" id="addBtn">+</button>
+    </div>
+    <div id="statusWrap">
+      <div class="status info">Paste a URL above and tap +</div>
+    </div>
+  </div>
+  <div class="list-wrap">
+    <div class="empty-state" id="emptyState">
+      <div class="icon">🖼️</div>
+      <p>No photos yet.<br>Paste a URL above to get started.</p>
+    </div>
+    <div id="photoList"></div>
+  </div>
+  <div class="footer">
+    <button class="copy-btn" id="copyBtn" disabled>Copy Embed Code</button>
+    <button class="clear-btn" id="clearBtn">🗑</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function() {
+
+  var STORAGE_KEY = "rp_photos";
+  var photos = [];
+  var dragSrcIndex = null;
+  var isResolving = false;
+
+  var DEFAULT_PHOTOS = [
+    { src: "https://lh3.googleusercontent.com/pw/AP1GczO7q7dLOV28_wXU0ZWRvk6D8VaZFvYcZ9UpuTkudqZz_yAi5omxK9tJwxaQP3us0qhWgDu9i8rT_i7i8_rEbaKTUO91OTJfr2A1Rw5Ltw4FRoMdTGw" },
+    { src: "https://lh3.googleusercontent.com/pw/AP1GczMweTg_qXi0_1To51rCOGjM7n1K8_USnur3FRcqn4hs3ja0_BNHUMJ1bt18CZiaiK_ylLjHPvzYv990SnNRWFJxEsSThzo4M9CAaV_GsR_8eHLhW5w" },
+    { src: "https://lh3.googleusercontent.com/pw/AP1GczMyhEnrXID7kYq1QRSI2rldGexfbf5VWoHiNMhSD-k2lFbCNqSO9tu9Z4iGG8t37uxbgM3sE4UCs51gtzL1arTxsDSjcc3RlMgWvNH_GlMGGAnohLA" },
+    { src: "https://lh3.googleusercontent.com/pw/AP1GczNhfd5ho6lxmlXh-OiX04DqqASSzaeq8J4XVmKEeIfM1dztDLIWJDXiE6xrGQrQ2TkbXbqFeA5uUmCXSPCZsYurUs0WRiy-91degrb6FxMEBK3Q0E4" }
+  ];
+
+  // ── Artifact persistent storage ────────────────────────────
+  async function storageGet(key) {
+    try {
+      var result = await window.storage.get(key);
+      return result ? JSON.parse(result.value) : null;
+    } catch(e) { return null; }
+  }
+
+  async function storageSet(key, val) {
+    try { await window.storage.set(key, JSON.stringify(val)); } catch(e) {}
+  }
+
+  async function save() { await storageSet(STORAGE_KEY, photos); }
+
+  async function load() {
+    var saved = await storageGet(STORAGE_KEY);
+    if (saved && Array.isArray(saved) && saved.length > 0) {
+      photos = saved;
+    } else {
+      photos = DEFAULT_PHOTOS.slice();
+      await save();
+    }
+  }
+
+  // ── URL resolver ───────────────────────────────────────────
+  function resolveUrl(raw, callback) {
+    raw = raw.trim();
+    if (raw.includes("lh3.googleusercontent.com")) {
+      return callback(null, raw.replace(/=w\d+[^&]*/,"").replace(/=s\d+[^&]*/,"").replace(/=p-k.*/,""));
+    }
+    if (/\.(jpg|jpeg|png|gif|webp|avif)(\?|$)/i.test(raw)) {
+      return callback(null, raw);
+    }
+    if (raw.includes("photos.app.goo.gl") || raw.includes("photos.google.com")) {
+      setResolving(true);
+      fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 300,
+          messages: [{ role: "user", content: "Fetch this Google Photos share URL and return ONLY the og:image URL from the page metadata, nothing else, no explanation: " + raw }],
+          tools: [{ type: "web_search_20250305", name: "web_search" }]
+        })
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        setResolving(false);
+        var text = "";
+        if (data.content) data.content.forEach(function(b){ if(b.type==="text") text += b.text; });
+        var match = text.match(/https:\/\/lh3\.googleusercontent\.com\/[^\s"'<>]+/);
+        if (match) {
+          var url = match[0].replace(/=w\d+.*$/,"").replace(/=s\d+.*$/,"").replace(/=p-k.*/,"");
+          callback(null, url);
+        } else {
+          callback("Could not extract image URL. Try copying the direct image URL instead.");
+        }
+      })
+      .catch(function(){ setResolving(false); callback("Network error. Check connection."); });
+      return;
+    }
+    callback(null, raw);
+  }
+
+  function setResolving(on) {
+    isResolving = on;
+    document.getElementById("addBtn").disabled = on;
+    document.getElementById("statusWrap").innerHTML = on
+      ? '<div class="resolving"><div class="spinner"></div>Resolving Google Photos link…</div>'
+      : '<div class="status info">Paste a URL above and tap +</div>';
+  }
+
+  // ── Render ─────────────────────────────────────────────────
+  function render() {
+    var list = document.getElementById("photoList");
+    var empty = document.getElementById("emptyState");
+    document.getElementById("copyBtn").disabled = photos.length === 0;
+    document.getElementById("countBadge").textContent = photos.length + (photos.length === 1 ? " photo" : " photos");
+    empty.style.display = photos.length === 0 ? "flex" : "none";
+    list.innerHTML = "";
+
+    photos.forEach(function(p, i) {
+      var item = document.createElement("div");
+      item.className = "photo-item";
+      item.setAttribute("draggable", "true");
+      item.innerHTML =
+        '<div class="drag-handle">⠿</div>' +
+        '<img class="thumb-preview" src="' + escHtml(p.src) + '" onerror="this.outerHTML=\'<div class=&quot;thumb-error&quot;>❌</div>\'">' +
+        '<div class="item-info"><div class="item-num">PHOTO ' + (i+1) + '</div><div class="item-url">' + escHtml(truncUrl(p.src)) + '</div></div>' +
+        '<div class="item-actions">' +
+          '<button class="icon-btn del" data-i="' + i + '">✕</button>' +
+          (i > 0 ? '<button class="icon-btn" data-move="' + i + '" data-dir="-1">↑</button>' : '') +
+          (i < photos.length-1 ? '<button class="icon-btn" data-move="' + i + '" data-dir="1">↓</button>' : '') +
+        '</div>';
+
+      item.querySelector(".del").onclick = async function() {
+        photos.splice(parseInt(this.getAttribute("data-i")), 1);
+        await save(); render();
+      };
+      item.querySelectorAll("[data-move]").forEach(function(btn) {
+        btn.onclick = async function() {
+          var idx = parseInt(this.getAttribute("data-move")), dir = parseInt(this.getAttribute("data-dir"));
+          var tmp = photos[idx]; photos[idx] = photos[idx+dir]; photos[idx+dir] = tmp;
+          await save(); render();
+        };
+      });
+
+      item.addEventListener("dragstart", function(e) { dragSrcIndex = i; e.dataTransfer.effectAllowed = "move"; setTimeout(function(){ item.style.opacity="0.4"; }, 0); });
+      item.addEventListener("dragend",   function() { item.style.opacity=""; document.querySelectorAll(".photo-item").forEach(function(el){ el.classList.remove("drag-over"); }); });
+      item.addEventListener("dragover",  function(e) { e.preventDefault(); document.querySelectorAll(".photo-item").forEach(function(el){ el.classList.remove("drag-over"); }); item.classList.add("drag-over"); });
+      item.addEventListener("drop",      async function(e) { e.preventDefault(); if (dragSrcIndex !== null && dragSrcIndex !== i) { var m = photos.splice(dragSrcIndex,1)[0]; photos.splice(i,0,m); dragSrcIndex=null; await save(); render(); } });
+
+      list.appendChild(item);
+    });
+  }
+
+  function truncUrl(u) { return u.length <= 52 ? u : u.slice(0,28) + "…" + u.slice(-18); }
+  function escHtml(s) { return s.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+  // ── Add photo ───────────────────────────────────────────────
+  async function addPhoto() {
+    if (isResolving) return;
+    var raw = document.getElementById("urlInput").value.trim();
+    if (!raw) { setStatus("Paste a URL first.", "err"); return; }
+    resolveUrl(raw, async function(err, resolved) {
+      if (err) { setStatus(err, "err"); return; }
+      if (photos.find(function(p){ return p.src === resolved; })) { setStatus("Already in gallery.", "err"); return; }
+      photos.push({ src: resolved });
+      await save(); render();
+      document.getElementById("urlInput").value = "";
+      setStatus("Photo " + photos.length + " added ✓", "ok");
+    });
+  }
+
+  function setStatus(msg, type) {
+    document.getElementById("statusWrap").innerHTML = '<div class="status ' + (type||"info") + '">' + msg + '</div>';
+    if (type === "ok" || type === "err") {
+      setTimeout(function() {
+        document.getElementById("statusWrap").innerHTML = '<div class="status info">Paste a URL above and tap +</div>';
+      }, 3000);
+    }
+  }
+
+  // ── Generate embed ──────────────────────────────────────────
+  function generateEmbed() {
+    var arr = photos.map(function(p){ return '    { src: "' + p.src + '" }'; }).join(",\n");
+    return '<!--\n  RICK PARMA \u2014 Photo Gallery\n  Paste into Bandzoogle HTML section.\n-->\n\n<style>\n  #rp-photo-section{background:rgba(13,5,5,0.5);padding:16px 16px 24px;font-family:Arial,Helvetica,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}\n  #rp-photo-section *{box-sizing:border-box}\n  .rpp-section-title{font-size:33px;font-weight:900;color:#fff;margin:0 0 12px;text-transform:uppercase;letter-spacing:.04em;text-align:center}\n  .rpp-carousel-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);margin:0 0 10px}\n  .rpp-carousel{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:4px 2px 10px}\n  .rpp-carousel::-webkit-scrollbar{display:none}\n  .rpp-thumb{flex:0 0 calc(50% - 5px);scroll-snap-align:start;cursor:pointer;border-radius:6px;overflow:hidden;background:#1a0808;border:1.5px solid transparent;transition:border-color .2s,transform .15s;-webkit-tap-highlight-color:transparent}\n  .rpp-thumb:active{transform:scale(.97)}\n  .rpp-thumb:hover{border-color:rgba(141,178,229,.4)}\n  .rpp-thumb-img-wrap{position:relative;width:100%;aspect-ratio:3/4;background:#2a1010;overflow:hidden}\n  .rpp-thumb-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}\n  .rpp-thumb:hover .rpp-thumb-img-wrap img{transform:scale(1.06)}\n  .rpp-dots{display:flex;justify-content:center;gap:6px;margin-top:4px}\n  .rpp-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.2);transition:background .2s,transform .2s;cursor:pointer}\n  .rpp-dot.active{background:#8DB2E5;transform:scale(1.3)}\n  .rpp-lightbox{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.93);align-items:center;justify-content:center;padding:16px}\n  .rpp-lightbox.open{display:flex}\n  .rpp-lb-inner{position:relative;max-width:92vw;max-height:92vh}\n  .rpp-lb-inner img{max-width:100%;max-height:90vh;object-fit:contain;border-radius:6px;box-shadow:0 16px 80px rgba(0,0,0,.9);display:block}\n  .rpp-lb-close{position:absolute;top:-13px;right:-13px;width:28px;height:28px;background:#8DB2E5;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:#0d0505;font-weight:900;z-index:10}\n  .rpp-lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;background:rgba(0,0,0,.55);border:1px solid rgba(141,178,229,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}\n  .rpp-lb-nav svg{width:15px;height:15px;stroke:#8DB2E5;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}\n  .rpp-lb-prev{left:-52px}.rpp-lb-next{right:-52px}\n  @media(max-width:500px){.rpp-lb-prev{left:-36px}.rpp-lb-next{right:-36px}}\n</style>\n\n<div id="rp-photo-section">\n  <h2 class="rpp-section-title">Photo Gallery</h2>\n  <p class="rpp-carousel-label">Swipe to browse \u2014 tap to view</p>\n  <div class="rpp-carousel" id="rpp-grid"></div>\n  <div class="rpp-dots" id="rpp-dots"></div>\n</div>\n\n<script>\n(function(){\n  var photos=[\n' + arr + '\n  ];\n  var grid=document.getElementById("rpp-grid"),dots=document.getElementById("rpp-dots");\n  window.rppCurrent=0;\n  photos.forEach(function(p,i){\n    var c=document.createElement("div");c.className="rpp-thumb";c.setAttribute("role","button");c.setAttribute("tabindex","0");\n    c.innerHTML=\'<div class="rpp-thumb-img-wrap"><img src="\'+p.src+\'" loading="lazy"></div>\';\n    c.addEventListener("click",function(){rppOpenLightbox(i);});\n    c.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();rppOpenLightbox(i);}});\n    grid.appendChild(c);\n    var d=document.createElement("div");d.className="rpp-dot"+(i===0?" active":"");\n    d.addEventListener("click",function(){grid.querySelectorAll(".rpp-thumb")[i].scrollIntoView({behavior:"smooth",block:"nearest",inline:"start"});});\n    dots.appendChild(d);\n  });\n  grid.addEventListener("scroll",function(){\n    var cs=grid.querySelectorAll(".rpp-thumb"),ds=dots.querySelectorAll(".rpp-dot"),cl=0,md=Infinity;\n    cs.forEach(function(c,i){var d=Math.abs(c.offsetLeft-grid.scrollLeft);if(d<md){md=d;cl=i;}});\n    ds.forEach(function(d,i){d.classList.toggle("active",i===cl);});\n  });\n  var lb=document.createElement("div");lb.className="rpp-lightbox";\n  lb.innerHTML=\'<div class="rpp-lb-inner"><div class="rpp-lb-close" id="rpp-lb-close">\u2715</div><img id="rpp-lb-img" src="" alt=""><button class="rpp-lb-nav rpp-lb-prev" id="rpp-lb-prev"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="rpp-lb-nav rpp-lb-next" id="rpp-lb-next"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button></div>\';\n  document.body.appendChild(lb);\n  document.getElementById("rpp-lb-close").addEventListener("click",function(){lb.classList.remove("open");document.body.style.overflow="";});\n  document.getElementById("rpp-lb-prev").addEventListener("click",function(){window.rppCurrent=(window.rppCurrent-1+photos.length)%photos.length;document.getElementById("rpp-lb-img").src=photos[window.rppCurrent].src;});\n  document.getElementById("rpp-lb-next").addEventListener("click",function(){window.rppCurrent=(window.rppCurrent+1)%photos.length;document.getElementById("rpp-lb-img").src=photos[window.rppCurrent].src;});\n  lb.addEventListener("click",function(e){if(e.target===lb){lb.classList.remove("open");document.body.style.overflow="";}});\n  window.rppOpenLightbox=function(i){window.rppCurrent=i;document.getElementById("rpp-lb-img").src=photos[i].src;lb.classList.add("open");document.body.style.overflow="hidden";};\n  document.addEventListener("keydown",function(e){var o=lb.classList.contains("open");if(e.key==="ArrowLeft"&&o)document.getElementById("rpp-lb-prev").click();if(e.key==="ArrowRight"&&o)document.getElementById("rpp-lb-next").click();if(e.key==="Escape"&&o){lb.classList.remove("open");document.body.style.overflow="";}});\n})();\n<\/script>';
+  }
+
+  // ── Toast ───────────────────────────────────────────────────
+  function showToast(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(function(){ t.classList.remove("show"); }, 2200);
+  }
+
+  // ── Events ──────────────────────────────────────────────────
+  document.getElementById("addBtn").addEventListener("click", addPhoto);
+  document.getElementById("urlInput").addEventListener("keydown", function(e){ if(e.key==="Enter") addPhoto(); });
+
+  document.getElementById("copyBtn").addEventListener("click", function() {
+    if (!photos.length) return;
+    var code = generateEmbed();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(function(){ showToast("Embed code copied! ✓"); }).catch(function(){ fallbackCopy(code); });
+    } else { fallbackCopy(code); }
+  });
+
+  function fallbackCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text; ta.style.cssText = "position:fixed;top:-9999px;left:-9999px;opacity:0;";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand("copy"); showToast("Embed code copied! ✓"); } catch(e) { showToast("Copy failed — try again"); }
+    document.body.removeChild(ta);
+  }
+
+  document.getElementById("clearBtn").addEventListener("click", async function() {
+    if (!photos.length) return;
+    if (confirm("Remove all " + photos.length + " photos?")) {
+      photos = [];
+      await save(); render();
+    }
+  });
+
+  // ── Init ────────────────────────────────────────────────────
+  load().then(function() {
+    document.getElementById("loadingScreen").style.display = "none";
+    document.getElementById("appWrap").style.display = "flex";
+    render();
+  });
+
+})();
+</script>
+</body>
+</html>
