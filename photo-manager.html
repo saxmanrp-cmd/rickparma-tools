@@ -72,7 +72,7 @@
 
 <div class="loading-screen" id="loadingScreen">
   <div class="spinner"></div>
-  <p>Loading from GitHub…</p>
+  <p>Loading gallery…</p>
 </div>
 
 <div class="app" id="appWrap" style="display:none">
@@ -113,71 +113,87 @@
 <script>
 (function() {
 
-  var GH_TOKEN  = "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";
-  var GH_OWNER  = "saxmanrp-cmd";
-  var GH_REPO   = "rickparma-tools";
-  var GH_FILE   = "photos.json";
-  var GH_API    = "https://api.github.com/repos/" + GH_OWNER + "/" + GH_REPO + "/contents/" + GH_FILE;
+  // ── JSONBin config ─────────────────────────────────────────
+  var BIN_API_KEY = "$2a$10$XBF9VWworjn5NhxCnG7/oexFc3QIgixIJ4eel34Ch7aOxKRhA7XMK";
+  var BIN_ID_KEY  = "rp_photos_bin_id";
+  var BIN_BASE    = "https://api.jsonbin.io/v3";
 
   var photos = [];
-  var fileSha = null;
+  var binId = localStorage.getItem(BIN_ID_KEY) || null;
   var dragSrcIndex = null;
   var isResolving = false;
   var isSaving = false;
 
+  var DEFAULT_PHOTOS = [
+    { src: "https://lh3.googleusercontent.com/pw/AP1GczO7q7dLOV28_wXU0ZWRvk6D8VaZFvYcZ9UpuTkudqZz_yAi5omxK9tJwxaQP3us0qhWgDu9i8rT_i7i8_rEbaKTUO91OTJfr2A1Rw5Ltw4FRoMdTGw" },
+    { src: "https://lh3.googleusercontent.com/pw/AP1GczMweTg_qXi0_1To51rCOGjM7n1K8_USnur3FRcqn4hs3ja0_BNHUMJ1bt18CZiaiK_ylLjHPvzYv990SnNRWFJxEsSThzo4M9CAaV_GsR_8eHLhW5w" },
+    { src: "https://lh3.googleusercontent.com/pw/AP1GczMyhEnrXID7kYq1QRSI2rldGexfbf5VWoHiNMhSD-k2lFbCNqSO9tu9Z4iGG8t37uxbgM3sE4UCs51gtzL1arTxsDSjcc3RlMgWvNH_GlMGGAnohLA" },
+    { src: "https://lh3.googleusercontent.com/pw/AP1GczNhfd5ho6lxmlXh-OiX04DqqASSzaeq8J4XVmKEeIfM1dztDLIWJDXiE6xrGQrQ2TkbXbqFeA5uUmCXSPCZsYurUs0WRiy-91degrb6FxMEBK3Q0E4" }
+  ];
+
+  // ── Sync status ────────────────────────────────────────────
   function setSyncStatus(state, label) {
-    var dot = document.getElementById("syncDot");
-    var lbl = document.getElementById("syncLabel");
-    dot.className = "sync-dot " + state;
-    lbl.textContent = label;
+    document.getElementById("syncDot").className = "sync-dot " + state;
+    document.getElementById("syncLabel").textContent = label;
   }
 
-  async function loadFromGitHub() {
+  // ── JSONBin load ───────────────────────────────────────────
+  async function load() {
     try {
-      var res = await fetch(GH_API, {
-        headers: {
-          "Authorization": "token " + GH_TOKEN,
-          "Accept": "application/vnd.github.v3+json"
+      if (binId) {
+        var res = await fetch(BIN_BASE + "/b/" + binId + "/latest", {
+          headers: { "X-Master-Key": BIN_API_KEY }
+        });
+        if (res.ok) {
+          var data = await res.json();
+          photos = data.record.photos || [];
+          setSyncStatus("synced", "Synced ✓");
+          return;
         }
-      });
-      if (res.status === 404) {
-        photos = [];
-        fileSha = null;
-        setSyncStatus("synced", "Ready");
-        return;
       }
-      if (!res.ok) throw new Error("GitHub error " + res.status);
-      var data = await res.json();
-      fileSha = data.sha;
-      var decoded = atob(data.content.replace(/\n/g, ""));
-      photos = JSON.parse(decoded);
-      setSyncStatus("synced", "Synced ✓");
+      // No bin yet — create one with defaults
+      await createBin(DEFAULT_PHOTOS);
     } catch(e) {
+      photos = DEFAULT_PHOTOS.slice();
       setSyncStatus("error", "Load failed");
       console.error(e);
     }
   }
 
-  async function saveToGitHub() {
-    if (isSaving) return;
+  async function createBin(initialPhotos) {
+    var res = await fetch(BIN_BASE + "/b", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Master-Key": BIN_API_KEY,
+        "X-Bin-Name": "rp-photos",
+        "X-Bin-Private": "true"
+      },
+      body: JSON.stringify({ photos: initialPhotos })
+    });
+    if (!res.ok) throw new Error("Could not create bin");
+    var data = await res.json();
+    binId = data.metadata.id;
+    localStorage.setItem(BIN_ID_KEY, binId);
+    photos = initialPhotos;
+    setSyncStatus("synced", "Ready ✓");
+  }
+
+  // ── JSONBin save ───────────────────────────────────────────
+  async function save() {
+    if (isSaving || !binId) return;
     isSaving = true;
     setSyncStatus("syncing", "Saving…");
     try {
-      var content = btoa(JSON.stringify(photos, null, 2));
-      var body = { message: "Update photos.json", content: content };
-      if (fileSha) body.sha = fileSha;
-      var res = await fetch(GH_API, {
+      var res = await fetch(BIN_BASE + "/b/" + binId, {
         method: "PUT",
         headers: {
-          "Authorization": "token " + GH_TOKEN,
-          "Accept": "application/vnd.github.v3+json",
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "X-Master-Key": BIN_API_KEY
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify({ photos: photos })
       });
-      if (!res.ok) throw new Error("Save error " + res.status);
-      var data = await res.json();
-      fileSha = data.content.sha;
+      if (!res.ok) throw new Error("Save failed");
       setSyncStatus("synced", "Saved ✓");
     } catch(e) {
       setSyncStatus("error", "Save failed");
@@ -186,6 +202,7 @@
     isSaving = false;
   }
 
+  // ── URL resolver ───────────────────────────────────────────
   function resolveUrl(raw, callback) {
     raw = raw.trim();
     if (raw.includes("lh3.googleusercontent.com")) {
@@ -233,6 +250,7 @@
       : '<div class="status info">Paste a URL above and tap +</div>';
   }
 
+  // ── Render ─────────────────────────────────────────────────
   function render() {
     var list = document.getElementById("photoList");
     var empty = document.getElementById("emptyState");
@@ -257,20 +275,20 @@
 
       item.querySelector(".del").onclick = async function() {
         photos.splice(parseInt(this.getAttribute("data-i")), 1);
-        render(); await saveToGitHub();
+        render(); await save();
       };
       item.querySelectorAll("[data-move]").forEach(function(btn) {
         btn.onclick = async function() {
           var idx = parseInt(this.getAttribute("data-move")), dir = parseInt(this.getAttribute("data-dir"));
           var tmp = photos[idx]; photos[idx] = photos[idx+dir]; photos[idx+dir] = tmp;
-          render(); await saveToGitHub();
+          render(); await save();
         };
       });
 
       item.addEventListener("dragstart", function(e) { dragSrcIndex = i; e.dataTransfer.effectAllowed = "move"; setTimeout(function(){ item.style.opacity="0.4"; }, 0); });
       item.addEventListener("dragend",   function() { item.style.opacity=""; document.querySelectorAll(".photo-item").forEach(function(el){ el.classList.remove("drag-over"); }); });
       item.addEventListener("dragover",  function(e) { e.preventDefault(); document.querySelectorAll(".photo-item").forEach(function(el){ el.classList.remove("drag-over"); }); item.classList.add("drag-over"); });
-      item.addEventListener("drop", async function(e) { e.preventDefault(); if (dragSrcIndex !== null && dragSrcIndex !== i) { var m = photos.splice(dragSrcIndex,1)[0]; photos.splice(i,0,m); dragSrcIndex=null; render(); await saveToGitHub(); } });
+      item.addEventListener("drop", async function(e) { e.preventDefault(); if (dragSrcIndex !== null && dragSrcIndex !== i) { var m = photos.splice(dragSrcIndex,1)[0]; photos.splice(i,0,m); dragSrcIndex=null; render(); await save(); } });
 
       list.appendChild(item);
     });
@@ -279,6 +297,7 @@
   function truncUrl(u) { return u.length <= 52 ? u : u.slice(0,28) + "…" + u.slice(-18); }
   function escHtml(s) { return s.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
+  // ── Add photo ──────────────────────────────────────────────
   async function addPhoto() {
     if (isResolving) return;
     var raw = document.getElementById("urlInput").value.trim();
@@ -290,7 +309,7 @@
       render();
       document.getElementById("urlInput").value = "";
       setStatus("Photo " + photos.length + " added ✓", "ok");
-      await saveToGitHub();
+      await save();
     });
   }
 
@@ -303,11 +322,13 @@
     }
   }
 
+  // ── Generate embed ─────────────────────────────────────────
   function generateEmbed() {
     var arr = photos.map(function(p){ return '    { src: "' + p.src + '" }'; }).join(",\n");
     return '<!--\n  RICK PARMA \u2014 Photo Gallery\n  Paste into Bandzoogle HTML section.\n-->\n\n<style>\n  #rp-photo-section{background:rgba(13,5,5,0.5);padding:16px 16px 24px;font-family:Arial,Helvetica,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}\n  #rp-photo-section *{box-sizing:border-box}\n  .rpp-section-title{font-size:33px;font-weight:900;color:#fff;margin:0 0 12px;text-transform:uppercase;letter-spacing:.04em;text-align:center}\n  .rpp-carousel-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);margin:0 0 10px}\n  .rpp-carousel{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:4px 2px 10px}\n  .rpp-carousel::-webkit-scrollbar{display:none}\n  .rpp-thumb{flex:0 0 calc(50% - 5px);scroll-snap-align:start;cursor:pointer;border-radius:6px;overflow:hidden;background:#1a0808;border:1.5px solid transparent;transition:border-color .2s,transform .15s;-webkit-tap-highlight-color:transparent}\n  .rpp-thumb:active{transform:scale(.97)}\n  .rpp-thumb:hover{border-color:rgba(141,178,229,.4)}\n  .rpp-thumb-img-wrap{position:relative;width:100%;aspect-ratio:3/4;background:#2a1010;overflow:hidden}\n  .rpp-thumb-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}\n  .rpp-thumb:hover .rpp-thumb-img-wrap img{transform:scale(1.06)}\n  .rpp-dots{display:flex;justify-content:center;gap:6px;margin-top:4px}\n  .rpp-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.2);transition:background .2s,transform .2s;cursor:pointer}\n  .rpp-dot.active{background:#8DB2E5;transform:scale(1.3)}\n  .rpp-lightbox{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.93);align-items:center;justify-content:center;padding:16px}\n  .rpp-lightbox.open{display:flex}\n  .rpp-lb-inner{position:relative;max-width:92vw;max-height:92vh}\n  .rpp-lb-inner img{max-width:100%;max-height:90vh;object-fit:contain;border-radius:6px;box-shadow:0 16px 80px rgba(0,0,0,.9);display:block}\n  .rpp-lb-close{position:absolute;top:-13px;right:-13px;width:28px;height:28px;background:#8DB2E5;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:#0d0505;font-weight:900;z-index:10}\n  .rpp-lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;background:rgba(0,0,0,.55);border:1px solid rgba(141,178,229,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}\n  .rpp-lb-nav svg{width:15px;height:15px;stroke:#8DB2E5;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}\n  .rpp-lb-prev{left:-52px}.rpp-lb-next{right:-52px}\n  @media(max-width:500px){.rpp-lb-prev{left:-36px}.rpp-lb-next{right:-36px}}\n</style>\n\n<div id="rp-photo-section">\n  <h2 class="rpp-section-title">Photo Gallery</h2>\n  <p class="rpp-carousel-label">Swipe to browse \u2014 tap to view</p>\n  <div class="rpp-carousel" id="rpp-grid"></div>\n  <div class="rpp-dots" id="rpp-dots"></div>\n</div>\n\n<script>\n(function(){\n  var photos=[\n' + arr + '\n  ];\n  var grid=document.getElementById("rpp-grid"),dots=document.getElementById("rpp-dots");\n  window.rppCurrent=0;\n  photos.forEach(function(p,i){\n    var c=document.createElement("div");c.className="rpp-thumb";c.setAttribute("role","button");c.setAttribute("tabindex","0");\n    c.innerHTML=\'<div class="rpp-thumb-img-wrap"><img src="\'+p.src+\'" loading="lazy"></div>\';\n    c.addEventListener("click",function(){rppOpenLightbox(i);});\n    c.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();rppOpenLightbox(i);}});\n    grid.appendChild(c);\n    var d=document.createElement("div");d.className="rpp-dot"+(i===0?" active":"");\n    d.addEventListener("click",function(){grid.querySelectorAll(".rpp-thumb")[i].scrollIntoView({behavior:"smooth",block:"nearest",inline:"start"});});\n    dots.appendChild(d);\n  });\n  grid.addEventListener("scroll",function(){\n    var cs=grid.querySelectorAll(".rpp-thumb"),ds=dots.querySelectorAll(".rpp-dot"),cl=0,md=Infinity;\n    cs.forEach(function(c,i){var d=Math.abs(c.offsetLeft-grid.scrollLeft);if(d<md){md=d;cl=i;}});\n    ds.forEach(function(d,i){d.classList.toggle("active",i===cl);});\n  });\n  var lb=document.createElement("div");lb.className="rpp-lightbox";\n  lb.innerHTML=\'<div class="rpp-lb-inner"><div class="rpp-lb-close" id="rpp-lb-close">\u2715</div><img id="rpp-lb-img" src="" alt=""><button class="rpp-lb-nav rpp-lb-prev" id="rpp-lb-prev"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="rpp-lb-nav rpp-lb-next" id="rpp-lb-next"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button></div>\';\n  document.body.appendChild(lb);\n  document.getElementById("rpp-lb-close").addEventListener("click",function(){lb.classList.remove("open");document.body.style.overflow="";});\n  document.getElementById("rpp-lb-prev").addEventListener("click",function(){window.rppCurrent=(window.rppCurrent-1+photos.length)%photos.length;document.getElementById("rpp-lb-img").src=photos[window.rppCurrent].src;});\n  document.getElementById("rpp-lb-next").addEventListener("click",function(){window.rppCurrent=(window.rppCurrent+1)%photos.length;document.getElementById("rpp-lb-img").src=photos[window.rppCurrent].src;});\n  lb.addEventListener("click",function(e){if(e.target===lb){lb.classList.remove("open");document.body.style.overflow="";}});\n  window.rppOpenLightbox=function(i){window.rppCurrent=i;document.getElementById("rpp-lb-img").src=photos[i].src;lb.classList.add("open");document.body.style.overflow="hidden";};\n  document.addEventListener("keydown",function(e){var o=lb.classList.contains("open");if(e.key==="ArrowLeft"&&o)document.getElementById("rpp-lb-prev").click();if(e.key==="ArrowRight"&&o)document.getElementById("rpp-lb-next").click();if(e.key==="Escape"&&o){lb.classList.remove("open");document.body.style.overflow="";}});\n})();\n<\/script>';
   }
 
+  // ── Toast ──────────────────────────────────────────────────
   function showToast(msg) {
     var t = document.getElementById("toast");
     t.textContent = msg;
@@ -315,6 +336,7 @@
     setTimeout(function(){ t.classList.remove("show"); }, 2200);
   }
 
+  // ── Events ─────────────────────────────────────────────────
   document.getElementById("addBtn").addEventListener("click", addPhoto);
   document.getElementById("urlInput").addEventListener("keydown", function(e){ if(e.key==="Enter") addPhoto(); });
 
@@ -338,12 +360,13 @@
     if (!photos.length) return;
     if (confirm("Remove all " + photos.length + " photos?")) {
       photos = [];
-      render(); await saveToGitHub();
+      render(); await save();
     }
   });
 
+  // ── Init ───────────────────────────────────────────────────
   setSyncStatus("syncing", "Loading…");
-  loadFromGitHub().then(function() {
+  load().then(function() {
     document.getElementById("loadingScreen").style.display = "none";
     document.getElementById("appWrap").style.display = "flex";
     render();
