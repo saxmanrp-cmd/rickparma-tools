@@ -1,0 +1,546 @@
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{-webkit-text-size-adjust:100%;}
+
+.app{
+  background:#ebebeb;
+  font-family:'Inter',sans-serif;
+  min-height:100dvh;
+  display:flex;
+  flex-direction:column;
+  max-width:600px;
+  margin:0 auto;
+  position:relative;
+}
+
+.app-header{
+  background:#fff;
+  padding:16px 20px;
+  padding-top:max(env(safe-area-inset-top),16px);
+  display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid #e0e0e0;
+  flex-shrink:0;
+  position:sticky;top:0;z-index:10;
+}
+.app-header-icon{
+  width:40px;height:40px;
+  background:#8B1A1A;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.app-header-icon i{font-size:20px;color:#fff;}
+.app-header-title{font-size:17px;font-weight:700;color:#111;line-height:1.2;}
+.app-header-sub{font-size:12px;color:#999;font-weight:400;margin-top:1px;}
+
+.stage-outer{flex:1;overflow:hidden;position:relative;}
+.stage-inner{
+  display:flex;
+  transition:transform 0.38s cubic-bezier(0.4,0,0.2,1);
+  will-change:transform;
+  align-items:flex-start;
+}
+.page-slide{
+  min-width:100%;
+  padding:20px 16px 140px;
+  flex-shrink:0;
+}
+
+@media(min-width:480px){
+  .page-slide{padding:24px 24px 160px;}
+}
+
+.step-label{
+  font-size:11px;font-weight:600;
+  letter-spacing:0.12em;text-transform:uppercase;
+  color:#B8460E;margin-bottom:8px;
+}
+.section-hdr{
+  font-size:22px;font-weight:700;color:#111;
+  line-height:1.2;margin-bottom:6px;
+}
+.section-sub{font-size:14px;color:#999;font-weight:400;margin-bottom:20px;}
+
+.field-group{
+  background:#fff;border-radius:10px;
+  margin-bottom:10px;padding:16px;
+}
+.flbl{
+  display:block;
+  font-size:12px;font-weight:600;
+  letter-spacing:0.08em;text-transform:uppercase;
+  color:#888;margin-bottom:8px;
+}
+.req{color:#B8460E;}
+
+.app input[type=text],
+.app input[type=date],
+.app input[type=url],
+.app textarea,
+.app select{
+  width:100%;
+  background:#fff;
+  border:1.5px solid #e0e0e0;
+  border-radius:8px;
+  color:#111;
+  font-family:'Inter',sans-serif;
+  font-size:16px;
+  font-weight:400;
+  padding:14px 16px;
+  outline:none;
+  transition:border-color 0.2s;
+  -webkit-appearance:none;
+  -webkit-tap-highlight-color:transparent;
+  min-height:50px;
+}
+.app input:focus,.app textarea:focus,.app select:focus{border-color:#B8460E;}
+.app input::placeholder,.app textarea::placeholder{color:#c0c0c0;}
+.app select option{background:#fff;color:#111;}
+.app textarea{min-height:90px;resize:none;line-height:1.5;}
+
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.time-row{display:grid;grid-template-columns:2fr 1.2fr 1.2fr;gap:8px;}
+.tlbl{
+  font-size:12px;font-weight:600;
+  letter-spacing:0.08em;text-transform:uppercase;
+  color:#888;margin-bottom:8px;display:block;
+}
+
+.hint{
+  font-size:12px;color:#bbb;
+  margin-top:8px;line-height:1.5;
+  font-weight:400;
+}
+
+.guest-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;}
+.guest-row input{flex:1;min-height:50px;}
+.g-remove{
+  width:50px;height:50px;flex-shrink:0;
+  background:#fff;border:1.5px solid #e0e0e0;border-radius:8px;
+  color:#bbb;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+  transition:border-color 0.2s,color 0.2s;
+}
+.g-remove:active{border-color:#B8460E;color:#B8460E;}
+.add-g{
+  width:100%;background:#fff;
+  border:1.5px dashed #ddd;border-radius:8px;
+  color:#bbb;font-family:'Inter',sans-serif;
+  font-size:14px;font-weight:500;
+  padding:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:border-color 0.2s,color 0.2s;margin-top:4px;
+  min-height:50px;
+  -webkit-tap-highlight-color:transparent;
+}
+.add-g:active{border-color:#B8460E;color:#B8460E;}
+
+.sub-note{
+  background:#fff9f7;border:1.5px solid #f0c4b4;
+  border-radius:8px;padding:10px 14px;
+  font-size:13px;color:#B8460E;
+  margin-top:8px;line-height:1.4;font-weight:500;
+}
+
+.sizes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+@media(min-width:400px){.sizes{gap:10px;}}
+.sz{
+  background:#fff;border:1.5px solid #e0e0e0;
+  border-radius:10px;padding:14px 6px 12px;
+  text-align:center;cursor:pointer;
+  transition:all 0.2s;
+  -webkit-tap-highlight-color:transparent;
+}
+.sz:active,.sz.on{border-color:#B8460E;background:#fff9f7;}
+.sz-box{margin:0 auto 8px;background:#ddd;border-radius:2px;transition:background 0.2s;}
+.sz.on .sz-box{background:#B8460E;opacity:0.8;}
+.sz-name{font-size:11px;font-weight:700;color:#666;letter-spacing:0.04em;text-transform:uppercase;}
+.sz.on .sz-name{color:#B8460E;}
+.sz-dim{font-size:10px;color:#bbb;margin-top:2px;}
+
+.collapsed-section{
+  background:#fff;border-radius:10px;margin-bottom:8px;
+  padding:16px 18px;
+  display:flex;align-items:center;justify-content:space-between;
+  opacity:0.45;
+}
+.collapsed-title{font-size:15px;font-weight:600;color:#888;}
+.collapsed-dot{width:8px;height:8px;border-radius:50%;background:#ddd;}
+
+.err{
+  display:none;font-size:13px;color:#B8460E;
+  margin:10px 0 0;padding:10px 14px;
+  background:#fff9f7;border:1px solid #f0c4b4;
+  border-radius:8px;font-weight:500;
+}
+
+.footer-bar{
+  background:#fff;
+  border-top:1px solid #e8e8e8;
+  padding:14px 20px;
+  padding-bottom:max(env(safe-area-inset-bottom),14px);
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;bottom:0;z-index:10;
+  flex-shrink:0;
+}
+.prog-area{display:flex;align-items:center;gap:14px;}
+.prog-dots{display:flex;gap:5px;align-items:center;}
+.pdot{width:7px;height:7px;border-radius:50%;background:#e0e0e0;transition:all 0.3s;}
+.pdot.done{background:#B8460E;opacity:0.35;}
+.pdot.active{background:#B8460E;width:20px;border-radius:4px;}
+.back-btn{
+  font-size:14px;font-weight:500;color:#aaa;
+  cursor:pointer;display:none;
+  padding:8px 4px;
+  -webkit-tap-highlight-color:transparent;
+  white-space:nowrap;
+}
+.btn-next{
+  background:#B8460E;border:none;border-radius:10px;
+  color:#fff;font-family:'Inter',sans-serif;
+  font-size:16px;font-weight:700;
+  padding:15px 28px;cursor:pointer;
+  transition:background 0.2s,transform 0.1s;
+  display:flex;align-items:center;gap:8px;
+  -webkit-tap-highlight-color:transparent;
+  min-width:120px;justify-content:center;
+}
+.btn-next:active{transform:scale(0.97);background:#c94d10;}
+
+.out-card{background:#fff;border-radius:10px;overflow:hidden;margin-top:12px;}
+.out-top{
+  background:#B8460E;padding:14px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.out-top-title{font-size:14px;font-weight:700;color:#fff;display:flex;align-items:center;gap:7px;}
+.copy-btn{
+  background:rgba(255,255,255,0.2);border:none;
+  border-radius:6px;color:#fff;
+  font-family:'Inter',sans-serif;
+  font-size:13px;font-weight:600;
+  padding:7px 14px;cursor:pointer;
+  display:flex;align-items:center;gap:5px;
+  -webkit-tap-highlight-color:transparent;
+}
+.prompt-box{
+  padding:16px;
+  font-size:12px;font-family:'Inter',sans-serif;
+  font-weight:300;color:#666;
+  white-space:pre-wrap;word-break:break-word;
+  line-height:1.8;max-height:360px;overflow-y:auto;
+}
+.out-footer{
+  background:#f8f8f8;border-top:1px solid #eee;
+  padding:12px 16px;font-size:12px;color:#aaa;
+  line-height:1.5;text-align:center;
+}
+.out-footer a{color:#B8460E;text-decoration:none;font-weight:600;}
+</style>
+
+<div class="app">
+
+  <div class="app-header">
+    <div class="app-header-icon"><i class="ti ti-sparkles" aria-hidden="true"></i></div>
+    <div>
+      <div class="app-header-title">Flyer Generator</div>
+      <div class="app-header-sub">AI-powered · Build your prompt</div>
+    </div>
+  </div>
+
+  <div class="stage-outer" id="stage-outer">
+    <div class="stage-inner" id="stage-inner">
+
+      <div class="page-slide">
+        <div class="step-label">Step 1 of 5</div>
+        <div class="section-hdr">When is the event?</div>
+        <div class="section-sub">Name, date, and showtime.</div>
+        <div class="field-group">
+          <label class="flbl">Event name <span class="req">*</span></label>
+          <input type="text" id="f-name" autocomplete="off">
+        </div>
+        <div class="field-group">
+          <label class="flbl">Date <span class="req">*</span></label>
+          <input type="date" id="f-date">
+        </div>
+        <div class="field-group">
+          <label class="tlbl">Show time <span class="req">*</span></label>
+          <div class="time-row">
+            <select id="show-h"><option value="">Hour</option></select>
+            <select id="show-m"><option value="">Min</option><option value="00">:00</option><option value="30">:30</option></select>
+            <select id="show-ap"><option value="">AM/PM</option><option>AM</option><option>PM</option></select>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="tlbl">Doors open</label>
+          <div class="time-row">
+            <select id="doors-h"><option value="">Hour</option></select>
+            <select id="doors-m"><option value="">Min</option><option value="00">:00</option><option value="30">:30</option></select>
+            <select id="doors-ap"><option value="">AM/PM</option><option>AM</option><option>PM</option></select>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="tlbl">End time</label>
+          <div class="time-row">
+            <select id="end-h"><option value="">Hour</option></select>
+            <select id="end-m"><option value="">Min</option><option value="00">:00</option><option value="30">:30</option></select>
+            <select id="end-ap"><option value="">AM/PM</option><option>AM</option><option>PM</option></select>
+          </div>
+        </div>
+        <div class="err" id="e0">Please fill in all required fields.</div>
+        <div class="collapsed-section"><span class="collapsed-title">Venue</span><div class="collapsed-dot"></div></div>
+        <div class="collapsed-section"><span class="collapsed-title">Performer</span><div class="collapsed-dot"></div></div>
+        <div class="collapsed-section"><span class="collapsed-title">Details</span><div class="collapsed-dot"></div></div>
+        <div class="collapsed-section"><span class="collapsed-title">Flyer size</span><div class="collapsed-dot"></div></div>
+      </div>
+
+      <div class="page-slide">
+        <div class="step-label">Step 2 of 5</div>
+        <div class="section-hdr">Where is the event?</div>
+        <div class="section-sub">We'll pull everything from the venue site.</div>
+        <div class="field-group">
+          <label class="flbl">Venue website <span class="req">*</span></label>
+          <input type="text" id="f-vsite" autocomplete="off" autocorrect="off" autocapitalize="none">
+          <div class="hint"><i class="ti ti-info-circle" aria-hidden="true" style="font-size:13px;vertical-align:-1px;margin-right:3px;"></i>ChatGPT pulls name, address, phone, logo, colors, photos, description, and vibe.</div>
+        </div>
+        <div class="field-group">
+          <label class="flbl">Specific lounge / bar / room</label>
+          <input type="text" id="f-subvenue" placeholder="Leave blank if whole venue is the location">
+          <div class="sub-note" id="sub-note" style="display:none"><i class="ti ti-star" aria-hidden="true" style="font-size:13px;vertical-align:-1px;margin-right:4px;"></i>This becomes the primary title on the flyer</div>
+        </div>
+        <div class="err" id="e1">Venue website is required.</div>
+        <div class="collapsed-section"><span class="collapsed-title">Performer</span><div class="collapsed-dot"></div></div>
+        <div class="collapsed-section"><span class="collapsed-title">Details</span><div class="collapsed-dot"></div></div>
+        <div class="collapsed-section"><span class="collapsed-title">Flyer size</span><div class="collapsed-dot"></div></div>
+      </div>
+
+      <div class="page-slide">
+        <div class="step-label">Step 3 of 5</div>
+        <div class="section-hdr">Who's on stage?</div>
+        <div class="section-sub">Headline act and special guests.</div>
+        <div class="field-group">
+          <label class="flbl">Artist / performer name <span class="req">*</span></label>
+          <input type="text" id="f-performer" autocomplete="off">
+        </div>
+        <div class="field-group">
+          <label class="flbl">Special guests</label>
+          <div id="glist"></div>
+          <button class="add-g" id="add-g" onclick="addGuest()"><i class="ti ti-plus" aria-hidden="true" style="font-size:15px;"></i> Add guest</button>
+        </div>
+        <div class="err" id="e2">Performer name is required.</div>
+        <div class="collapsed-section"><span class="collapsed-title">Details</span><div class="collapsed-dot"></div></div>
+        <div class="collapsed-section"><span class="collapsed-title">Flyer size</span><div class="collapsed-dot"></div></div>
+      </div>
+
+      <div class="page-slide">
+        <div class="step-label">Step 4 of 5</div>
+        <div class="section-hdr">Anything else?</div>
+        <div class="section-sub">All optional — add what applies.</div>
+        <div class="field-group">
+          <label class="flbl">Event description / tagline</label>
+          <textarea id="f-desc"></textarea>
+        </div>
+        <div class="field-group">
+          <label class="flbl" style="margin-bottom:12px;">Age restriction</label>
+          <select id="f-age"><option value="">None</option><option>18+</option><option>21+</option><option>All Ages</option></select>
+        </div>
+        <div class="field-group">
+          <label class="flbl" style="margin-bottom:12px;">Dress code</label>
+          <select id="f-dress">
+            <option value="">None</option><option>Casual</option><option>Smart Casual</option>
+            <option>Business Casual</option><option>Formal</option><option>Black Tie</option>
+            <option>Theme / Costume</option><option value="No sneakers, ball caps">No sneakers, ball caps</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="flbl">Sponsors</label>
+          <input type="text" id="f-sponsors">
+        </div>
+        <div class="field-group">
+          <label class="flbl">QR code link</label>
+          <input type="url" id="f-qr" autocorrect="off" autocapitalize="none">
+        </div>
+        <div class="field-group">
+          <label class="flbl">Theme / vibe override</label>
+          <input type="text" id="f-theme" placeholder="Leave blank to use venue's style">
+        </div>
+        <div class="collapsed-section"><span class="collapsed-title">Flyer size</span><div class="collapsed-dot"></div></div>
+      </div>
+
+      <div class="page-slide">
+        <div class="step-label">Step 5 of 5</div>
+        <div class="section-hdr">Choose your format</div>
+        <div class="section-sub">Pick the size and generate your prompt.</div>
+        <div class="field-group" style="padding:16px;">
+          <div class="sizes">
+            <div class="sz on" onclick="pickSz(this,'1080x1350')"><div class="sz-box" style="width:22px;height:28px;"></div><div class="sz-name">Portrait</div><div class="sz-dim">4:5 · IG</div></div>
+            <div class="sz" onclick="pickSz(this,'1080x1080')"><div class="sz-box" style="width:26px;height:26px;"></div><div class="sz-name">Square</div><div class="sz-dim">1:1</div></div>
+            <div class="sz" onclick="pickSz(this,'1920x1080')"><div class="sz-box" style="width:34px;height:19px;"></div><div class="sz-name">Landscape</div><div class="sz-dim">16:9</div></div>
+            <div class="sz" onclick="pickSz(this,'1080x1920')"><div class="sz-box" style="width:16px;height:29px;"></div><div class="sz-name">Story</div><div class="sz-dim">9:16</div></div>
+            <div class="sz" onclick="pickSz(this,'2550x3300')"><div class="sz-box" style="width:20px;height:26px;"></div><div class="sz-name">Print</div><div class="sz-dim">8.5×11</div></div>
+            <div class="sz" onclick="pickSz(this,'1200x628')"><div class="sz-box" style="width:32px;height:17px;"></div><div class="sz-name">Banner</div><div class="sz-dim">FB event</div></div>
+          </div>
+        </div>
+        <div id="out-wrap" style="display:none;">
+          <div class="out-card">
+            <div class="out-top">
+              <div class="out-top-title"><i class="ti ti-file-text" aria-hidden="true"></i> Your flyer prompt</div>
+              <button class="copy-btn" onclick="copyP()"><i class="ti ti-copy" aria-hidden="true"></i> <span id="clbl">Copy</span></button>
+            </div>
+            <div class="prompt-box" id="pbox"></div>
+            <div class="out-footer">Open <a href="https://chat.openai.com" target="_blank">chat.openai.com</a> · paste the prompt · upload your artist photo in the same message.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="footer-bar">
+    <div class="prog-area">
+      <div class="prog-dots">
+        <div class="pdot active" id="pd0"></div>
+        <div class="pdot" id="pd1"></div>
+        <div class="pdot" id="pd2"></div>
+        <div class="pdot" id="pd3"></div>
+        <div class="pdot" id="pd4"></div>
+      </div>
+      <div class="back-btn" id="back-btn" onclick="goBack()"><i class="ti ti-arrow-left" aria-hidden="true" style="font-size:14px;vertical-align:-1px;margin-right:2px;"></i> Back</div>
+    </div>
+    <button class="btn-next" id="main-btn" onclick="goNext()">Next <i class="ti ti-arrow-right" aria-hidden="true"></i></button>
+  </div>
+
+</div>
+
+<script>
+var cur=0, selSz="1080x1350", gN=0, animating=false;
+
+(function(){
+  var hrs=["1","2","3","4","5","6","7","8","9","10","11","12"];
+  ["show-h","doors-h","end-h"].forEach(function(id){
+    var s=document.getElementById(id);
+    hrs.forEach(function(h){ var o=document.createElement("option"); o.value=h; o.textContent=h; s.appendChild(o); });
+  });
+  document.getElementById("f-subvenue").addEventListener("input",function(){
+    document.getElementById("sub-note").style.display=this.value.trim()?"block":"none";
+  });
+  addGuest();
+})();
+
+function addGuest(){
+  gN++;
+  var n=gN, row=document.createElement("div");
+  row.className="guest-row"; row.id="gr"+n;
+  var inp=document.createElement("input");
+  inp.type="text"; inp.id="g"+n; inp.placeholder="Guest name";
+  inp.style.cssText="flex:1;font-size:16px;";
+  inp.addEventListener("input",updateAddG);
+  var btn=document.createElement("button"); btn.className="g-remove";
+  btn.innerHTML='<i class="ti ti-x" aria-hidden="true" style="font-size:15px;"></i>';
+  btn.onclick=function(){ row.remove(); updateAddG(); };
+  row.appendChild(inp); row.appendChild(btn);
+  document.getElementById("glist").appendChild(row);
+  updateAddG();
+}
+
+function updateAddG(){
+  var rows=document.querySelectorAll("#glist .guest-row");
+  var btn=document.getElementById("add-g");
+  if(!rows.length){ btn.style.display="flex"; return; }
+  var last=rows[rows.length-1].querySelector("input");
+  btn.style.display=(last&&last.value.trim())?"flex":"none";
+}
+
+function getGuests(){
+  var out=[];
+  document.querySelectorAll("#glist input").forEach(function(i){ if(i.value.trim()) out.push(i.value.trim()); });
+  return out;
+}
+
+function v(id){ var el=document.getElementById(id); return el?el.value.trim():""; }
+function getTime(pfx){ var h=v(pfx+"-h"),m=v(pfx+"-m"),ap=v(pfx+"-ap"); return(h&&m&&ap)?h+":"+m+" "+ap:""; }
+function fmtDate(d){ if(!d) return ""; try{ return new Date(d+"T00:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"}); }catch(e){ return d; } }
+
+function pickSz(el,s){ document.querySelectorAll(".sz").forEach(function(c){ c.classList.remove("on"); }); el.classList.add("on"); selSz=s; }
+
+function slideTo(n){
+  if(animating) return;
+  animating=true;
+  var si=document.getElementById("stage-inner");
+  si.style.transform="translateX(-"+n+"00%)";
+  cur=n;
+  for(var i=0;i<5;i++){
+    var d=document.getElementById("pd"+i);
+    d.className="pdot"+(i<n?" done":i===n?" active":"");
+  }
+  document.getElementById("back-btn").style.display=n>0?"block":"none";
+  var btn=document.getElementById("main-btn");
+  btn.innerHTML=n===4?'<i class="ti ti-sparkles" aria-hidden="true"></i> Generate':'Next <i class="ti ti-arrow-right" aria-hidden="true"></i>';
+  setTimeout(function(){ animating=false; }, 420);
+  document.getElementById("stage-outer").scrollTop=0;
+}
+
+function goNext(){
+  var e=document.getElementById("e"+cur);
+  if(e) e.style.display="none";
+  if(cur===0&&(!v("f-name")||!v("f-date")||!v("show-h")||!v("show-m")||!v("show-ap"))){ if(e) e.style.display="block"; return; }
+  if(cur===1&&!v("f-vsite")){ if(e) e.style.display="block"; return; }
+  if(cur===2&&!v("f-performer")){ if(e) e.style.display="block"; return; }
+  if(cur===4){ generate(); return; }
+  slideTo(cur+1);
+}
+
+function goBack(){ if(cur>0) slideTo(cur-1); }
+
+function generate(){
+  var szName=document.querySelector(".sz.on .sz-name").textContent.trim();
+  var sub=v("f-subvenue"), guests=getGuests();
+  var p="Create a professional event flyer image in "+szName+" format ("+selSz+" pixels).\n\n";
+  p+="STEP 1 — VISIT AND FULLY SCRAPE THE VENUE WEBSITE: "+v("f-vsite")+"\n";
+  p+="Extract ALL of the following for the flyer design:\n";
+  p+="  • Venue name — exact as it appears on the site\n";
+  p+="  • Venue address and phone number — display prominently\n";
+  p+="  • Venue logo — incorporate into the flyer layout\n";
+  p+="  • Venue website URL — include on the flyer\n";
+  p+="  • Venue description — use the language, personality, and tone to inform the flyer's feel\n";
+  p+="  • Color palette — use the venue's brand colors as the primary palette\n";
+  p+="  • Visual style and atmosphere — match the venue's aesthetic and branding\n";
+  p+="  • Photos — scrub for lighting, decor, and ambiance cues\n";
+  p+="  • Menu or event highlights — use themes, textures, or concepts as inspiration\n\n";
+  p+="STEP 2 — EVENT DETAILS:\n";
+  p+="• Event: "+v("f-name")+"\n";
+  p+="• Date: "+fmtDate(v("f-date"))+"\n";
+  p+="• Show time: "+getTime("show")+"\n";
+  var d=getTime("doors"); if(d) p+="• Doors open: "+d+"\n";
+  var e=getTime("end"); if(e) p+="• End time: "+e+"\n";
+  if(sub){ p+="• PRIMARY VENUE TITLE: "+sub+" — MUST be the largest, most prominent venue name.\n"; p+="• Parent venue (secondary context): pulled from venue website above.\n"; }
+  p+="• Headline performer: "+v("f-performer")+" — the LARGEST, most dominant element. Hero of the design.\n";
+  if(guests.length) p+="• Special guests: "+guests.join(", ")+" — prominent supporting elements, large and bold. Not small print.\n";
+  if(v("f-age")) p+="• Age restriction: "+v("f-age")+"\n";
+  if(v("f-dress")) p+="• Dress code: "+v("f-dress")+"\n";
+  if(v("f-sponsors")) p+="• Sponsors: "+v("f-sponsors")+"\n";
+  if(v("f-qr")) p+="• QR code: "+v("f-qr")+"\n";
+  if(v("f-desc")) p+="• Tagline: "+v("f-desc")+"\n";
+  if(v("f-theme")) p+="• Theme / vibe override: "+v("f-theme")+"\n";
+  p+="\nSTEP 3 — DESIGN GUIDELINES:\n";
+  p+="Professional, eye-catching, high contrast, crisp typography. Honor the venue's visual identity.\n";
+  p+="• No unnecessary icons, symbols, or filler text.\n";
+  p+="• Performer and guests are the main visual focus — large, bold, prominent. NOT small-print labels.\n";
+  p+="• Every word must serve a purpose.\n";
+  p+="• No AI-fabricated faces or likenesses. No artist photo = use abstract design, atmospheric backgrounds, or stylized typography — no fake people.\n";
+  p+="• Never duplicate any element. Every graphic and text appears exactly once.";
+  document.getElementById("pbox").textContent=p;
+  var ow=document.getElementById("out-wrap");
+  ow.style.display="block";
+  setTimeout(function(){ ow.scrollIntoView({behavior:"smooth",block:"start"}); },150);
+}
+
+function copyP(){
+  var text=document.getElementById("pbox").textContent;
+  var lbl=document.getElementById("clbl");
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(function(){ flash(lbl); }); }
+  else{ var ta=document.createElement("textarea"); ta.value=text; ta.style.cssText="position:fixed;top:-9999px;opacity:0;"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); flash(lbl); }
+}
+
+function flash(lbl){ lbl.textContent="Copied!"; setTimeout(function(){ lbl.textContent="Copy"; },2000); }
+</script>
