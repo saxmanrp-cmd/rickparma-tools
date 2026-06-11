@@ -6,6 +6,8 @@ html,body{-webkit-text-size-adjust:100%;}
 
 .app{
   background:#ebebeb;
+  height:100dvh;
+  overflow:hidden;
   font-family:'Inter',sans-serif;
   min-height:100dvh;
   display:flex;
@@ -33,7 +35,7 @@ html,body{-webkit-text-size-adjust:100%;}
 .app-header-title{font-size:17px;font-weight:700;color:#111;line-height:1.2;}
 .app-header-sub{font-size:12px;color:#999;font-weight:400;margin-top:1px;}
 
-.stage-outer{flex:1;overflow:hidden;position:relative;}
+.stage-outer{flex:1;overflow:hidden;position:relative;height:100%;touch-action:none;}
 .stage-inner{
   display:flex;
   transition:transform 0.38s cubic-bezier(0.4,0,0.2,1);
@@ -42,8 +44,10 @@ html,body{-webkit-text-size-adjust:100%;}
 }
 .page-slide{
   min-width:100%;
-  padding:20px 16px 140px;
+  height:calc(100dvh - 140px);
+  padding:16px;
   flex-shrink:0;
+  overflow:hidden;
 }
 
 @media(min-width:480px){
@@ -477,7 +481,7 @@ function slideTo(n){
   var btn=document.getElementById("main-btn");
   btn.innerHTML=n===4?'<i class="ti ti-sparkles" aria-hidden="true"></i> Generate':'Next <i class="ti ti-arrow-right" aria-hidden="true"></i>';
   setTimeout(function(){ animating=false; }, 420);
-  document.getElementById("stage-outer").scrollTop=0;
+  
 }
 
 function goNext(){
