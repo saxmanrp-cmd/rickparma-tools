@@ -46,12 +46,12 @@ html, body {
 .slider-wrap { flex: 1; overflow: hidden; position: relative; }
 .slider-track {
   display: flex;
-  width: 800%;
+  width: 900%;
   height: 100%;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .slide {
-  width: calc(100% / 8);
+  width: calc(100% / 9);
   height: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -457,13 +457,17 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
             <option value="Online">Online</option>
             <option value="In person">In person</option>
           </select>
-          <div id="ticket-online" style="display:none;margin-top:10px;">
-            <label class="lbl" style="margin-bottom:8px;">Ticket website</label>
-            <input type="url" id="f-ticket-url" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="https://tickets.com/your-event">
+        </div>
+        <div id="ticket-online" style="display:none;">
+          <div class="card">
+            <label class="lbl">Ticket website</label>
+            <input type="url" id="f-ticket-url" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="https://tickets.com/your-event" style="background:rgba(13,10,26,0.8);border:1px solid rgba(123,47,255,0.4);color:#fff;width:100%;min-height:50px;padding:13px 14px;font-size:16px;border-radius:8px;">
           </div>
-          <div id="ticket-inperson" style="display:none;margin-top:10px;">
-            <label class="lbl" style="margin-bottom:8px;">Phone number</label>
-            <input type="tel" id="f-ticket-phone" placeholder="(___) ___-____" maxlength="14" oninput="fmtPhone(this)" autocomplete="tel">
+        </div>
+        <div id="ticket-inperson" style="display:none;">
+          <div class="card">
+            <label class="lbl">Phone number</label>
+            <input type="tel" id="f-ticket-phone" placeholder="(___) ___-____" maxlength="14" oninput="fmtPhone(this)" autocomplete="tel" style="background:rgba(13,10,26,0.8);border:1px solid rgba(123,47,255,0.4);color:#fff;width:100%;min-height:50px;padding:13px 14px;font-size:16px;border-radius:8px;">
           </div>
         </div>
       </div>
@@ -565,9 +569,91 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
         </div>
       </div>
 
-      <!-- Slide 6: RESERVED (your idea) -->
+      <!-- Slide 6: Flyer Size (moved here) - now just Next -->
+      <!-- Slide 6 is the existing flyer size, we keep it but generate moves to 7 -->
+
+      <!-- Slide 7: Generate -->
+      <div class="slide" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;">
+        <div class="step-title" style="margin-bottom:8px;">Generate</div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.7);text-align:center;margin-bottom:40px;line-height:1.6;">Your prompt is ready. Choose how you want to create your flyer.</div>
+
+        <div style="width:100%;display:flex;flex-direction:column;gap:16px;">
+
+          <!-- Create Prompt button -->
+          <div>
+            <button onclick="generate()" style="width:100%;background:linear-gradient(135deg,#e91e8c,#7b2fff);border:none;border-radius:12px;padding:18px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 20px rgba(233,30,140,0.4);-webkit-tap-highlight-color:transparent;">
+              <i class="ti ti-copy" style="font-size:20px;"></i> Copy Prompt to Clipboard
+            </button>
+            <div style="font-size:12px;color:rgba(255,255,255,0.5);text-align:center;margin-top:8px;">Paste into any AI tool with image generation</div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;margin:4px 0;">
+            <div style="flex:1;height:1px;background:rgba(255,255,255,0.1);"></div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:600;letter-spacing:0.08em;">OR</div>
+            <div style="flex:1;height:1px;background:rgba(255,255,255,0.1);"></div>
+          </div>
+
+          <!-- Gemini button -->
+          <div>
+            <button id="gemini-btn" onclick="openGemini()" style="width:100%;background:linear-gradient(135deg,#4285f4,#34a853);border:none;border-radius:12px;padding:18px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 20px rgba(66,133,244,0.35);-webkit-tap-highlight-color:transparent;">
+              <i class="ti ti-brand-google" style="font-size:20px;"></i> Generate with Gemini
+            </button>
+            <div style="background:rgba(66,133,244,0.08);border:1px solid rgba(66,133,244,0.25);border-radius:8px;padding:10px 14px;margin-top:10px;display:flex;align-items:flex-start;gap:8px;">
+              <i class="ti ti-flask" style="font-size:14px;color:#4285f4;flex-shrink:0;margin-top:1px;"></i>
+              <div style="font-size:12px;color:rgba(255,255,255,0.7);line-height:1.5;"><strong style="color:#fff;">Beta test option.</strong> Tapping this copies your prompt and opens Gemini. Just paste it in and hit send. Results may vary — let us know how it works for you!</div>
+            </div>
+          </div>
+
+        </div>
+
+        <div id="out-wrap" style="display:none;width:100%;margin-top:24px;text-align:center;">
+          <div style="background:linear-gradient(135deg,rgba(233,30,140,0.15),rgba(123,47,255,0.15));border:1px solid rgba(233,30,140,0.4);border-radius:14px;padding:28px 20px;">
+            <div style="width:56px;height:56px;background:linear-gradient(135deg,#e91e8c,#7b2fff);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 0 24px rgba(233,30,140,0.5);">
+              <i class="ti ti-check" style="font-size:28px;color:#fff;"></i>
+            </div>
+            <div style="font-size:20px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Prompt Copied!</div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.85);margin-bottom:24px;line-height:1.5;">Your flyer prompt is ready to paste.<br>Don't forget to upload your artist photo.</div>
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#fff;margin-bottom:12px;">Open in your AI tool</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <a href="https://chat.openai.com" target="_blank" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:14px 16px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">
+                <div style="width:32px;height:32px;background:#10a37f;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-brand-openai" style="font-size:18px;color:#fff;"></i></div>
+                <div style="text-align:left;"><div style="font-size:14px;font-weight:700;">ChatGPT</div><div style="font-size:11px;color:rgba(255,255,255,0.7);">chat.openai.com · DALL·E 3</div></div>
+                <i class="ti ti-arrow-right" style="margin-left:auto;color:rgba(255,255,255,0.6);"></i>
+              </a>
+              <a href="https://www.bing.com/images/create" target="_blank" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:14px 16px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">
+                <div style="width:32px;height:32px;background:#0078d4;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-brand-bing" style="font-size:18px;color:#fff;"></i></div>
+                <div style="text-align:left;"><div style="font-size:14px;font-weight:700;">Microsoft Designer</div><div style="font-size:11px;color:rgba(255,255,255,0.7);">bing.com/images/create · Free</div></div>
+                <i class="ti ti-arrow-right" style="margin-left:auto;color:rgba(255,255,255,0.6);"></i>
+              </a>
+              <a href="https://ideogram.ai" target="_blank" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:14px 16px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">
+                <div style="width:32px;height:32px;background:#6c47ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-sparkles" style="font-size:18px;color:#fff;"></i></div>
+                <div style="text-align:left;"><div style="font-size:14px;font-weight:700;">Ideogram</div><div style="font-size:11px;color:rgba(255,255,255,0.7);">ideogram.ai · Great for text</div></div>
+                <i class="ti ti-arrow-right" style="margin-left:auto;color:rgba(255,255,255,0.6);"></i>
+              </a>
+              <a href="https://www.adobe.com/products/firefly.html" target="_blank" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:14px 16px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">
+                <div style="width:32px;height:32px;background:#ff0000;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-flame" style="font-size:18px;color:#fff;"></i></div>
+                <div style="text-align:left;"><div style="font-size:14px;font-weight:700;">Adobe Firefly</div><div style="font-size:11px;color:rgba(255,255,255,0.7);">adobe.com/firefly · Free tier</div></div>
+                <i class="ti ti-arrow-right" style="margin-left:auto;color:rgba(255,255,255,0.6);"></i>
+              </a>
+              <a href="https://gemini.google.com" target="_blank" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:14px 16px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">
+                <div style="width:32px;height:32px;background:linear-gradient(135deg,#4285f4,#ea4335);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-brand-google" style="font-size:18px;color:#fff;"></i></div>
+                <div style="text-align:left;"><div style="font-size:14px;font-weight:700;">Google Gemini</div><div style="font-size:11px;color:rgba(255,255,255,0.7);">gemini.google.com · Free</div></div>
+                <i class="ti ti-arrow-right" style="margin-left:auto;color:rgba(255,255,255,0.6);"></i>
+              </a>
+              <a href="https://claude.ai" target="_blank" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:14px 16px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">
+                <div style="width:32px;height:32px;background:#cc785c;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-robot" style="font-size:18px;color:#fff;"></i></div>
+                <div style="text-align:left;"><div style="font-size:14px;font-weight:700;">Claude</div><div style="font-size:11px;color:rgba(255,255,255,0.7);">claude.ai · Anthropic</div></div>
+                <i class="ti ti-arrow-right" style="margin-left:auto;color:rgba(255,255,255,0.6);"></i>
+              </a>
+            </div>
+          </div>
+          <div id="pbox" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Slide 8: RESERVED (your idea) -->
       <div class="slide" style="display:flex;align-items:center;justify-content:center;">
-        <div style="text-align:center;color:#ccc;">
+        <div style="text-align:center;color:rgba(255,255,255,0.3);">
           <i class="ti ti-bulb" style="font-size:48px;display:block;margin-bottom:12px;"></i>
           <div style="font-size:14px;font-weight:500;">Coming soon</div>
         </div>
@@ -590,6 +676,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
       <div class="dot" id="d5"></div>
       <div class="dot" id="d6"></div>
       <div class="dot" id="d7"></div>
+      <div class="dot" id="d8"></div>
     </div>
     <button class="btn-next" id="btn-next" onclick="goNext()">
       Next <i class="ti ti-arrow-right"></i>
@@ -599,7 +686,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
 </div>
 <script>
 var cur = 0, selSz = "1080x1350", gN = 0, busy = false;
-var TOTAL = 8;
+var TOTAL = 9;
 var LAST = TOTAL - 1;
 var PCT = 100 / TOTAL;
 
@@ -659,8 +746,9 @@ function goTo(n){
     document.getElementById("d"+i).className = "dot" + (i < n ? " done" : i === n ? " active" : "");
   }
   document.getElementById("btn-back").style.visibility = n > 0 ? "visible" : "hidden";
+  document.getElementById("btn-next").style.visibility = n === 7 ? "hidden" : "visible";
   var nb = document.getElementById("btn-next");
-  nb.innerHTML = n === 6 ? '<i class="ti ti-sparkles"></i> Create Prompt' : 'Next <i class="ti ti-arrow-right"></i>';
+  nb.innerHTML = 'Next <i class="ti ti-arrow-right"></i>';
   setTimeout(function(){
     slides[n].scrollTop = 0;
     busy = false;
@@ -668,7 +756,7 @@ function goTo(n){
   // Show header on all pages except page 0 and 1
   document.getElementById("hdr").style.display = n <= 1 ? "none" : "block";
   // Reset prompt output when leaving/entering page 5
-  if(n !== 6){ document.getElementById("out-wrap").style.display = "none"; }
+  document.getElementById("out-wrap").style.display = "none";
 }
 
 function goNext(){
@@ -677,13 +765,13 @@ function goNext(){
   if(cur === 2 && (!v("f-date") || !v("show-h") || !v("show-m") || !v("show-ap"))){
     if(e0) e0.style.display = "block"; return;
   }
-  if(cur === 6){ generate(); return; }
+  if(cur === 7){ generate(); return; }
   if(cur < LAST) goTo(cur + 1);
 }
 
 function goBack(){ if(cur > 0) goTo(cur - 1); }
 
-function generate(){
+function buildPrompt(){
   var szName = document.querySelector(".sz.on .sz-name").textContent.trim();
   var sub = v("f-subvenue"), guests = getGuests();
   var p = "Create a professional event flyer image in " + szName + " format (" + selSz + " pixels).\n\n";
@@ -727,20 +815,29 @@ function generate(){
   p += "• Every word must serve a purpose.\n";
   p += "• No AI-fabricated faces or likenesses. No artist photo = use abstract design, atmospheric backgrounds, or stylized typography — no fake people.\n";
   p += "• Never duplicate any element. Every graphic and text appears exactly once.";
+  return p;
+}
+
+function generate(){
+  var p = buildPrompt();
   document.getElementById("pbox").textContent = p;
-  // Auto-copy to clipboard
+  function showConfirm(){
+    document.getElementById("out-wrap").style.display = "block";
+    setTimeout(function(){ document.getElementById("out-wrap").scrollIntoView({ behavior:"smooth", block:"start" }); }, 100);
+  }
   if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(p).then(function(){
-      document.getElementById("out-wrap").style.display = "block";
-      setTimeout(function(){ document.getElementById("out-wrap").scrollIntoView({ behavior: "smooth", block: "start" }); }, 100);
+    navigator.clipboard.writeText(p).then(showConfirm).catch(function(){
+      fallbackCopy(p); showConfirm();
     });
   } else {
-    var ta = document.createElement("textarea");
-    ta.value = p; ta.style.cssText = "position:fixed;top:-9999px;opacity:0;";
-    document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
-    document.getElementById("out-wrap").style.display = "block";
-    setTimeout(function(){ document.getElementById("out-wrap").scrollIntoView({ behavior: "smooth", block: "start" }); }, 100);
+    fallbackCopy(p); showConfirm();
   }
+}
+
+function fallbackCopy(text){
+  var ta = document.createElement("textarea");
+  ta.value = text; ta.style.cssText = "position:fixed;top:-9999px;opacity:0;";
+  document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
 }
 
 function copyP(){
@@ -755,6 +852,28 @@ function copyP(){
     flash(lbl);
   }
 }
+
+function openGemini(){
+  var p = buildPrompt();
+  document.getElementById("pbox").textContent = p;
+  // Copy to clipboard first so user can paste in Gemini
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(p).then(function(){
+      document.getElementById("out-wrap").style.display = "block";
+      window.open("https://gemini.google.com", "_blank");
+    }).catch(function(){
+      fallbackCopy(p);
+      document.getElementById("out-wrap").style.display = "block";
+      window.open("https://gemini.google.com", "_blank");
+    });
+  } else {
+    fallbackCopy(p);
+    document.getElementById("out-wrap").style.display = "block";
+    window.open("https://gemini.google.com", "_blank");
+  }
+}
+
+
 
 function fmtPhone(el){
   var raw = el.value.replace(/\D/g, "").substring(0, 10);
