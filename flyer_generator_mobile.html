@@ -16,13 +16,12 @@
 html, body {
   height: 100%;
   height: -webkit-fill-available;
-  background: #ebebeb;
+  background: #0d0a1a;
   font-family: 'Inter', sans-serif;
   -webkit-text-size-adjust: 100%;
   overflow: hidden;
 }
 
-/* ── App shell ── */
 .app {
   display: flex;
   flex-direction: column;
@@ -30,7 +29,7 @@ html, body {
   height: -webkit-fill-available;
   max-width: 600px;
   margin: 0 auto;
-  background: #ebebeb;
+  background: #0d0a1a;
   overflow: hidden;
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -40,34 +39,19 @@ html, body {
 }
 
 /* ── Header ── */
-.hdr {
-  background: #fff;
-  border-bottom: 1px solid #e0e0e0;
-  padding: 14px 16px;
-  padding-top: max(env(safe-area-inset-top), 14px);
-  display: flex; align-items: center; gap: 12px;
-  flex-shrink: 0;
-  z-index: 10;
-}
-.hdr-icon { width: 38px; height: 38px; background: #8B1A1A; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.hdr-icon i { font-size: 18px; color: #fff; }
-.hdr-title { font-size: 16px; font-weight: 700; color: #111; }
-.hdr-sub { font-size: 11px; color: #999; margin-top: 1px; }
+.hdr { flex-shrink: 0; z-index: 10; }
+.hdr img { width: 100%; display: block; }
 
 /* ── Slider ── */
-.slider-wrap {
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-}
+.slider-wrap { flex: 1; overflow: hidden; position: relative; }
 .slider-track {
   display: flex;
-  width: 500%;
+  width: 800%;
   height: 100%;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .slide {
-  width: 20%;
+  width: calc(100% / 8);
   height: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -77,150 +61,301 @@ html, body {
 
 /* ── Footer ── */
 .ftr {
-  background: #fff;
-  border-top: 1px solid #e8e8e8;
+  background: #0d0a1a;
+  border-top: 1px solid rgba(233,30,140,0.25);
   padding: 12px 16px;
   padding-bottom: max(env(safe-area-inset-bottom), 12px);
-  display: flex; align-items: center; justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
   z-index: 10;
 }
-.ftr-left { display: flex; align-items: center; gap: 12px; }
-.dots { display: flex; gap: 5px; align-items: center; }
-.dot { width: 7px; height: 7px; border-radius: 50%; background: #e0e0e0; transition: all 0.3s; }
-.dot.done { background: #B8460E; opacity: 0.35; }
-.dot.active { background: #B8460E; width: 20px; border-radius: 4px; }
+.dots { display: flex; gap: 5px; align-items: center; justify-content: center; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.12); transition: all 0.3s; }
+.dot.done { background: rgba(233,30,140,0.4); }
+.dot.active { background: #e91e8c; width: 18px; border-radius: 4px; box-shadow: 0 0 8px rgba(233,30,140,0.7); }
 .btn-back {
-  font-size: 14px; font-weight: 500; color: #aaa;
-  cursor: pointer; display: none;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  color: rgba(255,255,255,0.55);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px; font-weight: 700;
+  padding: 14px 20px; cursor: pointer;
+  display: flex; align-items: center; gap: 7px;
+  justify-content: center;
+  visibility: hidden;
   -webkit-tap-highlight-color: transparent;
-  padding: 8px 0;
 }
+.btn-back:active { opacity: 0.7; }
 .btn-next {
-  background: #B8460E; border: none; border-radius: 10px;
+  background: linear-gradient(135deg, #e91e8c 0%, #7b2fff 100%);
+  border: none; border-radius: 10px;
   color: #fff; font-family: 'Inter', sans-serif;
   font-size: 15px; font-weight: 700;
-  padding: 14px 26px; cursor: pointer;
+  padding: 14px 20px; cursor: pointer;
   display: flex; align-items: center; gap: 7px;
+  justify-content: center;
+  justify-self: end;
+  box-shadow: 0 4px 18px rgba(233,30,140,0.45);
   -webkit-tap-highlight-color: transparent;
-  min-width: 110px; justify-content: center;
 }
-.btn-next:active { opacity: 0.85; }
+.btn-next:active { opacity: 0.85; transform: scale(0.97); }
 
-/* ── Form elements ── */
-.step-lbl { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #B8460E; margin-bottom: 8px; }
-.step-title { font-size: 22px; font-weight: 700; color: #111; margin-bottom: 4px; }
-.step-sub { font-size: 13px; color: #999; margin-bottom: 18px; }
+/* ── Step labels ── */
+.step-title {
+  font-size: 24px; font-weight: 900;
+  color: #fff;
+  text-transform: uppercase;
+  text-align: center;
+  letter-spacing: 0.08em;
+  margin-bottom: 20px;
+  text-shadow: 0 0 20px rgba(233,30,140,0.4);
+}
 
-.card { background: #fff; border-radius: 10px; margin-bottom: 10px; padding: 16px; }
-.lbl { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #888; margin-bottom: 8px; }
-.req { color: #B8460E; }
+/* ── Cards ── */
+.card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(123,47,255,0.25);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  padding: 16px;
+  transition: border-color 0.2s;
+}
+.card:focus-within {
+  border-color: rgba(233,30,140,0.6);
+  box-shadow: 0 0 0 3px rgba(233,30,140,0.08), 0 0 16px rgba(233,30,140,0.1);
+}
 
+.lbl {
+  display: block;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(0,168,255,0.8);
+  margin-bottom: 8px;
+}
+
+/* ── Inputs ── */
 input[type=text], input[type=date], input[type=url], textarea, select {
   width: 100%;
-  background: #fff;
-  border: 1.5px solid #e0e0e0;
+  background: rgba(13,10,26,0.8);
+  border: 1px solid rgba(123,47,255,0.4);
   border-radius: 8px;
-  color: #111;
+  color: #fff;
   font-family: 'Inter', sans-serif;
-  font-size: 16px;
-  font-weight: 400;
+  font-size: 16px; font-weight: 400;
   padding: 13px 14px;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   -webkit-appearance: none;
   appearance: none;
   -webkit-tap-highlight-color: transparent;
   min-height: 50px;
   display: block;
 }
-input:focus, textarea:focus, select:focus { border-color: #B8460E; }
-input::placeholder, textarea::placeholder { color: #c0c0c0; }
+input:focus, textarea:focus, select:focus {
+  border-color: #e91e8c;
+  box-shadow: 0 0 0 3px rgba(233,30,140,0.12), 0 0 12px rgba(233,30,140,0.15);
+}
+input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.18); }
 select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23aaa' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23e91e8c' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
   padding-right: 36px;
 }
+select option { background: #1a0d30; color: #fff; }
 textarea { min-height: 90px; resize: none; line-height: 1.5; }
 
-.time-row { display: grid; grid-template-columns: 2fr 1.2fr 1.2fr; gap: 8px; }
-.hint { font-size: 12px; color: #bbb; margin-top: 7px; line-height: 1.5; }
+/* Date input text color fix for iOS */
+input[type=date]::-webkit-datetime-edit { color: #fff; }
+input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightness(0.6); }
 
+.time-row { display: grid; grid-template-columns: 2fr 1.2fr 1.2fr; gap: 8px; }
+.hint { font-size: 12px; color: rgba(255,255,255,0.25); margin-top: 7px; line-height: 1.5; }
+
+/* ── Guests ── */
 .guest-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
 .guest-row input { flex: 1; }
 .g-remove {
   width: 50px; height: 50px; flex-shrink: 0;
-  background: #fff; border: 1.5px solid #e0e0e0; border-radius: 8px;
-  color: #bbb; cursor: pointer;
+  background: rgba(233,30,140,0.08);
+  border: 1px solid rgba(233,30,140,0.3);
+  border-radius: 8px;
+  color: rgba(233,30,140,0.6); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   -webkit-tap-highlight-color: transparent;
 }
-.g-remove:active { border-color: #B8460E; color: #B8460E; }
+.g-remove:active { background: rgba(233,30,140,0.2); color: #e91e8c; }
 .add-g {
-  width: 100%; background: #fff; border: 1.5px dashed #ddd; border-radius: 8px;
-  color: #bbb; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500;
+  width: 100%;
+  background: rgba(123,47,255,0.07);
+  border: 1px dashed rgba(123,47,255,0.4);
+  border-radius: 8px;
+  color: rgba(123,47,255,0.7);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 600;
   padding: 13px; cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 6px;
   margin-top: 6px; min-height: 50px;
   -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s;
 }
-.add-g:active { border-color: #B8460E; color: #B8460E; }
+.add-g:active { border-color: #7b2fff; color: #7b2fff; background: rgba(123,47,255,0.15); }
 
-.sub-note { background: #fff9f7; border: 1.5px solid #f0c4b4; border-radius: 8px; padding: 9px 13px; font-size: 12px; color: #B8460E; margin-top: 8px; line-height: 1.4; font-weight: 500; }
-
+/* ── Sizes ── */
 .sizes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.sz { background: #fff; border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 14px 6px 10px; text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: all 0.2s; }
-.sz.on { border-color: #B8460E; background: #fff9f7; }
-.sz-box { margin: 0 auto 7px; background: #ddd; border-radius: 2px; transition: background 0.2s; }
-.sz.on .sz-box { background: #B8460E; opacity: 0.8; }
-.sz-name { font-size: 11px; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; }
-.sz.on .sz-name { color: #B8460E; }
-.sz-dim { font-size: 10px; color: #bbb; margin-top: 2px; }
-
-.err { display: none; font-size: 13px; color: #B8460E; margin-top: 10px; padding: 10px 13px; background: #fff9f7; border: 1px solid #f0c4b4; border-radius: 8px; font-weight: 500; }
+.sz {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(123,47,255,0.25);
+  border-radius: 10px; padding: 14px 6px 10px;
+  text-align: center; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s;
+}
+.sz.on {
+  border-color: #e91e8c;
+  background: rgba(233,30,140,0.1);
+  box-shadow: 0 0 14px rgba(233,30,140,0.2);
+}
+.sz-box { margin: 0 auto 7px; background: rgba(123,47,255,0.4); border-radius: 2px; transition: all 0.2s; }
+.sz.on .sz-box { background: linear-gradient(135deg, #e91e8c, #7b2fff); }
+.sz-name { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.35); letter-spacing: 0.04em; text-transform: uppercase; }
+.sz.on .sz-name { color: #e91e8c; text-shadow: 0 0 8px rgba(233,30,140,0.5); }
+.sz-dim { font-size: 10px; color: rgba(255,255,255,0.18); margin-top: 2px; }
 
 /* ── Output ── */
-.out-card { background: #fff; border-radius: 10px; overflow: hidden; margin-top: 10px; }
-.out-bar { background: #B8460E; padding: 13px 16px; display: flex; align-items: center; justify-content: space-between; }
+.out-card { border-radius: 12px; overflow: hidden; margin-top: 10px; border: 1px solid rgba(233,30,140,0.35); }
+.out-bar {
+  background: linear-gradient(135deg, #e91e8c, #7b2fff);
+  padding: 13px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+}
 .out-bar-title { font-size: 13px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px; }
-.copy-btn { background: rgba(255,255,255,0.2); border: none; border-radius: 6px; color: #fff; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; padding: 7px 13px; cursor: pointer; display: flex; align-items: center; gap: 5px; -webkit-tap-highlight-color: transparent; }
-.pbox { padding: 14px; font-size: 11px; font-family: 'Inter', sans-serif; font-weight: 300; color: #666; white-space: pre-wrap; word-break: break-word; line-height: 1.8; max-height: 300px; overflow-y: auto; }
-.out-note { background: #f8f8f8; border-top: 1px solid #eee; padding: 10px 14px; font-size: 11px; color: #aaa; text-align: center; line-height: 1.5; }
-.out-note a { color: #B8460E; text-decoration: none; font-weight: 600; }
+.copy-btn {
+  background: rgba(255,255,255,0.2); border: none; border-radius: 6px;
+  color: #fff; font-family: 'Inter', sans-serif;
+  font-size: 12px; font-weight: 700;
+  padding: 7px 13px; cursor: pointer;
+  display: flex; align-items: center; gap: 5px;
+  -webkit-tap-highlight-color: transparent;
+}
+.pbox {
+  padding: 14px; font-size: 11px;
+  font-family: 'Inter', sans-serif; font-weight: 300;
+  color: rgba(255,255,255,0.45);
+  white-space: pre-wrap; word-break: break-word;
+  line-height: 1.8; max-height: 300px; overflow-y: auto;
+  background: rgba(13,10,26,0.9);
+}
+.out-note {
+  background: rgba(13,10,26,0.9);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding: 10px 14px; font-size: 11px;
+  color: rgba(255,255,255,0.25);
+  text-align: center; line-height: 1.5;
+}
+.out-note a { color: #e91e8c; text-decoration: none; font-weight: 700; }
 </style>
 </head>
 <body>
 <div class="app">
 
-  <!-- Header -->
-  <div class="hdr">
-    <div class="hdr-icon"><i class="ti ti-sparkles"></i></div>
-    <div>
-      <div class="hdr-title">Flyer Generator</div>
-      <div class="hdr-sub">AI-powered · Build your prompt</div>
-    </div>
+  <!-- Header banner - hidden on page 0 -->
+  <div class="hdr" id="hdr" style="display:none;padding:0;border-bottom:none;">
+    <img src="https://saxmanrp-cmd.github.io/rickparma-tools/images/banner.PNG"
+         alt="Gig Flyer Creator"
+         style="width:100%;display:block;">
   </div>
 
   <!-- Slides -->
   <div class="slider-wrap">
     <div class="slider-track" id="track">
 
-      <!-- Slide 1: Event -->
-      <div class="slide">
-        <div class="step-lbl">Step 1 of 5</div>
-        <div class="step-title">When is the event?</div>
-        <div class="step-sub">Name, date, and showtime.</div>
-        <div class="card">
-          <label class="lbl">Event name <span class="req">*</span></label>
-          <input type="text" id="f-name" autocomplete="off" autocorrect="off">
+      <!-- Slide 0: Title / Intro -->
+      <div class="slide" style="display:flex;align-items:center;justify-content:center;padding:0;">
+        <img src="https://saxmanrp-cmd.github.io/rickparma-tools/images/title.PNG"
+             alt="Flyer Generator"
+             style="width:100%;height:100%;object-fit:cover;display:block;">
+      </div>
+
+      <!-- Slide 1: Welcome & Instructions -->
+      <div class="slide" style="padding:24px 20px;">
+        <div class="step-title" style="margin-bottom:24px;">Instructions</div>
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(0,168,255,0.25);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:16px;">
+
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:32px;height:32px;background:#00a8ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="ti ti-confetti" style="font-size:16px;color:#fff;"></i>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#00a8ff;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Welcome to Gig Flyer Creator!</div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.65);line-height:1.6;">This is version one. Right now, the app creates a prompt you can copy and paste into any AI tool, like ChatGPT or Claude. Just enter the basic gig details, and the app will do the rest.</div>
+            </div>
+          </div>
+
+          <div style="height:1px;background:rgba(0,168,255,0.15);"></div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:32px;height:32px;background:#00a8ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="ti ti-building" style="font-size:16px;color:#fff;"></i>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#00a8ff;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Venue Website</div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.65);line-height:1.6;">For best results, include the venue's website. The AI can use it to find the venue's logo, colors, style, address, phone number, and website link.</div>
+            </div>
+          </div>
+
+          <div style="height:1px;background:rgba(0,168,255,0.15);"></div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:32px;height:32px;background:#00a8ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="ti ti-forms" style="font-size:16px;color:#fff;"></i>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#00a8ff;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">No Required Fields</div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.65);line-height:1.6;">There are no required fields because every gig is different. Fill in only what applies to your event.</div>
+            </div>
+          </div>
+
+          <div style="height:1px;background:rgba(0,168,255,0.15);"></div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:32px;height:32px;background:#00a8ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="ti ti-photo" style="font-size:16px;color:#fff;"></i>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#00a8ff;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Artist Photos</div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.65);line-height:1.6;">This version does not support photo uploads yet. To add your photo, copy the prompt into your AI tool and upload your image there. If you have special guests, tell the AI which photo goes with each person.</div>
+            </div>
+          </div>
+
+          <div style="height:1px;background:rgba(0,168,255,0.15);"></div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:32px;height:32px;background:#00a8ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="ti ti-layout" style="font-size:16px;color:#fff;"></i>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#00a8ff;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Flyer Size</div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.65);line-height:1.6;">Pick the layout that works best for where you plan to use it, such as Instagram, Facebook, Stories, or printing.</div>
+            </div>
+          </div>
+
         </div>
+      </div>
+
+      <!-- Slide 2: Date & Time -->
+      <div class="slide">
+        <div class="step-title">Date &amp; Time</div>
         <div class="card">
-          <label class="lbl">Date <span class="req">*</span></label>
+          <label class="lbl">Date</label>
           <input type="date" id="f-date">
         </div>
         <div class="card">
-          <label class="lbl">Show time <span class="req">*</span></label>
+          <label class="lbl">Show time</label>
           <div class="time-row">
             <select id="show-h"><option value="">Hour</option></select>
             <select id="show-m"><option value="">Min</option><option value="00">:00</option><option value="30">:30</option></select>
@@ -243,34 +378,36 @@ textarea { min-height: 90px; resize: none; line-height: 1.5; }
             <select id="end-ap"><option value="">AM/PM</option><option>AM</option><option>PM</option></select>
           </div>
         </div>
-        <div class="err" id="e0">Please fill in all required fields.</div>
       </div>
 
-      <!-- Slide 2: Venue -->
+      <!-- Slide 2: Event Name + Venue -->
       <div class="slide">
-        <div class="step-lbl">Step 2 of 5</div>
-        <div class="step-title">Where is the event?</div>
-        <div class="step-sub">We'll pull everything from the venue site.</div>
+        <div class="step-title">Venue</div>
         <div class="card">
-          <label class="lbl">Venue website <span class="req">*</span></label>
+          <label class="lbl">Event name</label>
+          <input type="text" id="f-name" autocomplete="off" autocorrect="off">
+        </div>
+        <div class="card">
+          <label class="lbl">Venue website</label>
           <input type="text" id="f-vsite" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
-          <div class="hint"><i class="ti ti-info-circle" style="font-size:12px;vertical-align:-1px;margin-right:3px;"></i>ChatGPT pulls name, address, phone, logo, colors, photos, description, and vibe.</div>
+          <div class="hint">Your AI will pull all pertinent information from the venue website.</div>
         </div>
         <div class="card">
           <label class="lbl">Specific lounge / bar / room</label>
           <input type="text" id="f-subvenue" placeholder="Leave blank if whole venue is the location">
-          <div class="sub-note" id="sub-note" style="display:none"><i class="ti ti-star" style="font-size:12px;vertical-align:-1px;margin-right:3px;"></i>This becomes the primary title on the flyer</div>
+          <div class="hint">If filled in, this becomes the primary title on the flyer — the main venue will appear as secondary context below it.</div>
         </div>
-        <div class="err" id="e1">Venue website is required.</div>
+        <div class="card">
+          <label class="lbl">Event description / tagline</label>
+          <textarea id="f-desc"></textarea>
+        </div>
       </div>
 
       <!-- Slide 3: Performer -->
       <div class="slide">
-        <div class="step-lbl">Step 3 of 5</div>
-        <div class="step-title">Who's on stage?</div>
-        <div class="step-sub">Headline act and special guests.</div>
+        <div class="step-title">Names</div>
         <div class="card">
-          <label class="lbl">Artist / performer name <span class="req">*</span></label>
+          <label class="lbl">Artist / performer name</label>
           <input type="text" id="f-performer" autocomplete="off">
         </div>
         <div class="card">
@@ -278,18 +415,11 @@ textarea { min-height: 90px; resize: none; line-height: 1.5; }
           <div id="glist"></div>
           <button class="add-g" id="add-g" onclick="addGuest()"><i class="ti ti-plus" style="font-size:14px;"></i> Add guest</button>
         </div>
-        <div class="err" id="e2">Performer name is required.</div>
       </div>
 
       <!-- Slide 4: Details -->
       <div class="slide">
-        <div class="step-lbl">Step 4 of 5</div>
-        <div class="step-title">Anything else?</div>
-        <div class="step-sub">All optional — add what applies.</div>
-        <div class="card">
-          <label class="lbl">Event description / tagline</label>
-          <textarea id="f-desc"></textarea>
-        </div>
+        <div class="step-title">Extras</div>
         <div class="card">
           <label class="lbl" style="margin-bottom:10px;">Age restriction</label>
           <select id="f-age"><option value="">None</option><option>18+</option><option>21+</option><option>All Ages</option></select>
@@ -318,19 +448,47 @@ textarea { min-height: 90px; resize: none; line-height: 1.5; }
 
       <!-- Slide 5: Size + Generate -->
       <div class="slide">
-        <div class="step-lbl">Step 5 of 5</div>
-        <div class="step-title">Choose your format</div>
-        <div class="step-sub">Pick the size and generate your prompt.</div>
-        <div class="card">
+        <div class="step-title">Flyer Size</div>
+
+        <!-- Social Media -->
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#00a8ff;margin-bottom:8px;">Social Media</div>
+        <div class="card" style="margin-bottom:14px;">
           <div class="sizes">
-            <div class="sz on" onclick="pickSz(this,'1080x1350')"><div class="sz-box" style="width:22px;height:28px;"></div><div class="sz-name">Portrait</div><div class="sz-dim">4:5 · IG</div></div>
-            <div class="sz" onclick="pickSz(this,'1080x1080')"><div class="sz-box" style="width:26px;height:26px;"></div><div class="sz-name">Square</div><div class="sz-dim">1:1</div></div>
-            <div class="sz" onclick="pickSz(this,'1920x1080')"><div class="sz-box" style="width:34px;height:19px;"></div><div class="sz-name">Landscape</div><div class="sz-dim">16:9</div></div>
-            <div class="sz" onclick="pickSz(this,'1080x1920')"><div class="sz-box" style="width:16px;height:29px;"></div><div class="sz-name">Story</div><div class="sz-dim">9:16</div></div>
-            <div class="sz" onclick="pickSz(this,'2550x3300')"><div class="sz-box" style="width:20px;height:26px;"></div><div class="sz-name">Print</div><div class="sz-dim">8.5×11</div></div>
-            <div class="sz" onclick="pickSz(this,'1200x628')"><div class="sz-box" style="width:32px;height:17px;"></div><div class="sz-name">Banner</div><div class="sz-dim">FB event</div></div>
+            <div class="sz on" onclick="pickSz(this,'1080x1350')"><div class="sz-box" style="width:20px;height:26px;"></div><div class="sz-name">Portrait</div><div class="sz-dim">1080×1350</div><div class="sz-dim">IG Post</div></div>
+            <div class="sz" onclick="pickSz(this,'1080x1080')"><div class="sz-box" style="width:24px;height:24px;"></div><div class="sz-name">Square</div><div class="sz-dim">1080×1080</div><div class="sz-dim">IG / FB</div></div>
+            <div class="sz" onclick="pickSz(this,'1080x1920')"><div class="sz-box" style="width:14px;height:26px;"></div><div class="sz-name">Story</div><div class="sz-dim">1080×1920</div><div class="sz-dim">IG / FB</div></div>
+            <div class="sz" onclick="pickSz(this,'1080x1920')"><div class="sz-box" style="width:14px;height:26px;"></div><div class="sz-name">Reel</div><div class="sz-dim">1080×1920</div><div class="sz-dim">IG Reel</div></div>
+            <div class="sz" onclick="pickSz(this,'1200x628')"><div class="sz-box" style="width:32px;height:17px;"></div><div class="sz-name">FB Event</div><div class="sz-dim">1200×628</div><div class="sz-dim">Facebook</div></div>
+            <div class="sz" onclick="pickSz(this,'1500x500')"><div class="sz-box" style="width:34px;height:11px;"></div><div class="sz-name">X Banner</div><div class="sz-dim">1500×500</div><div class="sz-dim">Twitter/X</div></div>
+            <div class="sz" onclick="pickSz(this,'1000x1500')"><div class="sz-box" style="width:18px;height:28px;"></div><div class="sz-name">Pinterest</div><div class="sz-dim">1000×1500</div><div class="sz-dim">Pin</div></div>
+            <div class="sz" onclick="pickSz(this,'1920x1080')"><div class="sz-box" style="width:32px;height:18px;"></div><div class="sz-name">YouTube</div><div class="sz-dim">1920×1080</div><div class="sz-dim">Thumbnail</div></div>
+            <div class="sz" onclick="pickSz(this,'1080x1080')"><div class="sz-box" style="width:24px;height:24px;"></div><div class="sz-name">TikTok</div><div class="sz-dim">1080×1080</div><div class="sz-dim">Cover</div></div>
           </div>
         </div>
+
+        <!-- Print -->
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#00a8ff;margin-bottom:8px;">Print</div>
+        <div class="card" style="margin-bottom:14px;">
+          <div class="sizes">
+            <div class="sz" onclick="pickSz(this,'2550x3300')"><div class="sz-box" style="width:18px;height:24px;"></div><div class="sz-name">Letter</div><div class="sz-dim">8.5×11 in</div><div class="sz-dim">US Standard</div></div>
+            <div class="sz" onclick="pickSz(this,'1275x1650')"><div class="sz-box" style="width:18px;height:24px;"></div><div class="sz-name">Half Page</div><div class="sz-dim">5.5×8.5 in</div><div class="sz-dim">Handout</div></div>
+            <div class="sz" onclick="pickSz(this,'1050x1500')"><div class="sz-box" style="width:16px;height:24px;"></div><div class="sz-name">Flyer</div><div class="sz-dim">3.5×5 in</div><div class="sz-dim">Small Flyer</div></div>
+            <div class="sz" onclick="pickSz(this,'2480x3508')"><div class="sz-box" style="width:18px;height:26px;"></div><div class="sz-name">A4</div><div class="sz-dim">210×297mm</div><div class="sz-dim">International</div></div>
+            <div class="sz" onclick="pickSz(this,'3300x5100')"><div class="sz-box" style="width:16px;height:26px;"></div><div class="sz-name">Legal</div><div class="sz-dim">8.5×14 in</div><div class="sz-dim">US Legal</div></div>
+            <div class="sz" onclick="pickSz(this,'3600x2400')"><div class="sz-box" style="width:32px;height:22px;"></div><div class="sz-name">Poster</div><div class="sz-dim">12×18 in</div><div class="sz-dim">Large Print</div></div>
+          </div>
+        </div>
+
+        <!-- Generic -->
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#00a8ff;margin-bottom:8px;">Generic</div>
+        <div class="card" style="margin-bottom:14px;">
+          <div class="sizes">
+            <div class="sz" onclick="pickSz(this,'1920x1080')"><div class="sz-box" style="width:32px;height:18px;"></div><div class="sz-name">Landscape</div><div class="sz-dim">1920×1080</div><div class="sz-dim">16:9</div></div>
+            <div class="sz" onclick="pickSz(this,'1080x1350')"><div class="sz-box" style="width:20px;height:26px;"></div><div class="sz-name">Portrait</div><div class="sz-dim">1080×1350</div><div class="sz-dim">4:5</div></div>
+            <div class="sz" onclick="pickSz(this,'1080x1080')"><div class="sz-box" style="width:24px;height:24px;"></div><div class="sz-name">Square</div><div class="sz-dim">1080×1080</div><div class="sz-dim">1:1</div></div>
+          </div>
+        </div>
+
         <div id="out-wrap" style="display:none;">
           <div class="out-card">
             <div class="out-bar">
@@ -343,22 +501,31 @@ textarea { min-height: 90px; resize: none; line-height: 1.5; }
         </div>
       </div>
 
+      <!-- Slide 6: RESERVED (your idea) -->
+      <div class="slide" style="display:flex;align-items:center;justify-content:center;">
+        <div style="text-align:center;color:#ccc;">
+          <i class="ti ti-bulb" style="font-size:48px;display:block;margin-bottom:12px;"></i>
+          <div style="font-size:14px;font-weight:500;">Coming soon</div>
+        </div>
+      </div>
+
     </div>
   </div>
 
   <!-- Footer -->
   <div class="ftr">
-    <div class="ftr-left">
-      <div class="dots">
-        <div class="dot active" id="d0"></div>
-        <div class="dot" id="d1"></div>
-        <div class="dot" id="d2"></div>
-        <div class="dot" id="d3"></div>
-        <div class="dot" id="d4"></div>
-      </div>
-      <div class="btn-back" id="btn-back" onclick="goBack()">
-        <i class="ti ti-arrow-left" style="font-size:14px;vertical-align:-2px;margin-right:2px;"></i> Back
-      </div>
+    <button class="btn-back" id="btn-back" onclick="goBack()">
+      <i class="ti ti-arrow-left"></i> Back
+    </button>
+    <div class="dots">
+      <div class="dot active" id="d0"></div>
+      <div class="dot" id="d1"></div>
+      <div class="dot" id="d2"></div>
+      <div class="dot" id="d3"></div>
+      <div class="dot" id="d4"></div>
+      <div class="dot" id="d5"></div>
+      <div class="dot" id="d6"></div>
+      <div class="dot" id="d7"></div>
     </div>
     <button class="btn-next" id="btn-next" onclick="goNext()">
       Next <i class="ti ti-arrow-right"></i>
@@ -368,6 +535,9 @@ textarea { min-height: 90px; resize: none; line-height: 1.5; }
 </div>
 <script>
 var cur = 0, selSz = "1080x1350", gN = 0, busy = false;
+var TOTAL = 8;
+var LAST = TOTAL - 1;
+var PCT = 100 / TOTAL;
 
 // Init hours
 (function(){
@@ -375,9 +545,6 @@ var cur = 0, selSz = "1080x1350", gN = 0, busy = false;
   ["show-h","doors-h","end-h"].forEach(function(id){
     var s = document.getElementById(id);
     hrs.forEach(function(h){ var o = document.createElement("option"); o.value = h; o.textContent = h; s.appendChild(o); });
-  });
-  document.getElementById("f-subvenue").addEventListener("input", function(){
-    document.getElementById("sub-note").style.display = this.value.trim() ? "block" : "none";
   });
   addGuest();
 })();
@@ -421,33 +588,27 @@ function pickSz(el, s){ document.querySelectorAll(".sz").forEach(function(c){ c.
 function goTo(n){
   if(busy) return;
   busy = true;
-  // Reset scroll on current slide before moving
   var slides = document.querySelectorAll(".slide");
-  document.getElementById("track").style.transform = "translateX(-" + (n * 20) + "%)";
+  document.getElementById("track").style.transform = "translateX(-" + (n * PCT) + "%)";
   cur = n;
-  // Update dots
-  for(var i = 0; i < 5; i++){
+  for(var i = 0; i < TOTAL; i++){
     document.getElementById("d"+i).className = "dot" + (i < n ? " done" : i === n ? " active" : "");
   }
-  // Update footer buttons
-  document.getElementById("btn-back").style.display = n > 0 ? "block" : "none";
+  document.getElementById("btn-back").style.visibility = n > 0 ? "visible" : "hidden";
   var nb = document.getElementById("btn-next");
-  nb.innerHTML = n === 4 ? '<i class="ti ti-sparkles"></i> Generate' : 'Next <i class="ti ti-arrow-right"></i>';
-  // Scroll new slide to top
+  nb.innerHTML = n === LAST ? '<i class="ti ti-sparkles"></i> Done' : 'Next <i class="ti ti-arrow-right"></i>';
   setTimeout(function(){
     slides[n].scrollTop = 0;
     busy = false;
   }, 420);
+  // Show header on all pages except page 0
+  document.getElementById("hdr").style.display = n <= 1 ? "none" : "block";
 }
 
 function goNext(){
-  var e = document.getElementById("e"+cur);
-  if(e) e.style.display = "none";
-  if(cur === 0 && (!v("f-name") || !v("f-date") || !v("show-h") || !v("show-m") || !v("show-ap"))){ if(e) e.style.display = "block"; return; }
-  if(cur === 1 && !v("f-vsite")){ if(e) e.style.display = "block"; return; }
-  if(cur === 2 && !v("f-performer")){ if(e) e.style.display = "block"; return; }
-  if(cur === 4){ generate(); return; }
-  goTo(cur + 1);
+  // All fields optional — no validation required
+  if(cur === 5){ generate(); return; }
+  if(cur < LAST) goTo(cur + 1);
 }
 
 function goBack(){ if(cur > 0) goTo(cur - 1); }
