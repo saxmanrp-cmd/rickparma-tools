@@ -581,10 +581,10 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
 
           <!-- Create Prompt button -->
           <div>
-            <button onclick="generate()" style="width:100%;background:linear-gradient(135deg,#e91e8c,#7b2fff);border:none;border-radius:12px;padding:18px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 20px rgba(233,30,140,0.4);-webkit-tap-highlight-color:transparent;">
-              <i class="ti ti-copy" style="font-size:20px;"></i> Copy Prompt to Clipboard
+            <button id="copy-prompt-btn" onclick="generate()" style="width:100%;background:linear-gradient(135deg,#e91e8c,#7b2fff);border:none;border-radius:12px;padding:18px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 20px rgba(233,30,140,0.4);-webkit-tap-highlight-color:transparent;transition:all 0.2s;">
+              <i class="ti ti-copy" style="font-size:20px;"></i> <span id="copy-btn-label">Copy Prompt to Clipboard</span>
             </button>
-            <div style="font-size:12px;color:rgba(255,255,255,0.5);text-align:center;margin-top:8px;">Paste into any AI tool with image generation</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.7);text-align:center;margin-top:8px;">Paste into any AI tool with image generation</div>
           </div>
 
           <div style="display:flex;align-items:center;gap:10px;margin:4px 0;">
@@ -813,7 +813,8 @@ function buildPrompt(){
   p += "• No unnecessary icons, symbols, or filler text.\n";
   p += "• Performer and guests are the main visual focus — large, bold, prominent. NOT small-print labels.\n";
   p += "• Every word must serve a purpose.\n";
-  p += "• No AI-fabricated faces or likenesses. No artist photo = use abstract design, atmospheric backgrounds, or stylized typography — no fake people.\n";
+  p += "• CRITICAL — DO NOT GENERATE ANY HUMAN FACES, BODIES, OR LIKENESSES UNDER ANY CIRCUMSTANCES. This applies to the headline performer, special guests, and any background figures. No real people, no fake people, no AI-generated people, no silhouettes that resemble specific individuals. If no photo is provided, use ONLY abstract design elements, atmospheric stage lighting, instrument imagery, musical motifs, geometric shapes, or bold typography in their place.\n";
+  p += "• If you feel the urge to add a person to the design — stop. Use a saxophone, microphone, guitar, musical notes, spotlight, or other music-related visual element instead.\n";
   p += "• Never duplicate any element. Every graphic and text appears exactly once.";
   return p;
 }
@@ -822,6 +823,19 @@ function generate(){
   var p = buildPrompt();
   document.getElementById("pbox").textContent = p;
   function showConfirm(){
+    // Flash the button
+    var btn = document.getElementById("copy-prompt-btn");
+    var lbl = document.getElementById("copy-btn-label");
+    if(btn && lbl){
+      btn.style.background = "linear-gradient(135deg,#2ecc71,#27ae60)";
+      btn.style.boxShadow = "0 4px 20px rgba(46,204,113,0.5)";
+      lbl.textContent = "✓ Prompt Copied!";
+      setTimeout(function(){
+        btn.style.background = "linear-gradient(135deg,#e91e8c,#7b2fff)";
+        btn.style.boxShadow = "0 4px 20px rgba(233,30,140,0.4)";
+        lbl.textContent = "Copy Prompt to Clipboard";
+      }, 3000);
+    }
     document.getElementById("out-wrap").style.display = "block";
     setTimeout(function(){ document.getElementById("out-wrap").scrollIntoView({ behavior:"smooth", block:"start" }); }, 100);
   }
