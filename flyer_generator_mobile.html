@@ -389,9 +389,38 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
           <input type="text" id="f-name" autocomplete="off" autocorrect="off">
         </div>
         <div class="card">
-          <label class="lbl">Location / Venue website</label>
-          <input type="text" id="f-vsite" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
-          <div class="hint">Your AI will pull all pertinent information from the venue website.</div>
+          <label class="lbl">Does the venue have a website?</label>
+          <div style="display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid rgba(123,47,255,0.4);margin-top:4px;">
+            <button id="toggle-yes" onclick="venueToggle('yes')" style="flex:1;padding:13px;background:linear-gradient(135deg,#e91e8c,#7b2fff);border:none;color:#fff;font-family:'Inter',sans-serif;font-size:15px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">Yes</button>
+            <button id="toggle-no" onclick="venueToggle('no')" style="flex:1;padding:13px;background:rgba(255,255,255,0.05);border:none;color:rgba(255,255,255,0.5);font-family:'Inter',sans-serif;font-size:15px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;border-left:1px solid rgba(123,47,255,0.4);">No</button>
+          </div>
+        </div>
+
+        <div id="venue-website-section">
+          <div class="card">
+            <label class="lbl">Location / Venue website</label>
+            <input type="text" id="f-vsite" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+            <div class="hint">Your AI will pull all pertinent information from the venue website.</div>
+          </div>
+        </div>
+
+        <div id="venue-manual-section" style="display:none;">
+          <div class="card">
+            <label class="lbl">Venue name</label>
+            <input type="text" id="f-vname" autocomplete="off">
+          </div>
+          <div class="card">
+            <label class="lbl">Address</label>
+            <input type="text" id="f-vaddress" autocomplete="off">
+          </div>
+          <div class="card">
+            <label class="lbl">Phone number</label>
+            <input type="tel" id="f-vphone" placeholder="(___) ___-____" maxlength="14" oninput="fmtPhone(this)" autocomplete="tel" style="background:rgba(13,10,26,0.8);border:1px solid rgba(123,47,255,0.4);color:#fff;width:100%;min-height:50px;padding:13px 14px;font-size:16px;border-radius:8px;">
+          </div>
+          <div class="card">
+            <label class="lbl">Venue description / style</label>
+            <textarea id="f-vdesc" placeholder="e.g. Upscale jazz lounge with warm lighting and vintage decor"></textarea>
+          </div>
         </div>
         <div class="card">
           <label class="lbl">Specific lounge / bar / room</label>
@@ -480,7 +509,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
         <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#fff;margin-bottom:8px;">Social Media</div>
         <div class="card" style="margin-bottom:14px;">
           <div class="sizes">
-            <div class="sz on" onclick="pickSz(this,'1080x1350')"><div class="sz-box" style="width:20px;height:26px;"></div><div class="sz-name">Portrait</div><div class="sz-dim">1080×1350</div><div class="sz-dim">IG Post</div></div>
+            <div class="sz" onclick="pickSz(this,'1080x1350')"><div class="sz-box" style="width:20px;height:26px;"></div><div class="sz-name">Portrait</div><div class="sz-dim">1080×1350</div><div class="sz-dim">IG Post</div></div>
             <div class="sz" onclick="pickSz(this,'1080x1080')"><div class="sz-box" style="width:24px;height:24px;"></div><div class="sz-name">Square</div><div class="sz-dim">1080×1080</div><div class="sz-dim">IG / FB</div></div>
             <div class="sz" onclick="pickSz(this,'1080x1920')"><div class="sz-box" style="width:14px;height:26px;"></div><div class="sz-name">Story</div><div class="sz-dim">1080×1920</div><div class="sz-dim">IG / FB</div></div>
             <div class="sz" onclick="pickSz(this,'1080x1920')"><div class="sz-box" style="width:14px;height:26px;"></div><div class="sz-name">Reel</div><div class="sz-dim">1080×1920</div><div class="sz-dim">IG Reel</div></div>
@@ -515,6 +544,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
           </div>
         </div>
 
+        <div id="e6" style="display:none;font-size:13px;color:#e91e8c;margin-top:10px;padding:10px 13px;background:rgba(233,30,140,0.08);border:1px solid rgba(233,30,140,0.3);border-radius:8px;font-weight:500;">Please select a flyer size to continue.</div>
         <div id="out-wrap" style="display:none;margin-top:16px;text-align:center;">
           <div style="background:linear-gradient(135deg,rgba(233,30,140,0.15),rgba(123,47,255,0.15));border:1px solid rgba(233,30,140,0.4);border-radius:14px;padding:28px 20px;">
             <div style="width:56px;height:56px;background:linear-gradient(135deg,#e91e8c,#7b2fff);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 0 24px rgba(233,30,140,0.5);">
@@ -569,7 +599,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
         </div>
       </div>
 
-      <!-- Slide 6: Flyer Size (moved here) - now just Next -->
+      <!-- Slide 6: Flyer Size -->
       <!-- Slide 6 is the existing flyer size, we keep it but generate moves to 7 -->
 
       <!-- Slide 7: Generate -->
@@ -606,6 +636,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
 
         </div>
 
+        <div id="e6" style="display:none;font-size:13px;color:#e91e8c;margin-top:10px;padding:10px 13px;background:rgba(233,30,140,0.08);border:1px solid rgba(233,30,140,0.3);border-radius:8px;font-weight:500;">Please select a flyer size to continue.</div>
         <div id="out-wrap" style="display:none;width:100%;margin-top:24px;text-align:center;">
           <div style="background:linear-gradient(135deg,rgba(233,30,140,0.15),rgba(123,47,255,0.15));border:1px solid rgba(233,30,140,0.4);border-radius:14px;padding:28px 20px;">
             <div style="width:56px;height:56px;background:linear-gradient(135deg,#e91e8c,#7b2fff);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 0 24px rgba(233,30,140,0.5);">
@@ -734,7 +765,12 @@ function getGuests(){
 function v(id){ var el = document.getElementById(id); return el ? el.value.trim() : ""; }
 function getTime(p){ var h=v(p+"-h"),m=v(p+"-m"),ap=v(p+"-ap"); return (h&&m&&ap) ? h+":"+m+" "+ap : ""; }
 function fmtDate(d){ if(!d) return ""; try{ return new Date(d+"T00:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"}); }catch(e){ return d; } }
-function pickSz(el, s){ document.querySelectorAll(".sz").forEach(function(c){ c.classList.remove("on"); }); el.classList.add("on"); selSz = s; }
+function pickSz(el, s){
+  document.querySelectorAll(".sz").forEach(function(c){ c.classList.remove("on"); });
+  el.classList.add("on"); selSz = s;
+  var e6 = document.getElementById("e6");
+  if(e6) e6.style.display = "none";
+}
 
 function goTo(n){
   if(busy) return;
@@ -765,6 +801,11 @@ function goNext(){
   if(cur === 2 && (!v("f-date") || !v("show-h") || !v("show-m") || !v("show-ap"))){
     if(e0) e0.style.display = "block"; return;
   }
+  if(cur === 6 && !selSz){
+    var e6 = document.getElementById("e6");
+    if(e6) e6.style.display = "block";
+    return;
+  }
   if(cur === 7){ generate(); return; }
   if(cur < LAST) goTo(cur + 1);
 }
@@ -774,78 +815,89 @@ function goBack(){ if(cur > 0) goTo(cur - 1); }
 function buildPrompt(){
   var szName = document.querySelector(".sz.on .sz-name").textContent.trim();
   var sub = v("f-subvenue"), guests = getGuests();
-  var p = "Create a professional event flyer image in " + szName + " format (" + selSz + " pixels).\n\n";
-  p += "STEP 1 — VISIT AND FULLY SCRAPE THE LOCATION WEBSITE: " + v("f-vsite") + "\n";
-  p += "Extract ALL of the following for the flyer design:\n";
-  p += "  • Venue name — exact as it appears on the site\n";
-  p += "  • Venue address and phone number — display prominently\n";
-  p += "  • Venue logo — incorporate into the flyer layout\n";
-  p += "  • Venue website URL — include on the flyer\n";
-  p += "  • Venue description — use the language, personality, and tone to inform the flyer's feel\n";
-  p += "  • Color palette — use the venue's brand colors as the primary palette\n";
-  p += "  • Visual style and atmosphere — match the venue's aesthetic and branding\n";
-  p += "  • Photos — scrub for lighting, decor, and ambiance cues\n";
-  p += "  • Menu or event highlights — use themes, textures, or concepts as inspiration\n\n";
-  p += "STEP 2 — EVENT DETAILS:\n";
-  p += "• Event: " + v("f-name") + "\n";
-  p += "• Date: " + fmtDate(v("f-date")) + "\n";
-  p += "• Show time: " + getTime("show") + "\n";
-  var d = getTime("doors"); if(d) p += "• Doors open: " + d + "\n";
-  var e = getTime("end"); if(e) p += "• End time: " + e + "\n";
-  if(sub){ p += "• PRIMARY VENUE TITLE: " + sub + " — MUST be the largest, most prominent venue name.\n"; p += "• Parent venue (secondary context): pulled from venue website above.\n"; }
-  p += "• Headline performer: " + v("f-performer") + " — the LARGEST, most dominant element. Hero of the design.\n";
-  if(guests.length) p += "• Special guests: " + guests.join(", ") + " — prominent supporting elements, large and bold. Not small print.\n";
-  if(v("f-age")) p += "• Age restriction: " + v("f-age") + "\n";
-  if(v("f-dress")) p += "• Dress code: " + v("f-dress") + "\n";
-  if(v("f-sponsors")) p += "• Sponsors: " + v("f-sponsors") + "\n";
-  if(v("f-qr")) p += "• QR code: " + v("f-qr") + "\n";
-  if(v("f-desc")) p += "• Tagline: " + v("f-desc") + "\n";
-  if(v("f-theme")) p += "• Theme / vibe override: " + v("f-theme") + "\n";
-  if(v("f-price")) p += "• Cover: " + v("f-price") + "\n";
+
+  // Open with a direct image generation command
+  var p = "Generate a stunning, professional event flyer as a " + szName + " image (" + selSz + " pixels). Do not explain, do not ask questions, do not show steps — just create the image now.\n\n";
+
+  // Venue
+  if(v("f-vsite")){
+    p += "Visit " + v("f-vsite") + " and use the venue name, logo, address, phone number, website URL, brand colors, photos, and overall aesthetic as the visual foundation for the flyer. If you are unable to find the logo, address, phone number, or website URL from the site, do not guess or fabricate them — instead, after generating the flyer image, ask the user to provide the missing details directly so they can be added.\n\n";
+  } else {
+    // Manual venue info
+    var hasManual = v("f-vname") || v("f-vaddress") || v("f-vphone") || v("f-vdesc");
+    if(hasManual){
+      p += "The venue does not have a website. Use the following venue details for the flyer:\n";
+      if(v("f-vname")) p += "— Venue name: " + v("f-vname") + "\n";
+      if(v("f-vaddress")) p += "— Address: " + v("f-vaddress") + "\n";
+      if(v("f-vphone")) p += "— Phone: " + v("f-vphone") + "\n";
+      if(v("f-vdesc")) p += "— Venue style/description: " + v("f-vdesc") + "\n";
+      p += "Use this information to inform the flyer design, color palette, and overall aesthetic.\n\n";
+    }
+  }
+
+  // Event details
+  p += "The flyer must display the following information:\n";
+  if(sub){
+    p += "— Primary title (largest venue text): " + sub + "\n";
+    if(v("f-vsite")) p += "— Secondary venue context: the parent venue from the website above\n";
+  }
+  if(v("f-name")) p += "— Event name: " + v("f-name") + "\n";
+  if(fmtDate(v("f-date"))) p += "— Date: " + fmtDate(v("f-date")) + "\n";
+  if(getTime("show")) p += "— Show time: " + getTime("show") + "\n";
+  var d = getTime("doors"); if(d) p += "— Doors open: " + d + "\n";
+  var et = getTime("end"); if(et) p += "— End time: " + et + "\n";
+  if(v("f-performer")) p += "— Headline performer: " + v("f-performer") + " (make this the largest, most dominant text on the entire flyer — this is the hero)\n";
+  if(guests.length) p += "— Special guests: " + guests.join(", ") + " (large and bold, secondary to the headline performer)\n";
+  if(v("f-desc")) p += "— Tagline: " + v("f-desc") + "\n";
+  if(v("f-age")) p += "— Age restriction: " + v("f-age") + "\n";
+  if(v("f-dress")) p += "— Dress code: " + v("f-dress") + "\n";
+  if(v("f-price")) p += "— Cover: " + v("f-price") + "\n";
   var tickets = v("f-tickets");
   if(tickets){
-    p += "• Tickets: " + tickets + "\n";
-    if(tickets === "Online" && v("f-ticket-url")) p += "• Ticket website: " + v("f-ticket-url") + "\n";
-    if(tickets === "In person" && v("f-ticket-phone")) p += "• Ticket phone: " + v("f-ticket-phone") + "\n";
+    p += "— Tickets: " + tickets + "\n";
+    if(tickets === "Online" && v("f-ticket-url")) p += "— Ticket website: " + v("f-ticket-url") + "\n";
+    if(tickets === "In person" && v("f-ticket-phone")) p += "— Ticket phone: " + v("f-ticket-phone") + "\n";
   }
-  p += "\nSTEP 3 — DESIGN GUIDELINES:\n";
-  p += "Professional, eye-catching, high contrast, crisp typography. Honor the venue's visual identity.\n";
-  p += "• No unnecessary icons, symbols, or filler text.\n";
-  p += "• Performer and guests are the main visual focus — large, bold, prominent. NOT small-print labels.\n";
-  p += "• Every word must serve a purpose.\n";
-  p += "• CRITICAL — DO NOT GENERATE ANY HUMAN FACES, BODIES, OR LIKENESSES UNDER ANY CIRCUMSTANCES. This applies to the headline performer, special guests, and any background figures. No real people, no fake people, no AI-generated people, no silhouettes that resemble specific individuals. If no photo is provided, use ONLY abstract design elements, atmospheric stage lighting, instrument imagery, musical motifs, geometric shapes, or bold typography in their place.\n";
-  p += "• If you feel the urge to add a person to the design — stop. Use a saxophone, microphone, guitar, musical notes, spotlight, or other music-related visual element instead.\n";
-  p += "• Never duplicate any element. Every graphic and text appears exactly once.";
+  if(v("f-sponsors")) p += "— Sponsors: " + v("f-sponsors") + "\n";
+  if(v("f-qr")) p += "— QR code link: " + v("f-qr") + "\n";
+  if(v("f-theme")) p += "— Theme / vibe: " + v("f-theme") + "\n";
+
+  // Design rules
+  p += "\nDesign rules:\n";
+  p += "— High contrast, cinematic, professional graphic design quality\n";
+  p += "— Every piece of text and every graphic element appears exactly once — no duplicates\n";
+  p += "— No filler text, no placeholder text, no unnecessary decorative symbols\n";
+  p += "— CRITICAL — DO NOT GENERATE ANY FAKE HUMAN FACES, BODIES, OR LIKENESSES UNDER ANY CIRCUMSTANCES. This applies to the headline performer, special guests, and any background figures. No fake people, no AI-generated people.\n";
+  p += "— Only use design themes based on the venue/location website.\n";
+  p += "— Create the image immediately. No explanations. No questions. No steps. Just the flyer.";
+
   return p;
 }
 
 function generate(){
   var p = buildPrompt();
   document.getElementById("pbox").textContent = p;
-  function showConfirm(){
-    // Flash the button
-    var btn = document.getElementById("copy-prompt-btn");
-    var lbl = document.getElementById("copy-btn-label");
-    if(btn && lbl){
-      btn.style.background = "linear-gradient(135deg,#2ecc71,#27ae60)";
-      btn.style.boxShadow = "0 4px 20px rgba(46,204,113,0.5)";
-      lbl.textContent = "✓ Prompt Copied!";
-      setTimeout(function(){
-        btn.style.background = "linear-gradient(135deg,#e91e8c,#7b2fff)";
-        btn.style.boxShadow = "0 4px 20px rgba(233,30,140,0.4)";
-        lbl.textContent = "Copy Prompt to Clipboard";
-      }, 3000);
-    }
-    document.getElementById("out-wrap").style.display = "block";
-    setTimeout(function(){ document.getElementById("out-wrap").scrollIntoView({ behavior:"smooth", block:"start" }); }, 100);
-  }
+  // Always try fallback first (works on local files and GitHub Pages)
+  fallbackCopy(p);
+  // Also try modern clipboard API
   if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(p).then(showConfirm).catch(function(){
-      fallbackCopy(p); showConfirm();
-    });
-  } else {
-    fallbackCopy(p); showConfirm();
+    navigator.clipboard.writeText(p).catch(function(){ /* already copied via fallback */ });
   }
+  // Flash button and show confirm regardless
+  var btn = document.getElementById("copy-prompt-btn");
+  var lbl = document.getElementById("copy-btn-label");
+  if(btn && lbl){
+    btn.style.background = "linear-gradient(135deg,#2ecc71,#27ae60)";
+    btn.style.boxShadow = "0 4px 20px rgba(46,204,113,0.5)";
+    lbl.textContent = "✓ Prompt Copied!";
+    setTimeout(function(){
+      btn.style.background = "linear-gradient(135deg,#e91e8c,#7b2fff)";
+      btn.style.boxShadow = "0 4px 20px rgba(233,30,140,0.4)";
+      lbl.textContent = "Copy Prompt to Clipboard";
+    }, 3000);
+  }
+  document.getElementById("out-wrap").style.display = "block";
+  setTimeout(function(){ document.getElementById("out-wrap").scrollIntoView({ behavior:"smooth", block:"start" }); }, 100);
 }
 
 function fallbackCopy(text){
@@ -870,24 +922,37 @@ function copyP(){
 function openGemini(){
   var p = buildPrompt();
   document.getElementById("pbox").textContent = p;
-  // Copy to clipboard first so user can paste in Gemini
+  fallbackCopy(p);
   if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(p).then(function(){
-      document.getElementById("out-wrap").style.display = "block";
-      window.open("https://gemini.google.com", "_blank");
-    }).catch(function(){
-      fallbackCopy(p);
-      document.getElementById("out-wrap").style.display = "block";
-      window.open("https://gemini.google.com", "_blank");
-    });
-  } else {
-    fallbackCopy(p);
-    document.getElementById("out-wrap").style.display = "block";
-    window.open("https://gemini.google.com", "_blank");
+    navigator.clipboard.writeText(p).catch(function(){ /* already copied via fallback */ });
   }
+  document.getElementById("out-wrap").style.display = "block";
+  window.open("https://gemini.google.com", "_blank");
 }
 
 
+
+function venueToggle(choice){
+  var yesBtn = document.getElementById("toggle-yes");
+  var noBtn = document.getElementById("toggle-no");
+  var websiteSection = document.getElementById("venue-website-section");
+  var manualSection = document.getElementById("venue-manual-section");
+  if(choice === "yes"){
+    yesBtn.style.background = "linear-gradient(135deg,#e91e8c,#7b2fff)";
+    yesBtn.style.color = "#fff";
+    noBtn.style.background = "rgba(255,255,255,0.05)";
+    noBtn.style.color = "rgba(255,255,255,0.5)";
+    websiteSection.style.display = "block";
+    manualSection.style.display = "none";
+  } else {
+    noBtn.style.background = "linear-gradient(135deg,#e91e8c,#7b2fff)";
+    noBtn.style.color = "#fff";
+    yesBtn.style.background = "rgba(255,255,255,0.05)";
+    yesBtn.style.color = "rgba(255,255,255,0.5)";
+    websiteSection.style.display = "none";
+    manualSection.style.display = "block";
+  }
+}
 
 function fmtPhone(el){
   var raw = el.value.replace(/\D/g, "").substring(0, 10);
