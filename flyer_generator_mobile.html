@@ -816,13 +816,25 @@ function buildPrompt(){
   var szName = document.querySelector(".sz.on .sz-name").textContent.trim();
   var sub = v("f-subvenue"), guests = getGuests();
 
-  // Open with a direct image generation command
-  var p = "Generate a stunning, professional event flyer as a " + szName + " image (" + selSz + " pixels). Do not explain, do not ask questions, do not show steps — just create the image now.\n\n";
+  var p = "";
 
-  // Venue
+  // Venue first — scrape and confirm before generating
   if(v("f-vsite")){
-    p += "Visit " + v("f-vsite") + " and use the venue name, logo, address, phone number, website URL, brand colors, photos, and overall aesthetic as the visual foundation for the flyer. If you are unable to find the logo, address, phone number, or website URL from the site, do not guess or fabricate them — instead, after generating the flyer image, ask the user to provide the missing details directly so they can be added.\n\n";
+    p += "Before generating the flyer, complete these two steps in order:\n\n";
+    p += "STEP 1 — VISIT AND SCRAPE THIS WEBSITE: " + v("f-vsite") + "\n";
+    p += "Pull the following details and list what you found and what you could not find:\n";
+    p += "— Venue name\n";
+    p += "— Address\n";
+    p += "— Phone number\n";
+    p += "— Website URL\n";
+    p += "— Logo (note if accessible or not)\n";
+    p += "— Brand colors\n";
+    p += "— Overall style and atmosphere\n";
+    p += "For anything you could not find, clearly state it is missing and ask the user to provide it before you continue. Wait for the user to respond with any missing details before moving to Step 2.\n\n";
+    p += "STEP 2 — GENERATE THE FLYER\n";
+    p += "Once you have all available venue details (from the website or provided by the user), generate a stunning, professional event flyer as a " + szName + " image (" + selSz + " pixels) using everything collected.\n\n";
   } else {
+    p += "Generate a stunning, professional event flyer as a " + szName + " image (" + selSz + " pixels).\n\n";
     // Manual venue info
     var hasManual = v("f-vname") || v("f-vaddress") || v("f-vphone") || v("f-vdesc");
     if(hasManual){
