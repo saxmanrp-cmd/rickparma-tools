@@ -874,12 +874,26 @@ function buildPrompt(){
   if(v("f-qr")) p += "— QR code link: " + v("f-qr") + "\n";
   if(v("f-theme")) p += "— Theme / vibe: " + v("f-theme") + "\n";
 
+  // Reference image roles — only included if a website is provided, since the user will attach images manually
+  if(v("f-vsite")){
+    p += "REFERENCE IMAGE ROLES (if images are attached to this message):\n";
+    p += "— Reference Image 1 = Artist Photo (if attached)\n";
+    p += "— Reference Image 2 = Venue Logo (if pulled from the website)\n";
+    p += "— Reference Image 3 = Venue Interior / Style Reference (if pulled from the website)\n\n";
+  }
+
   // Design rules
-  p += "\nDesign rules:\n";
+  p += "\nASSET USAGE RULES — CRITICAL:\n";
+  p += "1. Uploaded artist photo: This image is the official headline performer photo. It must be used as the main artist portrait/photo feature on the flyer. Do not use it as a background texture, faded backdrop, collage filler, or atmosphere image. Place it clearly and intentionally as the featured performer image.\n";
+  p += "2. Venue logo: Use the exact venue logo image pulled from the venue website. The logo must appear once, clearly visible and readable. Do not recreate, redraw, approximate, stylize, replace, or invent a logo.\n";
+  p += "3. If the exact venue logo image cannot be extracted and passed into the flyer generation step, stop and ask the user to provide the logo. Do not continue with an approximation.\n";
+  p += "4. Website venue photos may only be used for background atmosphere, color palette, lighting, and visual style. They must not replace the artist photo.\n";
+  p += "5. Human restriction: Do not generate any fake people, background figures, crowd silhouettes, or AI-created humans. The only human allowed is the uploaded artist photo, if one is provided.\n\n";
+
+  p += "DESIGN RULES:\n";
   p += "— High contrast, cinematic, professional graphic design quality\n";
   p += "— Every piece of text and every graphic element appears exactly once — no duplicates\n";
   p += "— No filler text, no placeholder text, no unnecessary decorative symbols\n";
-  p += "— CRITICAL — DO NOT GENERATE ANY FAKE HUMAN FACES, BODIES, OR LIKENESSES UNDER ANY CIRCUMSTANCES. This applies to the headline performer, special guests, and any background figures. No fake people, no AI-generated people.\n";
   p += "— Only use design themes based on the venue/location website.\n";
   p += "— Treat the venue name, address, phone number, and website URL as LOCKED, EXACT TEXT. Render these character-for-character exactly as scraped or provided — do not stylize, alter, abbreviate, or reinterpret the address, phone number, or any numeric/text details. Accuracy of this text is more important than visual flourish.\n";
   p += "— Create the image immediately. No explanations. No questions. No steps. Just the flyer.";
