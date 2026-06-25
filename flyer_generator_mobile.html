@@ -757,12 +757,12 @@ function buildPrompt(){
   var sub = v("f-subvenue"), guests = getGuests();
 
   var themeDescriptions = {
-    "Cinematic": "CINEMATIC — Deep, rich colors with vibrant graphics and incredible, dramatic visuals. Think movie-poster quality lighting, depth, and atmosphere. If a person's photo is provided and an event theme/vibe is specified, you may tastefully adjust their outfit or styling to reflect that theme with cinematic polish — believable, high-quality, not overdone.",
-    "Playful": "PLAYFUL — Colorful with a soft, friendly color palette. Family and kid-friendly feel. Warm, approachable, fun shapes and energy. If a person's photo is provided and an event theme/vibe is specified, you may give them a light, fun costume touch reflecting that theme — simple and cheerful, not elaborate or hyper-detailed.",
-    "Professional": "PROFESSIONAL — Corporate-inspired with clean, straight lines. Minimal animated or decorative graphics, but not boring — polished and refined. If a person's photo is provided, keep their actual outfit mostly intact; at most add a single subtle accessory or detail referencing the event theme — never a full costume change.",
-    "Casual": "CASUAL — Simple, straightforward graphics that get to the point. A balanced blend of playful, professional, and cinematic elements together. If a person's photo is provided and an event theme/vibe is specified, you may add a moderate, believable costume touch reflecting that theme — noticeable but not over-produced.",
+    "Cinematic": "CINEMATIC — Deep, rich colors with vibrant graphics and incredible, dramatic visuals. Think movie-poster quality lighting, depth, and atmosphere. If a person's photo is provided and an event theme/vibe is specified, restyle their outfit and wardrobe to reflect that theme with cinematic polish — keep the face intact, transform the clothing convincingly and with high quality.",
+    "Playful": "PLAYFUL — Colorful with a soft, friendly color palette. Family and kid-friendly feel. Warm, approachable, fun shapes and energy. If a person's photo is provided and an event theme/vibe is specified, restyle their outfit to reflect that theme in a fun, colorful, approachable way — keep the face intact, give them a clear themed costume but keep it cheerful and simple rather than hyper-detailed.",
+    "Professional": "PROFESSIONAL — Corporate-inspired with clean, straight lines. Minimal animated or decorative graphics, but not boring — polished and refined. If a person's photo is provided and an event theme/vibe is specified, keep their professional appearance but add tasteful themed wardrobe elements or accessories referencing the theme — refined and polished, not a full costume.",
+    "Casual": "CASUAL — Simple, straightforward graphics that get to the point. A balanced blend of playful, professional, and cinematic elements together. If a person's photo is provided and an event theme/vibe is specified, restyle their outfit with a clear, believable themed costume — keep the face intact, make it noticeable but not over-produced.",
     "Epic": "EPIC — Maximum cinematic feel combined with the most creative, imaginative AI-generated graphics possible. Fully embrace the event's theme with bold creative liberty — for example, a steampunk event should be filled with steampunk machinery and texture; a toga event can include ancient Roman colosseums, marble pillars, and dramatic classical backdrops. If a person's photo is provided, fully reimagine their outfit/styling to match the theme in elaborate, highly detailed, graphically stunning fashion — full costume, props, and thematic embellishments encouraged. Full creative freedom for maximum visual impact.",
-    "Simple": "SIMPLE — Minimal, almost like a basic invitation. Even more restrained than casual — very few graphics, no heavy animation or decoration, clean and understated. If a person's photo is provided, leave their outfit as-is or make only the smallest, barely noticeable nod to the event theme — restraint is the priority."
+    "Simple": "SIMPLE — Minimal, almost like a basic invitation. Even more restrained than casual — very few graphics, no heavy animation or decoration, clean and understated. If a person's photo is provided, keep their outfit largely as-is with at most a small, subtle nod to the event theme — restraint is the priority."
   };
 
   var p = "";
@@ -814,7 +814,10 @@ function buildPrompt(){
   var d = getTime("doors"); if(d) p += "— Doors open: " + d + "\n";
   var et = getTime("end"); if(et) p += "— End time: " + et + "\n";
   if(v("f-performer")) p += "— Headline performer: " + v("f-performer") + " (make this the largest, most dominant text on the entire flyer — this is the hero)\n";
-  if(guests.length) p += "— Special guests: " + guests.join(", ") + " (large and bold, secondary to the headline performer)\n";
+  if(guests.length){
+    p += "— Special guests: " + guests.join(", ") + " (large and bold, secondary to the headline performer)\n";
+    p += "— NOTE: If photos for any special guests are attached, use them as featured guest portraits with the same styling rules as the headline artist. If no guest photo is attached but a guest is named, before generating, ask the user whether they want to provide a photo for each named guest — or confirm the guest should appear as a text name only.\n";
+  }
   if(v("f-desc")) p += "— Tagline: " + v("f-desc") + "\n";
   if(v("f-age")) p += "— Age restriction: " + v("f-age") + "\n";
   if(v("f-dress")) p += "— Dress code: " + v("f-dress") + "\n";
@@ -832,14 +835,16 @@ function buildPrompt(){
   // Reference image roles — only included if a website is provided, since the user will attach images manually
   if(v("f-vsite")){
     p += "REFERENCE IMAGE ROLES (if images are attached to this message):\n";
-    p += "— Reference Image 1 = Artist Photo (if attached)\n";
-    p += "— Reference Image 2 = Venue Logo (if pulled from the website)\n";
-    p += "— Reference Image 3 = Venue Interior / Style Reference (if pulled from the website)\n\n";
+    p += "— Headline artist photo (use as the main featured performer)\n";
+    p += "— Special guest photo(s) (use as featured guest portraits, if provided)\n";
+    p += "— Venue logo (use exactly as pulled from the website)\n";
+    p += "— Venue interior / style reference (for atmosphere only)\n";
+    p += "When images are attached, the user will label which is which. Apply each to its correct role.\n\n";
   }
 
   // Design rules
   p += "\nASSET USAGE RULES — CRITICAL:\n";
-  p += "1. Uploaded artist photo: This image is the official headline performer photo. It must be used as the main artist portrait/photo feature on the flyer. Do not use it as a background texture, faded backdrop, collage filler, or atmosphere image. Place it clearly and intentionally as the featured performer image.\n";
+  p += "1. Uploaded artist photo: This image is the official headline performer photo. Keep the person's FACE and likeness recognizable and intact. Use it as the main featured performer image — never as a background texture, faded backdrop, collage filler, or atmosphere image. IMPORTANT: If an event theme/vibe direction is provided, you SHOULD restyle their clothing, wardrobe, and surrounding styling to match that theme (the face stays the same, the outfit transforms). The degree of transformation should match the selected style direction above — apply it at the intensity that style calls for.\n";
   p += "2. Venue logo: Use the exact venue logo image pulled from the venue website. The logo must appear once, clearly visible and readable. Do not recreate, redraw, approximate, stylize, replace, or invent a logo.\n";
   p += "3. If the exact venue logo image cannot be extracted and passed into the flyer generation step, stop and ask the user to provide the logo. Do not continue with an approximation.\n";
   p += "4. Website venue photos may only be used for background atmosphere, color palette, lighting, and visual style. They must not replace the artist photo.\n";
