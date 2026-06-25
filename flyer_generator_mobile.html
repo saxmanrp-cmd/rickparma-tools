@@ -46,12 +46,12 @@ html, body {
 .slider-wrap { flex: 1; overflow: hidden; position: relative; }
 .slider-track {
   display: flex;
-  width: 900%;
+  width: 1000%;
   height: 100%;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .slide {
-  width: calc(100% / 9);
+  width: calc(100% / 10);
   height: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -347,7 +347,20 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
         </div>
       </div>
 
-      <!-- Slide 2: Date & Time -->
+      <!-- Slide 2: Theme Selection -->
+      <div class="slide" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
+        <div class="step-title" style="margin-bottom:24px;">Flyer Theme</div>
+        <div style="width:100%;display:flex;flex-direction:column;gap:12px;">
+          <button class="theme-btn" data-theme="Cinematic" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Cinematic</button>
+          <button class="theme-btn" data-theme="Playful" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Playful</button>
+          <button class="theme-btn" data-theme="Professional" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Professional</button>
+          <button class="theme-btn" data-theme="Casual" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Casual</button>
+          <button class="theme-btn" data-theme="Epic" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Epic</button>
+          <button class="theme-btn" data-theme="Simple" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Simple</button>
+        </div>
+      </div>
+
+      <!-- Slide 3: Date & Time -->
       <div class="slide">
         <div class="step-title">Date &amp; Time</div>
         <div class="card">
@@ -708,6 +721,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
       <div class="dot" id="d6"></div>
       <div class="dot" id="d7"></div>
       <div class="dot" id="d8"></div>
+      <div class="dot" id="d9"></div>
     </div>
     <button class="btn-next" id="btn-next" onclick="goNext()">
       Next <i class="ti ti-arrow-right"></i>
@@ -717,7 +731,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
 </div>
 <script>
 var cur = 0, selSz = "1080x1350", gN = 0, busy = false;
-var TOTAL = 9;
+var TOTAL = 10;
 var LAST = TOTAL - 1;
 var PCT = 100 / TOTAL;
 
@@ -772,6 +786,18 @@ function pickSz(el, s){
   if(e6) e6.style.display = "none";
 }
 
+function pickTheme(el){
+  document.querySelectorAll(".theme-btn").forEach(function(b){
+    b.style.background = "rgba(255,255,255,0.05)";
+    b.style.borderColor = "rgba(123,47,255,0.4)";
+    b.style.boxShadow = "none";
+  });
+  el.style.background = "linear-gradient(135deg,#e91e8c,#7b2fff)";
+  el.style.borderColor = "#e91e8c";
+  el.style.boxShadow = "0 4px 18px rgba(233,30,140,0.4)";
+  selectedTheme = el.getAttribute("data-theme");
+}
+
 function goTo(n){
   if(busy) return;
   busy = true;
@@ -816,7 +842,22 @@ function buildPrompt(){
   var szName = document.querySelector(".sz.on .sz-name").textContent.trim();
   var sub = v("f-subvenue"), guests = getGuests();
 
+  var themeDescriptions = {
+    "Cinematic": "CINEMATIC — Deep, rich colors with vibrant graphics and incredible, dramatic visuals. Think movie-poster quality lighting, depth, and atmosphere.",
+    "Playful": "PLAYFUL — Colorful with a soft, friendly color palette. Family and kid-friendly feel. Warm, approachable, fun shapes and energy.",
+    "Professional": "PROFESSIONAL — Corporate-inspired with clean, straight lines. Minimal animated or decorative graphics, but not boring — polished and refined.",
+    "Casual": "CASUAL — Simple, straightforward graphics that get to the point. A balanced blend of playful, professional, and cinematic elements together.",
+    "Epic": "EPIC — Maximum cinematic feel combined with the most creative, imaginative AI-generated graphics possible. Fully embrace the event's theme with bold creative liberty — for example, a steampunk event should be filled with steampunk machinery and texture; a toga event can include ancient Roman colosseums, marble pillars, and dramatic classical backdrops. If a person's photo is provided, you may creatively reimagine their outfit/styling to match the theme. Full creative freedom for maximum visual impact.",
+    "Simple": "SIMPLE — Minimal, almost like a basic invitation. Even more restrained than casual — very few graphics, no heavy animation or decoration, clean and understated."
+  };
+
   var p = "";
+
+  // Theme direction — applies on top of venue aesthetic, not instead of it
+  if(selectedTheme && themeDescriptions[selectedTheme]){
+    p += "OVERALL FLYER STYLE DIRECTION: " + themeDescriptions[selectedTheme] + "\n";
+    p += "Apply this style direction as the artistic approach for the flyer. If venue details are pulled from a website below, still incorporate the venue's actual branding, colors, and identity — blend the venue's real identity with this style direction rather than ignoring one for the other.\n\n";
+  }
 
   // Venue first — scrape and confirm before generating
   if(v("f-vsite")){
