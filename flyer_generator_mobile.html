@@ -872,7 +872,7 @@ function buildPrompt(){
   }
   if(v("f-sponsors")) p += "— Sponsors: " + v("f-sponsors") + "\n";
   if(v("f-qr")) p += "— QR code link: " + v("f-qr") + "\n";
-  if(v("f-theme")) p += "— Theme / vibe: " + v("f-theme") + "\n";
+  if(v("f-theme")) p += "— Additional mood/vibe direction (blend this feeling into the design — do NOT print this phrase as literal text on the flyer): " + v("f-theme") + "\n";
 
   // Reference image roles — only included if a website is provided, since the user will attach images manually
   if(v("f-vsite")){
@@ -894,7 +894,7 @@ function buildPrompt(){
   p += "— High contrast, cinematic, professional graphic design quality\n";
   p += "— Every piece of text and every graphic element appears exactly once — no duplicates\n";
   p += "— No filler text, no placeholder text, no unnecessary decorative symbols\n";
-  p += "— Only use design themes based on the venue/location website.\n";
+  p += "— Base the overall design on the venue/location website's aesthetic. If additional mood/vibe direction was provided above, blend that feeling into the venue's existing style — do not abandon the venue's colors, branding, or atmosphere to chase the mood direction literally.\n";
   p += "— Treat the venue name, address, phone number, and website URL as LOCKED, EXACT TEXT. Render these character-for-character exactly as scraped or provided — do not stylize, alter, abbreviate, or reinterpret the address, phone number, or any numeric/text details. Accuracy of this text is more important than visual flourish.\n";
   p += "— Create the image immediately. No explanations. No questions. No steps. Just the flyer.";
 
