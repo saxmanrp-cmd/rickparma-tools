@@ -358,6 +358,8 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
           <button class="theme-btn" data-theme="Casual" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Casual</button>
           <button class="theme-btn" data-theme="Epic" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Epic</button>
           <button class="theme-btn" data-theme="Simple" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:16px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Simple</button>
+          <button class="theme-btn" data-theme="Anime" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:16px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Anime</button>
+          <button class="theme-btn" data-theme="Comic Book" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:16px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Comic Book</button>
         </div>
         <div class="card" style="margin-top:16px;">
           <label class="lbl">Theme</label>
@@ -708,7 +710,9 @@ var styleBlurbs = {
   "Professional": "Clean, corporate-inspired lines. Polished and refined — minimal graphics, but not boring.",
   "Casual": "Simple, straightforward graphics. A balanced blend of playful, professional, and cinematic.",
   "Epic": "Maximum cinematic impact with the most creative graphics possible. Full thematic immersion and bold creative liberty.",
-  "Simple": "Minimal, like a basic invitation. Clean and understated with very few graphics."
+  "Simple": "Minimal, like a basic invitation. Clean and understated with very few graphics.",
+  "Anime": "Bold anime art style — expressive characters, dynamic energy, vibrant cel-shaded colors and dramatic flair.",
+  "Comic Book": "Comic book art style — bold ink outlines, halftone dots, action lines, and punchy pop-art colors."
 };
 
 function pickTheme(el){
@@ -777,7 +781,9 @@ function buildPrompt(){
     "Professional": "PROFESSIONAL — Corporate-inspired with clean, straight lines. Minimal animated or decorative graphics, but not boring — polished and refined. If a person's photo is provided and an event theme/vibe is specified, keep their professional appearance but add tasteful themed wardrobe elements or accessories referencing the theme — refined and polished, not a full costume.",
     "Casual": "CASUAL — Simple, straightforward graphics that get to the point. A balanced blend of playful, professional, and cinematic elements together. If a person's photo is provided and an event theme/vibe is specified, restyle their outfit with a clear, believable themed costume — keep the face intact, make it noticeable but not over-produced.",
     "Epic": "EPIC — Maximum cinematic feel combined with the most creative, imaginative AI-generated graphics possible. Fully embrace the event's theme with bold creative liberty — for example, a steampunk event should be filled with steampunk machinery and texture; a toga event can include ancient Roman colosseums, marble pillars, and dramatic classical backdrops. If a person's photo is provided, fully reimagine their outfit/styling to match the theme in elaborate, highly detailed, graphically stunning fashion — full costume, props, and thematic embellishments encouraged. Full creative freedom for maximum visual impact.",
-    "Simple": "SIMPLE — Minimal, almost like a basic invitation. Even more restrained than casual — very few graphics, no heavy animation or decoration, clean and understated. If a person's photo is provided, keep their outfit largely as-is with at most a small, subtle nod to the event theme — restraint is the priority."
+    "Simple": "SIMPLE — Minimal, almost like a basic invitation. Even more restrained than casual — very few graphics, no heavy animation or decoration, clean and understated. If a person's photo is provided, keep their outfit largely as-is with at most a small, subtle nod to the event theme — restraint is the priority.",
+    "Anime": "ANIME — Render the entire flyer in a bold, high-quality anime art style: expressive linework, dynamic compositions, vibrant cel-shaded coloring, dramatic lighting and energy. If a person's photo is provided, reinterpret them as an anime-style character while keeping their likeness and key features recognizable, and if an event theme/vibe is specified, give them a themed anime costume to match.",
+    "Comic Book": "COMIC BOOK — Render the entire flyer in a bold comic book / pop-art style: heavy ink outlines, halftone dot shading, dynamic action lines, speech-bubble energy, and punchy saturated colors. If a person's photo is provided, reinterpret them as a comic-book character while keeping their likeness recognizable, and if an event theme/vibe is specified, give them a themed comic-style costume to match."
   };
 
   var p = "";
