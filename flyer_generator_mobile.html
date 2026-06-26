@@ -347,16 +347,22 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
         </div>
       </div>
 
-      <!-- Slide 2: Theme Selection -->
-      <div class="slide" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
-        <div class="step-title" style="margin-bottom:24px;">Flyer Theme</div>
-        <div style="width:100%;display:flex;flex-direction:column;gap:12px;">
+      <!-- Slide 2: Flyer Style -->
+      <div class="slide">
+        <div class="step-title" style="margin-bottom:16px;">Flyer Style</div>
+        <div id="style-desc" style="min-height:60px;background:rgba(123,47,255,0.08);border:1px solid rgba(123,47,255,0.3);border-radius:10px;padding:14px;margin-bottom:18px;font-size:13px;line-height:1.5;color:rgba(255,255,255,0.85);text-align:center;display:flex;align-items:center;justify-content:center;">Select a style below to see what it does.</div>
+        <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
           <button class="theme-btn" data-theme="Cinematic" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Cinematic</button>
           <button class="theme-btn" data-theme="Playful" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Playful</button>
           <button class="theme-btn" data-theme="Professional" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Professional</button>
           <button class="theme-btn" data-theme="Casual" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Casual</button>
           <button class="theme-btn" data-theme="Epic" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Epic</button>
-          <button class="theme-btn" data-theme="Simple" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Simple</button>
+          <button class="theme-btn" data-theme="Simple" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:16px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Simple</button>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <label class="lbl">Theme</label>
+          <input type="text" id="f-theme" placeholder="e.g. Star Wars, Toga, Steampunk, 80s" style="color:#fff;">
+          <div class="hint">Optional. Adds a creative theme that blends into your chosen style and venue look.</div>
         </div>
       </div>
 
@@ -482,10 +488,6 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
         <div class="card">
           <label class="lbl">QR code link</label>
           <input type="url" id="f-qr" autocorrect="off" autocapitalize="none" spellcheck="false">
-        </div>
-        <div class="card">
-          <label class="lbl">Theme / vibe override</label>
-          <input type="text" id="f-theme" placeholder="Leave blank to use venue's style" style="--ph-color:rgba(255,255,255,0.85);" style="color:#fff;">
         </div>
         <div class="card">
           <label class="lbl">Cover</label>
@@ -700,6 +702,15 @@ function pickSz(el, s){
   if(e6) e6.style.display = "none";
 }
 
+var styleBlurbs = {
+  "Cinematic": "Deep, rich colors with vibrant graphics and dramatic, movie-poster quality visuals.",
+  "Playful": "Colorful with a soft, friendly palette. Warm, approachable, family and kid-friendly energy.",
+  "Professional": "Clean, corporate-inspired lines. Polished and refined — minimal graphics, but not boring.",
+  "Casual": "Simple, straightforward graphics. A balanced blend of playful, professional, and cinematic.",
+  "Epic": "Maximum cinematic impact with the most creative graphics possible. Full thematic immersion and bold creative liberty.",
+  "Simple": "Minimal, like a basic invitation. Clean and understated with very few graphics."
+};
+
 function pickTheme(el){
   document.querySelectorAll(".theme-btn").forEach(function(b){
     b.style.background = "rgba(255,255,255,0.05)";
@@ -710,6 +721,10 @@ function pickTheme(el){
   el.style.borderColor = "#e91e8c";
   el.style.boxShadow = "0 4px 18px rgba(233,30,140,0.4)";
   selectedTheme = el.getAttribute("data-theme");
+  var desc = document.getElementById("style-desc");
+  if(desc && styleBlurbs[selectedTheme]){
+    desc.innerHTML = "<strong style='color:#fff;'>" + selectedTheme + "</strong> — " + styleBlurbs[selectedTheme];
+  }
 }
 
 function goTo(n){
