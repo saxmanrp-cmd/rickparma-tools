@@ -258,6 +258,23 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
   text-align: center; line-height: 1.5;
 }
 .out-note a { color: #e91e8c; text-decoration: none; font-weight: 700; }
+.day-btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(123,47,255,0.4);
+  border-radius: 8px;
+  color: rgba(255,255,255,0.7);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px; font-weight: 600;
+  padding: 10px 0; cursor: pointer;
+  flex: 1; min-width: 42px;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s;
+}
+.day-btn.on {
+  background: linear-gradient(135deg,#e91e8c,#7b2fff);
+  border-color: #e91e8c;
+  color: #fff;
+}
 </style>
 </head>
 <body>
@@ -398,6 +415,39 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
             <select id="end-m"><option value="">Min</option><option value="00">:00</option><option value="30">:30</option></select>
             <select id="end-ap"><option value="">AM/PM</option><option>AM</option><option>PM</option></select>
           </div>
+        </div>
+        <div class="card">
+          <label class="lbl">Repeats</label>
+          <select id="f-repeat" onchange="repeatChange()">
+            <option value="">One-time event</option>
+            <option value="Daily">Daily</option>
+            <option value="Weekly">Weekly</option>
+            <option value="Every weekday">Every weekday (Mon–Fri)</option>
+            <option value="Monthly">Monthly</option>
+            <option value="Specific days">Specific days of the week</option>
+            <option value="Custom dates">Multiple specific dates</option>
+          </select>
+          <div id="repeat-days" style="display:none;margin-top:12px;">
+            <label class="lbl" style="margin-bottom:10px;">Which days?</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <button type="button" class="day-btn" data-day="Sunday" onclick="toggleDay(this)">Sun</button>
+              <button type="button" class="day-btn" data-day="Monday" onclick="toggleDay(this)">Mon</button>
+              <button type="button" class="day-btn" data-day="Tuesday" onclick="toggleDay(this)">Tue</button>
+              <button type="button" class="day-btn" data-day="Wednesday" onclick="toggleDay(this)">Wed</button>
+              <button type="button" class="day-btn" data-day="Thursday" onclick="toggleDay(this)">Thu</button>
+              <button type="button" class="day-btn" data-day="Friday" onclick="toggleDay(this)">Fri</button>
+              <button type="button" class="day-btn" data-day="Saturday" onclick="toggleDay(this)">Sat</button>
+            </div>
+          </div>
+          <div id="repeat-until" style="display:none;margin-top:12px;">
+            <label class="lbl" style="margin-bottom:8px;">Repeat until (optional)</label>
+            <input type="date" id="f-repeat-until">
+          </div>
+        </div>
+        <div id="extra-dates-card" class="card" style="display:none;">
+          <label class="lbl">Additional dates</label>
+          <div id="datelist"></div>
+          <button class="add-g" id="add-date" onclick="addDate()"><i class="ti ti-plus" style="font-size:14px;"></i> Add date</button>
         </div>
         <div id="e0" style="display:none;font-size:13px;color:#e91e8c;margin-top:6px;padding:10px 13px;background:rgba(233,30,140,0.08);border:1px solid rgba(233,30,140,0.3);border-radius:8px;font-weight:500;">Please enter the date and show time.</div>
       </div>
@@ -834,6 +884,21 @@ function buildPrompt(){
   if(getTime("show")) p += "— Show time: " + getTime("show") + "\n";
   var d = getTime("doors"); if(d) p += "— Doors open: " + d + "\n";
   var et = getTime("end"); if(et) p += "— End time: " + et + "\n";
+  var repeat = v("f-repeat");
+  if(repeat && repeat !== "Custom dates"){
+    var repeatLine = "— Recurring event: " + repeat;
+    if(repeat === "Specific days"){
+      var days = getSelectedDays();
+      if(days.length) repeatLine = "— Recurring event: every " + days.join(", ");
+    }
+    var until = v("f-repeat-until");
+    if(until) repeatLine += " (until " + fmtDate(until) + ")";
+    p += repeatLine + "\n";
+  }
+  if(repeat === "Custom dates"){
+    var extraDates = getExtraDates();
+    if(extraDates.length) p += "— Additional event dates: " + extraDates.join("; ") + "\n";
+  }
   if(v("f-performer")) p += "— Headline performer: " + v("f-performer") + " (make this the largest, most dominant text on the entire flyer — this is the hero)\n";
   if(guests.length){
     p += "— Special guests: " + guests.join(", ") + " (large and bold, secondary to the headline performer)\n";
@@ -939,6 +1004,53 @@ function openGemini(){
 }
 
 
+
+var dateCount = 0;
+
+function repeatChange(){
+  var val = document.getElementById("f-repeat").value;
+  document.getElementById("repeat-days").style.display = (val === "Specific days") ? "block" : "none";
+  document.getElementById("repeat-until").style.display = (val === "Daily" || val === "Weekly" || val === "Every weekday" || val === "Monthly" || val === "Specific days") ? "block" : "none";
+  document.getElementById("extra-dates-card").style.display = (val === "Custom dates") ? "block" : "none";
+  if(val === "Custom dates" && document.querySelectorAll("#datelist .date-row").length === 0){
+    addDate();
+  }
+}
+
+function toggleDay(el){
+  el.classList.toggle("on");
+}
+
+function getSelectedDays(){
+  var days = [];
+  document.querySelectorAll("#repeat-days .day-btn.on").forEach(function(b){
+    days.push(b.getAttribute("data-day"));
+  });
+  return days;
+}
+
+function addDate(){
+  dateCount++;
+  var row = document.createElement("div");
+  row.className = "date-row";
+  row.style.cssText = "display:flex;gap:8px;align-items:center;margin-bottom:8px;";
+  var inp = document.createElement("input");
+  inp.type = "date"; inp.style.flex = "1";
+  var btn = document.createElement("button");
+  btn.className = "g-remove";
+  btn.innerHTML = '<i class="ti ti-x" style="font-size:14px;"></i>';
+  btn.onclick = function(){ row.remove(); };
+  row.appendChild(inp); row.appendChild(btn);
+  document.getElementById("datelist").appendChild(row);
+}
+
+function getExtraDates(){
+  var dates = [];
+  document.querySelectorAll("#datelist input").forEach(function(i){
+    if(i.value) dates.push(fmtDate(i.value));
+  });
+  return dates;
+}
 
 function venueToggle(choice){
   var yesBtn = document.getElementById("toggle-yes");
