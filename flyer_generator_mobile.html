@@ -665,7 +665,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
       <!-- Slide 9: Video Prompt Creator -->
       <div class="slide">
         <div class="step-title">Video Prompt</div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.7);text-align:center;margin-bottom:18px;line-height:1.5;">Turn your flyer into a short AI motion video. Pick a few options, copy the prompt, and paste it (with your flyer image) into a free AI video app.</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.7);text-align:center;margin-bottom:18px;line-height:1.5;">Turn your flyer into a short AI motion video. The flyer stays locked in place — only the elements you choose will subtly move. Copy the prompt and paste it (with your flyer image) into a free AI video app.</div>
 
         <div class="card">
           <label class="lbl">Flyer vibe</label>
@@ -674,15 +674,9 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
         </div>
 
         <div class="card">
-          <label class="lbl">Camera move</label>
-          <div class="hint" style="margin-top:0;margin-bottom:10px;">One subtle motion — big moves break flyer text.</div>
-          <div id="camera-group" style="display:grid;grid-template-columns:1fr;gap:8px;"></div>
-        </div>
-
-        <div class="card">
-          <label class="lbl">What animates</label>
-          <div class="hint" style="margin-top:0;margin-bottom:10px;">Pick 1–3. These stay in the background, away from the text.</div>
-          <div id="fx-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+          <label class="lbl">What moves</label>
+          <div class="hint" style="margin-top:0;margin-bottom:10px;">Tap the flyer elements you want to animate. Each one gets its own motion controls. The rest of the flyer stays still.</div>
+          <div id="element-list"></div>
         </div>
 
         <div class="card">
@@ -1209,30 +1203,130 @@ var vibes = [
   {id:"outdoor", label:"Outdoor / festival"},
   {id:"minimal", label:"Bold minimal / graphic"}
 ];
-var cameras = [
-  {id:"zoomin", label:"Slow, gentle zoom in on the poster"},
-  {id:"zoomout", label:"Slow, gentle zoom out, revealing the full flyer"},
-  {id:"pan", label:"Slow horizontal pan across the flyer"},
-  {id:"static", label:"Camera locked still, only background moves"}
-];
-var fxOptions = [
-  {id:"neonpulse", label:"Neon signs / glow pulsing"},
-  {id:"haze", label:"Smoke or haze drifting"},
-  {id:"particles", label:"Light particles / sparkles"},
-  {id:"crowd", label:"Faint crowd silhouettes moving"},
-  {id:"gleam", label:"Light gleam across the instrument"},
-  {id:"glowtext", label:"Subtle glow pulse on headline text"}
-];
 var lengths = ["5s","10s","15s"];
 
-// Map flyer style -> video vibe
 var styleToVibe = {
   "Cinematic":"smoky", "Playful":"neon", "Professional":"minimal",
   "Casual":"neon", "Epic":"neon", "Simple":"minimal",
   "Anime":"neon", "Comic Book":"neon"
 };
 
-var vState = {vibe:"neon", camera:"zoomin", fx:["neonpulse"], length:"10s", audio:false};
+// Movement options for each element
+var moveOptions = [
+  {id:"", label:"No movement"},
+  {id:"swivel", label:"Swivel / rotate slightly"},
+  {id:"pop", label:"Pop / scale up and down"},
+  {id:"jiggle", label:"Jiggle / wiggle"},
+  {id:"zoom", label:"Zoom in and out (in place)"},
+  {id:"bounce", label:"Bounce gently"},
+  {id:"float", label:"Float / drift softly"},
+  {id:"sway", label:"Sway side to side"}
+];
+
+// Shine options for each element
+var shineOptions = [
+  {id:"", label:"No shine"},
+  {id:"glimmer", label:"Glimmer"},
+  {id:"sparkle", label:"Sparkle"},
+  {id:"glow", label:"Glowing pulse"},
+  {id:"shimmer", label:"Shimmer sweep"},
+  {id:"shine", label:"Shine / light gleam"}
+];
+
+var vState = {vibe:"neon", length:"10s", audio:false, elements:{}};
+
+// Build the list of animatable elements from what the user actually entered
+function getAnimatableElements(){
+  var els = [];
+  if(v("f-performer")) els.push({id:"artist", label:"Headline artist: " + v("f-performer")});
+  var guests = getGuests();
+  if(guests.length) els.push({id:"guests", label:"Special guests: " + guests.join(", ")});
+  if(v("f-name")) els.push({id:"event", label:"Event name: " + v("f-name")});
+  if(fmtDate(v("f-date"))) els.push({id:"date", label:"Date: " + fmtDate(v("f-date"))});
+  if(getTime("show")) els.push({id:"time", label:"Show time: " + getTime("show")});
+  if(v("f-price")) els.push({id:"price", label:"Cover: " + v("f-price")});
+  if(v("f-age")) els.push({id:"age", label:"Age restriction: " + v("f-age")});
+  // Always offer background/atmosphere
+  els.push({id:"background", label:"Background / atmosphere"});
+  return els;
+}
+
+var elementPromptText = {
+  artist:"the headline artist (their figure/portrait)",
+  guests:"the special guest photo(s)",
+  event:"the event name text",
+  date:"the date text",
+  time:"the show time text",
+  price:"the cover price element",
+  age:"the age restriction element",
+  background:"the background and atmospheric elements only (never the text or people)"
+};
+
+var moveText = {
+  swivel:"swivel and rotate slightly", pop:"pop, scaling gently up and down",
+  jiggle:"jiggle with a subtle wiggle", zoom:"pulse with a subtle zoom in and out while staying in place",
+  bounce:"bounce gently", float:"float and drift softly", sway:"sway side to side"
+};
+var shineText = {
+  glimmer:"with a soft glimmer", sparkle:"with light sparkles", glow:"with a glowing pulse",
+  shimmer:"with a shimmer sweeping across it", shine:"with a shine and light gleam"
+};
+
+function renderElementList(){
+  var c = document.getElementById("element-list");
+  c.innerHTML = "";
+  var els = getAnimatableElements();
+  els.forEach(function(el){
+    var active = vState.elements[el.id] !== undefined;
+    var row = document.createElement("div");
+    row.style.cssText = "margin-bottom:10px;";
+
+    // Selectable header button
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.style.cssText = "width:100%;background:" + (active ? "linear-gradient(135deg,#e91e8c,#7b2fff)" : "rgba(255,255,255,0.05)") +
+      ";border:1px solid " + (active ? "#e91e8c" : "rgba(123,47,255,0.4)") +
+      ";border-radius:10px;padding:13px 12px;font-size:14px;font-weight:600;color:#fff;text-align:left;cursor:pointer;font-family:'Inter',sans-serif;-webkit-tap-highlight-color:transparent;transition:all 0.15s;display:flex;align-items:center;gap:8px;";
+    btn.innerHTML = (active ? "✓ " : "+ ") + el.label;
+    btn.onclick = function(){
+      if(active){ delete vState.elements[el.id]; }
+      else { vState.elements[el.id] = {move:"", shine:""}; }
+      renderElementList();
+    };
+    row.appendChild(btn);
+
+    // If active, show movement + shine dropdowns
+    if(active){
+      var ctrls = document.createElement("div");
+      ctrls.style.cssText = "margin-top:8px;padding-left:4px;display:flex;flex-direction:column;gap:8px;";
+
+      var moveSel = document.createElement("select");
+      moveSel.style.cssText = "width:100%;background:rgba(13,10,26,0.8);border:1px solid rgba(123,47,255,0.4);border-radius:8px;color:#fff;font-size:15px;padding:11px 12px;font-family:'Inter',sans-serif;min-height:46px;";
+      moveOptions.forEach(function(m){
+        var o = document.createElement("option");
+        o.value = m.id; o.textContent = "Movement: " + m.label;
+        if(vState.elements[el.id].move === m.id) o.selected = true;
+        moveSel.appendChild(o);
+      });
+      moveSel.onchange = function(){ vState.elements[el.id].move = moveSel.value; };
+      ctrls.appendChild(moveSel);
+
+      var shineSel = document.createElement("select");
+      shineSel.style.cssText = "width:100%;background:rgba(13,10,26,0.8);border:1px solid rgba(123,47,255,0.4);border-radius:8px;color:#fff;font-size:15px;padding:11px 12px;font-family:'Inter',sans-serif;min-height:46px;";
+      shineOptions.forEach(function(s){
+        var o = document.createElement("option");
+        o.value = s.id; o.textContent = "Effect: " + s.label;
+        if(vState.elements[el.id].shine === s.id) o.selected = true;
+        shineSel.appendChild(o);
+      });
+      shineSel.onchange = function(){ vState.elements[el.id].shine = shineSel.value; };
+      ctrls.appendChild(shineSel);
+
+      row.appendChild(ctrls);
+    }
+    c.appendChild(row);
+  });
+}
 
 function renderVOpt(container, items, key, multi){
   var c = document.getElementById(container);
@@ -1245,16 +1339,7 @@ function renderVOpt(container, items, key, multi){
       ";border:1px solid " + (sel ? "#e91e8c" : "rgba(123,47,255,0.4)") +
       ";border-radius:10px;padding:12px 10px;font-size:13px;font-weight:600;color:#fff;text-align:left;cursor:pointer;line-height:1.3;font-family:'Inter',sans-serif;-webkit-tap-highlight-color:transparent;transition:all 0.15s;";
     btn.textContent = item.label;
-    btn.onclick = function(){
-      if(multi){
-        var idx = vState[key].indexOf(item.id);
-        if(idx > -1){ if(vState[key].length > 1) vState[key].splice(idx,1); }
-        else { if(vState[key].length < 3) vState[key].push(item.id); }
-      } else {
-        vState[key] = item.id;
-      }
-      renderVOpt(container, items, key, multi);
-    };
+    btn.onclick = function(){ vState[key] = item.id; renderVOpt(container, items, key, multi); };
     c.appendChild(btn);
   });
 }
@@ -1284,13 +1369,11 @@ function toggleAudio(){
 }
 
 function initVideoPage(){
-  // Auto-fill vibe from the chosen flyer style
   if(selectedTheme && styleToVibe[selectedTheme]){
     vState.vibe = styleToVibe[selectedTheme];
   }
   renderVOpt("vibe-group", vibes, "vibe", false);
-  renderVOpt("camera-group", cameras, "camera", false);
-  renderVOpt("fx-group", fxOptions, "fx", true);
+  renderElementList();
   renderVLengths();
 }
 
@@ -1302,33 +1385,34 @@ var vibeText = {
   outdoor:"an open-air festival atmosphere, natural light",
   minimal:"a bold minimal graphic look, clean and high-contrast"
 };
-var cameraTextV = {
-  zoomin:"Camera performs a slow, smooth zoom in toward the center of the flyer, easing in gradually with no sudden movement",
-  zoomout:"Camera performs a slow, smooth zoom out, starting close and gradually revealing the full flyer",
-  pan:"Camera performs a slow, steady horizontal pan across the flyer, left to right, with no shake",
-  static:"Camera stays completely locked and still; only background elements animate"
-};
-var fxTextV = {
-  neonpulse:"any neon or sign elements pulse and glow gently",
-  haze:"light smoke or haze drifts slowly across the background",
-  particles:"small light particles or sparkles drift softly through the air",
-  crowd:"faint, out-of-focus crowd silhouettes shift subtly in the background",
-  gleam:"a soft light gleam sweeps once across the saxophone or instrument",
-  glowtext:"the headline text has a slow, subtle glow pulse, without distorting the letterforms"
-};
 
 function buildVideoPrompt(){
-  var fxList = vState.fx.map(function(id){ return fxTextV[id]; });
-  var fxJoined = fxList.length > 1
-    ? fxList.slice(0,-1).join(", ") + ", and " + fxList[fxList.length-1]
-    : fxList[0];
   var extra = document.getElementById("v-extra").value.trim();
   var lines = [];
   lines.push("Animate this event flyer image into a " + vState.length + " looping promo video with " + vibeText[vState.vibe] + ".");
-  lines.push(cameraTextV[vState.camera] + ".");
-  lines.push("In the background, " + fxJoined + ".");
-  lines.push("Keep all text, logos, and typography on the flyer completely sharp, legible, and undistorted — do not warp, melt, or regenerate the letterforms. Do not add new text.");
-  lines.push("Motion should stay subtle and smooth throughout, no jarring cuts or camera shake.");
+  lines.push("The camera stays completely locked, static, and still — no zoom, no pan, no push in, no camera movement of any kind. The full flyer remains front and center, filling the frame at all times, with the entire composition and all text fully visible and in place.");
+
+  // Per-element motion
+  var moves = [];
+  for(var id in vState.elements){
+    var cfg = vState.elements[id];
+    var base = elementPromptText[id] || id;
+    var desc = "";
+    if(cfg.move && moveText[cfg.move]) desc += moveText[cfg.move];
+    if(cfg.shine && shineText[cfg.shine]) desc += (desc ? " " : "") + shineText[cfg.shine];
+    if(desc) moves.push(base + " should " + desc);
+  }
+  if(moves.length){
+    var moveStr = moves.length > 1
+      ? moves.slice(0,-1).join("; ") + "; and " + moves[moves.length-1]
+      : moves[0];
+    lines.push("Apply these specific, localized animations while everything else stays perfectly still: " + moveStr + ".");
+  } else {
+    lines.push("Apply only very subtle life to the atmosphere while keeping the whole flyer still.");
+  }
+
+  lines.push("CRITICAL: keep all text, logos, typography, faces, and the layout completely sharp, legible, and undistorted — do not warp, melt, blur, or regenerate any letters, faces, or graphics. Do not add new text. Only the elements listed above should move; everything else remains locked in place.");
+  lines.push("All motion should be smooth, subtle, and natural — no jarring cuts.");
   if(extra) lines.push("Additional detail: " + extra + ".");
   lines.push(vState.audio
     ? "Include a short ambient audio cue matching the mood — no dialogue, no voiceover."
