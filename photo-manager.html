@@ -73,7 +73,9 @@
   .btn-delete:active { color:#e57a7a; }
   .empty-state { text-align:center; color:rgba(255,255,255,0.2); font-size:13px; padding:32px 0; }
 
-  /* ── Bottom button ── */
+  .photo-thumb-video { width:40px; height:53px; border-radius:4px; background:#2a1010; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:22px; cursor:pointer; }
+  .preview-img-wrap video { width:100%; max-height:280px; display:block; border-radius:8px; }
+  .img-overlay video { max-width:92vw; max-height:88vh; border-radius:8px; box-shadow:0 16px 80px rgba(0,0,0,0.9); }
   .btn-generate { width:100%; background:linear-gradient(135deg,#8DB2E5,#6a94cc); color:#0d0505; border:none; border-radius:8px; font-size:14px; font-weight:900; letter-spacing:0.08em; text-transform:uppercase; padding:14px; cursor:pointer; margin-top:8px; }
   .btn-generate:active { opacity:0.8; }
   .copy-confirm { text-align:center; font-size:12px; color:#4caf7d; margin-top:10px; height:18px; }
@@ -97,10 +99,10 @@
   <p>Loading from cloud…</p>
 </div>
 
-<!-- Full image overlay -->
+<!-- Full image/video overlay -->
 <div class="img-overlay" id="imgOverlay" onclick="closeOverlay()">
   <div class="img-overlay-close" onclick="closeOverlay()">✕</div>
-  <img id="overlayImg" src="" alt="">
+  <div id="overlayContent"></div>
 </div>
 
 <div id="appWrap" style="display:none">
@@ -207,21 +209,28 @@
     isSaving = false;
   }
 
+  // ── Media helpers ───────────────────────────────────────────
+  function isVideo(src) {
+    return /\.(mov|mp4|webm|ogg)(\?|$)/i.test(src);
+  }
+
   // ── Preview flow ────────────────────────────────────────────
   function loadPreview() {
     var src = document.getElementById("input-url").value.trim();
-    if (!src) { alert("Paste an image URL first."); return; }
+    if (!src) { alert("Paste an image or video URL first."); return; }
     pendingSrc = src;
-    var area = document.getElementById("previewArea");
     var wrap = document.getElementById("previewImgWrap");
-    var img  = document.getElementById("previewImg");
-    wrap.innerHTML = '<img id="previewImg" src="' + src + '" alt="" onerror="showPreviewError()" style="width:100%;max-height:280px;object-fit:contain;display:block;border-radius:8px;">';
-    area.classList.add("visible");
+    if (isVideo(src)) {
+      wrap.innerHTML = '<video src="' + src + '" controls playsinline loop style="width:100%;max-height:280px;display:block;border-radius:8px;"></video>';
+    } else {
+      wrap.innerHTML = '<img src="' + src + '" alt="" onerror="showPreviewError()" style="width:100%;max-height:280px;object-fit:contain;display:block;border-radius:8px;">';
+    }
+    document.getElementById("previewArea").classList.add("visible");
     document.getElementById("input-name").focus();
   }
 
   function showPreviewError() {
-    document.getElementById("previewImgWrap").innerHTML = '<div class="preview-error">⚠️ Could not load image.<br>Check the URL and try again.</div>';
+    document.getElementById("previewImgWrap").innerHTML = '<div class="preview-error">⚠️ Could not load media.<br>Check the URL and try again.</div>';
   }
 
   async function savePhoto() {
@@ -239,13 +248,21 @@
     await save();
   }
 
-  // ── Full image overlay ──────────────────────────────────────
+  // ── Full image/video overlay ────────────────────────────────
   function openOverlay(src) {
-    document.getElementById("overlayImg").src = src;
+    var content = document.getElementById("overlayContent");
+    if (isVideo(src)) {
+      content.innerHTML = '<video src="' + src + '" controls autoplay playsinline loop style="max-width:92vw;max-height:88vh;border-radius:8px;"></video>';
+    } else {
+      content.innerHTML = '<img src="' + src + '" alt="" style="max-width:92vw;max-height:88vh;object-fit:contain;border-radius:8px;box-shadow:0 16px 80px rgba(0,0,0,0.9);">';
+    }
     document.getElementById("imgOverlay").classList.add("open");
     document.body.style.overflow = "hidden";
   }
   function closeOverlay() {
+    var v = document.querySelector("#overlayContent video");
+    if (v) v.pause();
+    document.getElementById("overlayContent").innerHTML = "";
     document.getElementById("imgOverlay").classList.remove("open");
     document.body.style.overflow = "";
   }
@@ -328,9 +345,12 @@
       var item = document.createElement("div");
       item.className = "photo-item";
       var nameHtml = p.name ? '<div class="photo-name">' + p.name + '</div>' : '';
+      var thumbHtml = isVideo(p.src)
+        ? '<div class="photo-thumb-video" onclick="openOverlay(\'' + p.src.replace(/'/g,"\\'") + '\')">🎬</div>'
+        : '<img class="photo-thumb" src="' + p.src + '" onerror="this.className=\'photo-thumb-err\';this.innerHTML=\'❌\'" alt="" onclick="openOverlay(\'' + p.src.replace(/'/g,"\\'") + '\')">';
       item.innerHTML =
         '<span class="drag-handle">⠿</span>' +
-        '<img class="photo-thumb" src="' + p.src + '" onerror="this.className=\'photo-thumb-err\';this.innerHTML=\'❌\'" alt="" onclick="openOverlay(\'' + p.src.replace(/'/g,"\\'") + '\')">' +
+        thumbHtml +
         '<div class="photo-info"><div class="photo-num">PHOTO ' + (i+1) + '</div>' + nameHtml + '<div class="photo-url">' + truncUrl(p.src) + '</div></div>' +
         '<button class="btn-delete" onclick="removePhoto(' + i + ')">×</button>';
 
@@ -351,7 +371,53 @@
   function generateAndCopy() {
     if (photos.length === 0) { alert("Add at least one photo first."); return; }
     var arr = photos.map(function(p){ return '    { src: "' + p.src + '" }'; }).join(",\n");
-    var code = '<!--\n  RICK PARMA \u2014 Photo Gallery\n  Paste into Bandzoogle HTML section.\n-->\n\n<style>\n  #rp-photo-section{background:rgba(13,5,5,0.5);padding:16px 16px 24px;font-family:Arial,Helvetica,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}\n  #rp-photo-section *{box-sizing:border-box}\n  .rpp-section-title{font-size:33px;font-weight:900;color:#fff;margin:0 0 12px;text-transform:uppercase;letter-spacing:.04em;text-align:center}\n  .rpp-carousel-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);margin:0 0 10px}\n  .rpp-carousel{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:4px 2px 10px}\n  .rpp-carousel::-webkit-scrollbar{display:none}\n  .rpp-thumb{flex:0 0 calc(50% - 5px);scroll-snap-align:start;cursor:pointer;border-radius:6px;overflow:hidden;background:#1a0808;border:1.5px solid transparent;transition:border-color .2s,transform .15s;-webkit-tap-highlight-color:transparent}\n  .rpp-thumb:active{transform:scale(.97)}\n  .rpp-thumb:hover{border-color:rgba(141,178,229,.4)}\n  .rpp-thumb-img-wrap{position:relative;width:100%;aspect-ratio:3/4;background:#2a1010;overflow:hidden}\n  .rpp-thumb-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}\n  .rpp-thumb:hover .rpp-thumb-img-wrap img{transform:scale(1.06)}\n  .rpp-dots{display:flex;justify-content:center;gap:6px;margin-top:4px}\n  .rpp-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.2);transition:background .2s,transform .2s;cursor:pointer}\n  .rpp-dot.active{background:#8DB2E5;transform:scale(1.3)}\n  .rpp-lightbox{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.93);align-items:center;justify-content:center;padding:16px}\n  .rpp-lightbox.open{display:flex}\n  .rpp-lb-inner{position:relative;max-width:92vw;max-height:92vh}\n  .rpp-lb-inner img{max-width:100%;max-height:90vh;object-fit:contain;border-radius:6px;box-shadow:0 16px 80px rgba(0,0,0,.9);display:block}\n  .rpp-lb-close{position:absolute;top:-13px;right:-13px;width:28px;height:28px;background:#8DB2E5;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:#0d0505;font-weight:900;z-index:10}\n  .rpp-lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;background:rgba(0,0,0,.55);border:1px solid rgba(141,178,229,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}\n  .rpp-lb-nav svg{width:15px;height:15px;stroke:#8DB2E5;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}\n  .rpp-lb-prev{left:-52px}.rpp-lb-next{right:-52px}\n  @media(max-width:500px){.rpp-lb-prev{left:-36px}.rpp-lb-next{right:-36px}}\n</style>\n\n<div id="rp-photo-section">\n  <h2 class="rpp-section-title">Photo Gallery</h2>\n  <p class="rpp-carousel-label">Swipe to browse \u2014 tap to view</p>\n  <div class="rpp-carousel" id="rpp-grid"></div>\n  <div class="rpp-dots" id="rpp-dots"></div>\n</div>\n\n<script>\n(function(){\n  var photos=[\n' + arr + '\n  ];\n  var grid=document.getElementById("rpp-grid"),dots=document.getElementById("rpp-dots");\n  window.rppCurrent=0;\n  photos.forEach(function(p,i){\n    var c=document.createElement("div");c.className="rpp-thumb";c.setAttribute("role","button");c.setAttribute("tabindex","0");\n    c.innerHTML=\'<div class="rpp-thumb-img-wrap"><img src="\'+p.src+\'" loading="lazy"></div>\';\n    c.addEventListener("click",function(){rppOpenLightbox(i);});\n    c.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();rppOpenLightbox(i);}});\n    grid.appendChild(c);\n    var d=document.createElement("div");d.className="rpp-dot"+(i===0?" active":"");\n    d.addEventListener("click",function(){grid.querySelectorAll(".rpp-thumb")[i].scrollIntoView({behavior:"smooth",block:"nearest",inline:"start"});});\n    dots.appendChild(d);\n  });\n  grid.addEventListener("scroll",function(){\n    var cs=grid.querySelectorAll(".rpp-thumb"),ds=dots.querySelectorAll(".rpp-dot"),cl=0,md=Infinity;\n    cs.forEach(function(c,i){var d=Math.abs(c.offsetLeft-grid.scrollLeft);if(d<md){md=d;cl=i;}});\n    ds.forEach(function(d,i){d.classList.toggle("active",i===cl);});\n  });\n  var lb=document.createElement("div");lb.className="rpp-lightbox";\n  lb.innerHTML=\'<div class="rpp-lb-inner"><div class="rpp-lb-close" id="rpp-lb-close">\u2715</div><img id="rpp-lb-img" src="" alt=""><button class="rpp-lb-nav rpp-lb-prev" id="rpp-lb-prev"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="rpp-lb-nav rpp-lb-next" id="rpp-lb-next"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button></div>\';\n  document.body.appendChild(lb);\n  document.getElementById("rpp-lb-close").addEventListener("click",function(){lb.classList.remove("open");document.body.style.overflow="";});\n  document.getElementById("rpp-lb-prev").addEventListener("click",function(){window.rppCurrent=(window.rppCurrent-1+photos.length)%photos.length;document.getElementById("rpp-lb-img").src=photos[window.rppCurrent].src;});\n  document.getElementById("rpp-lb-next").addEventListener("click",function(){window.rppCurrent=(window.rppCurrent+1)%photos.length;document.getElementById("rpp-lb-img").src=photos[window.rppCurrent].src;});\n  lb.addEventListener("click",function(e){if(e.target===lb){lb.classList.remove("open");document.body.style.overflow="";}});\n  window.rppOpenLightbox=function(i){window.rppCurrent=i;document.getElementById("rpp-lb-img").src=photos[i].src;lb.classList.add("open");document.body.style.overflow="hidden";};\n  document.addEventListener("keydown",function(e){var o=lb.classList.contains("open");if(e.key==="ArrowLeft"&&o)document.getElementById("rpp-lb-prev").click();if(e.key==="ArrowRight"&&o)document.getElementById("rpp-lb-next").click();if(e.key==="Escape"&&o){lb.classList.remove("open");document.body.style.overflow="";}});\n  var lbTouchX=0;\n  lb.addEventListener("touchstart",function(e){lbTouchX=e.touches[0].clientX;},{passive:true});\n  lb.addEventListener("touchend",function(e){var dx=e.changedTouches[0].clientX-lbTouchX;if(Math.abs(dx)>40){if(dx<0)document.getElementById("rpp-lb-next").click();else document.getElementById("rpp-lb-prev").click();}});\n})();\n<\/script>';
+
+    // Inline JS for the embed — video-aware carousel and lightbox
+    var embedJS = [
+      '(function(){',
+      '  var photos=[', arr, '  ];',
+      '  function isVid(s){return /\\.(mov|mp4|webm|ogg)(\\?|$)/i.test(s);}',
+      '  var grid=document.getElementById("rpp-grid"),dots=document.getElementById("rpp-dots");',
+      '  window.rppCurrent=0;',
+      '  photos.forEach(function(p,i){',
+      '    var c=document.createElement("div");c.className="rpp-thumb";c.setAttribute("role","button");c.setAttribute("tabindex","0");',
+      '    c.innerHTML=isVid(p.src)',
+      '      ?\'<div class="rpp-thumb-img-wrap" style="display:flex;align-items:center;justify-content:center;font-size:32px;">🎬</div>\'',
+      '      :\'<div class="rpp-thumb-img-wrap"><img src="\'+p.src+\'" loading="lazy"></div>\';',
+      '    c.addEventListener("click",function(){rppOpenLightbox(i);});',
+      '    c.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();rppOpenLightbox(i);}});',
+      '    grid.appendChild(c);',
+      '    var d=document.createElement("div");d.className="rpp-dot"+(i===0?" active":"");',
+      '    d.addEventListener("click",function(){grid.querySelectorAll(".rpp-thumb")[i].scrollIntoView({behavior:"smooth",block:"nearest",inline:"start"});});',
+      '    dots.appendChild(d);',
+      '  });',
+      '  grid.addEventListener("scroll",function(){',
+      '    var cs=grid.querySelectorAll(".rpp-thumb"),ds=dots.querySelectorAll(".rpp-dot"),cl=0,md=Infinity;',
+      '    cs.forEach(function(c,i){var d=Math.abs(c.offsetLeft-grid.scrollLeft);if(d<md){md=d;cl=i;}});',
+      '    ds.forEach(function(d,i){d.classList.toggle("active",i===cl);});',
+      '  });',
+      '  var lb=document.createElement("div");lb.className="rpp-lightbox";',
+      '  lb.innerHTML=\'<div class="rpp-lb-inner" id="rpp-lb-inner"><div class="rpp-lb-close" id="rpp-lb-close">\u2715</div><div id="rpp-lb-media"></div><button class="rpp-lb-nav rpp-lb-prev" id="rpp-lb-prev"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="rpp-lb-nav rpp-lb-next" id="rpp-lb-next"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button></div>\';',
+      '  document.body.appendChild(lb);',
+      '  function rppSetMedia(src){',
+      '    var m=document.getElementById("rpp-lb-media");',
+      '    var v=m.querySelector("video");if(v)v.pause();',
+      '    if(isVid(src)){m.innerHTML=\'<video src="\'+src+\'" controls autoplay playsinline loop style="max-width:100%;max-height:90vh;border-radius:6px;display:block;"></video>\';}',
+      '    else{m.innerHTML=\'<img src="\'+src+\'" style="max-width:100%;max-height:90vh;object-fit:contain;border-radius:6px;box-shadow:0 16px 80px rgba(0,0,0,.9);display:block;">\';}',
+      '  }',
+      '  document.getElementById("rpp-lb-close").addEventListener("click",function(){var v=document.querySelector("#rpp-lb-media video");if(v)v.pause();lb.classList.remove("open");document.body.style.overflow="";});',
+      '  document.getElementById("rpp-lb-prev").addEventListener("click",function(){window.rppCurrent=(window.rppCurrent-1+photos.length)%photos.length;rppSetMedia(photos[window.rppCurrent].src);});',
+      '  document.getElementById("rpp-lb-next").addEventListener("click",function(){window.rppCurrent=(window.rppCurrent+1)%photos.length;rppSetMedia(photos[window.rppCurrent].src);});',
+      '  lb.addEventListener("click",function(e){if(e.target===lb){var v=document.querySelector("#rpp-lb-media video");if(v)v.pause();lb.classList.remove("open");document.body.style.overflow="";}});',
+      '  window.rppOpenLightbox=function(i){window.rppCurrent=i;rppSetMedia(photos[i].src);lb.classList.add("open");document.body.style.overflow="hidden";};',
+      '  document.addEventListener("keydown",function(e){var o=lb.classList.contains("open");if(e.key==="ArrowLeft"&&o)document.getElementById("rpp-lb-prev").click();if(e.key==="ArrowRight"&&o)document.getElementById("rpp-lb-next").click();if(e.key==="Escape"&&o){document.getElementById("rpp-lb-close").click();}});',
+      '  var lbTouchX=0;',
+      '  lb.addEventListener("touchstart",function(e){lbTouchX=e.touches[0].clientX;},{passive:true});',
+      '  lb.addEventListener("touchend",function(e){var dx=e.changedTouches[0].clientX-lbTouchX;if(Math.abs(dx)>40){if(dx<0)document.getElementById("rpp-lb-next").click();else document.getElementById("rpp-lb-prev").click();}});',
+      '})();'
+    ].join('\n');
+
+    var code = '<!--\n  RICK PARMA \u2014 Photo Gallery\n  Paste into Bandzoogle HTML section.\n-->\n\n<style>\n  #rp-photo-section{background:rgba(13,5,5,0.5);padding:16px 16px 24px;font-family:Arial,Helvetica,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}\n  #rp-photo-section *{box-sizing:border-box}\n  .rpp-section-title{font-size:33px;font-weight:900;color:#fff;margin:0 0 12px;text-transform:uppercase;letter-spacing:.04em;text-align:center}\n  .rpp-carousel-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);margin:0 0 10px}\n  .rpp-carousel{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:4px 2px 10px}\n  .rpp-carousel::-webkit-scrollbar{display:none}\n  .rpp-thumb{flex:0 0 calc(50% - 5px);scroll-snap-align:start;cursor:pointer;border-radius:6px;overflow:hidden;background:#1a0808;border:1.5px solid transparent;transition:border-color .2s,transform .15s;-webkit-tap-highlight-color:transparent}\n  .rpp-thumb:active{transform:scale(.97)}\n  .rpp-thumb:hover{border-color:rgba(141,178,229,.4)}\n  .rpp-thumb-img-wrap{position:relative;width:100%;aspect-ratio:3/4;background:#2a1010;overflow:hidden}\n  .rpp-thumb-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}\n  .rpp-thumb:hover .rpp-thumb-img-wrap img{transform:scale(1.06)}\n  .rpp-dots{display:flex;justify-content:center;gap:6px;margin-top:4px}\n  .rpp-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.2);transition:background .2s,transform .2s;cursor:pointer}\n  .rpp-dot.active{background:#8DB2E5;transform:scale(1.3)}\n  .rpp-lightbox{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.93);align-items:center;justify-content:center;padding:16px}\n  .rpp-lightbox.open{display:flex}\n  .rpp-lb-inner{position:relative;max-width:92vw;max-height:92vh}\n  .rpp-lb-inner img{max-width:100%;max-height:90vh;object-fit:contain;border-radius:6px;display:block}\n  .rpp-lb-close{position:absolute;top:-13px;right:-13px;width:28px;height:28px;background:#8DB2E5;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:#0d0505;font-weight:900;z-index:10}\n  .rpp-lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;background:rgba(0,0,0,.55);border:1px solid rgba(141,178,229,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}\n  .rpp-lb-nav svg{width:15px;height:15px;stroke:#8DB2E5;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}\n  .rpp-lb-prev{left:-52px}.rpp-lb-next{right:-52px}\n  @media(max-width:500px){.rpp-lb-prev{left:-36px}.rpp-lb-next{right:-36px}}\n</style>\n\n<div id="rp-photo-section">\n  <h2 class="rpp-section-title">Photo Gallery</h2>\n  <p class="rpp-carousel-label">Swipe to browse \u2014 tap to view</p>\n  <div class="rpp-carousel" id="rpp-grid"></div>\n  <div class="rpp-dots" id="rpp-dots"></div>\n</div>\n\n<script>\n' + embedJS + '\n<\/script>';
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(code).then(showConfirm).catch(function(){ fallbackCopy(code); });
