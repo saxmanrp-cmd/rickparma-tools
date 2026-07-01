@@ -637,15 +637,13 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
 
       <!-- Slide 8: Generate -->
       <div class="slide" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;">
-        <div class="step-title" style="margin-bottom:8px;">Generate</div>
-        <div style="font-size:14px;color:rgba(255,255,255,0.7);text-align:center;margin-bottom:40px;line-height:1.6;">Your prompt is ready. Copy it and paste into your preferred AI image tool.</div>
+        <div class="step-title" style="margin-bottom:40px;">Generate Prompt</div>
 
         <div style="width:100%;display:flex;flex-direction:column;gap:16px;">
           <div>
             <button id="copy-prompt-btn" onclick="generate()" style="width:100%;background:linear-gradient(135deg,#e91e8c,#7b2fff);border:none;border-radius:12px;padding:18px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 20px rgba(233,30,140,0.4);-webkit-tap-highlight-color:transparent;transition:all 0.2s;">
               <i class="ti ti-copy" style="font-size:20px;"></i> <span id="copy-btn-label">Copy Prompt to Clipboard</span>
             </button>
-            <div style="font-size:12px;color:rgba(255,255,255,0.7);text-align:center;margin-top:8px;">Paste into any AI tool with image generation</div>
           </div>
         </div>
 
@@ -658,6 +656,10 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
             <div style="font-size:20px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Prompt Copied!</div>
             <div style="font-size:13px;color:rgba(255,255,255,0.85);line-height:1.5;">Your flyer prompt is ready to paste.<br>Don't forget to upload your artist photo.</div>
           </div>
+          <div style="margin-top:12px;background:rgba(0,168,255,0.08);border:1px solid rgba(0,168,255,0.3);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:8px;justify-content:center;">
+            <i class="ti ti-arrow-right" style="font-size:16px;color:#00a8ff;"></i>
+            <div style="font-size:12px;color:rgba(255,255,255,0.9);line-height:1.4;">Want to animate your flyer? Head to the next page.</div>
+          </div>
           <div id="pbox" style="display:none;"></div>
         </div>
       </div>
@@ -665,40 +667,18 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
       <!-- Slide 9: Video Prompt Creator -->
       <div class="slide">
         <div class="step-title">Video Prompt</div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.7);text-align:center;margin-bottom:18px;line-height:1.5;">Turn your flyer into a short AI motion video. The flyer stays locked in place — only the elements you choose will subtly move. Copy the prompt and paste it (with your flyer image) into a free AI video app.</div>
-
-        <div class="card">
-          <label class="lbl">Flyer vibe</label>
-          <div class="hint" style="margin-top:0;margin-bottom:10px;">Auto-matched to your flyer style — change it if you like.</div>
-          <div id="vibe-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+        <div style="background:rgba(0,168,255,0.08);border:1px solid rgba(0,168,255,0.3);border-radius:12px;padding:16px;margin-bottom:18px;">
+          <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.9;">1. Pick an energy level<br>2. Copy the prompt<br>3. Paste into AI video app<br>4. Upload finished flyer</div>
         </div>
 
         <div class="card">
-          <label class="lbl">What moves</label>
-          <div class="hint" style="margin-top:0;margin-bottom:10px;">Tap the flyer elements you want to animate. Each one gets its own motion controls. The rest of the flyer stays still.</div>
-          <div id="element-list"></div>
-        </div>
-
-        <div class="card">
-          <label class="lbl">Length</label>
-          <div id="length-group" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
-        </div>
-
-        <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-            <div>
-              <div style="font-size:14px;color:#fff;font-weight:600;">Include audio cue</div>
-              <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:3px;line-height:1.4;">Some tools (like Veo) generate sound. Off = silent / music added later.</div>
-            </div>
-            <div id="audio-toggle" onclick="toggleAudio()" style="width:48px;height:28px;border-radius:999px;background:rgba(255,255,255,0.15);position:relative;flex-shrink:0;cursor:pointer;transition:background 0.2s;">
-              <div id="audio-knob" style="position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left 0.2s;"></div>
-            </div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <button class="energy-btn" data-level="subtle" onclick="pickEnergy(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:16px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Subtle</button>
+            <button class="energy-btn" data-level="lively" onclick="pickEnergy(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:16px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Lively</button>
+            <button class="energy-btn" data-level="dynamic" onclick="pickEnergy(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:16px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Dynamic</button>
+            <button class="energy-btn" data-level="intense" onclick="pickEnergy(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:16px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Intense</button>
           </div>
-        </div>
-
-        <div class="card">
-          <label class="lbl">Anything specific? (optional)</label>
-          <textarea id="v-extra" placeholder="e.g. sax player silhouette in corner, DJ name, neon sign flickers..."></textarea>
+          <div id="energy-desc" style="display:none;margin-top:14px;background:rgba(123,47,255,0.08);border:1px solid rgba(123,47,255,0.3);border-radius:10px;padding:14px;font-size:13px;line-height:1.6;color:rgba(255,255,255,0.9);"></div>
         </div>
 
         <button id="video-gen-btn" onclick="generateVideo()" style="width:100%;background:linear-gradient(135deg,#e91e8c,#7b2fff);border:none;border-radius:12px;padding:18px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 20px rgba(233,30,140,0.4);-webkit-tap-highlight-color:transparent;transition:all 0.2s;margin-top:6px;">
@@ -710,8 +690,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
             <div style="width:56px;height:56px;background:linear-gradient(135deg,#e91e8c,#7b2fff);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 0 24px rgba(233,30,140,0.5);">
               <i class="ti ti-check" style="font-size:28px;color:#fff;"></i>
             </div>
-            <div style="font-size:20px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Prompt Copied!</div>
-            <div style="font-size:13px;color:rgba(255,255,255,0.85);line-height:1.5;">Open a free AI video app (CapCut, Veo, Luma), choose image-to-video, upload your flyer, and paste this prompt.</div>
+            <div style="font-size:20px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:0.08em;">Prompt Copied!</div>
           </div>
         </div>
       </div>
@@ -847,7 +826,7 @@ function goTo(n){
   document.getElementById("hdr").style.display = n <= 1 ? "none" : "block";
   // Reset prompt output when leaving/entering page 5
   document.getElementById("out-wrap").style.display = "none";
-  // Re-sync video vibe to flyer style when arriving on the video page
+  // Rebuild video element list when arriving on the video page
   if(n === 9){ initVideoPage(); }
 }
 
@@ -1195,228 +1174,54 @@ function ticketChange(){
 function flash(lbl){ lbl.textContent = "Copied!"; setTimeout(function(){ lbl.textContent = "Copy"; }, 2000); }
 
 // ══════════ VIDEO PROMPT GENERATOR ══════════
-var vibes = [
-  {id:"neon", label:"Neon club / bold color"},
-  {id:"smoky", label:"Smoky lounge / moody"},
-  {id:"vintage", label:"Retro / vintage poster"},
-  {id:"elegant", label:"Elegant jazz lounge"},
-  {id:"outdoor", label:"Outdoor / festival"},
-  {id:"minimal", label:"Bold minimal / graphic"}
-];
-var lengths = ["5s","10s","15s"];
+var selectedEnergy = "";
 
-var styleToVibe = {
-  "Cinematic":"smoky", "Playful":"neon", "Professional":"minimal",
-  "Casual":"neon", "Epic":"neon", "Simple":"minimal",
-  "Anime":"neon", "Comic Book":"neon"
+var energyDescriptions = {
+  subtle: "Gentle, understated motion. The whole flyer softly pulses like it's breathing, the background has soft ambient movement, the artist's name gives a light shimmer, and the artist's photo has a barely-there sway.",
+  lively: "Noticeable, energetic motion. The whole flyer gently sways and floats, the background moves with clear atmospheric life, the artist's name shines and pulses, and the artist's photo has a confident sway.",
+  dynamic: "Bold, high-energy motion. The whole flyer bounces and pulses to a rhythm, the background is full of movement and depth, the artist's name pulses with dramatic light, and the artist's photo moves with strong presence.",
+  intense: "Powerful, dramatic motion. The whole flyer shakes and vibrates like a bass drop, the background surges with energy and light, the artist's name commands attention with bold pulsing glow, and the artist's photo moves with striking cinematic force — always staying fully in frame."
 };
 
-// Movement options for each element
-var moveOptions = [
-  {id:"", label:"No movement"},
-  {id:"swivel", label:"Swivel / rotate slightly"},
-  {id:"pop", label:"Pop / scale up and down"},
-  {id:"jiggle", label:"Jiggle / wiggle"},
-  {id:"zoom", label:"Zoom in and out (in place)"},
-  {id:"bounce", label:"Bounce gently"},
-  {id:"float", label:"Float / drift softly"},
-  {id:"sway", label:"Sway side to side"}
-];
-
-// Shine options for each element
-var shineOptions = [
-  {id:"", label:"No shine"},
-  {id:"glimmer", label:"Glimmer"},
-  {id:"sparkle", label:"Sparkle"},
-  {id:"glow", label:"Glowing pulse"},
-  {id:"shimmer", label:"Shimmer sweep"},
-  {id:"shine", label:"Shine / light gleam"}
-];
-
-var vState = {vibe:"neon", length:"10s", audio:false, elements:{}};
-
-// Build the list of animatable elements from what the user actually entered
-function getAnimatableElements(){
-  var els = [];
-  if(v("f-performer")) els.push({id:"artist", label:"Headline artist: " + v("f-performer")});
-  var guests = getGuests();
-  if(guests.length) els.push({id:"guests", label:"Special guests: " + guests.join(", ")});
-  if(v("f-name")) els.push({id:"event", label:"Event name: " + v("f-name")});
-  if(fmtDate(v("f-date"))) els.push({id:"date", label:"Date: " + fmtDate(v("f-date"))});
-  if(getTime("show")) els.push({id:"time", label:"Show time: " + getTime("show")});
-  if(v("f-price")) els.push({id:"price", label:"Cover: " + v("f-price")});
-  if(v("f-age")) els.push({id:"age", label:"Age restriction: " + v("f-age")});
-  // Always offer background/atmosphere
-  els.push({id:"background", label:"Background / atmosphere"});
-  return els;
-}
-
-var elementPromptText = {
-  artist:"the headline artist (their figure/portrait)",
-  guests:"the special guest photo(s)",
-  event:"the event name text",
-  date:"the date text",
-  time:"the show time text",
-  price:"the cover price element",
-  age:"the age restriction element",
-  background:"the background and atmospheric elements only (never the text or people)"
+var energyPromptText = {
+  subtle: "Add gentle, understated motion to the whole flyer. The entire flyer has a soft, slow pulse as if breathing. The background comes alive with soft ambient movement, the artist's name has a light shimmer, and the artist's photo holds with a barely-there sway.",
+  lively: "Add noticeable, energetic motion to the whole flyer. The entire flyer gently sways and pulses with a subtle floating drift. The background moves with clear atmospheric life, the artist's name shines and pulses with light, and the artist's photo has a confident sway.",
+  dynamic: "Add bold, high-energy motion to the whole flyer. The entire flyer bounces and pulses with rhythmic energy, like it's moving to a beat. The background is full of movement and depth, the artist's name pulses with dramatic light and shine, and the artist's photo moves with strong presence.",
+  intense: "Add powerful, dramatic motion to the whole flyer. The entire flyer shakes, pulses, and vibrates with high energy, like a bass drop. The background surges with dynamic energy and light, the artist's name commands attention with bold pulsing shine and glow, and the artist's photo moves with striking cinematic force."
 };
 
-var moveText = {
-  swivel:"swivel and rotate slightly", pop:"pop, scaling gently up and down",
-  jiggle:"jiggle with a subtle wiggle", zoom:"pulse with a subtle zoom in and out while staying in place",
-  bounce:"bounce gently", float:"float and drift softly", sway:"sway side to side"
-};
-var shineText = {
-  glimmer:"with a soft glimmer", sparkle:"with light sparkles", glow:"with a glowing pulse",
-  shimmer:"with a shimmer sweeping across it", shine:"with a shine and light gleam"
-};
-
-function renderElementList(){
-  var c = document.getElementById("element-list");
-  c.innerHTML = "";
-  var els = getAnimatableElements();
-  els.forEach(function(el){
-    var active = vState.elements[el.id] !== undefined;
-    var row = document.createElement("div");
-    row.style.cssText = "margin-bottom:10px;";
-
-    // Selectable header button
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.style.cssText = "width:100%;background:" + (active ? "linear-gradient(135deg,#e91e8c,#7b2fff)" : "rgba(255,255,255,0.05)") +
-      ";border:1px solid " + (active ? "#e91e8c" : "rgba(123,47,255,0.4)") +
-      ";border-radius:10px;padding:13px 12px;font-size:14px;font-weight:600;color:#fff;text-align:left;cursor:pointer;font-family:'Inter',sans-serif;-webkit-tap-highlight-color:transparent;transition:all 0.15s;display:flex;align-items:center;gap:8px;";
-    btn.innerHTML = (active ? "✓ " : "+ ") + el.label;
-    btn.onclick = function(){
-      if(active){ delete vState.elements[el.id]; }
-      else { vState.elements[el.id] = {move:"", shine:""}; }
-      renderElementList();
-    };
-    row.appendChild(btn);
-
-    // If active, show movement + shine dropdowns
-    if(active){
-      var ctrls = document.createElement("div");
-      ctrls.style.cssText = "margin-top:8px;padding-left:4px;display:flex;flex-direction:column;gap:8px;";
-
-      var moveSel = document.createElement("select");
-      moveSel.style.cssText = "width:100%;background:rgba(13,10,26,0.8);border:1px solid rgba(123,47,255,0.4);border-radius:8px;color:#fff;font-size:15px;padding:11px 12px;font-family:'Inter',sans-serif;min-height:46px;";
-      moveOptions.forEach(function(m){
-        var o = document.createElement("option");
-        o.value = m.id; o.textContent = "Movement: " + m.label;
-        if(vState.elements[el.id].move === m.id) o.selected = true;
-        moveSel.appendChild(o);
-      });
-      moveSel.onchange = function(){ vState.elements[el.id].move = moveSel.value; };
-      ctrls.appendChild(moveSel);
-
-      var shineSel = document.createElement("select");
-      shineSel.style.cssText = "width:100%;background:rgba(13,10,26,0.8);border:1px solid rgba(123,47,255,0.4);border-radius:8px;color:#fff;font-size:15px;padding:11px 12px;font-family:'Inter',sans-serif;min-height:46px;";
-      shineOptions.forEach(function(s){
-        var o = document.createElement("option");
-        o.value = s.id; o.textContent = "Effect: " + s.label;
-        if(vState.elements[el.id].shine === s.id) o.selected = true;
-        shineSel.appendChild(o);
-      });
-      shineSel.onchange = function(){ vState.elements[el.id].shine = shineSel.value; };
-      ctrls.appendChild(shineSel);
-
-      row.appendChild(ctrls);
-    }
-    c.appendChild(row);
+function pickEnergy(el){
+  document.querySelectorAll(".energy-btn").forEach(function(b){
+    b.style.background = "rgba(255,255,255,0.05)";
+    b.style.borderColor = "rgba(123,47,255,0.4)";
+    b.style.boxShadow = "none";
   });
-}
-
-function renderVOpt(container, items, key, multi){
-  var c = document.getElementById(container);
-  c.innerHTML = "";
-  items.forEach(function(item){
-    var sel = multi ? vState[key].indexOf(item.id) > -1 : vState[key] === item.id;
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.style.cssText = "background:" + (sel ? "linear-gradient(135deg,#e91e8c,#7b2fff)" : "rgba(255,255,255,0.05)") +
-      ";border:1px solid " + (sel ? "#e91e8c" : "rgba(123,47,255,0.4)") +
-      ";border-radius:10px;padding:12px 10px;font-size:13px;font-weight:600;color:#fff;text-align:left;cursor:pointer;line-height:1.3;font-family:'Inter',sans-serif;-webkit-tap-highlight-color:transparent;transition:all 0.15s;";
-    btn.textContent = item.label;
-    btn.onclick = function(){ vState[key] = item.id; renderVOpt(container, items, key, multi); };
-    c.appendChild(btn);
-  });
-}
-
-function renderVLengths(){
-  var c = document.getElementById("length-group");
-  c.innerHTML = "";
-  lengths.forEach(function(l){
-    var sel = vState.length === l;
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.style.cssText = "background:" + (sel ? "linear-gradient(135deg,#e91e8c,#7b2fff)" : "rgba(255,255,255,0.05)") +
-      ";border:1px solid " + (sel ? "#e91e8c" : "rgba(123,47,255,0.4)") +
-      ";border-radius:999px;padding:10px 20px;font-size:14px;font-weight:700;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;-webkit-tap-highlight-color:transparent;";
-    btn.textContent = l;
-    btn.onclick = function(){ vState.length = l; renderVLengths(); };
-    c.appendChild(btn);
-  });
-}
-
-function toggleAudio(){
-  vState.audio = !vState.audio;
-  var t = document.getElementById("audio-toggle");
-  var k = document.getElementById("audio-knob");
-  t.style.background = vState.audio ? "#e91e8c" : "rgba(255,255,255,0.15)";
-  k.style.left = vState.audio ? "24px" : "2px";
+  el.style.background = "linear-gradient(135deg,#e91e8c,#7b2fff)";
+  el.style.borderColor = "#e91e8c";
+  el.style.boxShadow = "0 4px 18px rgba(233,30,140,0.4)";
+  selectedEnergy = el.getAttribute("data-level");
+  var desc = document.getElementById("energy-desc");
+  if(desc && energyDescriptions[selectedEnergy]){
+    desc.style.display = "block";
+    desc.textContent = energyDescriptions[selectedEnergy];
+  }
 }
 
 function initVideoPage(){
-  if(selectedTheme && styleToVibe[selectedTheme]){
-    vState.vibe = styleToVibe[selectedTheme];
-  }
-  renderVOpt("vibe-group", vibes, "vibe", false);
-  renderElementList();
-  renderVLengths();
+  // nothing to rebuild — energy cards are static
 }
 
-var vibeText = {
-  neon:"a high-energy neon club look, bold saturated colors",
-  smoky:"a smoky, moody lounge atmosphere, low warm light",
-  vintage:"a retro vintage concert-poster look, grainy warmth",
-  elegant:"an elegant, upscale jazz-lounge atmosphere",
-  outdoor:"an open-air festival atmosphere, natural light",
-  minimal:"a bold minimal graphic look, clean and high-contrast"
-};
-
 function buildVideoPrompt(){
-  var extra = document.getElementById("v-extra").value.trim();
   var lines = [];
-  lines.push("Animate this event flyer image into a " + vState.length + " looping promo video with " + vibeText[vState.vibe] + ".");
-  lines.push("The camera stays completely locked, static, and still — no zoom, no pan, no push in, no camera movement of any kind. The full flyer remains front and center, filling the frame at all times, with the entire composition and all text fully visible and in place.");
-
-  // Per-element motion
-  var moves = [];
-  for(var id in vState.elements){
-    var cfg = vState.elements[id];
-    var base = elementPromptText[id] || id;
-    var desc = "";
-    if(cfg.move && moveText[cfg.move]) desc += moveText[cfg.move];
-    if(cfg.shine && shineText[cfg.shine]) desc += (desc ? " " : "") + shineText[cfg.shine];
-    if(desc) moves.push(base + " should " + desc);
-  }
-  if(moves.length){
-    var moveStr = moves.length > 1
-      ? moves.slice(0,-1).join("; ") + "; and " + moves[moves.length-1]
-      : moves[0];
-    lines.push("Apply these specific, localized animations while everything else stays perfectly still: " + moveStr + ".");
+  lines.push("Animate this event flyer image into a looping promo video.");
+  if(selectedEnergy && energyPromptText[selectedEnergy]){
+    lines.push(energyPromptText[selectedEnergy]);
   } else {
-    lines.push("Apply only very subtle life to the atmosphere while keeping the whole flyer still.");
+    lines.push("Add gentle, understated motion to the whole flyer — a soft pulse, with the background, artist name, and artist photo coming subtly alive.");
   }
-
-  lines.push("CRITICAL: keep all text, logos, typography, faces, and the layout completely sharp, legible, and undistorted — do not warp, melt, blur, or regenerate any letters, faces, or graphics. Do not add new text. Only the elements listed above should move; everything else remains locked in place.");
-  lines.push("All motion should be smooth, subtle, and natural — no jarring cuts.");
-  if(extra) lines.push("Additional detail: " + extra + ".");
-  lines.push(vState.audio
-    ? "Include a short ambient audio cue matching the mood — no dialogue, no voiceover."
-    : "No audio needed — this will have music added separately.");
+  lines.push("Only the background, the artist's name, and the artist's photo should move — leave all other text and elements still.");
+  lines.push("The full flyer must always stay completely within frame — never crop, cut off, zoom past, or lose any part of the flyer or its text at any point.");
+  lines.push("Keep all text, logos, typography, faces, and the layout completely sharp, legible, and undistorted — do not warp, melt, blur, or regenerate any letters, faces, or graphics. Do not add new text.");
   return lines.join(" ");
 }
 
@@ -1440,7 +1245,6 @@ function generateVideo(){
   setTimeout(function(){ document.getElementById("video-out").scrollIntoView({ behavior:"smooth", block:"start" }); }, 100);
 }
 
-// Initialize video page options on load
 initVideoPage();
 </script>
 </body>
