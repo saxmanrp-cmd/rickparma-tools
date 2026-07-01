@@ -17,75 +17,74 @@
     min-height: 100vh;
     padding: max(env(safe-area-inset-top), 52px) 16px max(env(safe-area-inset-bottom), 100px);
   }
-  .header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  @keyframes spin   { to { transform:rotate(360deg); } }
+
+  .header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
   h1 { font-size:17px; font-weight:900; letter-spacing:0.08em; text-transform:uppercase; color:#8DB2E5; }
   .sync-badge { font-size:10px; color:rgba(255,255,255,0.4); display:flex; align-items:center; gap:5px; }
   .sync-dot { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.3); flex-shrink:0; }
   .sync-dot.synced  { background:#4caf7d; }
   .sync-dot.syncing { background:#8DB2E5; animation:pulse 1s ease-in-out infinite; }
   .sync-dot.error   { background:#e05555; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-  @keyframes spin   { to { transform:rotate(360deg); } }
 
-  /* Add form */
-  .add-name-row { margin-bottom:8px; }
-  .add-name-row input { width:100%; background:#1a0808; border:1.5px solid rgba(141,178,229,0.2); border-radius:8px; color:#fff; font-size:14px; padding:10px 12px; outline:none; }
-  .add-name-row input:focus { border-color:#8DB2E5; }
-  .add-name-row input::placeholder { color:rgba(255,255,255,0.25); }
-  .add-row { display:flex; gap:8px; margin-bottom:14px; }
-  .add-row input { flex:1; background:#1a0808; border:1.5px solid rgba(141,178,229,0.3); border-radius:8px; color:#fff; font-size:14px; padding:11px 12px; outline:none; min-width:0; }
-  .add-row input:focus { border-color:#8DB2E5; }
-  .add-row input::placeholder { color:rgba(255,255,255,0.25); }
-  .btn-add { background:#8DB2E5; color:#0d0505; border:none; border-radius:8px; font-size:20px; font-weight:900; padding:0 16px; cursor:pointer; flex-shrink:0; }
-  .btn-add:active { background:#7aa0d4; }
+  /* ── Add panel ── */
+  .add-panel { background:#1a0808; border-radius:10px; padding:14px; margin-bottom:16px; }
 
-  /* Photo list */
+  /* URL row */
+  .url-row { display:flex; gap:8px; margin-bottom:0; }
+  .url-row input { flex:1; background:#0d0505; border:1.5px solid rgba(141,178,229,0.3); border-radius:8px; color:#fff; font-size:14px; padding:11px 12px; outline:none; min-width:0; }
+  .url-row input:focus { border-color:#8DB2E5; }
+  .url-row input::placeholder { color:rgba(255,255,255,0.25); }
+  .btn-preview { background:#8DB2E5; color:#0d0505; border:none; border-radius:8px; font-size:13px; font-weight:900; padding:0 14px; cursor:pointer; flex-shrink:0; white-space:nowrap; }
+  .btn-preview:active { background:#7aa0d4; }
+
+  /* Preview area — hidden until URL loaded */
+  .preview-area { display:none; margin-top:12px; }
+  .preview-area.visible { display:block; }
+  .preview-img-wrap {
+    width:100%; border-radius:8px; overflow:hidden;
+    background:#0d0505; margin-bottom:10px;
+    display:flex; align-items:center; justify-content:center;
+    min-height:120px;
+  }
+  .preview-img-wrap img { width:100%; max-height:280px; object-fit:contain; display:block; border-radius:8px; }
+  .preview-img-wrap .preview-error { color:rgba(255,255,255,0.3); font-size:13px; padding:24px; text-align:center; }
+  .name-save-row { display:flex; gap:8px; }
+  .name-save-row input { flex:1; background:#0d0505; border:1.5px solid rgba(141,178,229,0.3); border-radius:8px; color:#fff; font-size:14px; padding:10px 12px; outline:none; min-width:0; }
+  .name-save-row input:focus { border-color:#8DB2E5; }
+  .name-save-row input::placeholder { color:rgba(255,255,255,0.25); }
+  .btn-save { background:#4caf7d; color:#0d0505; border:none; border-radius:8px; font-size:13px; font-weight:900; padding:0 16px; cursor:pointer; flex-shrink:0; white-space:nowrap; }
+  .btn-save:active { background:#3d9e6c; }
+
+  /* ── Photo list ── */
   .photo-item { display:flex; align-items:center; gap:10px; background:#1a0808; border-radius:8px; padding:10px 12px; margin-bottom:8px; cursor:grab; user-select:none; border:1.5px solid transparent; }
   .photo-item.drag-over { border-color:#8DB2E5; background:#2a1010; }
   .photo-item.dragging  { opacity:0.4; }
   .drag-handle { color:rgba(255,255,255,0.2); font-size:16px; flex-shrink:0; }
-  .photo-thumb {
-    width:40px; height:53px; object-fit:cover; border-radius:4px;
-    background:#2a1010; flex-shrink:0; cursor:pointer;
-    transition:opacity 0.15s;
-  }
+  .photo-thumb { width:40px; height:53px; object-fit:cover; border-radius:4px; background:#2a1010; flex-shrink:0; cursor:pointer; }
   .photo-thumb:active { opacity:0.7; }
   .photo-thumb-err { width:40px; height:53px; border-radius:4px; background:#2a1010; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:16px; opacity:0.4; cursor:pointer; }
   .photo-info { flex:1; min-width:0; }
-  .photo-name { font-size:12px; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px; }
+  .photo-name { font-size:12px; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:1px; }
   .photo-num  { font-size:10px; color:#8DB2E5; letter-spacing:0.1em; font-weight:700; margin-bottom:1px; }
   .photo-url  { font-size:10px; color:rgba(255,255,255,0.3); font-family:monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .btn-delete { background:none; border:none; color:rgba(255,255,255,0.25); font-size:20px; cursor:pointer; padding:4px 6px; border-radius:4px; flex-shrink:0; line-height:1; }
   .btn-delete:active { color:#e57a7a; }
   .empty-state { text-align:center; color:rgba(255,255,255,0.2); font-size:13px; padding:32px 0; }
 
-  /* Single generate+copy button */
+  /* ── Bottom button ── */
   .btn-generate { width:100%; background:linear-gradient(135deg,#8DB2E5,#6a94cc); color:#0d0505; border:none; border-radius:8px; font-size:14px; font-weight:900; letter-spacing:0.08em; text-transform:uppercase; padding:14px; cursor:pointer; margin-top:8px; }
   .btn-generate:active { opacity:0.8; }
   .copy-confirm { text-align:center; font-size:12px; color:#4caf7d; margin-top:10px; height:18px; }
 
-  /* Thumbnail preview overlay */
-  .thumb-preview-overlay {
-    display:none; position:fixed; inset:0; z-index:9999;
-    background:rgba(0,0,0,0.92);
-    align-items:center; justify-content:center; padding:24px;
-  }
-  .thumb-preview-overlay.open { display:flex; }
-  .thumb-preview-overlay img {
-    max-width:92vw; max-height:88vh;
-    object-fit:contain; border-radius:8px;
-    box-shadow:0 16px 80px rgba(0,0,0,0.9);
-  }
-  .thumb-preview-close {
-    position:fixed; top:16px; right:16px;
-    width:32px; height:32px;
-    background:#8DB2E5; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    cursor:pointer; font-size:16px; color:#0d0505; font-weight:900;
-    z-index:10;
-  }
+  /* ── Full image overlay (tap thumbnail) ── */
+  .img-overlay { display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.93); align-items:center; justify-content:center; padding:24px; }
+  .img-overlay.open { display:flex; }
+  .img-overlay img { max-width:92vw; max-height:88vh; object-fit:contain; border-radius:8px; box-shadow:0 16px 80px rgba(0,0,0,0.9); }
+  .img-overlay-close { position:fixed; top:16px; right:16px; width:32px; height:32px; background:#8DB2E5; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; color:#0d0505; font-weight:900; }
 
-  /* Loading */
+  /* ── Loading ── */
   .loading-screen { position:fixed; inset:0; background:#0d0505; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; z-index:200; }
   .spinner { width:24px; height:24px; border:3px solid rgba(141,178,229,0.2); border-top-color:#8DB2E5; border-radius:50%; animation:spin 0.7s linear infinite; }
   .loading-screen p { font-size:11px; color:rgba(255,255,255,0.4); letter-spacing:0.12em; text-transform:uppercase; }
@@ -98,10 +97,10 @@
   <p>Loading from cloud…</p>
 </div>
 
-<!-- Thumbnail preview overlay -->
-<div class="thumb-preview-overlay" id="thumbPreview" onclick="closeThumbPreview()">
-  <div class="thumb-preview-close" onclick="closeThumbPreview()">✕</div>
-  <img id="thumbPreviewImg" src="" alt="">
+<!-- Full image overlay -->
+<div class="img-overlay" id="imgOverlay" onclick="closeOverlay()">
+  <div class="img-overlay-close" onclick="closeOverlay()">✕</div>
+  <img id="overlayImg" src="" alt="">
 </div>
 
 <div id="appWrap" style="display:none">
@@ -113,20 +112,27 @@
     </div>
   </div>
 
-  <!-- Name field -->
-  <div class="add-name-row">
-    <input type="text" id="input-name" placeholder="Flyer name (optional, for your reference only)…" autocorrect="off" autocapitalize="words" spellcheck="false">
-  </div>
+  <!-- Add panel -->
+  <div class="add-panel">
+    <div class="url-row">
+      <input type="url" id="input-url" placeholder="Paste image URL…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+      <button class="btn-preview" onclick="loadPreview()">Preview</button>
+    </div>
 
-  <!-- URL + add button -->
-  <div class="add-row">
-    <input type="url" id="input-url" placeholder="Paste Bandzoogle image URL…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
-    <button class="btn-add" onclick="addPhoto()">+</button>
+    <div class="preview-area" id="previewArea">
+      <div class="preview-img-wrap" id="previewImgWrap">
+        <img id="previewImg" src="" alt="" onerror="showPreviewError()">
+      </div>
+      <div class="name-save-row">
+        <input type="text" id="input-name" placeholder="Flyer name (optional)…" autocorrect="off" autocapitalize="words" spellcheck="false">
+        <button class="btn-save" onclick="savePhoto()">Save</button>
+      </div>
+    </div>
   </div>
 
   <div id="photo-list"></div>
 
-  <button class="btn-generate" id="generateBtn" onclick="generateAndCopy()">⬇ Generate &amp; Copy Code</button>
+  <button class="btn-generate" onclick="generateAndCopy()">⬇ Generate &amp; Copy Code</button>
   <p class="copy-confirm" id="copy-confirm"></p>
 </div>
 
@@ -145,6 +151,7 @@
   var photos = [];
   var dragSrcIndex = null;
   var isSaving = false;
+  var pendingSrc = "";
 
   function setSyncStatus(state, label) {
     document.getElementById("syncDot").className = "sync-dot " + state;
@@ -168,9 +175,7 @@
   async function load() {
     try {
       if (BIN_ID) {
-        var res = await fetch(BIN_BASE + "/b/" + BIN_ID + "/latest", {
-          headers: { "X-Master-Key": BIN_API_KEY }
-        });
+        var res = await fetch(BIN_BASE + "/b/" + BIN_ID + "/latest", { headers: { "X-Master-Key": BIN_API_KEY } });
         if (res.ok) {
           var data = await res.json();
           photos = data.record.photos || [];
@@ -202,40 +207,66 @@
     isSaving = false;
   }
 
-  function truncUrl(u) { return u.length <= 46 ? u : u.slice(0,24) + "…" + u.slice(-16); }
+  // ── Preview flow ────────────────────────────────────────────
+  function loadPreview() {
+    var src = document.getElementById("input-url").value.trim();
+    if (!src) { alert("Paste an image URL first."); return; }
+    pendingSrc = src;
+    var area = document.getElementById("previewArea");
+    var wrap = document.getElementById("previewImgWrap");
+    var img  = document.getElementById("previewImg");
+    wrap.innerHTML = '<img id="previewImg" src="' + src + '" alt="" onerror="showPreviewError()" style="width:100%;max-height:280px;object-fit:contain;display:block;border-radius:8px;">';
+    area.classList.add("visible");
+    document.getElementById("input-name").focus();
+  }
 
-  // Thumbnail preview
-  function openThumbPreview(src) {
-    document.getElementById("thumbPreviewImg").src = src;
-    document.getElementById("thumbPreview").classList.add("open");
+  function showPreviewError() {
+    document.getElementById("previewImgWrap").innerHTML = '<div class="preview-error">⚠️ Could not load image.<br>Check the URL and try again.</div>';
+  }
+
+  async function savePhoto() {
+    var src  = pendingSrc || document.getElementById("input-url").value.trim();
+    var name = document.getElementById("input-name").value.trim();
+    if (!src) { alert("No image to save."); return; }
+    for (var j=0; j<photos.length; j++) { if (photos[j].src===src) { alert("Already in gallery."); return; } }
+    photos.push({ src: src, name: name });
+    // Reset add panel
+    document.getElementById("input-url").value = "";
+    document.getElementById("input-name").value = "";
+    document.getElementById("previewArea").classList.remove("visible");
+    pendingSrc = "";
+    render();
+    await save();
+  }
+
+  // ── Full image overlay ──────────────────────────────────────
+  function openOverlay(src) {
+    document.getElementById("overlayImg").src = src;
+    document.getElementById("imgOverlay").classList.add("open");
     document.body.style.overflow = "hidden";
   }
-  function closeThumbPreview() {
-    document.getElementById("thumbPreview").classList.remove("open");
+  function closeOverlay() {
+    document.getElementById("imgOverlay").classList.remove("open");
     document.body.style.overflow = "";
   }
+
+  // ── Render list ─────────────────────────────────────────────
+  function truncUrl(u) { return u.length <= 46 ? u : u.slice(0,24) + "…" + u.slice(-16); }
 
   function render() {
     var list = document.getElementById("photo-list");
     list.innerHTML = "";
-    if (photos.length === 0) { list.innerHTML = '<div class="empty-state">No photos yet — paste a URL above.</div>'; return; }
+    if (photos.length === 0) { list.innerHTML = '<div class="empty-state">No photos yet.</div>'; return; }
     photos.forEach(function(p, i) {
       var item = document.createElement("div");
       item.className = "photo-item";
       item.draggable = true;
-
       var nameHtml = p.name ? '<div class="photo-name">' + p.name + '</div>' : '';
-
       item.innerHTML =
         '<span class="drag-handle">⠿</span>' +
-        '<img class="photo-thumb" src="' + p.src + '" onerror="this.outerHTML=\'<div class=&quot;photo-thumb-err&quot; onclick=&quot;openThumbPreview(\\&quot;' + p.src + '\\&quot;)&quot;>❌</div>\'" alt="" onclick="openThumbPreview(\'' + p.src + '\')">' +
-        '<div class="photo-info">' +
-          '<div class="photo-num">PHOTO ' + (i+1) + '</div>' +
-          nameHtml +
-          '<div class="photo-url">' + truncUrl(p.src) + '</div>' +
-        '</div>' +
+        '<img class="photo-thumb" src="' + p.src + '" onerror="this.className=\'photo-thumb-err\';this.innerHTML=\'❌\'" alt="" onclick="openOverlay(\'' + p.src.replace(/'/g,"\\'") + '\')">' +
+        '<div class="photo-info"><div class="photo-num">PHOTO ' + (i+1) + '</div>' + nameHtml + '<div class="photo-url">' + truncUrl(p.src) + '</div></div>' +
         '<button class="btn-delete" onclick="removePhoto(' + i + ')">×</button>';
-
       item.addEventListener("dragstart", function(e) { dragSrcIndex = i; setTimeout(function(){ item.classList.add("dragging"); }, 0); });
       item.addEventListener("dragend",   function()  { item.classList.remove("dragging"); document.querySelectorAll(".photo-item").forEach(function(el){ el.classList.remove("drag-over"); }); });
       item.addEventListener("dragover",  function(e) { e.preventDefault(); item.classList.add("drag-over"); });
@@ -249,19 +280,6 @@
     });
   }
 
-  async function addPhoto() {
-    var nameInp = document.getElementById("input-name");
-    var urlInp  = document.getElementById("input-url");
-    var src  = urlInp.value.trim();
-    var name = nameInp.value.trim();
-    if (!src) { alert("Paste an image URL first."); return; }
-    for (var j=0; j<photos.length; j++) { if (photos[j].src===src) { alert("Already in gallery."); return; } }
-    photos.push({ src: src, name: name });
-    urlInp.value = ""; nameInp.value = "";
-    render();
-    await save();
-  }
-
   async function removePhoto(index) {
     if (!confirm("Remove photo " + (index+1) + (photos[index].name ? ' "' + photos[index].name + '"' : "") + "?")) return;
     photos.splice(index, 1);
@@ -269,13 +287,14 @@
     await save();
   }
 
+  // ── Generate & Copy ─────────────────────────────────────────
   function generateAndCopy() {
     if (photos.length === 0) { alert("Add at least one photo first."); return; }
     var arr = photos.map(function(p){ return '    { src: "' + p.src + '" }'; }).join(",\n");
     var code = '<!--\n  RICK PARMA \u2014 Photo Gallery\n  Paste into Bandzoogle HTML section.\n-->\n\n<style>\n  #rp-photo-section{background:rgba(13,5,5,0.5);padding:16px 16px 24px;font-family:Arial,Helvetica,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}\n  #rp-photo-section *{box-sizing:border-box}\n  .rpp-section-title{font-size:33px;font-weight:900;color:#fff;margin:0 0 12px;text-transform:uppercase;letter-spacing:.04em;text-align:center}\n  .rpp-carousel-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);margin:0 0 10px}\n  .rpp-carousel{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:4px 2px 10px}\n  .rpp-carousel::-webkit-scrollbar{display:none}\n  .rpp-thumb{flex:0 0 calc(50% - 5px);scroll-snap-align:start;cursor:pointer;border-radius:6px;overflow:hidden;background:#1a0808;border:1.5px solid transparent;transition:border-color .2s,transform .15s;-webkit-tap-highlight-color:transparent}\n  .rpp-thumb:active{transform:scale(.97)}\n  .rpp-thumb:hover{border-color:rgba(141,178,229,.4)}\n  .rpp-thumb-img-wrap{position:relative;width:100%;aspect-ratio:3/4;background:#2a1010;overflow:hidden}\n  .rpp-thumb-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}\n  .rpp-thumb:hover .rpp-thumb-img-wrap img{transform:scale(1.06)}\n  .rpp-dots{display:flex;justify-content:center;gap:6px;margin-top:4px}\n  .rpp-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.2);transition:background .2s,transform .2s;cursor:pointer}\n  .rpp-dot.active{background:#8DB2E5;transform:scale(1.3)}\n  .rpp-lightbox{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.93);align-items:center;justify-content:center;padding:16px}\n  .rpp-lightbox.open{display:flex}\n  .rpp-lb-inner{position:relative;max-width:92vw;max-height:92vh}\n  .rpp-lb-inner img{max-width:100%;max-height:90vh;object-fit:contain;border-radius:6px;box-shadow:0 16px 80px rgba(0,0,0,.9);display:block}\n  .rpp-lb-close{position:absolute;top:-13px;right:-13px;width:28px;height:28px;background:#8DB2E5;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:#0d0505;font-weight:900;z-index:10}\n  .rpp-lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;background:rgba(0,0,0,.55);border:1px solid rgba(141,178,229,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}\n  .rpp-lb-nav svg{width:15px;height:15px;stroke:#8DB2E5;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}\n  .rpp-lb-prev{left:-52px}.rpp-lb-next{right:-52px}\n  @media(max-width:500px){.rpp-lb-prev{left:-36px}.rpp-lb-next{right:-36px}}\n</style>\n\n<div id="rp-photo-section">\n  <h2 class="rpp-section-title">Photo Gallery</h2>\n  <p class="rpp-carousel-label">Swipe to browse \u2014 tap to view</p>\n  <div class="rpp-carousel" id="rpp-grid"></div>\n  <div class="rpp-dots" id="rpp-dots"></div>\n</div>\n\n<script>\n(function(){\n  var photos=[\n' + arr + '\n  ];\n  var grid=document.getElementById("rpp-grid"),dots=document.getElementById("rpp-dots");\n  window.rppCurrent=0;\n  photos.forEach(function(p,i){\n    var c=document.createElement("div");c.className="rpp-thumb";c.setAttribute("role","button");c.setAttribute("tabindex","0");\n    c.innerHTML=\'<div class="rpp-thumb-img-wrap"><img src="\'+p.src+\'" loading="lazy"></div>\';\n    c.addEventListener("click",function(){rppOpenLightbox(i);});\n    c.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();rppOpenLightbox(i);}});\n    grid.appendChild(c);\n    var d=document.createElement("div");d.className="rpp-dot"+(i===0?" active":"");\n    d.addEventListener("click",function(){grid.querySelectorAll(".rpp-thumb")[i].scrollIntoView({behavior:"smooth",block:"nearest",inline:"start"});});\n    dots.appendChild(d);\n  });\n  grid.addEventListener("scroll",function(){\n    var cs=grid.querySelectorAll(".rpp-thumb"),ds=dots.querySelectorAll(".rpp-dot"),cl=0,md=Infinity;\n    cs.forEach(function(c,i){var d=Math.abs(c.offsetLeft-grid.scrollLeft);if(d<md){md=d;cl=i;}});\n    ds.forEach(function(d,i){d.classList.toggle("active",i===cl);});\n  });\n  var lb=document.createElement("div");lb.className="rpp-lightbox";\n  lb.innerHTML=\'<div class="rpp-lb-inner"><div class="rpp-lb-close" id="rpp-lb-close">\u2715</div><img id="rpp-lb-img" src="" alt=""><button class="rpp-lb-nav rpp-lb-prev" id="rpp-lb-prev"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="rpp-lb-nav rpp-lb-next" id="rpp-lb-next"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button></div>\';\n  document.body.appendChild(lb);\n  document.getElementById("rpp-lb-close").addEventListener("click",function(){lb.classList.remove("open");document.body.style.overflow="";});\n  document.getElementById("rpp-lb-prev").addEventListener("click",function(){window.rppCurrent=(window.rppCurrent-1+photos.length)%photos.length;document.getElementById("rpp-lb-img").src=photos[window.rppCurrent].src;});\n  document.getElementById("rpp-lb-next").addEventListener("click",function(){window.rppCurrent=(window.rppCurrent+1)%photos.length;document.getElementById("rpp-lb-img").src=photos[window.rppCurrent].src;});\n  lb.addEventListener("click",function(e){if(e.target===lb){lb.classList.remove("open");document.body.style.overflow="";}});\n  window.rppOpenLightbox=function(i){window.rppCurrent=i;document.getElementById("rpp-lb-img").src=photos[i].src;lb.classList.add("open");document.body.style.overflow="hidden";};\n  document.addEventListener("keydown",function(e){var o=lb.classList.contains("open");if(e.key==="ArrowLeft"&&o)document.getElementById("rpp-lb-prev").click();if(e.key==="ArrowRight"&&o)document.getElementById("rpp-lb-next").click();if(e.key==="Escape"&&o){lb.classList.remove("open");document.body.style.overflow="";}});\n  var lbTouchX=0;\n  lb.addEventListener("touchstart",function(e){lbTouchX=e.touches[0].clientX;},{passive:true});\n  lb.addEventListener("touchend",function(e){var dx=e.changedTouches[0].clientX-lbTouchX;if(Math.abs(dx)>40){if(dx<0)document.getElementById("rpp-lb-next").click();else document.getElementById("rpp-lb-prev").click();}});\n})();\n<\/script>';
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(code).then(function() { showConfirm(); }).catch(function(){ fallbackCopy(code); });
+      navigator.clipboard.writeText(code).then(showConfirm).catch(function(){ fallbackCopy(code); });
     } else { fallbackCopy(code); }
   }
 
@@ -293,15 +312,17 @@
     setTimeout(function(){ c.textContent = ""; }, 3000);
   }
 
+  // ── Keyboard shortcuts ──────────────────────────────────────
+  document.getElementById("input-url").addEventListener("keydown", function(e){ if(e.key==="Enter") loadPreview(); });
+  document.getElementById("input-name").addEventListener("keydown", function(e){ if(e.key==="Enter") savePhoto(); });
+
+  // ── Init ────────────────────────────────────────────────────
   setSyncStatus("syncing", "Loading…");
   load().then(function() {
     document.getElementById("loadingScreen").style.display = "none";
     document.getElementById("appWrap").style.display = "block";
     render();
   });
-
-  document.getElementById("input-url").addEventListener("keydown", function(e){ if(e.key==="Enter") addPhoto(); });
-  document.getElementById("input-name").addEventListener("keydown", function(e){ if(e.key==="Enter") document.getElementById("input-url").focus(); });
 </script>
 </body>
 </html>
