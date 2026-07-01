@@ -17,10 +17,42 @@
   }
   html, body { height:100%; background:var(--bg); color:var(--text); font-family:Arial,Helvetica,sans-serif; overscroll-behavior:none; }
   .app { display:flex; flex-direction:column; height:100dvh; max-width:480px; margin:0 auto; }
+
+  /* ── Header ── */
   .header { padding:16px 16px 12px; padding-top:max(env(safe-area-inset-top),16px); background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
   .header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
   .app-title { font-size:11px; font-weight:900; letter-spacing:0.18em; text-transform:uppercase; color:var(--blue); }
+  .header-right { display:flex; align-items:center; gap:10px; }
   .count-badge { font-size:11px; color:var(--text-dim); letter-spacing:0.08em; }
+
+  /* ── Sync indicator ── */
+  .sync-indicator { display:flex; align-items:center; gap:5px; cursor:pointer; -webkit-tap-highlight-color:transparent; padding:4px 0; }
+  .sync-dot { width:8px; height:8px; border-radius:50%; background:var(--text-dim); flex-shrink:0; transition:background 0.3s; }
+  .sync-dot.synced  { background:var(--green); }
+  .sync-dot.syncing { background:var(--blue); animation:pulse 1s ease-in-out infinite; }
+  .sync-dot.error   { background:var(--red); }
+  .sync-label { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-dim); transition:color 0.3s; }
+  .sync-label.synced  { color:var(--green); }
+  .sync-label.syncing { color:var(--blue); }
+  .sync-label.error   { color:var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── GitHub token modal ── */
+  .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:300; display:none; align-items:center; justify-content:center; padding:24px; }
+  .modal-backdrop.open { display:flex; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; width:100%; max-width:400px; }
+  .modal h3 { font-size:13px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; color:var(--blue); margin-bottom:8px; }
+  .modal p { font-size:12px; color:var(--text-dim); line-height:1.6; margin-bottom:16px; }
+  .modal p a { color:var(--blue); }
+  .modal-input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:13px; color:var(--text); outline:none; margin-bottom:8px; font-family:monospace; }
+  .modal-input:focus { border-color:var(--blue-border); }
+  .modal-input-label { font-size:11px; color:var(--text-dim); letter-spacing:0.08em; margin-bottom:6px; display:block; }
+  .modal-actions { display:flex; gap:8px; margin-top:16px; }
+  .modal-save { flex:1; background:var(--blue); color:#0d0505; border:none; border-radius:8px; padding:12px; font-size:13px; font-weight:900; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; }
+  .modal-cancel { background:var(--surface2); color:var(--text-dim); border:1px solid var(--border); border-radius:8px; padding:12px 16px; font-size:13px; cursor:pointer; }
+  .modal-note { font-size:11px; color:var(--text-dim); margin-top:12px; line-height:1.5; }
+
+  /* ── Input ── */
   .input-row { display:flex; gap:8px; }
   .url-input { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:13px; color:var(--text); outline:none; min-width:0; transition:border-color 0.2s; }
   .url-input::placeholder { color:var(--text-dim); }
@@ -33,6 +65,8 @@
   .resolving { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--blue); padding:6px 0 0; min-height:20px; }
   .spinner { width:12px; height:12px; border:2px solid var(--blue-border); border-top-color:var(--blue); border-radius:50%; animation:spin 0.7s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* ── List ── */
   .list-wrap { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:10px 16px; }
   .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:10px; color:var(--text-dim); text-align:center; }
   .empty-state .icon { font-size:40px; opacity:0.3; }
@@ -49,14 +83,20 @@
   .icon-btn:active { background:var(--border); }
   .icon-btn.del:active { background:rgba(224,85,85,0.2); border-color:var(--red); color:var(--red); }
   .drag-handle { cursor:grab; color:var(--text-dim); font-size:16px; padding:0 2px; flex-shrink:0; }
+
+  /* ── Footer ── */
   .footer { padding:12px 16px; padding-bottom:max(env(safe-area-inset-bottom),12px); background:var(--surface); border-top:1px solid var(--border); display:flex; gap:8px; flex-shrink:0; }
   .copy-btn { flex:1; background:var(--blue); color:#0d0505; border:none; border-radius:8px; padding:13px; font-size:13px; font-weight:900; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; transition:background 0.15s,transform 0.1s; -webkit-tap-highlight-color:transparent; }
   .copy-btn:active { transform:scale(0.97); background:#aecbf0; }
   .copy-btn:disabled { opacity:0.35; cursor:default; }
   .clear-btn { background:var(--surface2); color:var(--red); border:1px solid var(--border); border-radius:8px; padding:13px 14px; font-size:13px; cursor:pointer; -webkit-tap-highlight-color:transparent; flex-shrink:0; }
   .clear-btn:active { background:rgba(224,85,85,0.15); }
+
+  /* ── Toast ── */
   .toast { position:fixed; bottom:90px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--blue); color:#0d0505; font-size:13px; font-weight:700; padding:10px 20px; border-radius:20px; opacity:0; transition:opacity 0.25s,transform 0.25s; pointer-events:none; white-space:nowrap; z-index:100; }
   .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ── Loading ── */
   .loading-screen { position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; z-index:200; }
   .loading-screen .spinner { width:24px; height:24px; border-width:3px; }
   .loading-screen p { font-size:11px; color:var(--text-dim); letter-spacing:0.12em; text-transform:uppercase; }
@@ -64,17 +104,41 @@
 </head>
 <body>
 
-<!-- Loading screen shown while storage loads -->
 <div class="loading-screen" id="loadingScreen">
   <div class="spinner"></div>
   <p>Loading gallery…</p>
+</div>
+
+<!-- GitHub Token Modal -->
+<div class="modal-backdrop" id="tokenModal">
+  <div class="modal">
+    <h3>Connect to GitHub</h3>
+    <p>Your photo list will be saved to a private GitHub Gist so it syncs across all your devices.</p>
+    <label class="modal-input-label">GitHub Personal Access Token</label>
+    <input class="modal-input" id="tokenInput" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+    <label class="modal-input-label" style="margin-top:10px">Gist ID <span style="font-size:10px;opacity:0.6">(leave blank to create a new one)</span></label>
+    <input class="modal-input" id="gistIdInput" type="text" placeholder="e.g. a1b2c3d4e5f6..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+    <div class="modal-actions">
+      <button class="modal-cancel" id="modalCancel">Cancel</button>
+      <button class="modal-save" id="modalSave">Save &amp; Sync</button>
+    </div>
+    <p class="modal-note">
+      To get a token: github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token → check <strong>gist</strong> scope only.
+    </p>
+  </div>
 </div>
 
 <div class="app" id="appWrap" style="display:none">
   <div class="header">
     <div class="header-top">
       <div class="app-title">📷 Photo Gallery Manager</div>
-      <div class="count-badge" id="countBadge">0 photos</div>
+      <div class="header-right">
+        <div class="count-badge" id="countBadge">0 photos</div>
+        <div class="sync-indicator" id="syncIndicator" title="GitHub sync">
+          <div class="sync-dot" id="syncDot"></div>
+          <span class="sync-label" id="syncLabel">Sync</span>
+        </div>
+      </div>
     </div>
     <div class="input-row">
       <input class="url-input" id="urlInput" type="url" inputmode="url" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Paste any Google Photos or image URL…">
@@ -84,6 +148,7 @@
       <div class="status info">Paste a URL above and tap +</div>
     </div>
   </div>
+
   <div class="list-wrap">
     <div class="empty-state" id="emptyState">
       <div class="icon">🖼️</div>
@@ -91,6 +156,7 @@
     </div>
     <div id="photoList"></div>
   </div>
+
   <div class="footer">
     <button class="copy-btn" id="copyBtn" disabled>Copy Embed Code</button>
     <button class="clear-btn" id="clearBtn">🗑</button>
@@ -102,10 +168,11 @@
 <script>
 (function() {
 
-  var STORAGE_KEY = "rp_photos";
+  // ── State ──────────────────────────────────────────────────
   var photos = [];
   var dragSrcIndex = null;
   var isResolving = false;
+  var GIST_FILENAME = "rp-photos.json";
 
   var DEFAULT_PHOTOS = [
     { src: "https://lh3.googleusercontent.com/pw/AP1GczO7q7dLOV28_wXU0ZWRvk6D8VaZFvYcZ9UpuTkudqZz_yAi5omxK9tJwxaQP3us0qhWgDu9i8rT_i7i8_rEbaKTUO91OTJfr2A1Rw5Ltw4FRoMdTGw" },
@@ -114,29 +181,147 @@
     { src: "https://lh3.googleusercontent.com/pw/AP1GczNhfd5ho6lxmlXh-OiX04DqqASSzaeq8J4XVmKEeIfM1dztDLIWJDXiE6xrGQrQ2TkbXbqFeA5uUmCXSPCZsYurUs0WRiy-91degrb6FxMEBK3Q0E4" }
   ];
 
-  // ── Artifact persistent storage ────────────────────────────
-  async function storageGet(key) {
+  // ── GitHub credentials (localStorage — device-persisted) ───
+  function getToken()  { return localStorage.getItem("rp_gh_token") || ""; }
+  function getGistId() { return localStorage.getItem("rp_gh_gist_id") || ""; }
+  function setToken(t)  { localStorage.setItem("rp_gh_token", t); }
+  function setGistId(g) { localStorage.setItem("rp_gh_gist_id", g); }
+
+  // ── Sync indicator ─────────────────────────────────────────
+  function setSyncState(state, label) {
+    // state: "idle" | "syncing" | "synced" | "error" | "no-token"
+    var dot   = document.getElementById("syncDot");
+    var lbl   = document.getElementById("syncLabel");
+    dot.className = "sync-dot" + (state === "synced" ? " synced" : state === "syncing" ? " syncing" : state === "error" ? " error" : "");
+    lbl.className = "sync-label" + (state === "synced" ? " synced" : state === "syncing" ? " syncing" : state === "error" ? " error" : "");
+    lbl.textContent = label || (state === "synced" ? "Synced ✓" : state === "syncing" ? "Syncing…" : state === "error" ? "Sync error" : state === "no-token" ? "Set up sync" : "Sync");
+  }
+
+  // ── GitHub Gist API ────────────────────────────────────────
+  async function gistLoad() {
+    var token  = getToken();
+    var gistId = getGistId();
+    if (!token) { setSyncState("no-token", "Set up sync"); return null; }
+    if (!gistId) return null; // will create on first save
+
+    setSyncState("syncing", "Loading…");
     try {
-      var result = await window.storage.get(key);
-      return result ? JSON.parse(result.value) : null;
-    } catch(e) { return null; }
-  }
-
-  async function storageSet(key, val) {
-    try { await window.storage.set(key, JSON.stringify(val)); } catch(e) {}
-  }
-
-  async function save() { await storageSet(STORAGE_KEY, photos); }
-
-  async function load() {
-    var saved = await storageGet(STORAGE_KEY);
-    if (saved && Array.isArray(saved) && saved.length > 0) {
-      photos = saved;
-    } else {
-      photos = DEFAULT_PHOTOS.slice();
-      await save();
+      var r = await fetch("https://api.github.com/gists/" + gistId, {
+        headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json" }
+      });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      var data = await r.json();
+      var file = data.files && data.files[GIST_FILENAME];
+      if (!file) { setSyncState("error", "File missing"); return null; }
+      var parsed = JSON.parse(file.content);
+      setSyncState("synced");
+      return Array.isArray(parsed) ? parsed : null;
+    } catch(e) {
+      setSyncState("error", "Load failed");
+      return null;
     }
   }
+
+  async function gistSave(photosToSave) {
+    var token  = getToken();
+    var gistId = getGistId();
+    if (!token) { setSyncState("no-token", "Set up sync"); return; }
+
+    setSyncState("syncing", "Saving…");
+    var body = {
+      description: "Rick Parma Photo Manager data",
+      public: false,
+      files: { [GIST_FILENAME]: { content: JSON.stringify(photosToSave, null, 2) } }
+    };
+
+    try {
+      var url    = gistId ? "https://api.github.com/gists/" + gistId : "https://api.github.com/gists";
+      var method = gistId ? "PATCH" : "POST";
+      var r = await fetch(url, {
+        method: method,
+        headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json", "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      var data = await r.json();
+      if (!gistId) { setGistId(data.id); } // save new gist ID
+      setSyncState("synced");
+    } catch(e) {
+      setSyncState("error", "Save failed");
+    }
+  }
+
+  // ── Fallback: localStorage ─────────────────────────────────
+  function localSave(p) { try { localStorage.setItem("rp_photos", JSON.stringify(p)); } catch(e) {} }
+  function localLoad()  { try { var v = localStorage.getItem("rp_photos"); return v ? JSON.parse(v) : null; } catch(e) { return null; } }
+
+  // ── Load on startup ────────────────────────────────────────
+  async function load() {
+    var remote = await gistLoad();
+    if (remote && remote.length > 0) {
+      photos = remote;
+      localSave(photos); // keep local copy in sync
+      return;
+    }
+    // Fall back to localStorage
+    var local = localLoad();
+    if (local && local.length > 0) {
+      photos = local;
+      // If we have a token, push local data up to gist
+      if (getToken()) await gistSave(photos);
+      return;
+    }
+    // Fresh start — load defaults
+    photos = DEFAULT_PHOTOS.slice();
+    localSave(photos);
+    if (getToken()) await gistSave(photos);
+  }
+
+  // ── Save (gist + local) ────────────────────────────────────
+  async function save() {
+    localSave(photos);
+    await gistSave(photos);
+  }
+
+  // ── Token modal ────────────────────────────────────────────
+  function openTokenModal() {
+    document.getElementById("tokenInput").value  = getToken();
+    document.getElementById("gistIdInput").value = getGistId();
+    document.getElementById("tokenModal").classList.add("open");
+    setTimeout(function(){ document.getElementById("tokenInput").focus(); }, 100);
+  }
+  function closeTokenModal() {
+    document.getElementById("tokenModal").classList.remove("open");
+  }
+
+  document.getElementById("syncIndicator").addEventListener("click", openTokenModal);
+  document.getElementById("modalCancel").addEventListener("click", closeTokenModal);
+  document.getElementById("tokenModal").addEventListener("click", function(e) {
+    if (e.target === this) closeTokenModal();
+  });
+
+  document.getElementById("modalSave").addEventListener("click", async function() {
+    var token  = document.getElementById("tokenInput").value.trim();
+    var gistId = document.getElementById("gistIdInput").value.trim();
+    if (!token) { showToast("Paste a GitHub token first"); return; }
+    setToken(token);
+    setGistId(gistId);
+    closeTokenModal();
+    // If gist ID provided, try loading from it first
+    if (gistId) {
+      var remote = await gistLoad();
+      if (remote && remote.length > 0) {
+        photos = remote;
+        localSave(photos);
+        render();
+        showToast("Loaded " + photos.length + " photos from GitHub ✓");
+        return;
+      }
+    }
+    // Otherwise push current photos up
+    await gistSave(photos);
+    showToast("Saved to GitHub ✓");
+  });
 
   // ── URL resolver ───────────────────────────────────────────
   function resolveUrl(raw, callback) {
@@ -153,7 +338,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-6",
           max_tokens: 300,
           messages: [{ role: "user", content: "Fetch this Google Photos share URL and return ONLY the og:image URL from the page metadata, nothing else, no explanation: " + raw }],
           tools: [{ type: "web_search_20250305", name: "web_search" }]
@@ -188,7 +373,7 @@
 
   // ── Render ─────────────────────────────────────────────────
   function render() {
-    var list = document.getElementById("photoList");
+    var list  = document.getElementById("photoList");
     var empty = document.getElementById("emptyState");
     document.getElementById("copyBtn").disabled = photos.length === 0;
     document.getElementById("countBadge").textContent = photos.length + (photos.length === 1 ? " photo" : " photos");
@@ -221,7 +406,7 @@
         };
       });
 
-      item.addEventListener("dragstart", function(e) { dragSrcIndex = i; e.dataTransfer.effectAllowed = "move"; setTimeout(function(){ item.style.opacity="0.4"; }, 0); });
+      item.addEventListener("dragstart", function(e) { dragSrcIndex = i; e.dataTransfer.effectAllowed = "move"; setTimeout(function(){ item.style.opacity="0.4"; },0); });
       item.addEventListener("dragend",   function() { item.style.opacity=""; document.querySelectorAll(".photo-item").forEach(function(el){ el.classList.remove("drag-over"); }); });
       item.addEventListener("dragover",  function(e) { e.preventDefault(); document.querySelectorAll(".photo-item").forEach(function(el){ el.classList.remove("drag-over"); }); item.classList.add("drag-over"); });
       item.addEventListener("drop",      async function(e) { e.preventDefault(); if (dragSrcIndex !== null && dragSrcIndex !== i) { var m = photos.splice(dragSrcIndex,1)[0]; photos.splice(i,0,m); dragSrcIndex=null; await save(); render(); } });
@@ -233,7 +418,7 @@
   function truncUrl(u) { return u.length <= 52 ? u : u.slice(0,28) + "…" + u.slice(-18); }
   function escHtml(s) { return s.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
-  // ── Add photo ───────────────────────────────────────────────
+  // ── Add photo ──────────────────────────────────────────────
   async function addPhoto() {
     if (isResolving) return;
     var raw = document.getElementById("urlInput").value.trim();
@@ -257,7 +442,7 @@
     }
   }
 
-  // ── Generate embed ──────────────────────────────────────────
+  // ── Generate embed ─────────────────────────────────────────
   function generateEmbed() {
     var arr = photos.map(function(p){ return '    { src: "' + p.src + '" }'; }).join(",\n");
     return '<!--\n  RICK PARMA \u2014 Photo Gallery\n  Paste into Bandzoogle HTML section.\n-->\n\n<style>\n  #rp-photo-section{background:rgba(13,5,5,0.5);padding:16px 16px 24px;font-family:Arial,Helvetica,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}\n  #rp-photo-section *{box-sizing:border-box}\n  .rpp-section-title{font-size:33px;font-weight:900;color:#fff;margin:0 0 12px;text-transform:uppercase;letter-spacing:.04em;text-align:center}\n  .rpp-carousel-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);margin:0 0 10px}\n  .rpp-carousel{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:4px 2px 10px}\n  .rpp-carousel::-webkit-scrollbar{display:none}\n  .rpp-thumb{flex:0 0 calc(50% - 5px);scroll-snap-align:start;cursor:pointer;border-radius:6px;overflow:hidden;background:#1a0808;border:1.5px solid transparent;transition:border-color .2s,transform .15s;-webkit-tap-highlight-color:transparent}\n  .rpp-thumb:active{transform:scale(.97)}\n  .rpp-thumb:hover{border-color:rgba(141,178,229,.4)}\n  .rpp-thumb-img-wrap{position:relative;width:100%;aspect-ratio:3/4;background:#2a1010;overflow:hidden}\n  .rpp-thumb-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}\n  .rpp-thumb:hover .rpp-thumb-img-wrap img{transform:scale(1.06)}\n  .rpp-dots{display:flex;justify-content:center;gap:6px;margin-top:4px}\n  .rpp-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.2);transition:background .2s,transform .2s;cursor:pointer}\n  .rpp-dot.active{background:#8DB2E5;transform:scale(1.3)}\n  .rpp-lightbox{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.93);align-items:center;justify-content:center;padding:16px}\n  .rpp-lightbox.open{display:flex}\n  .rpp-lb-inner{position:relative;max-width:92vw;max-height:92vh}\n  .rpp-lb-inner img{max-width:100%;max-height:90vh;object-fit:contain;border-radius:6px;box-shadow:0 16px 80px rgba(0,0,0,.9);display:block}\n  .rpp-lb-close{position:absolute;top:-13px;right:-13px;width:28px;height:28px;background:#8DB2E5;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:#0d0505;font-weight:900;z-index:10}\n  .rpp-lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;background:rgba(0,0,0,.55);border:1px solid rgba(141,178,229,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}\n  .rpp-lb-nav svg{width:15px;height:15px;stroke:#8DB2E5;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}\n  .rpp-lb-prev{left:-52px}.rpp-lb-next{right:-52px}\n  @media(max-width:500px){.rpp-lb-prev{left:-36px}.rpp-lb-next{right:-36px}}\n</style>\n\n<div id="rp-photo-section">\n  <h2 class="rpp-section-title">Photo Gallery</h2>\n  <p class="rpp-carousel-label">Swipe to browse \u2014 tap to view</p>\n  <div class="rpp-carousel" id="rpp-grid"></div>\n  <div class="rpp-dots" id="rpp-dots"></div>\n</div>\n\n<script>\n(function(){\n  var photos=[\n' + arr + '\n  ];\n  var grid=document.getElementById("rpp-grid"),dots=document.getElementById("rpp-dots");\n  window.rppCurrent=0;\n  photos.forEach(function(p,i){\n    var c=document.createElement("div");c.className="rpp-thumb";c.setAttribute("role","button");c.setAttribute("tabindex","0");\n    c.innerHTML=\'<div class="rpp-thumb-img-wrap"><img src="\'+p.src+\'" loading="lazy"></div>\';\n    c.addEventListener("click",function(){rppOpenLightbox(i);});\n    c.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();rppOpenLightbox(i);}});\n    grid.appendChild(c);\n    var d=document.createElement("div");d.className="rpp-dot"+(i===0?" active":"");\n    d.addEventListener("click",function(){grid.querySelectorAll(".rpp-thumb")[i].scrollIntoView({behavior:"smooth",block:"nearest",inline:"start"});});\n    dots.appendChild(d);\n  });\n  grid.addEventListener("scroll",function(){\n    var cs=grid.querySelectorAll(".rpp-thumb"),ds=dots.querySelectorAll(".rpp-dot"),cl=0,md=Infinity;\n    cs.forEach(function(c,i){var d=Math.abs(c.offsetLeft-grid.scrollLeft);if(d<md){md=d;cl=i;}});\n    ds.forEach(function(d,i){d.classList.toggle("active",i===cl);});\n  });\n  var lb=document.createElement("div");lb.className="rpp-lightbox";\n  lb.innerHTML=\'<div class="rpp-lb-inner"><div class="rpp-lb-close" id="rpp-lb-close">\u2715</div><img id="rpp-lb-img" src="" alt=""><button class="rpp-lb-nav rpp-lb-prev" id="rpp-lb-prev"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="rpp-lb-nav rpp-lb-next" id="rpp-lb-next"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button></div>\';\n  document.body.appendChild(lb);\n  document.getElementById("rpp-lb-close").addEventListener("click",function(){lb.classList.remove("open");document.body.style.overflow="";});\n  document.getElementById("rpp-lb-prev").addEventListener("click",function(){window.rppCurrent=(window.rppCurrent-1+photos.length)%photos.length;document.getElementById("rpp-lb-img").src=photos[window.rppCurrent].src;});\n  document.getElementById("rpp-lb-next").addEventListener("click",function(){window.rppCurrent=(window.rppCurrent+1)%photos.length;document.getElementById("rpp-lb-img").src=photos[window.rppCurrent].src;});\n  lb.addEventListener("click",function(e){if(e.target===lb){lb.classList.remove("open");document.body.style.overflow="";}});\n  window.rppOpenLightbox=function(i){window.rppCurrent=i;document.getElementById("rpp-lb-img").src=photos[i].src;lb.classList.add("open");document.body.style.overflow="hidden";};\n  document.addEventListener("keydown",function(e){var o=lb.classList.contains("open");if(e.key==="ArrowLeft"&&o)document.getElementById("rpp-lb-prev").click();if(e.key==="ArrowRight"&&o)document.getElementById("rpp-lb-next").click();if(e.key==="Escape"&&o){lb.classList.remove("open");document.body.style.overflow="";}});\n  var lbTouchX=0;\n  lb.addEventListener("touchstart",function(e){lbTouchX=e.touches[0].clientX;},{passive:true});\n  lb.addEventListener("touchend",function(e){var dx=e.changedTouches[0].clientX-lbTouchX;if(Math.abs(dx)>40){if(dx<0)document.getElementById("rpp-lb-next").click();else document.getElementById("rpp-lb-prev").click();}});\n})();\n<\/script>';
