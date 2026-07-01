@@ -98,8 +98,9 @@
 
 <script>
   var BIN_API_KEY = "$2a$10$AE8jTzF3OJJNfqTgYPcPK.SzVAdv0Mqi/obwqWTuQjpE0dOkYkCE.";
+  var BIN_ID_VIDEO = "6a29c91ff5f4af5e29dab8de"; // video bin (read only reference)
   var BIN_BASE    = "https://api.jsonbin.io/v3";
-  var BIN_ID      = "6862c4f48960c979a59a7f3e";
+  var BIN_ID = localStorage.getItem("rp_photos_bin_id") || "";
 
   var DEFAULT_PHOTOS = [
     { src: "https://lh3.googleusercontent.com/pw/AP1GczO7q7dLOV28_wXU0ZWRvk6D8VaZFvYcZ9UpuTkudqZz_yAi5omxK9tJwxaQP3us0qhWgDu9i8rT_i7i8_rEbaKTUO91OTJfr2A1Rw5Ltw4FRoMdTGw" },
@@ -117,22 +118,43 @@
     document.getElementById("syncLabel").textContent = label;
   }
 
+  async function createBin(initial) {
+    var res = await fetch(BIN_BASE + "/b", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Master-Key": BIN_API_KEY,
+        "X-Bin-Name": "rp-photos",
+        "X-Bin-Private": "true"
+      },
+      body: JSON.stringify({ photos: initial })
+    });
+    if (!res.ok) throw new Error("Could not create bin");
+    var data = await res.json();
+    BIN_ID = data.metadata.id;
+    localStorage.setItem("rp_photos_bin_id", BIN_ID);
+    photos = initial;
+    setSyncStatus("synced", "Ready ✓");
+  }
+
   async function load() {
     try {
-      var res = await fetch(BIN_BASE + "/b/" + BIN_ID + "/latest", {
-        headers: { "X-Master-Key": BIN_API_KEY }
-      });
-      if (res.ok) {
-        var data = await res.json();
-        photos = data.record.photos || [];
-        if (photos.length === 0) {
-          photos = DEFAULT_PHOTOS.slice();
-          await save();
+      if (BIN_ID) {
+        var res = await fetch(BIN_BASE + "/b/" + BIN_ID + "/latest", {
+          headers: { "X-Master-Key": BIN_API_KEY }
+        });
+        if (res.ok) {
+          var data = await res.json();
+          photos = data.record.photos || [];
+          if (photos.length === 0) {
+            photos = DEFAULT_PHOTOS.slice();
+            await save();
+          }
+          setSyncStatus("synced", "Synced ✓");
+          return;
         }
-        setSyncStatus("synced", "Synced ✓");
-      } else {
-        throw new Error("Load failed");
       }
+      await createBin(DEFAULT_PHOTOS);
     } catch(e) {
       photos = DEFAULT_PHOTOS.slice();
       setSyncStatus("error", "Load failed");
