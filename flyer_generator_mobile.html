@@ -138,7 +138,7 @@ html, body {
 }
 
 /* ── Inputs ── */
-input[type=text], input[type=date], input[type=url], input[type=password], textarea, select {
+input[type=text], input[type=date], input[type=url], textarea, select {
   width: 100%;
   background: rgba(13,10,26,0.8);
   border: 1px solid rgba(123,47,255,0.4);
@@ -274,50 +274,6 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
   background: linear-gradient(135deg,#e91e8c,#7b2fff);
   border-color: #e91e8c;
   color: #fff;
-}
-
-/* ── Direct image generation ── */
-.divider-or {
-  display: flex; align-items: center; gap: 12px;
-  margin: 22px 0; color: rgba(255,255,255,0.5);
-  font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
-}
-.divider-or::before, .divider-or::after {
-  content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.15);
-}
-.btn-secondary-gen {
-  width: 100%;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(0,168,255,0.5);
-  border-radius: 12px;
-  padding: 18px 20px;
-  color: #fff;
-  font-family: 'Inter', sans-serif;
-  font-size: 16px; font-weight: 700;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  -webkit-tap-highlight-color: transparent;
-  transition: all 0.2s;
-}
-.btn-secondary-gen:active { opacity: 0.8; }
-.btn-secondary-gen:disabled { opacity: 0.5; cursor: default; }
-.spin {
-  width: 18px; height: 18px; border-radius: 50%;
-  border: 2.5px solid rgba(255,255,255,0.3); border-top-color: #fff;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-#gen-image-wrap img {
-  width: 100%; display: block; border-radius: 10px;
-  border: 1px solid rgba(0,168,255,0.4);
-}
-.key-row { display: flex; gap: 8px; }
-.key-row input { flex: 1; }
-.key-save-btn {
-  flex-shrink: 0; background: linear-gradient(135deg,#00a8ff,#0060df);
-  border: none; border-radius: 8px; color: #fff; font-weight: 700;
-  font-size: 13px; padding: 0 16px; cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
 }
 </style>
 </head>
@@ -682,7 +638,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
       <!-- Slide 8: Generate -->
       <div class="slide" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;">
         <div class="step-title" style="margin-bottom:8px;">Generate</div>
-        <div style="font-size:14px;color:rgba(255,255,255,0.7);text-align:center;margin-bottom:32px;line-height:1.6;">Your prompt is ready. Copy it into any AI tool, or generate an image directly right here.</div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.7);text-align:center;margin-bottom:40px;line-height:1.6;">Your prompt is ready. Copy it and paste into your preferred AI image tool.</div>
 
         <div style="width:100%;display:flex;flex-direction:column;gap:16px;">
           <div>
@@ -693,38 +649,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
           </div>
         </div>
 
-        <div class="divider-or">Or</div>
-
-        <div style="width:100%;">
-          <div class="card" id="api-key-card">
-            <label class="lbl">Gemini API key</label>
-            <div class="key-row">
-              <input type="password" id="gemini-key" placeholder="Paste your key here" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
-              <button class="key-save-btn" onclick="saveGeminiKey()">Save</button>
-            </div>
-            <div class="hint" id="key-status">Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#00a8ff;font-weight:700;text-decoration:none;">aistudio.google.com</a>. Saved on this device only.</div>
-          </div>
-
-          <button id="gen-image-btn" class="btn-secondary-gen" onclick="generateImageDirect()">
-            <i class="ti ti-sparkles" style="font-size:20px;"></i> <span id="gen-image-label">Generate Image Directly</span>
-          </button>
-          <div style="font-size:12px;color:rgba(255,255,255,0.7);text-align:center;margin-top:8px;">Uses your Gemini key · ~$0.04 per image · no photo upload in this version</div>
-        </div>
-
         <div id="e6" style="display:none;font-size:13px;color:#e91e8c;margin-top:10px;padding:10px 13px;background:rgba(233,30,140,0.08);border:1px solid rgba(233,30,140,0.3);border-radius:8px;font-weight:500;">Please select a flyer size to continue.</div>
-
-        <div id="gen-image-error" style="display:none;width:100%;font-size:13px;color:#e91e8c;margin-top:14px;padding:10px 13px;background:rgba(233,30,140,0.08);border:1px solid rgba(233,30,140,0.3);border-radius:8px;font-weight:500;text-align:center;"></div>
-
-        <div id="gen-image-wrap" style="display:none;width:100%;margin-top:20px;">
-          <div class="out-card">
-            <div class="out-bar">
-              <div class="out-bar-title"><i class="ti ti-photo"></i> Generated Flyer</div>
-              <button class="copy-btn" onclick="downloadGenImage()"><i class="ti ti-download"></i> Save</button>
-            </div>
-            <div id="gen-image-inner" style="padding:12px;background:rgba(13,10,26,0.9);"></div>
-          </div>
-        </div>
-
         <div id="out-wrap" style="display:none;width:100%;margin-top:24px;text-align:center;">
           <div style="background:linear-gradient(135deg,rgba(233,30,140,0.15),rgba(123,47,255,0.15));border:1px solid rgba(233,30,140,0.4);border-radius:14px;padding:28px 20px;">
             <div style="width:56px;height:56px;background:linear-gradient(135deg,#e91e8c,#7b2fff);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 0 24px rgba(233,30,140,0.5);">
@@ -831,7 +756,6 @@ var PCT = 100 / TOTAL;
     hrs.forEach(function(h){ var o = document.createElement("option"); o.value = h; o.textContent = h; s.appendChild(o); });
   });
   addGuest();
-  loadGeminiKey();
 })();
 
 function addGuest(){
@@ -1176,135 +1100,8 @@ function copyP(){
   }
 }
 
-// ══════════ DIRECT IMAGE GENERATION (Gemini) ══════════
-var GEMINI_MODEL = "gemini-3.1-flash-image-preview";
-var lastGenImageDataUrl = null;
 
-function loadGeminiKey(){
-  try{
-    var k = localStorage.getItem("gfc_gemini_key");
-    if(k){
-      document.getElementById("gemini-key").value = k;
-      document.getElementById("key-status").innerHTML = "Key saved on this device. <a href='#' onclick='clearGeminiKey();return false;' style='color:#e91e8c;font-weight:700;text-decoration:none;'>Remove</a>";
-    }
-  }catch(e){}
-}
 
-function saveGeminiKey(){
-  var k = document.getElementById("gemini-key").value.trim();
-  if(!k) return;
-  try{
-    localStorage.setItem("gfc_gemini_key", k);
-    document.getElementById("key-status").innerHTML = "✓ Key saved on this device. <a href='#' onclick='clearGeminiKey();return false;' style='color:#e91e8c;font-weight:700;text-decoration:none;'>Remove</a>";
-  }catch(e){
-    document.getElementById("key-status").textContent = "Could not save key on this device — you'll need to re-enter it each visit.";
-  }
-}
-
-function clearGeminiKey(){
-  try{ localStorage.removeItem("gfc_gemini_key"); }catch(e){}
-  document.getElementById("gemini-key").value = "";
-  document.getElementById("key-status").innerHTML = "Get a free key at <a href='https://aistudio.google.com/app/apikey' target='_blank' style='color:#00a8ff;font-weight:700;text-decoration:none;'>aistudio.google.com</a>. Saved on this device only.";
-}
-
-function showGenImageError(msg){
-  var e = document.getElementById("gen-image-error");
-  e.textContent = msg;
-  e.style.display = "block";
-}
-
-async function generateImageDirect(){
-  var errBox = document.getElementById("gen-image-error");
-  errBox.style.display = "none";
-
-  if(!selSz){
-    var e6 = document.getElementById("e6");
-    if(e6) e6.style.display = "block";
-    return;
-  }
-
-  var key = v("gemini-key");
-  if(!key){
-    showGenImageError("Enter your Gemini API key above first.");
-    return;
-  }
-  saveGeminiKey();
-
-  var btn = document.getElementById("gen-image-btn");
-  var lbl = document.getElementById("gen-image-label");
-  btn.disabled = true;
-  var origLbl = lbl.textContent;
-  lbl.innerHTML = "";
-  var spinner = document.createElement("span");
-  spinner.className = "spin";
-  lbl.appendChild(spinner);
-  lbl.appendChild(document.createTextNode(" Generating..."));
-
-  document.getElementById("gen-image-wrap").style.display = "none";
-
-  try{
-    var prompt = buildPrompt();
-    var url = "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent";
-    var resp = await fetch(url, {
-      method: "POST",
-      headers: {
-        "x-goog-api-key": key,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
-      })
-    });
-
-    if(!resp.ok){
-      var errText = "";
-      try{ var errJson = await resp.json(); errText = (errJson.error && errJson.error.message) || resp.statusText; }
-      catch(e){ errText = resp.statusText; }
-      throw new Error("(" + resp.status + ") " + errText);
-    }
-
-    var data = await resp.json();
-    var parts = data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts;
-    var imagePart = null;
-    if(parts){
-      for(var i = 0; i < parts.length; i++){
-        if(parts[i].inlineData && parts[i].inlineData.data){ imagePart = parts[i].inlineData; break; }
-        if(parts[i].inline_data && parts[i].inline_data.data){ imagePart = parts[i].inline_data; break; }
-      }
-    }
-
-    if(!imagePart){
-      throw new Error("No image came back. Try again, or check that your key has image generation access.");
-    }
-
-    var mime = imagePart.mimeType || imagePart.mime_type || "image/png";
-    lastGenImageDataUrl = "data:" + mime + ";base64," + imagePart.data;
-
-    var inner = document.getElementById("gen-image-inner");
-    inner.innerHTML = "";
-    var img = document.createElement("img");
-    img.src = lastGenImageDataUrl;
-    inner.appendChild(img);
-    document.getElementById("gen-image-wrap").style.display = "block";
-    setTimeout(function(){ document.getElementById("gen-image-wrap").scrollIntoView({ behavior:"smooth", block:"start" }); }, 100);
-
-  }catch(err){
-    showGenImageError(err.message || "Something went wrong generating the image.");
-  }finally{
-    btn.disabled = false;
-    lbl.textContent = origLbl;
-  }
-}
-
-function downloadGenImage(){
-  if(!lastGenImageDataUrl) return;
-  var a = document.createElement("a");
-  a.href = lastGenImageDataUrl;
-  a.download = "gig-flyer.png";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
 
 var dateCount = 0;
 
