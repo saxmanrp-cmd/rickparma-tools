@@ -46,12 +46,12 @@ html, body {
 .slider-wrap { flex: 1; overflow: hidden; position: relative; }
 .slider-track {
   display: flex;
-  width: 1000%;
+  width: 900%;
   height: 100%;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .slide {
-  width: calc(100% / 10);
+  width: calc(100% / 9);
   height: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -460,6 +460,10 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
           <input type="text" id="f-name" autocomplete="off" autocorrect="off">
         </div>
         <div class="card">
+          <label class="lbl">Tagline</label>
+          <textarea id="f-desc"></textarea>
+        </div>
+        <div class="card">
           <label class="lbl">Does the venue have a website?</label>
           <div style="display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid rgba(123,47,255,0.4);margin-top:4px;">
             <button id="toggle-yes" onclick="venueToggle('yes')" style="flex:1;padding:13px;background:linear-gradient(135deg,#e91e8c,#7b2fff);border:none;color:#fff;font-family:'Inter',sans-serif;font-size:15px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">Yes</button>
@@ -495,12 +499,15 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
         </div>
         <div class="card">
           <label class="lbl">Specific lounge / bar / room</label>
-          <input type="text" id="f-subvenue" placeholder="Venue Inside Location">
+          <input type="text" id="f-subvenue" placeholder="Venue Inside Location" oninput="subvenueChange()">
           <div class="hint">If filled in, this becomes the primary title on the flyer — the main venue will appear as secondary context below it.</div>
         </div>
-        <div class="card">
-          <label class="lbl">Event description / tagline</label>
-          <textarea id="f-desc"></textarea>
+        <div id="subvenue-website-section" style="display:none;">
+          <div class="card">
+            <label class="lbl">Lounge / bar / room website</label>
+            <input type="text" id="f-subvenue-site" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+            <div class="hint">Optional. The AI will also pull the logo, colors, and style from this website.</div>
+          </div>
         </div>
       </div>
 
@@ -619,35 +626,15 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
       <!-- Slide 8: Generate -->
       <div class="slide" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;">
         <div class="step-title" style="margin-bottom:8px;">Generate</div>
-        <div style="font-size:14px;color:rgba(255,255,255,0.7);text-align:center;margin-bottom:40px;line-height:1.6;">Your prompt is ready. Choose how you want to create your flyer.</div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.7);text-align:center;margin-bottom:40px;line-height:1.6;">Your prompt is ready. Copy it and paste into your preferred AI image tool.</div>
 
         <div style="width:100%;display:flex;flex-direction:column;gap:16px;">
-
-          <!-- Create Prompt button -->
           <div>
             <button id="copy-prompt-btn" onclick="generate()" style="width:100%;background:linear-gradient(135deg,#e91e8c,#7b2fff);border:none;border-radius:12px;padding:18px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 20px rgba(233,30,140,0.4);-webkit-tap-highlight-color:transparent;transition:all 0.2s;">
               <i class="ti ti-copy" style="font-size:20px;"></i> <span id="copy-btn-label">Copy Prompt to Clipboard</span>
             </button>
             <div style="font-size:12px;color:rgba(255,255,255,0.7);text-align:center;margin-top:8px;">Paste into any AI tool with image generation</div>
           </div>
-
-          <div style="display:flex;align-items:center;gap:10px;margin:4px 0;">
-            <div style="flex:1;height:1px;background:rgba(255,255,255,0.1);"></div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:600;letter-spacing:0.08em;">OR</div>
-            <div style="flex:1;height:1px;background:rgba(255,255,255,0.1);"></div>
-          </div>
-
-          <!-- Gemini button -->
-          <div>
-            <button id="gemini-btn" onclick="openGemini()" style="width:100%;background:linear-gradient(135deg,#4285f4,#34a853);border:none;border-radius:12px;padding:18px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 20px rgba(66,133,244,0.35);-webkit-tap-highlight-color:transparent;">
-              <i class="ti ti-brand-google" style="font-size:20px;"></i> Generate with Gemini
-            </button>
-            <div style="background:rgba(66,133,244,0.08);border:1px solid rgba(66,133,244,0.25);border-radius:8px;padding:10px 14px;margin-top:10px;display:flex;align-items:flex-start;gap:8px;">
-              <i class="ti ti-flask" style="font-size:14px;color:#4285f4;flex-shrink:0;margin-top:1px;"></i>
-              <div style="font-size:12px;color:rgba(255,255,255,0.7);line-height:1.5;"><strong style="color:#fff;">Beta test option.</strong> Tapping this copies your prompt and opens Gemini. Just paste it in and hit send. Results may vary — let us know how it works for you!</div>
-            </div>
-          </div>
-
         </div>
 
         <div id="e6" style="display:none;font-size:13px;color:#e91e8c;margin-top:10px;padding:10px 13px;background:rgba(233,30,140,0.08);border:1px solid rgba(233,30,140,0.3);border-radius:8px;font-weight:500;">Please select a flyer size to continue.</div>
@@ -660,14 +647,6 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
             <div style="font-size:13px;color:rgba(255,255,255,0.85);line-height:1.5;">Your flyer prompt is ready to paste.<br>Don't forget to upload your artist photo.</div>
           </div>
           <div id="pbox" style="display:none;"></div>
-        </div>
-      </div>
-
-      <!-- Slide 9: RESERVED (your idea) -->
-      <div class="slide" style="display:flex;align-items:center;justify-content:center;">
-        <div style="text-align:center;color:rgba(255,255,255,0.3);">
-          <i class="ti ti-bulb" style="font-size:48px;display:block;margin-bottom:12px;"></i>
-          <div style="font-size:14px;font-weight:500;">Coming soon</div>
         </div>
       </div>
 
@@ -689,7 +668,6 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
       <div class="dot" id="d6"></div>
       <div class="dot" id="d7"></div>
       <div class="dot" id="d8"></div>
-      <div class="dot" id="d9"></div>
     </div>
     <button class="btn-next" id="btn-next" onclick="goNext()">
       Next <i class="ti ti-arrow-right"></i>
@@ -699,7 +677,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
 </div>
 <script>
 var cur = 0, selSz = "1080x1350", gN = 0, busy = false;
-var TOTAL = 10;
+var TOTAL = 9;
 var LAST = TOTAL - 1;
 var PCT = 100 / TOTAL;
 
@@ -877,44 +855,65 @@ function buildPrompt(){
   p += "The flyer must display the following information:\n";
   if(sub){
     p += "— Primary title (largest venue text): " + sub + "\n";
+    if(v("f-subvenue-site")){
+      p += "— The specific lounge/bar/room has its own website: " + v("f-subvenue-site") + " — pull its logo, colors, and style using the same rules as the main venue website, and treat this as the primary branding source for the flyer.\n";
+    }
     if(v("f-vsite")) p += "— Secondary venue context: the parent venue from the website above\n";
   }
   if(v("f-name")) p += "— Event name: " + v("f-name") + "\n";
-  if(fmtDate(v("f-date"))) p += "— Date: " + fmtDate(v("f-date")) + "\n";
-  if(getTime("show")) p += "— Show time: " + getTime("show") + "\n";
-  var d = getTime("doors"); if(d) p += "— Doors open: " + d + "\n";
-  var et = getTime("end"); if(et) p += "— End time: " + et + "\n";
+  if(v("f-desc")) p += "— Tagline: " + v("f-desc") + "\n";
+
+  // GRAPHICAL / HIGHLIGHTED elements
+  var graphicalItems = [];
+  if(fmtDate(v("f-date"))) graphicalItems.push("Date: " + fmtDate(v("f-date")));
+  if(getTime("show")) graphicalItems.push("Show time: " + getTime("show"));
+  if(v("f-age")) graphicalItems.push("Age restriction: " + v("f-age"));
+  if(v("f-price")) graphicalItems.push("Cover: " + v("f-price"));
+  if(graphicalItems.length){
+    p += "\nGRAPHICAL / HIGHLIGHTED ELEMENTS — render each of these as bold, eye-catching, stylized graphic design elements that match the chosen flyer style and theme (NOT plain text in a box). Place the date and show time together, prominently:\n";
+    graphicalItems.forEach(function(item){ p += "— " + item + "\n"; });
+  }
+
+  // PLAIN TEXT supporting details
+  var textItems = [];
+  var d = getTime("doors"); if(d) textItems.push("Doors open: " + d);
+  var et = getTime("end"); if(et) textItems.push("End time: " + et);
   var repeat = v("f-repeat");
   if(repeat && repeat !== "Custom dates"){
-    var repeatLine = "— Recurring event: " + repeat;
+    var repeatLine = "Recurring: " + repeat;
     if(repeat === "Specific days"){
       var days = getSelectedDays();
-      if(days.length) repeatLine = "— Recurring event: every " + days.join(", ");
+      if(days.length) repeatLine = "Recurring: every " + days.join(", ");
     }
     var until = v("f-repeat-until");
     if(until) repeatLine += " (until " + fmtDate(until) + ")";
-    p += repeatLine + "\n";
+    textItems.push(repeatLine);
   }
   if(repeat === "Custom dates"){
     var extraDates = getExtraDates();
-    if(extraDates.length) p += "— Additional event dates: " + extraDates.join("; ") + "\n";
+    if(extraDates.length) textItems.push("Additional dates: " + extraDates.join("; "));
   }
+  if(v("f-dress")) textItems.push("Dress code: " + v("f-dress"));
+  if(v("f-sponsors")) textItems.push("Sponsors: " + v("f-sponsors"));
+  var tickets = v("f-tickets");
+  if(tickets){
+    var tLine = "Tickets: " + tickets;
+    if(tickets === "Online" && v("f-ticket-url")) tLine += " — " + v("f-ticket-url");
+    if(tickets === "In person" && v("f-ticket-phone")) tLine += " — " + v("f-ticket-phone");
+    textItems.push(tLine);
+  }
+  if(textItems.length){
+    p += "\nSUPPORTING TEXT DETAILS — render these as clean, simple text (placed logically, e.g. doors/end time near the date and show time). These do NOT need to be graphical:\n";
+    textItems.forEach(function(item){ p += "— " + item + "\n"; });
+  }
+
+  // Performer
+  p += "\n";
   if(v("f-performer")) p += "— Headline performer: " + v("f-performer") + " (make this the largest, most dominant text on the entire flyer — this is the hero)\n";
   if(guests.length){
     p += "— Special guests: " + guests.join(", ") + " (large and bold, secondary to the headline performer)\n";
     p += "— NOTE: If photos for any special guests are attached, use them as featured guest portraits with the same styling rules as the headline artist. If no guest photo is attached but a guest is named, before generating, ask the user whether they want to provide a photo for each named guest — or confirm the guest should appear as a text name only.\n";
   }
-  if(v("f-desc")) p += "— Tagline: " + v("f-desc") + "\n";
-  if(v("f-age")) p += "— Age restriction: " + v("f-age") + "\n";
-  if(v("f-dress")) p += "— Dress code: " + v("f-dress") + "\n";
-  if(v("f-price")) p += "— Cover: " + v("f-price") + "\n";
-  var tickets = v("f-tickets");
-  if(tickets){
-    p += "— Tickets: " + tickets + "\n";
-    if(tickets === "Online" && v("f-ticket-url")) p += "— Ticket website: " + v("f-ticket-url") + "\n";
-    if(tickets === "In person" && v("f-ticket-phone")) p += "— Ticket phone: " + v("f-ticket-phone") + "\n";
-  }
-  if(v("f-sponsors")) p += "— Sponsors: " + v("f-sponsors") + "\n";
   if(v("f-qr")) p += "— QR code link: " + v("f-qr") + "\n";
   if(v("f-theme")) p += "— Additional mood/vibe direction (blend this feeling into the design — do NOT print this phrase as literal text on the flyer): " + v("f-theme") + "\n";
 
@@ -940,6 +939,7 @@ function buildPrompt(){
   p += "— High contrast, cinematic, professional graphic design quality\n";
   p += "— Every piece of text and every graphic element appears exactly once — no duplicates\n";
   p += "— No filler text, no placeholder text, no unnecessary decorative symbols\n";
+  p += "— DO NOT place small icons in front of text items (no calendar icon before the date, no clock icon before times, no person icon before age restriction, no shirt icon before dress code, no pin icon before address, no phone icon before phone number, etc.). Keep text clean without leading icons.\n";
   p += "— Base the overall design on the venue/location website's aesthetic. If additional mood/vibe direction was provided above, blend that feeling into the venue's existing style — do not abandon the venue's colors, branding, or atmosphere to chase the mood direction literally.\n";
   p += "— Treat the venue name, address, phone number, and website URL as LOCKED, EXACT TEXT. Render these character-for-character exactly as scraped or provided — do not stylize, alter, abbreviate, or reinterpret the address, phone number, or any numeric/text details. Accuracy of this text is more important than visual flourish.\n";
   p += "— Create the image immediately. No explanations. No questions. No steps. Just the flyer.";
@@ -992,16 +992,6 @@ function copyP(){
   }
 }
 
-function openGemini(){
-  var p = buildPrompt();
-  document.getElementById("pbox").textContent = p;
-  fallbackCopy(p);
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(p).catch(function(){ /* already copied via fallback */ });
-  }
-  document.getElementById("out-wrap").style.display = "block";
-  window.open("https://gemini.google.com", "_blank");
-}
 
 
 
@@ -1050,6 +1040,11 @@ function getExtraDates(){
     if(i.value) dates.push(fmtDate(i.value));
   });
   return dates;
+}
+
+function subvenueChange(){
+  var val = document.getElementById("f-subvenue").value.trim();
+  document.getElementById("subvenue-website-section").style.display = val ? "block" : "none";
 }
 
 function venueToggle(choice){
