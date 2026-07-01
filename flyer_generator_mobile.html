@@ -317,6 +317,18 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
 
           <div style="display:flex;gap:12px;align-items:flex-start;">
             <div style="width:32px;height:32px;background:#00a8ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="ti ti-palette" style="font-size:16px;color:#fff;"></i>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Flyer Style &amp; Theme</div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6;">On the next page, pick a visual style like Cinematic, Playful, or Epic to set the overall look. You can also add a theme (like Star Wars or Toga) to give your flyer a creative twist.</div>
+            </div>
+          </div>
+
+          <div style="height:1px;background:rgba(0,168,255,0.15);"></div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:32px;height:32px;background:#00a8ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
               <i class="ti ti-building" style="font-size:16px;color:#fff;"></i>
             </div>
             <div>
@@ -388,6 +400,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
       <!-- Slide 3: Date & Time -->
       <div class="slide">
         <div class="step-title">Date &amp; Time</div>
+        <div id="e0" style="display:none;font-size:13px;color:#e91e8c;margin-bottom:14px;padding:10px 13px;background:rgba(233,30,140,0.08);border:1px solid rgba(233,30,140,0.3);border-radius:8px;font-weight:500;text-align:center;">Please enter the date and show time.</div>
         <div class="card">
           <label class="lbl">Date <span style="color:#e91e8c;">*</span></label>
           <input type="date" id="f-date">
@@ -449,7 +462,6 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
           <div id="datelist"></div>
           <button class="add-g" id="add-date" onclick="addDate()"><i class="ti ti-plus" style="font-size:14px;"></i> Add date</button>
         </div>
-        <div id="e0" style="display:none;font-size:13px;color:#e91e8c;margin-top:6px;padding:10px 13px;background:rgba(233,30,140,0.08);border:1px solid rgba(233,30,140,0.3);border-radius:8px;font-weight:500;">Please enter the date and show time.</div>
       </div>
 
       <!-- Slide 2: Event Name + Venue -->
