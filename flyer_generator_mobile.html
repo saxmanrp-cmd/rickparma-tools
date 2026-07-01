@@ -799,6 +799,46 @@ function goNext(){
 
 function goBack(){ if(cur > 0) goTo(cur - 1); }
 
+// ── Swipe gestures for mobile/tablet ──
+(function(){
+  var startX = 0, startY = 0, startT = 0, tracking = false;
+  var wrap = document.querySelector(".slider-wrap");
+  if(!wrap) return;
+
+  wrap.addEventListener("touchstart", function(e){
+    if(e.touches.length !== 1) { tracking = false; return; }
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    startT = Date.now();
+    tracking = true;
+  }, {passive: true});
+
+  wrap.addEventListener("touchend", function(e){
+    if(!tracking) return;
+    tracking = false;
+    var endX = e.changedTouches[0].clientX;
+    var endY = e.changedTouches[0].clientY;
+    var dx = endX - startX;
+    var dy = endY - startY;
+    var dt = Date.now() - startT;
+
+    // Must be a mostly-horizontal, deliberate swipe
+    if(Math.abs(dx) < 60) return;              // too short
+    if(Math.abs(dx) < Math.abs(dy) * 1.5) return; // too vertical (allow scrolling)
+    if(dt > 800) return;                        // too slow
+
+    // Don't hijack swipes that start on interactive elements you drag
+    var tgt = e.target;
+    if(tgt && tgt.closest && tgt.closest("input[type=date], select, textarea")) return;
+
+    if(dx < 0){
+      goNext(); // swipe left → next
+    } else {
+      goBack(); // swipe right → back
+    }
+  }, {passive: true});
+})();
+
 function buildPrompt(){
   var szName = document.querySelector(".sz.on .sz-name").textContent.trim();
   var sub = v("f-subvenue"), guests = getGuests();
