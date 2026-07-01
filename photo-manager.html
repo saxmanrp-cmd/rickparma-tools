@@ -27,7 +27,11 @@
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
   @keyframes spin   { to { transform:rotate(360deg); } }
 
-  /* Add row */
+  /* Add form */
+  .add-name-row { margin-bottom:8px; }
+  .add-name-row input { width:100%; background:#1a0808; border:1.5px solid rgba(141,178,229,0.2); border-radius:8px; color:#fff; font-size:14px; padding:10px 12px; outline:none; }
+  .add-name-row input:focus { border-color:#8DB2E5; }
+  .add-name-row input::placeholder { color:rgba(255,255,255,0.25); }
   .add-row { display:flex; gap:8px; margin-bottom:14px; }
   .add-row input { flex:1; background:#1a0808; border:1.5px solid rgba(141,178,229,0.3); border-radius:8px; color:#fff; font-size:14px; padding:11px 12px; outline:none; min-width:0; }
   .add-row input:focus { border-color:#8DB2E5; }
@@ -40,26 +44,46 @@
   .photo-item.drag-over { border-color:#8DB2E5; background:#2a1010; }
   .photo-item.dragging  { opacity:0.4; }
   .drag-handle { color:rgba(255,255,255,0.2); font-size:16px; flex-shrink:0; }
-  .photo-thumb { width:40px; height:53px; object-fit:cover; border-radius:4px; background:#2a1010; flex-shrink:0; }
-  .photo-thumb-err { width:40px; height:53px; border-radius:4px; background:#2a1010; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:16px; opacity:0.4; }
+  .photo-thumb {
+    width:40px; height:53px; object-fit:cover; border-radius:4px;
+    background:#2a1010; flex-shrink:0; cursor:pointer;
+    transition:opacity 0.15s;
+  }
+  .photo-thumb:active { opacity:0.7; }
+  .photo-thumb-err { width:40px; height:53px; border-radius:4px; background:#2a1010; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:16px; opacity:0.4; cursor:pointer; }
   .photo-info { flex:1; min-width:0; }
-  .photo-num { font-size:10px; color:#8DB2E5; letter-spacing:0.1em; font-weight:700; margin-bottom:2px; }
-  .photo-url { font-size:10px; color:rgba(255,255,255,0.3); font-family:monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .photo-name { font-size:12px; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px; }
+  .photo-num  { font-size:10px; color:#8DB2E5; letter-spacing:0.1em; font-weight:700; margin-bottom:1px; }
+  .photo-url  { font-size:10px; color:rgba(255,255,255,0.3); font-family:monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .btn-delete { background:none; border:none; color:rgba(255,255,255,0.25); font-size:20px; cursor:pointer; padding:4px 6px; border-radius:4px; flex-shrink:0; line-height:1; }
   .btn-delete:active { color:#e57a7a; }
   .empty-state { text-align:center; color:rgba(255,255,255,0.2); font-size:13px; padding:32px 0; }
 
-  /* Bottom button */
+  /* Single generate+copy button */
   .btn-generate { width:100%; background:linear-gradient(135deg,#8DB2E5,#6a94cc); color:#0d0505; border:none; border-radius:8px; font-size:14px; font-weight:900; letter-spacing:0.08em; text-transform:uppercase; padding:14px; cursor:pointer; margin-top:8px; }
   .btn-generate:active { opacity:0.8; }
+  .copy-confirm { text-align:center; font-size:12px; color:#4caf7d; margin-top:10px; height:18px; }
 
-  /* Output */
-  .output-wrap { display:none; margin-top:16px; }
-  .output-wrap.visible { display:block; }
-  .output-box { background:#1a0808; border-radius:8px; padding:14px; font-size:11px; font-family:monospace; color:rgba(255,255,255,0.5); white-space:pre-wrap; word-break:break-all; max-height:160px; overflow-y:auto; margin-bottom:10px; border:1.5px solid rgba(141,178,229,0.15); }
-  .btn-copy { width:100%; background:#2a1010; color:#8DB2E5; border:1.5px solid #8DB2E5; border-radius:8px; font-size:13px; font-weight:900; letter-spacing:0.06em; text-transform:uppercase; padding:12px; cursor:pointer; }
-  .btn-copy:active { background:rgba(141,178,229,0.1); }
-  .copy-confirm { text-align:center; font-size:12px; color:#8DB2E5; margin-top:8px; height:18px; }
+  /* Thumbnail preview overlay */
+  .thumb-preview-overlay {
+    display:none; position:fixed; inset:0; z-index:9999;
+    background:rgba(0,0,0,0.92);
+    align-items:center; justify-content:center; padding:24px;
+  }
+  .thumb-preview-overlay.open { display:flex; }
+  .thumb-preview-overlay img {
+    max-width:92vw; max-height:88vh;
+    object-fit:contain; border-radius:8px;
+    box-shadow:0 16px 80px rgba(0,0,0,0.9);
+  }
+  .thumb-preview-close {
+    position:fixed; top:16px; right:16px;
+    width:32px; height:32px;
+    background:#8DB2E5; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; font-size:16px; color:#0d0505; font-weight:900;
+    z-index:10;
+  }
 
   /* Loading */
   .loading-screen { position:fixed; inset:0; background:#0d0505; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; z-index:200; }
@@ -74,6 +98,12 @@
   <p>Loading from cloud…</p>
 </div>
 
+<!-- Thumbnail preview overlay -->
+<div class="thumb-preview-overlay" id="thumbPreview" onclick="closeThumbPreview()">
+  <div class="thumb-preview-close" onclick="closeThumbPreview()">✕</div>
+  <img id="thumbPreviewImg" src="" alt="">
+</div>
+
 <div id="appWrap" style="display:none">
   <div class="header-top">
     <h1>📷 Photo Manager</h1>
@@ -83,20 +113,21 @@
     </div>
   </div>
 
+  <!-- Name field -->
+  <div class="add-name-row">
+    <input type="text" id="input-name" placeholder="Flyer name (optional, for your reference only)…" autocorrect="off" autocapitalize="words" spellcheck="false">
+  </div>
+
+  <!-- URL + add button -->
   <div class="add-row">
-    <input type="url" id="input-url" placeholder="Paste image URL…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+    <input type="url" id="input-url" placeholder="Paste Bandzoogle image URL…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
     <button class="btn-add" onclick="addPhoto()">+</button>
   </div>
 
   <div id="photo-list"></div>
 
-  <button class="btn-generate" onclick="generateCode()">⬇ Generate Bandzoogle Code</button>
-
-  <div class="output-wrap" id="output-wrap">
-    <div class="output-box" id="output-box"></div>
-    <button class="btn-copy" onclick="copyCode()">Copy Code to Clipboard</button>
-    <p class="copy-confirm" id="copy-confirm"></p>
-  </div>
+  <button class="btn-generate" id="generateBtn" onclick="generateAndCopy()">⬇ Generate &amp; Copy Code</button>
+  <p class="copy-confirm" id="copy-confirm"></p>
 </div>
 
 <script>
@@ -105,10 +136,10 @@
   var BIN_ID      = localStorage.getItem("rp_photos_bin_id") || "";
 
   var DEFAULT_PHOTOS = [
-    { src: "https://lh3.googleusercontent.com/pw/AP1GczO7q7dLOV28_wXU0ZWRvk6D8VaZFvYcZ9UpuTkudqZz_yAi5omxK9tJwxaQP3us0qhWgDu9i8rT_i7i8_rEbaKTUO91OTJfr2A1Rw5Ltw4FRoMdTGw" },
-    { src: "https://lh3.googleusercontent.com/pw/AP1GczMweTg_qXi0_1To51rCOGjM7n1K8_USnur3FRcqn4hs3ja0_BNHUMJ1bt18CZiaiK_ylLjHPvzYv990SnNRWFJxEsSThzo4M9CAaV_GsR_8eHLhW5w" },
-    { src: "https://lh3.googleusercontent.com/pw/AP1GczMyhEnrXID7kYq1QRSI2rldGexfbf5VWoHiNMhSD-k2lFbCNqSO9tu9Z4iGG8t37uxbgM3sE4UCs51gtzL1arTxsDSjcc3RlMgWvNH_GlMGGAnohLA" },
-    { src: "https://lh3.googleusercontent.com/pw/AP1GczNhfd5ho6lxmlXh-OiX04DqqASSzaeq8J4XVmKEeIfM1dztDLIWJDXiE6xrGQrQ2TkbXbqFeA5uUmCXSPCZsYurUs0WRiy-91degrb6FxMEBK3Q0E4" }
+    { src: "https://lh3.googleusercontent.com/pw/AP1GczO7q7dLOV28_wXU0ZWRvk6D8VaZFvYcZ9UpuTkudqZz_yAi5omxK9tJwxaQP3us0qhWgDu9i8rT_i7i8_rEbaKTUO91OTJfr2A1Rw5Ltw4FRoMdTGw", name: "" },
+    { src: "https://lh3.googleusercontent.com/pw/AP1GczMweTg_qXi0_1To51rCOGjM7n1K8_USnur3FRcqn4hs3ja0_BNHUMJ1bt18CZiaiK_ylLjHPvzYv990SnNRWFJxEsSThzo4M9CAaV_GsR_8eHLhW5w", name: "" },
+    { src: "https://lh3.googleusercontent.com/pw/AP1GczMyhEnrXID7kYq1QRSI2rldGexfbf5VWoHiNMhSD-k2lFbCNqSO9tu9Z4iGG8t37uxbgM3sE4UCs51gtzL1arTxsDSjcc3RlMgWvNH_GlMGGAnohLA", name: "" },
+    { src: "https://lh3.googleusercontent.com/pw/AP1GczNhfd5ho6lxmlXh-OiX04DqqASSzaeq8J4XVmKEeIfM1dztDLIWJDXiE6xrGQrQ2TkbXbqFeA5uUmCXSPCZsYurUs0WRiy-91degrb6FxMEBK3Q0E4", name: "" }
   ];
 
   var photos = [];
@@ -173,6 +204,17 @@
 
   function truncUrl(u) { return u.length <= 46 ? u : u.slice(0,24) + "…" + u.slice(-16); }
 
+  // Thumbnail preview
+  function openThumbPreview(src) {
+    document.getElementById("thumbPreviewImg").src = src;
+    document.getElementById("thumbPreview").classList.add("open");
+    document.body.style.overflow = "hidden";
+  }
+  function closeThumbPreview() {
+    document.getElementById("thumbPreview").classList.remove("open");
+    document.body.style.overflow = "";
+  }
+
   function render() {
     var list = document.getElementById("photo-list");
     list.innerHTML = "";
@@ -181,11 +223,19 @@
       var item = document.createElement("div");
       item.className = "photo-item";
       item.draggable = true;
+
+      var nameHtml = p.name ? '<div class="photo-name">' + p.name + '</div>' : '';
+
       item.innerHTML =
         '<span class="drag-handle">⠿</span>' +
-        '<img class="photo-thumb" src="' + p.src + '" onerror="this.outerHTML=\'<div class=&quot;photo-thumb-err&quot;>❌</div>\'" alt="">' +
-        '<div class="photo-info"><div class="photo-num">PHOTO ' + (i+1) + '</div><div class="photo-url">' + truncUrl(p.src) + '</div></div>' +
+        '<img class="photo-thumb" src="' + p.src + '" onerror="this.outerHTML=\'<div class=&quot;photo-thumb-err&quot; onclick=&quot;openThumbPreview(\\&quot;' + p.src + '\\&quot;)&quot;>❌</div>\'" alt="" onclick="openThumbPreview(\'' + p.src + '\')">' +
+        '<div class="photo-info">' +
+          '<div class="photo-num">PHOTO ' + (i+1) + '</div>' +
+          nameHtml +
+          '<div class="photo-url">' + truncUrl(p.src) + '</div>' +
+        '</div>' +
         '<button class="btn-delete" onclick="removePhoto(' + i + ')">×</button>';
+
       item.addEventListener("dragstart", function(e) { dragSrcIndex = i; setTimeout(function(){ item.classList.add("dragging"); }, 0); });
       item.addEventListener("dragend",   function()  { item.classList.remove("dragging"); document.querySelectorAll(".photo-item").forEach(function(el){ el.classList.remove("drag-over"); }); });
       item.addEventListener("dragover",  function(e) { e.preventDefault(); item.classList.add("drag-over"); });
@@ -200,41 +250,47 @@
   }
 
   async function addPhoto() {
-    var inp = document.getElementById("input-url");
-    var src = inp.value.trim();
+    var nameInp = document.getElementById("input-name");
+    var urlInp  = document.getElementById("input-url");
+    var src  = urlInp.value.trim();
+    var name = nameInp.value.trim();
     if (!src) { alert("Paste an image URL first."); return; }
     for (var j=0; j<photos.length; j++) { if (photos[j].src===src) { alert("Already in gallery."); return; } }
-    photos.push({ src: src });
-    inp.value = "";
+    photos.push({ src: src, name: name });
+    urlInp.value = ""; nameInp.value = "";
     render();
-    document.getElementById("output-wrap").classList.remove("visible");
     await save();
   }
 
   async function removePhoto(index) {
-    if (!confirm("Remove photo " + (index+1) + "?")) return;
+    if (!confirm("Remove photo " + (index+1) + (photos[index].name ? ' "' + photos[index].name + '"' : "") + "?")) return;
     photos.splice(index, 1);
     render();
-    document.getElementById("output-wrap").classList.remove("visible");
     await save();
   }
 
-  function generateCode() {
+  function generateAndCopy() {
     if (photos.length === 0) { alert("Add at least one photo first."); return; }
     var arr = photos.map(function(p){ return '    { src: "' + p.src + '" }'; }).join(",\n");
     var code = '<!--\n  RICK PARMA \u2014 Photo Gallery\n  Paste into Bandzoogle HTML section.\n-->\n\n<style>\n  #rp-photo-section{background:rgba(13,5,5,0.5);padding:16px 16px 24px;font-family:Arial,Helvetica,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}\n  #rp-photo-section *{box-sizing:border-box}\n  .rpp-section-title{font-size:33px;font-weight:900;color:#fff;margin:0 0 12px;text-transform:uppercase;letter-spacing:.04em;text-align:center}\n  .rpp-carousel-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);margin:0 0 10px}\n  .rpp-carousel{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:4px 2px 10px}\n  .rpp-carousel::-webkit-scrollbar{display:none}\n  .rpp-thumb{flex:0 0 calc(50% - 5px);scroll-snap-align:start;cursor:pointer;border-radius:6px;overflow:hidden;background:#1a0808;border:1.5px solid transparent;transition:border-color .2s,transform .15s;-webkit-tap-highlight-color:transparent}\n  .rpp-thumb:active{transform:scale(.97)}\n  .rpp-thumb:hover{border-color:rgba(141,178,229,.4)}\n  .rpp-thumb-img-wrap{position:relative;width:100%;aspect-ratio:3/4;background:#2a1010;overflow:hidden}\n  .rpp-thumb-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}\n  .rpp-thumb:hover .rpp-thumb-img-wrap img{transform:scale(1.06)}\n  .rpp-dots{display:flex;justify-content:center;gap:6px;margin-top:4px}\n  .rpp-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.2);transition:background .2s,transform .2s;cursor:pointer}\n  .rpp-dot.active{background:#8DB2E5;transform:scale(1.3)}\n  .rpp-lightbox{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.93);align-items:center;justify-content:center;padding:16px}\n  .rpp-lightbox.open{display:flex}\n  .rpp-lb-inner{position:relative;max-width:92vw;max-height:92vh}\n  .rpp-lb-inner img{max-width:100%;max-height:90vh;object-fit:contain;border-radius:6px;box-shadow:0 16px 80px rgba(0,0,0,.9);display:block}\n  .rpp-lb-close{position:absolute;top:-13px;right:-13px;width:28px;height:28px;background:#8DB2E5;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:#0d0505;font-weight:900;z-index:10}\n  .rpp-lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;background:rgba(0,0,0,.55);border:1px solid rgba(141,178,229,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}\n  .rpp-lb-nav svg{width:15px;height:15px;stroke:#8DB2E5;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}\n  .rpp-lb-prev{left:-52px}.rpp-lb-next{right:-52px}\n  @media(max-width:500px){.rpp-lb-prev{left:-36px}.rpp-lb-next{right:-36px}}\n</style>\n\n<div id="rp-photo-section">\n  <h2 class="rpp-section-title">Photo Gallery</h2>\n  <p class="rpp-carousel-label">Swipe to browse \u2014 tap to view</p>\n  <div class="rpp-carousel" id="rpp-grid"></div>\n  <div class="rpp-dots" id="rpp-dots"></div>\n</div>\n\n<script>\n(function(){\n  var photos=[\n' + arr + '\n  ];\n  var grid=document.getElementById("rpp-grid"),dots=document.getElementById("rpp-dots");\n  window.rppCurrent=0;\n  photos.forEach(function(p,i){\n    var c=document.createElement("div");c.className="rpp-thumb";c.setAttribute("role","button");c.setAttribute("tabindex","0");\n    c.innerHTML=\'<div class="rpp-thumb-img-wrap"><img src="\'+p.src+\'" loading="lazy"></div>\';\n    c.addEventListener("click",function(){rppOpenLightbox(i);});\n    c.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();rppOpenLightbox(i);}});\n    grid.appendChild(c);\n    var d=document.createElement("div");d.className="rpp-dot"+(i===0?" active":"");\n    d.addEventListener("click",function(){grid.querySelectorAll(".rpp-thumb")[i].scrollIntoView({behavior:"smooth",block:"nearest",inline:"start"});});\n    dots.appendChild(d);\n  });\n  grid.addEventListener("scroll",function(){\n    var cs=grid.querySelectorAll(".rpp-thumb"),ds=dots.querySelectorAll(".rpp-dot"),cl=0,md=Infinity;\n    cs.forEach(function(c,i){var d=Math.abs(c.offsetLeft-grid.scrollLeft);if(d<md){md=d;cl=i;}});\n    ds.forEach(function(d,i){d.classList.toggle("active",i===cl);});\n  });\n  var lb=document.createElement("div");lb.className="rpp-lightbox";\n  lb.innerHTML=\'<div class="rpp-lb-inner"><div class="rpp-lb-close" id="rpp-lb-close">\u2715</div><img id="rpp-lb-img" src="" alt=""><button class="rpp-lb-nav rpp-lb-prev" id="rpp-lb-prev"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button><button class="rpp-lb-nav rpp-lb-next" id="rpp-lb-next"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button></div>\';\n  document.body.appendChild(lb);\n  document.getElementById("rpp-lb-close").addEventListener("click",function(){lb.classList.remove("open");document.body.style.overflow="";});\n  document.getElementById("rpp-lb-prev").addEventListener("click",function(){window.rppCurrent=(window.rppCurrent-1+photos.length)%photos.length;document.getElementById("rpp-lb-img").src=photos[window.rppCurrent].src;});\n  document.getElementById("rpp-lb-next").addEventListener("click",function(){window.rppCurrent=(window.rppCurrent+1)%photos.length;document.getElementById("rpp-lb-img").src=photos[window.rppCurrent].src;});\n  lb.addEventListener("click",function(e){if(e.target===lb){lb.classList.remove("open");document.body.style.overflow="";}});\n  window.rppOpenLightbox=function(i){window.rppCurrent=i;document.getElementById("rpp-lb-img").src=photos[i].src;lb.classList.add("open");document.body.style.overflow="hidden";};\n  document.addEventListener("keydown",function(e){var o=lb.classList.contains("open");if(e.key==="ArrowLeft"&&o)document.getElementById("rpp-lb-prev").click();if(e.key==="ArrowRight"&&o)document.getElementById("rpp-lb-next").click();if(e.key==="Escape"&&o){lb.classList.remove("open");document.body.style.overflow="";}});\n  var lbTouchX=0;\n  lb.addEventListener("touchstart",function(e){lbTouchX=e.touches[0].clientX;},{passive:true});\n  lb.addEventListener("touchend",function(e){var dx=e.changedTouches[0].clientX-lbTouchX;if(Math.abs(dx)>40){if(dx<0)document.getElementById("rpp-lb-next").click();else document.getElementById("rpp-lb-prev").click();}});\n})();\n<\/script>';
-    document.getElementById("output-box").textContent = code;
-    document.getElementById("output-wrap").classList.add("visible");
-    document.getElementById("output-wrap").scrollIntoView({ behavior:"smooth", block:"start" });
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(function() { showConfirm(); }).catch(function(){ fallbackCopy(code); });
+    } else { fallbackCopy(code); }
   }
 
-  function copyCode() {
-    var text = document.getElementById("output-box").textContent;
-    navigator.clipboard.writeText(text).then(function() {
-      var c = document.getElementById("copy-confirm");
-      c.textContent = "✓ Copied! Paste into Bandzoogle.";
-      setTimeout(function(){ c.textContent = ""; }, 3000);
-    });
+  function fallbackCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text; ta.style.cssText = "position:fixed;top:-9999px;left:-9999px;opacity:0;";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand("copy"); showConfirm(); } catch(e) { alert("Copy failed — try again"); }
+    document.body.removeChild(ta);
+  }
+
+  function showConfirm() {
+    var c = document.getElementById("copy-confirm");
+    c.textContent = "✓ Code copied! Paste into Bandzoogle.";
+    setTimeout(function(){ c.textContent = ""; }, 3000);
   }
 
   setSyncStatus("syncing", "Loading…");
@@ -245,6 +301,7 @@
   });
 
   document.getElementById("input-url").addEventListener("keydown", function(e){ if(e.key==="Enter") addPhoto(); });
+  document.getElementById("input-name").addEventListener("keydown", function(e){ if(e.key==="Enter") document.getElementById("input-url").focus(); });
 </script>
 </body>
 </html>
