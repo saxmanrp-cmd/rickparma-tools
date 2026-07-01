@@ -61,7 +61,7 @@
   .photo-item { display:flex; align-items:center; gap:10px; background:#1a0808; border-radius:8px; padding:10px 12px; margin-bottom:8px; cursor:grab; user-select:none; border:1.5px solid transparent; }
   .photo-item.drag-over { border-color:#8DB2E5; background:#2a1010; }
   .photo-item.dragging  { opacity:0.4; }
-  .drag-handle { color:rgba(255,255,255,0.2); font-size:16px; flex-shrink:0; }
+  .drag-handle { color:rgba(255,255,255,0.35); font-size:20px; flex-shrink:0; padding:8px 6px; margin:-8px 0; cursor:grab; touch-action:none; }
   .photo-thumb { width:40px; height:53px; object-fit:cover; border-radius:4px; background:#2a1010; flex-shrink:0; cursor:pointer; }
   .photo-thumb:active { opacity:0.7; }
   .photo-thumb-err { width:40px; height:53px; border-radius:4px; background:#2a1010; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:16px; opacity:0.4; cursor:pointer; }
@@ -250,6 +250,73 @@
     document.body.style.overflow = "";
   }
 
+  // ── Touch drag reorder ──────────────────────────────────────
+  var touchDragIndex = null;
+  var touchDragEl = null;
+  var touchDragClone = null;
+  var touchDragOffsetY = 0;
+
+  function initTouchDrag(handle, index) {
+    handle.addEventListener("touchstart", function(e) {
+      e.preventDefault();
+      touchDragIndex = index;
+      var list = document.getElementById("photo-list");
+      var items = list.querySelectorAll(".photo-item");
+      touchDragEl = items[index];
+      var rect = touchDragEl.getBoundingClientRect();
+      touchDragOffsetY = e.touches[0].clientY - rect.top;
+
+      // Clone for visual drag
+      touchDragClone = touchDragEl.cloneNode(true);
+      touchDragClone.style.cssText = "position:fixed;left:" + rect.left + "px;top:" + rect.top + "px;width:" + rect.width + "px;opacity:0.85;z-index:500;pointer-events:none;border-color:#8DB2E5;background:#2a1010;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.6);";
+      document.body.appendChild(touchDragClone);
+      touchDragEl.style.opacity = "0.3";
+    }, { passive: false });
+
+    handle.addEventListener("touchmove", function(e) {
+      if (touchDragIndex === null) return;
+      e.preventDefault();
+      var y = e.touches[0].clientY;
+      touchDragClone.style.top = (y - touchDragOffsetY) + "px";
+
+      // Find which item we're hovering over
+      var list = document.getElementById("photo-list");
+      var items = list.querySelectorAll(".photo-item");
+      items.forEach(function(el) { el.classList.remove("drag-over"); });
+      for (var j = 0; j < items.length; j++) {
+        var r = items[j].getBoundingClientRect();
+        if (y >= r.top && y <= r.bottom && j !== touchDragIndex) {
+          items[j].classList.add("drag-over");
+          break;
+        }
+      }
+    }, { passive: false });
+
+    handle.addEventListener("touchend", async function(e) {
+      if (touchDragIndex === null) return;
+      var y = e.changedTouches[0].clientY;
+      var list = document.getElementById("photo-list");
+      var items = list.querySelectorAll(".photo-item");
+      var targetIndex = touchDragIndex;
+      for (var j = 0; j < items.length; j++) {
+        var r = items[j].getBoundingClientRect();
+        if (y >= r.top && y <= r.bottom) { targetIndex = j; break; }
+      }
+      // Clean up
+      if (touchDragClone) { document.body.removeChild(touchDragClone); touchDragClone = null; }
+      if (touchDragEl) { touchDragEl.style.opacity = ""; touchDragEl = null; }
+      items.forEach(function(el) { el.classList.remove("drag-over"); });
+
+      if (targetIndex !== touchDragIndex) {
+        var moved = photos.splice(touchDragIndex, 1)[0];
+        photos.splice(targetIndex, 0, moved);
+        render();
+        await save();
+      }
+      touchDragIndex = null;
+    });
+  }
+
   // ── Render list ─────────────────────────────────────────────
   function truncUrl(u) { return u.length <= 46 ? u : u.slice(0,24) + "…" + u.slice(-16); }
 
@@ -260,22 +327,15 @@
     photos.forEach(function(p, i) {
       var item = document.createElement("div");
       item.className = "photo-item";
-      item.draggable = true;
       var nameHtml = p.name ? '<div class="photo-name">' + p.name + '</div>' : '';
       item.innerHTML =
         '<span class="drag-handle">⠿</span>' +
         '<img class="photo-thumb" src="' + p.src + '" onerror="this.className=\'photo-thumb-err\';this.innerHTML=\'❌\'" alt="" onclick="openOverlay(\'' + p.src.replace(/'/g,"\\'") + '\')">' +
         '<div class="photo-info"><div class="photo-num">PHOTO ' + (i+1) + '</div>' + nameHtml + '<div class="photo-url">' + truncUrl(p.src) + '</div></div>' +
         '<button class="btn-delete" onclick="removePhoto(' + i + ')">×</button>';
-      item.addEventListener("dragstart", function(e) { dragSrcIndex = i; setTimeout(function(){ item.classList.add("dragging"); }, 0); });
-      item.addEventListener("dragend",   function()  { item.classList.remove("dragging"); document.querySelectorAll(".photo-item").forEach(function(el){ el.classList.remove("drag-over"); }); });
-      item.addEventListener("dragover",  function(e) { e.preventDefault(); item.classList.add("drag-over"); });
-      item.addEventListener("dragleave", function()  { item.classList.remove("drag-over"); });
-      item.addEventListener("drop", async function(e) {
-        e.preventDefault(); item.classList.remove("drag-over");
-        if (dragSrcIndex === null || dragSrcIndex === i) return;
-        var moved = photos.splice(dragSrcIndex,1)[0]; photos.splice(i,0,moved); dragSrcIndex=null; render(); await save();
-      });
+
+      var handle = item.querySelector(".drag-handle");
+      initTouchDrag(handle, i);
       list.appendChild(item);
     });
   }
