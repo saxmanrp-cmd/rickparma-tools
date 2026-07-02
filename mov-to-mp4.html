@@ -8,17 +8,16 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:        #0a0a0f;
-      --surface:   #13131e;
-      --border:    #2a2a3a;
-      --cyan:      #00e5ff;
-      --cyan-dim:  #00b8cc;
-      --purple:    #bf5fff;
-      --text:      #f0f0f0;
-      --muted:     #888899;
-      --danger:    #ff5f5f;
-      --success:   #5fff9a;
-      --radius:    12px;
+      --bg:       #0a0a0f;
+      --surface:  #13131e;
+      --border:   #2a2a3a;
+      --cyan:     #00e5ff;
+      --cyan-dim: #00b8cc;
+      --text:     #f0f0f0;
+      --muted:    #888899;
+      --danger:   #ff5f5f;
+      --success:  #5fff9a;
+      --radius:   12px;
     }
 
     html, body {
@@ -38,7 +37,6 @@
       padding: 24px 16px 48px;
     }
 
-    /* ── Header ── */
     header {
       text-align: center;
       margin-bottom: 32px;
@@ -56,18 +54,14 @@
       font-size: clamp(26px, 6vw, 38px);
       font-weight: 700;
       letter-spacing: -0.02em;
-      color: var(--text);
     }
-    h1 span {
-      color: var(--cyan);
-    }
+    h1 span { color: var(--cyan); }
     .tagline {
       margin-top: 8px;
       font-size: 14px;
       color: var(--muted);
     }
 
-    /* ── Card ── */
     .card {
       width: 100%;
       max-width: 540px;
@@ -80,7 +74,7 @@
       gap: 20px;
     }
 
-    /* ── Drop zone ── */
+    /* Drop zone */
     #dropzone {
       border: 2px dashed var(--border);
       border-radius: var(--radius);
@@ -90,150 +84,85 @@
       transition: border-color 0.2s, background 0.2s;
       position: relative;
     }
-    #dropzone.hover {
-      border-color: var(--cyan);
-      background: rgba(0, 229, 255, 0.05);
-    }
-    #dropzone.has-file {
-      border-color: var(--cyan);
-      border-style: solid;
-    }
+    #dropzone.hover    { border-color: var(--cyan); background: rgba(0,229,255,0.05); }
+    #dropzone.has-file { border-color: var(--cyan); border-style: solid; }
     #dropzone input[type="file"] {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
-      width: 100%;
-      height: 100%;
+      position: absolute; inset: 0; opacity: 0;
+      cursor: pointer; width: 100%; height: 100%;
     }
-    .drop-icon {
-      font-size: 40px;
-      line-height: 1;
-      margin-bottom: 12px;
-      display: block;
-    }
-    .drop-label {
-      font-size: 15px;
-      color: var(--text);
-      font-weight: 600;
-    }
-    .drop-sub {
-      font-size: 13px;
-      color: var(--muted);
-      margin-top: 4px;
-    }
-    #file-name {
-      margin-top: 10px;
-      font-size: 13px;
-      color: var(--cyan);
-      font-weight: 600;
-      word-break: break-all;
-      display: none;
+    .drop-icon  { font-size: 40px; line-height: 1; margin-bottom: 12px; display: block; }
+    .drop-label { font-size: 15px; font-weight: 600; }
+    .drop-sub   { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    #file-name  {
+      margin-top: 10px; font-size: 13px; color: var(--cyan);
+      font-weight: 600; word-break: break-all; display: none;
     }
 
-    /* ── Status area ── */
-    #status-area {
-      display: none;
-      flex-direction: column;
-      gap: 10px;
-    }
+    /* Status */
+    #status-area { display: none; flex-direction: column; gap: 10px; }
     #status-area.visible { display: flex; }
 
-    #status-msg {
-      font-size: 13px;
-      color: var(--muted);
-      min-height: 18px;
-    }
-    #status-msg.error { color: var(--danger); }
+    #status-msg { font-size: 13px; color: var(--muted); min-height: 18px; }
+    #status-msg.error   { color: var(--danger); }
     #status-msg.success { color: var(--success); }
 
-    /* Progress bar */
     .progress-track {
-      width: 100%;
-      height: 6px;
-      background: var(--border);
-      border-radius: 99px;
-      overflow: hidden;
+      width: 100%; height: 6px;
+      background: var(--border); border-radius: 99px; overflow: hidden;
     }
     .progress-fill {
-      height: 100%;
-      width: 0%;
+      height: 100%; width: 0%;
       background: linear-gradient(90deg, var(--cyan-dim), var(--cyan));
-      border-radius: 99px;
-      transition: width 0.25s ease;
+      border-radius: 99px; transition: width 0.2s ease;
     }
     .progress-fill.indeterminate {
       width: 40%;
       animation: slide 1.2s ease-in-out infinite;
     }
     @keyframes slide {
-      0%   { transform: translateX(-100%); }
-      100% { transform: translateX(350%); }
+      0%   { transform: translateX(-150%); }
+      100% { transform: translateX(400%); }
     }
 
-    /* Log output */
     #log-box {
       font-family: 'Courier New', monospace;
-      font-size: 11px;
-      color: var(--muted);
-      background: #0d0d14;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 12px;
-      max-height: 120px;
-      overflow-y: auto;
-      word-break: break-all;
-      white-space: pre-wrap;
-      display: none;
+      font-size: 11px; color: var(--muted);
+      background: #0d0d14; border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px;
+      max-height: 100px; overflow-y: auto;
+      word-break: break-all; white-space: pre-wrap; display: none;
     }
     #log-box.visible { display: block; }
 
-    /* ── Buttons ── */
+    /* Buttons */
     .btn {
-      width: 100%;
-      padding: 14px 20px;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 15px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s;
+      width: 100%; padding: 14px 20px;
+      border: none; border-radius: var(--radius);
+      font-size: 15px; font-weight: 700; letter-spacing: 0.04em;
+      cursor: pointer; transition: opacity 0.15s, transform 0.1s;
     }
-    .btn:active { transform: scale(0.98); }
+    .btn:active  { transform: scale(0.98); }
     .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
 
-    .btn-primary {
-      background: var(--cyan);
-      color: #000;
-    }
+    .btn-primary { background: var(--cyan); color: #000; }
     .btn-primary:hover:not(:disabled) { opacity: 0.88; }
 
     .btn-download {
-      background: var(--success);
-      color: #000;
-      display: none;
+      background: var(--success); color: #000; display: none;
     }
     .btn-download.visible { display: block; }
     .btn-download:hover:not(:disabled) { opacity: 0.88; }
 
     .btn-reset {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--muted);
-      font-size: 13px;
-      padding: 10px;
-      display: none;
+      background: transparent; border: 1px solid var(--border);
+      color: var(--muted); font-size: 13px; padding: 10px; display: none;
     }
     .btn-reset.visible { display: block; }
     .btn-reset:hover:not(:disabled) { border-color: var(--muted); color: var(--text); }
 
-    /* ── Footer ── */
     footer {
-      margin-top: 32px;
-      font-size: 12px;
-      color: var(--muted);
-      text-align: center;
+      margin-top: 32px; font-size: 12px;
+      color: var(--muted); text-align: center;
     }
     footer a { color: var(--cyan-dim); text-decoration: none; }
 
@@ -252,7 +181,6 @@
 
   <div class="card">
 
-    <!-- Drop zone -->
     <div id="dropzone">
       <input type="file" id="file-input" accept=".mov,video/quicktime" />
       <span class="drop-icon">🎬</span>
@@ -261,7 +189,6 @@
       <p id="file-name"></p>
     </div>
 
-    <!-- Status area -->
     <div id="status-area">
       <div class="progress-track">
         <div class="progress-fill" id="progress-fill"></div>
@@ -270,7 +197,6 @@
       <pre id="log-box"></pre>
     </div>
 
-    <!-- Actions -->
     <button class="btn btn-primary" id="convert-btn" disabled>Convert to MP4</button>
     <a class="btn btn-download" id="download-btn" download="converted.mp4">⬇ Download MP4</a>
     <button class="btn btn-reset" id="reset-btn">Convert another file</button>
@@ -278,25 +204,16 @@
   </div>
 
   <footer>
-    Powered by <a href="https://ffmpegwasm.netlify.app/" target="_blank" rel="noopener">FFmpeg.wasm</a>
+    Powered by <a href="https://gpac.github.io/mp4box.js/" target="_blank" rel="noopener">MP4Box.js</a>
     — processing happens entirely in your browser
   </footer>
 
-  <!-- FFmpeg.wasm 0.12.x — single-threaded core, works on GitHub Pages without special headers -->
-  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
-  <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mp4box@0.5.2/dist/mp4box.all.min.js"></script>
 
   <script>
-    const { FFmpeg } = FFmpegWASM;
-    const { fetchFile, toBlobURL } = FFmpegUtil;
-
-    // ── State
-    let ffmpeg = null;
     let selectedFile = null;
-    let outputURL = null;
-    let engineLoaded = false;
+    let outputURL    = null;
 
-    // ── Elements
     const dropzone     = document.getElementById('dropzone');
     const fileInput    = document.getElementById('file-input');
     const fileNameEl   = document.getElementById('file-name');
@@ -307,126 +224,158 @@
     const statusMsg    = document.getElementById('status-msg');
     const progressFill = document.getElementById('progress-fill');
     const logBox       = document.getElementById('log-box');
+
     // ── File selection
     fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
-
-    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('hover'); });
+    dropzone.addEventListener('dragover',  e => { e.preventDefault(); dropzone.classList.add('hover'); });
     dropzone.addEventListener('dragleave', () => dropzone.classList.remove('hover'));
     dropzone.addEventListener('drop', e => {
       e.preventDefault();
       dropzone.classList.remove('hover');
-      const f = e.dataTransfer.files[0];
-      if (f) handleFile(f);
+      if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
     });
 
     function handleFile(file) {
       if (!file) return;
-      if (!file.name.toLowerCase().endsWith('.mov') && file.type !== 'video/quicktime') {
-        setStatus('Please choose a .MOV file.', 'error');
-        showStatus();
-        return;
+      const name = file.name.toLowerCase();
+      if (!name.endsWith('.mov') && file.type !== 'video/quicktime') {
+        showStatus(); setStatus('Please choose a .MOV file.', 'error'); return;
       }
       selectedFile = file;
-      fileNameEl.textContent = `${file.name}  (${formatSize(file.size)})`;
+      fileNameEl.textContent = `${file.name}  (${fmtSize(file.size)})`;
       fileNameEl.style.display = 'block';
       dropzone.classList.add('has-file');
       dropzone.querySelector('.drop-label').textContent = 'File selected';
       convertBtn.disabled = false;
-      hideDownload();
-      clearStatus();
+      hideDownload(); clearStatus(); hideStatus();
     }
 
     // ── Convert
     convertBtn.addEventListener('click', async () => {
       if (!selectedFile) return;
       convertBtn.disabled = true;
-      downloadBtn.classList.remove('visible');
-      resetBtn.classList.remove('visible');
+      hideDownload();
       showStatus();
-      clearLog();
+      clearStatus();
 
       try {
-        // Load engine once
-        if (!engineLoaded) {
-          await loadEngine();
-        }
+        setStatus('Reading file…'); setProgress(0, true);
+        const arrayBuffer = await selectedFile.arrayBuffer();
+        arrayBuffer.fileStart = 0;
 
-        await runConversion();
+        setStatus('Remuxing to MP4…');
+        log('Parsing MOV container…');
+
+        const blob = await remux(arrayBuffer, pct => setProgress(Math.round(pct * 100)));
+
+        if (outputURL) URL.revokeObjectURL(outputURL);
+        outputURL = URL.createObjectURL(blob);
+        const outName = selectedFile.name.replace(/\.mov$/i, '') + '.mp4';
+        downloadBtn.href     = outputURL;
+        downloadBtn.download = outName;
+        downloadBtn.textContent = `⬇ Download ${outName}  (${fmtSize(blob.size)})`;
+
+        setProgress(100);
+        setStatus(`Done! ${fmtSize(blob.size)} MP4 ready.`, 'success');
+        showDownload();
 
       } catch (err) {
         console.error(err);
-        setStatus('Something went wrong. See log below.', 'error');
-        appendLog('[error] ' + err.message);
+        setStatus('Conversion failed. See log below.', 'error');
+        log('[error] ' + (err.message || err));
         logBox.classList.add('visible');
         setProgress(0);
         convertBtn.disabled = false;
       }
     });
 
-    async function loadEngine() {
-      setProgress(0, true);
-      setStatus('Loading FFmpeg engine (~32 MB, first time only)…');
+    // ── MP4Box remux
+    function remux(arrayBuffer, onProgress) {
+      return new Promise((resolve, reject) => {
+        const inputFile  = MP4Box.createFile();
+        const outputFile = MP4Box.createFile();
+        const trackMap   = {};   // input track id -> output track id
+        const gotSamples = {};   // input track id -> count received
+        const needSamples = {};  // input track id -> total needed
 
-      ffmpeg = new FFmpeg();
+        inputFile.onError = e => reject(new Error(String(e)));
 
-      ffmpeg.on('log', ({ message }) => {
-        appendLog(message);
+        inputFile.onReady = function(info) {
+          log(`Found ${info.tracks.length} track(s). Codec: ${info.tracks.map(t => t.codec).join(', ')}`);
+
+          for (const track of info.tracks) {
+            needSamples[track.id] = track.nb_samples;
+            gotSamples[track.id]  = 0;
+
+            const opts = {
+              timescale:  track.timescale,
+              duration:   track.duration,
+              nb_samples: track.nb_samples,
+              language:   track.language || 'und',
+            };
+
+            if (track.video) {
+              opts.width  = track.video.width;
+              opts.height = track.video.height;
+            }
+            if (track.audio) {
+              opts.samplerate    = track.audio.sample_rate;
+              opts.channel_count = track.audio.channel_count;
+            }
+
+            // Determine codec type for the output track
+            const c = (track.codec || '').split('.')[0].toLowerCase();
+            if      (c === 'avc1' || c === 'avc3') opts.type = 'avc1';
+            else if (c === 'hvc1' || c === 'hev1') opts.type = 'hvc1';
+            else if (c === 'mp4a')                  opts.type = 'mp4a';
+            else                                    opts.type = c;
+
+            const outId = outputFile.addTrack(opts);
+            trackMap[track.id] = outId;
+            inputFile.setExtractionOptions(track.id, null, { nbSamples: 1000 });
+          }
+
+          inputFile.start();
+        };
+
+        inputFile.onSamples = function(id, user, samples) {
+          const outId = trackMap[id];
+          gotSamples[id] += samples.length;
+
+          for (const s of samples) {
+            outputFile.addSample(outId, s.data, {
+              duration:    s.duration,
+              cts:         s.cts,
+              dts:         s.dts,
+              is_sync:     s.is_sync,
+              description: s.description,
+            });
+          }
+
+          // Progress
+          let got = 0, need = 0;
+          for (const tid in needSamples) { got += gotSamples[tid]; need += needSamples[tid]; }
+          if (need > 0 && onProgress) onProgress(got / need);
+
+          // Done?
+          let done = true;
+          for (const tid in needSamples) {
+            if (gotSamples[tid] < needSamples[tid]) { done = false; break; }
+          }
+          if (done) {
+            try {
+              log('Writing MP4…');
+              const buf = outputFile.getBuffer();
+              resolve(new Blob([buf], { type: 'video/mp4' }));
+            } catch(e) { reject(e); }
+          }
+        };
+
+        try {
+          inputFile.appendBuffer(arrayBuffer);
+          inputFile.flush();
+        } catch(e) { reject(e); }
       });
-
-      ffmpeg.on('progress', ({ progress, time }) => {
-        if (progress >= 0 && progress <= 1) {
-          setProgress(Math.round(progress * 100), false);
-        }
-      });
-
-      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`,   'text/javascript'),
-        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-      });
-
-      engineLoaded = true;
-      setProgress(100);
-      setStatus('Engine ready. Starting conversion…');
-      await delay(400);
-    }
-
-    async function runConversion() {
-      const inName  = 'input.mov';
-      const outName = 'output.mp4';
-
-      setProgress(0, true);
-      setStatus('Writing file to converter…');
-      await ffmpeg.writeFile(inName, await fetchFile(selectedFile));
-
-      setStatus('Converting…');
-      logBox.classList.add('visible');
-
-      // Re-encode to H.264 + AAC for maximum browser compatibility
-      const args = ['-i', inName, '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
-                    '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', outName];
-
-      await ffmpeg.exec(args);
-
-      setStatus('Reading output…');
-      const data = await ffmpeg.readFile(outName);
-      const blob = new Blob([data.buffer], { type: 'video/mp4' });
-
-      // Cleanup
-      await ffmpeg.deleteFile(inName).catch(() => {});
-      await ffmpeg.deleteFile(outName).catch(() => {});
-
-      if (outputURL) URL.revokeObjectURL(outputURL);
-      outputURL = URL.createObjectURL(blob);
-
-      const outName2 = selectedFile.name.replace(/\.mov$/i, '') + '.mp4';
-      downloadBtn.href = outputURL;
-      downloadBtn.download = outName2;
-      downloadBtn.textContent = `⬇ Download ${outName2}  (${formatSize(blob.size)})`;
-
-      setProgress(100);
-      setStatus(`Done! ${formatSize(blob.size)} MP4 ready.`, 'success');
-      showDownload();
     }
 
     // ── Reset
@@ -434,29 +383,23 @@
       selectedFile = null;
       fileInput.value = '';
       fileNameEl.style.display = 'none';
-      fileNameEl.textContent = '';
       dropzone.classList.remove('has-file');
       dropzone.querySelector('.drop-label').textContent = 'Tap to choose a .MOV file';
       convertBtn.disabled = true;
-      hideDownload();
-      clearStatus();
-      hideStatus();
+      hideDownload(); clearStatus(); hideStatus();
     });
 
     // ── Helpers
-    function showStatus() { statusArea.classList.add('visible'); }
-    function hideStatus() { statusArea.classList.remove('visible'); }
+    function showStatus()  { statusArea.classList.add('visible'); }
+    function hideStatus()  { statusArea.classList.remove('visible'); }
     function clearStatus() {
-      statusMsg.textContent = '';
-      statusMsg.className = '';
+      statusMsg.textContent = ''; statusMsg.className = '';
       progressFill.style.width = '0%';
       progressFill.classList.remove('indeterminate');
-      logBox.textContent = '';
-      logBox.classList.remove('visible');
+      logBox.textContent = ''; logBox.classList.remove('visible');
     }
     function setStatus(msg, type) {
-      statusMsg.textContent = msg;
-      statusMsg.className = type || '';
+      statusMsg.textContent = msg; statusMsg.className = type || '';
     }
     function setProgress(pct, indeterminate = false) {
       if (indeterminate) {
@@ -467,11 +410,6 @@
         progressFill.style.width = pct + '%';
       }
     }
-    function appendLog(line) {
-      logBox.textContent += line + '\n';
-      logBox.scrollTop = logBox.scrollHeight;
-    }
-    function clearLog() { logBox.textContent = ''; }
     function showDownload() {
       downloadBtn.classList.add('visible');
       resetBtn.classList.add('visible');
@@ -481,11 +419,14 @@
       downloadBtn.classList.remove('visible');
       resetBtn.classList.remove('visible');
     }
-    function formatSize(bytes) {
-      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
-      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    function log(line) {
+      logBox.textContent += line + '\n';
+      logBox.scrollTop = logBox.scrollHeight;
+      logBox.classList.add('visible');
     }
-    function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+    function fmtSize(b) {
+      return b < 1048576 ? (b/1024).toFixed(0)+' KB' : (b/1048576).toFixed(1)+' MB';
+    }
   </script>
 </body>
 </html>
