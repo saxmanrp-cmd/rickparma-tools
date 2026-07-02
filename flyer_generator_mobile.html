@@ -46,12 +46,12 @@ html, body {
 .slider-wrap { flex: 1; overflow: hidden; position: relative; }
 .slider-track {
   display: flex;
-  width: 1000%;
+  width: 1100%;
   height: 100%;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .slide {
-  width: calc(100% / 10);
+  width: calc(100% / 11);
   height: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -696,6 +696,24 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
         </div>
       </div>
 
+      <!-- Slide 10: Add to Calendar -->
+      <div class="slide">
+        <div class="step-title" style="margin-bottom:6px;">Add to Calendar</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.6);text-align:center;margin-bottom:20px;font-style:italic;">Save this event to your phone's calendar.</div>
+
+        <div id="cal-summary" class="card" style="margin-bottom:16px;"></div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <button onclick="addToGoogle()" style="width:100%;background:linear-gradient(135deg,#4285f4,#34a853);border:none;border-radius:12px;padding:18px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 20px rgba(66,133,244,0.35);-webkit-tap-highlight-color:transparent;">
+            <i class="ti ti-brand-google" style="font-size:20px;"></i> Add to Google Calendar
+          </button>
+          <button onclick="addToApple()" style="width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:18px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;-webkit-tap-highlight-color:transparent;">
+            <i class="ti ti-brand-apple" style="font-size:20px;"></i> Add to Apple Calendar
+          </button>
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.5);text-align:center;margin-top:14px;line-height:1.5;">Opens your calendar with the event pre-filled — just pick your calendar and save.</div>
+      </div>
+
     </div>
   </div>
 
@@ -715,6 +733,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
       <div class="dot" id="d7"></div>
       <div class="dot" id="d8"></div>
       <div class="dot" id="d9"></div>
+      <div class="dot" id="d10"></div>
     </div>
     <button class="btn-next" id="btn-next" onclick="goNext()">
       Next <i class="ti ti-arrow-right"></i>
@@ -724,7 +743,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
 </div>
 <script>
 var cur = 0, selSz = "1080x1350", gN = 0, busy = false;
-var TOTAL = 10;
+var TOTAL = 11;
 var LAST = TOTAL - 1;
 var PCT = 100 / TOTAL;
 
@@ -816,7 +835,7 @@ function goTo(n){
     document.getElementById("d"+i).className = "dot" + (i < n ? " done" : i === n ? " active" : "");
   }
   document.getElementById("btn-back").style.visibility = n > 0 ? "visible" : "hidden";
-  document.getElementById("btn-next").style.visibility = n === 9 ? "hidden" : "visible";
+  document.getElementById("btn-next").style.visibility = n === 10 ? "hidden" : "visible";
   var nb = document.getElementById("btn-next");
   nb.innerHTML = 'Next <i class="ti ti-arrow-right"></i>';
   setTimeout(function(){
@@ -829,6 +848,8 @@ function goTo(n){
   document.getElementById("out-wrap").style.display = "none";
   // Rebuild video element list when arriving on the video page
   if(n === 9){ initVideoPage(); }
+  // Rebuild calendar summary when arriving on the calendar page
+  if(n === 10){ initCalendarPage(); }
 }
 
 function goNext(){
@@ -1247,6 +1268,128 @@ function generateVideo(){
 }
 
 initVideoPage();
+
+// ══════════ CALENDAR EVENT ══════════
+function getCalTitle(){
+  // Location name is the event title
+  var sub = v("f-subvenue");
+  if(sub) return sub;
+  if(v("f-vname")) return v("f-vname");
+  if(v("f-name")) return v("f-name");
+  return "Live Event";
+}
+
+function getCalLocation(){
+  if(v("f-vaddress")) return v("f-vaddress");
+  if(v("f-vname")) return v("f-vname");
+  if(v("f-vsite")) return v("f-vsite");
+  return "";
+}
+
+function parseTime12(str){
+  // "8:00 PM" -> {h:20, m:0}
+  if(!str) return null;
+  var m = str.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if(!m) return null;
+  var h = parseInt(m[1]), min = parseInt(m[2]);
+  var ap = m[3].toUpperCase();
+  if(ap === "PM" && h !== 12) h += 12;
+  if(ap === "AM" && h === 12) h = 0;
+  return {h:h, m:min};
+}
+
+function getCalDateTimes(){
+  var dateStr = v("f-date"); // yyyy-mm-dd
+  if(!dateStr) return null;
+  var showT = parseTime12(getTime("show"));
+  var endT = parseTime12(getTime("end"));
+  var parts = dateStr.split("-");
+  var y = parseInt(parts[0]), mo = parseInt(parts[1])-1, d = parseInt(parts[2]);
+  var start = new Date(y, mo, d, showT ? showT.h : 20, showT ? showT.m : 0);
+  var end;
+  if(endT){
+    end = new Date(y, mo, d, endT.h, endT.m);
+    if(end <= start) end.setDate(end.getDate()+1); // crosses midnight
+  } else {
+    end = new Date(start.getTime() + 2*60*60*1000); // default 2 hours
+  }
+  return {start:start, end:end};
+}
+
+function fmtICS(dt){
+  function pad(n){ return (n<10?"0":"")+n; }
+  return dt.getFullYear() + pad(dt.getMonth()+1) + pad(dt.getDate()) + "T" +
+    pad(dt.getHours()) + pad(dt.getMinutes()) + "00";
+}
+function fmtGoogle(dt){ return fmtICS(dt); }
+
+function getCalDescription(){
+  var d = [];
+  if(v("f-name")) d.push("Event: " + v("f-name"));
+  if(v("f-performer")) d.push("Performer: " + v("f-performer"));
+  var guests = getGuests();
+  if(guests.length) d.push("Special guests: " + guests.join(", "));
+  if(v("f-desc")) d.push(v("f-desc"));
+  if(v("f-price")) d.push("Cover: " + v("f-price"));
+  if(v("f-age")) d.push("Age: " + v("f-age"));
+  if(v("f-dress")) d.push("Dress code: " + v("f-dress"));
+  if(getTime("doors")) d.push("Doors: " + getTime("doors"));
+  if(v("f-vphone")) d.push("Phone: " + v("f-vphone"));
+  if(v("f-vsite")) d.push(v("f-vsite"));
+  return d.join("\n");
+}
+
+function initCalendarPage(){
+  var box = document.getElementById("cal-summary");
+  var dt = getCalDateTimes();
+  if(!dt){
+    box.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,0.7);text-align:center;line-height:1.6;">Add a date and show time on the Date &amp; Time page to create a calendar event.</div>';
+    return;
+  }
+  var title = getCalTitle();
+  var loc = getCalLocation();
+  var dateOpts = {weekday:"long", month:"long", day:"numeric", year:"numeric"};
+  var timeStr = dt.start.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}) + " – " + dt.end.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+  var html = '<div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px;">' + title + '</div>';
+  html += '<div style="font-size:13px;color:rgba(255,255,255,0.8);line-height:1.7;">';
+  html += dt.start.toLocaleDateString("en-US", dateOpts) + '<br>' + timeStr;
+  if(loc) html += '<br>' + loc;
+  html += '</div>';
+  box.innerHTML = html;
+}
+
+function addToGoogle(){
+  var dt = getCalDateTimes();
+  if(!dt){ alert("Please add a date and show time first."); return; }
+  var base = "https://calendar.google.com/calendar/render?action=TEMPLATE";
+  var url = base +
+    "&text=" + encodeURIComponent(getCalTitle()) +
+    "&dates=" + fmtGoogle(dt.start) + "/" + fmtGoogle(dt.end) +
+    "&details=" + encodeURIComponent(getCalDescription()) +
+    "&location=" + encodeURIComponent(getCalLocation());
+  window.open(url, "_blank");
+}
+
+function addToApple(){
+  var dt = getCalDateTimes();
+  if(!dt){ alert("Please add a date and show time first."); return; }
+  var ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//GigFlyer//EN\nBEGIN:VEVENT\n";
+  ics += "UID:" + Date.now() + "@gigflyer\n";
+  ics += "DTSTART:" + fmtICS(dt.start) + "\n";
+  ics += "DTEND:" + fmtICS(dt.end) + "\n";
+  ics += "SUMMARY:" + getCalTitle().replace(/,/g,"\\,") + "\n";
+  var desc = getCalDescription().replace(/\n/g,"\\n").replace(/,/g,"\\,");
+  if(desc) ics += "DESCRIPTION:" + desc + "\n";
+  var loc = getCalLocation().replace(/,/g,"\\,");
+  if(loc) ics += "LOCATION:" + loc + "\n";
+  ics += "END:VEVENT\nEND:VCALENDAR";
+  var blob = new Blob([ics], {type:"text/calendar;charset=utf-8"});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = "event.ics";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
 </script>
 </body>
 </html>
