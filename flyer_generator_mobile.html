@@ -485,9 +485,13 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
 
         <div id="venue-website-section">
           <div class="card">
+            <label class="lbl">Venue name</label>
+            <input type="text" id="f-vsite-name" autocomplete="off">
+          </div>
+          <div class="card">
             <label class="lbl">Location / Venue website</label>
             <input type="text" id="f-vsite" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
-            <div class="hint">Your AI will pull all pertinent information from the venue website.</div>
+            <div class="hint">Your AI will pull the logo, colors, address, phone, and style from the website.</div>
           </div>
         </div>
 
@@ -935,8 +939,10 @@ function buildPrompt(){
   if(v("f-vsite")){
     p += "Before generating the flyer, complete these two steps in order:\n\n";
     p += "STEP 1 — VISIT AND SCRAPE THIS WEBSITE: " + v("f-vsite") + "\n";
-    p += "Pull the following details:\n";
-    p += "— Venue name\n";
+    if(v("f-vsite-name")){
+      p += "The venue name is already provided below — use \"" + v("f-vsite-name") + "\" exactly as the venue name. Do NOT pull or generate a venue name from the website, and do not display the venue name more than once.\n";
+    }
+    p += "Pull the following details from the website:\n";
     p += "— Address\n";
     p += "— Phone number\n";
     p += "— Website URL\n";
@@ -962,6 +968,9 @@ function buildPrompt(){
 
   // Event details
   p += "The flyer must display the following information:\n";
+  if(v("f-vsite-name")){
+    p += "— Venue name: " + v("f-vsite-name") + " (display exactly once)\n";
+  }
   if(sub){
     p += "— Primary title (largest venue text): " + sub + "\n";
     if(v("f-subvenue-site")){
@@ -1271,16 +1280,17 @@ initVideoPage();
 
 // ══════════ CALENDAR EVENT ══════════
 function getCalTitle(){
-  // Location name is the event title
+  // Venue name is the calendar event title
   var sub = v("f-subvenue");
   if(sub) return sub;
+  if(v("f-vsite-name")) return v("f-vsite-name");
   if(v("f-vname")) return v("f-vname");
-  if(v("f-name")) return v("f-name");
   return "Live Event";
 }
 
 function getCalLocation(){
   if(v("f-vaddress")) return v("f-vaddress");
+  if(v("f-vsite-name")) return v("f-vsite-name");
   if(v("f-vname")) return v("f-vname");
   if(v("f-vsite")) return v("f-vsite");
   return "";
