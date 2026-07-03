@@ -706,6 +706,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
         <div style="font-size:13px;color:rgba(255,255,255,0.6);text-align:center;margin-bottom:20px;font-style:italic;">Save this event to your phone's calendar.</div>
 
         <div id="cal-summary" class="card" style="margin-bottom:16px;"></div>
+        <div id="cal-multi-links" class="card" style="display:none;margin-bottom:16px;"></div>
 
         <div style="display:flex;flex-direction:column;gap:12px;">
           <button onclick="addToGoogle()" style="width:100%;background:linear-gradient(135deg,#4285f4,#34a853);border:none;border-radius:12px;padding:18px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 20px rgba(66,133,244,0.35);-webkit-tap-highlight-color:transparent;">
@@ -1393,9 +1394,9 @@ function getCustomDateTimes(){
   var results = [];
   var showT = parseTime12(getTime("show"));
   var endT = parseTime12(getTime("end"));
-  document.querySelectorAll("#datelist input").forEach(function(inp){
-    if(!inp.value) return;
-    var parts = inp.value.split("-");
+  function makeEntry(val){
+    if(!val) return null;
+    var parts = val.split("-");
     var y = parseInt(parts[0]), mo = parseInt(parts[1])-1, d = parseInt(parts[2]);
     var start = new Date(y, mo, d, showT ? showT.h : 20, showT ? showT.m : 0);
     var end;
@@ -1405,13 +1406,26 @@ function getCustomDateTimes(){
     } else {
       end = new Date(start.getTime() + 2*60*60*1000);
     }
-    results.push({start:start, end:end});
+    return {start:start, end:end, key:val};
+  }
+  var seen = {};
+  // Include the main date first
+  var mainEntry = makeEntry(v("f-date"));
+  if(mainEntry){ results.push(mainEntry); seen[mainEntry.key] = true; }
+  // Then the additional custom dates
+  document.querySelectorAll("#datelist input").forEach(function(inp){
+    var entry = makeEntry(inp.value);
+    if(entry && !seen[entry.key]){ results.push(entry); seen[entry.key] = true; }
   });
+  // Sort chronologically
+  results.sort(function(a,b){ return a.start - b.start; });
   return results;
 }
 
 function initCalendarPage(){
   var box = document.getElementById("cal-summary");
+  var mlinks = document.getElementById("cal-multi-links");
+  if(mlinks){ mlinks.style.display = "none"; mlinks.innerHTML = ""; }
   var repeat = v("f-repeat");
   var title = getCalTitle();
   var loc = getCalLocation();
@@ -1454,20 +1468,26 @@ function initCalendarPage(){
 
 function addToGoogle(){
   var repeat = v("f-repeat");
-  // Multiple custom dates - open a tab per date
+  // Multiple custom dates - show tappable links (browsers block multiple window.open in a loop)
   if(repeat === "Custom dates"){
     var customs = getCustomDateTimes();
     if(!customs.length){ alert("Please add your dates first."); return; }
+    var listBox = document.getElementById("cal-multi-links");
+    var dateOpts = {weekday:"short", month:"short", day:"numeric"};
+    var h = '<div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em;">Tap each date to add it to Google Calendar:</div>';
     customs.forEach(function(c){
       var url = "https://calendar.google.com/calendar/render?action=TEMPLATE" +
         "&text=" + encodeURIComponent(getCalTitle()) +
         "&dates=" + fmtGoogle(c.start) + "/" + fmtGoogle(c.end) +
         "&details=" + encodeURIComponent(getCalDescription()) +
         "&location=" + encodeURIComponent(getCalLocation());
-      window.open(url, "_blank");
+      h += '<a href="' + url + '" target="_blank" style="display:flex;align-items:center;gap:8px;background:rgba(66,133,244,0.12);border:1px solid rgba(66,133,244,0.35);border-radius:8px;padding:12px 14px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;margin-bottom:8px;-webkit-tap-highlight-color:transparent;"><i class="ti ti-calendar-plus" style="color:#4285f4;"></i> ' + c.start.toLocaleDateString("en-US", dateOpts) + '</a>';
     });
+    listBox.innerHTML = h;
+    listBox.style.display = "block";
     return;
   }
+  document.getElementById("cal-multi-links").style.display = "none";
   var dt = getCalDateTimes();
   if(!dt){ alert("Please add a date and show time first."); return; }
   var url = "https://calendar.google.com/calendar/render?action=TEMPLATE" +
