@@ -37,6 +37,8 @@
   header p { margin: 2px 0 0; font-size: 12px; color: var(--text-dim); }
   .header-row { display: flex; justify-content: space-between; align-items: flex-start; }
   .header-actions { display: flex; gap: 8px; flex-shrink: 0; margin-left: 12px; }
+  body.client-mode .header-actions { display: none; }
+  body.client-mode #sync-status { display: none; }
   .icon-btn {
     width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--border);
     background: var(--panel); color: var(--accent); font-size: 19px; font-weight: 700;
@@ -163,7 +165,7 @@
 <header>
   <div class="header-row">
     <div>
-      <h1 class="brand">Invoice Creator</h1>
+      <h1 class="brand" id="header-title">Invoice Creator</h1>
       <p>Richard Parma — Sax/Vocals</p>
       <p id="sync-status" style="font-size:11px;color:var(--accent);margin-top:4px">Loading…</p>
     </div>
@@ -1210,6 +1212,7 @@ const setMeta = (attr, key, content) => {
 
 if (signId) {
   document.title = 'Event Signature Needed';
+  document.getElementById('header-title').textContent = 'Event Signature';
   setMeta('name', 'description', 'Tap to review and sign your invoice from Richard Parma.');
   setMeta('property', 'og:title', 'Event Signature Needed');
   setMeta('property', 'og:description', 'Tap to review and sign your invoice from Richard Parma.');
@@ -1219,6 +1222,7 @@ if (signId) {
   initClientView(signId);
 } else if (payId) {
   document.title = 'Make a Payment - Richard Parma';
+  document.getElementById('header-title').textContent = 'Make a Payment';
   setMeta('name', 'description', 'Tap to make a payment on your invoice from Richard Parma.');
   setMeta('property', 'og:title', 'Make a Payment - Richard Parma');
   setMeta('property', 'og:description', 'Tap to make a payment on your invoice from Richard Parma.');
@@ -1228,6 +1232,7 @@ if (signId) {
   initPaymentView(payId);
 } else if (receiptId) {
   document.title = 'Your Receipt - Richard Parma';
+  document.getElementById('header-title').textContent = 'Your Receipt';
   setMeta('name', 'description', 'Your invoice receipt from Richard Parma.');
   setMeta('property', 'og:title', 'Your Receipt - Richard Parma');
   setMeta('property', 'og:description', 'Your invoice receipt from Richard Parma.');
