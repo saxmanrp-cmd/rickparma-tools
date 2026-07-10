@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Invoice Creator</title>
-<meta name="description" content="Invoice tool for Richard Parma.">
-<meta property="og:title" content="Invoice Creator">
-<meta property="og:description" content="Invoice tool for Richard Parma.">
+<title>Event Invoice - Richard Parma</title>
+<meta name="description" content="Review and sign your invoice from Richard Parma.">
+<meta property="og:title" content="Event Invoice - Richard Parma">
+<meta property="og:description" content="Review and sign your invoice from Richard Parma.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@400;600;700&family=Lato:wght@400;700&family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
 <style>
@@ -57,8 +57,9 @@
     font-family: 'Lato', sans-serif;
   }
   textarea { resize: vertical; min-height: 70px; }
-  .row2 { display: flex; gap: 10px; }
+  .row2 { display: flex; gap: 10px; margin-top: 10px; }
   .row2 > div { flex: 1; }
+  .row2 label { margin-top: 0; }
   button.btn {
     font-size: 15px; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--accent);
     background: transparent; color: var(--accent); font-weight: 700; font-family: 'Josefin Sans', sans-serif;
@@ -109,11 +110,12 @@
   #view-print .doc-title { text-align: right; }
   #view-print .doc-title h2 { margin: 0; font-size: 25px; letter-spacing: 0.08em; }
   #view-print .doc-title .meta { font-size: 12.5px; color: #444; margin-top: 8px; line-height: 1.6; }
-  #view-print .bill-to { margin-bottom: 18px; }
+  #view-print .bill-to { margin-bottom: 14px; }
   #view-print .bill-to .label { font-size: 11px; letter-spacing: 0.09em; color: #777; text-transform: uppercase; margin-bottom: 5px; }
   #view-print .bill-to .name { font-size: 16px; font-weight: 700; }
   #view-print .bill-to .detail { font-size: 13.5px; color: #333; line-height: 1.55; margin-top: 2px; }
-  #view-print .event-line { font-size: 13.5px; margin: 14px 0 2px; color: #333; }
+  #view-print .section-divider { border-top: 1px solid #ccc; margin: 0 0 12px; }
+  #view-print .event-line { font-size: 13.5px; margin: 0 0 3px; color: #222; font-weight: 700; }
   #view-print table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
   #view-print thead th {
     background: #f2f2f2; border-bottom: 2px solid #1a1a1a; padding: 9px 10px; text-align: left;
@@ -708,12 +710,13 @@ function buildInvoiceBody(data, total) {
       </div>
     </div>
 
-    ${data.eventName ? `<div class="event-line" style="font-size:15px;font-weight:700;margin-bottom:0">${esc(data.eventName)}</div>` : ''}
+    <div class="section-divider"></div>
+
+    ${data.eventName ? `<div class="event-line" style="font-size:15px">${esc(data.eventName)}</div>` : ''}
     ${data.venueName ? `<div class="event-line">${esc(data.venueName)}</div>` : ''}
     ${data.clientAddress ? `<div class="event-line">${esc(data.clientAddress).replace(/\n/g,', ')}</div>` : ''}
-    <div class="event-line">
-      ${fmtDateLong(data.eventDate)}${timeRange ? ', ' + timeRange : ''}
-    </div>
+    <div class="event-line">${fmtDateLong(data.eventDate)}</div>
+    ${timeRange ? `<div class="event-line">${timeRange}</div>` : ''}
 
     <table>
       <thead><tr><th>Description</th><th class="amt">Amount</th></tr></thead>
