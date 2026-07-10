@@ -187,8 +187,16 @@
         <div><label>Email</label><input id="f-email" type="email"></div>
         <div><label>Phone</label><input id="f-phone" type="tel"></div>
       </div>
-      <label>Address</label>
-      <textarea id="f-address" rows="2"></textarea>
+      <label>Street Address</label>
+      <input id="f-addr-street" type="text" placeholder="123 Main St">
+      <label>Unit / Apt # <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
+      <input id="f-addr-unit" type="text" placeholder="Apt 4B">
+      <div class="row2">
+        <div style="flex:2"><label>City</label><input id="f-addr-city" type="text"></div>
+        <div style="flex:1"><label>State</label><input id="f-addr-state" type="text" maxlength="2" placeholder="NV" style="text-transform:uppercase"></div>
+      </div>
+      <label>ZIP Code</label>
+      <input id="f-addr-zip" type="text" inputmode="numeric" placeholder="89084">
     </section>
 
     <section class="card">
@@ -450,7 +458,7 @@ function clearForm() {
   currentInvoiceNumber = null;
   lineItems = [{description:'Solo performance', amount:''}];
   payments = [];
-  ['f-name','f-email','f-phone','f-address','f-eventname','f-eventtype','f-perftype','f-venuetype','f-guests','f-date','f-timestart','f-timeend'].forEach(id => document.getElementById(id).value = '');
+  ['f-name','f-email','f-phone','f-addr-street','f-addr-unit','f-addr-city','f-addr-state','f-addr-zip','f-eventname','f-eventtype','f-perftype','f-venuetype','f-guests','f-date','f-timestart','f-timeend'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('delete-btn').style.display = 'none';
   renderLineItems();
   renderPayments();
@@ -466,7 +474,11 @@ function editInvoice(id) {
   document.getElementById('f-name').value = inv.clientName || '';
   document.getElementById('f-email').value = inv.clientEmail || '';
   document.getElementById('f-phone').value = inv.clientPhone || '';
-  document.getElementById('f-address').value = inv.clientAddress || '';
+  document.getElementById('f-addr-street').value = inv.addrStreet || inv.clientAddress || '';
+  document.getElementById('f-addr-unit').value = inv.addrUnit || '';
+  document.getElementById('f-addr-city').value = inv.addrCity || '';
+  document.getElementById('f-addr-state').value = inv.addrState || '';
+  document.getElementById('f-addr-zip').value = inv.addrZip || '';
   document.getElementById('f-eventname').value = inv.eventName || '';
   document.getElementById('f-eventtype').value = inv.eventType || '';
   document.getElementById('f-perftype').value = inv.perfType || '';
@@ -557,6 +569,16 @@ function collectFormData() {
   }
   const existingInv = currentId ? invoices.find(i => i.id === currentId) : null;
   const createdAt = (existingInv && existingInv.createdAt) ? existingInv.createdAt : todayLocal();
+
+  const addrStreet = document.getElementById('f-addr-street').value.trim();
+  const addrUnit = document.getElementById('f-addr-unit').value.trim();
+  const addrCity = document.getElementById('f-addr-city').value.trim();
+  const addrState = document.getElementById('f-addr-state').value.trim();
+  const addrZip = document.getElementById('f-addr-zip').value.trim();
+  const addrLine1 = addrUnit ? `${addrStreet}, ${addrUnit}` : addrStreet;
+  const addrLine2 = [[addrCity, addrState].filter(Boolean).join(', '), addrZip].filter(Boolean).join(' ');
+  const clientAddress = [addrLine1, addrLine2].filter(Boolean).join('\n');
+
   return {
     id: currentId || ('inv_' + Date.now()),
     invoiceNumber: currentInvoiceNumber,
@@ -564,7 +586,12 @@ function collectFormData() {
     clientName: document.getElementById('f-name').value,
     clientEmail: document.getElementById('f-email').value,
     clientPhone: document.getElementById('f-phone').value,
-    clientAddress: document.getElementById('f-address').value,
+    clientAddress: clientAddress,
+    addrStreet: addrStreet,
+    addrUnit: addrUnit,
+    addrCity: addrCity,
+    addrState: addrState,
+    addrZip: addrZip,
     eventName: document.getElementById('f-eventname').value,
     eventType: document.getElementById('f-eventtype').value,
     perfType: document.getElementById('f-perftype').value,
