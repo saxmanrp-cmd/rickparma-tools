@@ -98,6 +98,7 @@
   #view-print.showing {
     display: block; background: #fff; color: #1a1a1a; padding: 32px 28px; border-radius: 8px;
     font-family: Georgia, 'Times New Roman', serif; max-width: 680px; margin: 0 auto;
+    overflow-x: hidden; box-sizing: border-box;
   }
   #view-print .p-top { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1a1a1a; padding-bottom: 16px; margin-bottom: 20px; }
   #view-print .biz-name { font-size: 21px; font-weight: 700; letter-spacing: 0.02em; }
@@ -119,10 +120,11 @@
   #view-print th.amt, #view-print td.amt { text-align: right; }
   #view-print .total-row td { border-top: 2px solid #1a1a1a; border-bottom: none; font-weight: 700; font-size: 16.5px; padding-top: 12px; }
   #view-print .note-box { border: 1px solid #ccc; border-radius: 6px; padding: 12px 14px; font-size: 13px; margin-top: 14px; background: #fafafa; line-height: 1.6; }
-  #view-print .sig-grid { display: flex; gap: 36px; margin-top: 54px; }
-  #view-print .sig-col { flex: 1; }
-  #view-print .sig-col .sig-slot { height: 55px; display: flex; align-items: flex-end; }
-  #view-print .sig-col img { max-height: 55px; }
+  #view-print .note-box a { color: #1a1a1a; text-decoration: underline; font-weight: 700; }
+  #view-print .sig-grid { display: flex; gap: 24px; margin-top: 54px; }
+  #view-print .sig-col { flex: 1; min-width: 0; }
+  #view-print .sig-col .sig-slot { height: 55px; display: flex; align-items: flex-end; overflow: hidden; }
+  #view-print .sig-col img { max-height: 55px; max-width: 100%; width: auto; height: auto; object-fit: contain; }
   #view-print .sig-col .line { border-top: 1px solid #1a1a1a; margin-top: 6px; padding-top: 5px; font-size: 11.5px; color: #555; }
   #view-print .sig-col .printed { font-size: 13px; margin-top: 3px; font-weight: 700; }
   #view-print .sig-col .date-line { font-size: 12.5px; color: #555; margin-top: 2px; }
@@ -137,6 +139,10 @@
     border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
   }
   #cursive-canvas { width: 100%; background: #fff; border-radius: 8px; margin-top: 10px; }
+  .pay-link {
+    display: inline-block; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--accent);
+    color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 700; font-family: 'Josefin Sans', sans-serif;
+  }
   body.client-mode nav,
   body.client-mode #view-history,
   body.client-mode #view-form,
@@ -250,7 +256,11 @@ const BIZ = {
   address: "4604 Grey Heron Dr, North Las Vegas, NV 89084",
   phone: "(773) 209-1124",
   email: "saxman@rickparma.com",
-  zelle: "saxman@rickparma.com"
+  zelle: "saxman@rickparma.com",
+  zelleLink: "https://enroll.zellepay.com/qr-codes?data=eyJuYW1lIjoiUklDSEFSRCIsInRva2VuIjoic2F4bWFuQHJpY2twYXJtYS5jb20ifQ==",
+  venmo: "https://venmo.com/u/RickParma",
+  cashapp: "https://cash.app/$RickParma",
+  paypal: "https://www.paypal.com/paypalme/rickparma"
 };
 
 let invoices = [];
@@ -448,7 +458,7 @@ function addPayment() {
   const amt = parseFloat(document.getElementById('pay-amt').value);
   const method = document.getElementById('pay-method').value;
   if (!amt || amt <= 0) { alert('Enter a payment amount first.'); return; }
-  payments.push({date: new Date().toISOString().slice(0,10), amount: amt, method});
+  payments.push({date: todayLocal(), amount: amt, method});
   document.getElementById('pay-amt').value = '';
   renderPayments();
   updateBalance();
@@ -463,7 +473,7 @@ function renderPayments() {
   if (!payments.length) { el.innerHTML = '<div class="hint">No payments recorded yet.</div>'; return; }
   el.innerHTML = payments.map((p, idx) => `
     <div class="payment-row">
-      <span>${p.date} — ${esc(p.method)}</span>
+      <span>${p.date} — ${esc(p.method)}${p.source === 'client' ? ` (client-reported, ${p.type === 'partial' ? 'partial' : 'full'})` : ''}</span>
       <span>$${parseFloat(p.amount).toFixed(2)}</span>
       <button class="remove-x" onclick="removePayment(${idx})">✕</button>
     </div>
@@ -487,7 +497,7 @@ function collectFormData() {
     currentInvoiceNumber = (existing && existing.invoiceNumber) ? existing.invoiceNumber : nextInvoiceNumber();
   }
   const existingInv = currentId ? invoices.find(i => i.id === currentId) : null;
-  const createdAt = (existingInv && existingInv.createdAt) ? existingInv.createdAt : new Date().toISOString().slice(0,10);
+  const createdAt = (existingInv && existingInv.createdAt) ? existingInv.createdAt : todayLocal();
   return {
     id: currentId || ('inv_' + Date.now()),
     invoiceNumber: currentInvoiceNumber,
@@ -549,6 +559,14 @@ function fmtTime(t) {
   return `${h12}:${String(m).padStart(2,'0')}${ap}`;
 }
 
+function todayLocal() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function fmtDateLong(d) {
   if (!d) return '';
   const [y,m,day] = d.split('-').map(Number);
@@ -600,7 +618,10 @@ function buildInvoiceBody(data, total) {
 
     <div class="note-box">
       <strong>Requirements:</strong> Access to power at the performance location.<br>
-      <strong>Payment:</strong> Venmo, CashApp, Zelle (${BIZ.zelle}), PayPal, or credit card.
+      <strong>Payment:</strong> <a href="${BIZ.venmo}" target="_blank" rel="noopener">Venmo</a>,
+      <a href="${BIZ.cashapp}" target="_blank" rel="noopener">CashApp</a>,
+      <a href="${BIZ.zelleLink}" target="_blank" rel="noopener">Zelle</a> (${BIZ.zelle}),
+      <a href="${BIZ.paypal}" target="_blank" rel="noopener">PayPal</a>, or credit card.
       Checks payable to ${BIZ.name}.
     </div>
   `;
@@ -671,6 +692,10 @@ function renderClientInvoice(inv) {
 
   let sigSection;
   if (inv.clientSignatureImg) {
+    const clientPayment = (inv.payments || []).find(p => p.source === 'client');
+    const paymentNote = clientPayment
+      ? `<p style="text-align:center;font-size:13.5px;color:#444;margin-top:10px">Payment reported: $${parseFloat(clientPayment.amount).toFixed(2)} (${clientPayment.type === 'partial' ? 'Partial Payment' : 'Paid in Full'}) via ${esc(clientPayment.method)}</p>`
+      : '';
     sigSection = `
       <div class="sig-grid">
         <div class="sig-col">
@@ -684,10 +709,36 @@ function renderClientInvoice(inv) {
           <div class="date-line">Date: ${fmtDateLong(inv.createdAt)}</div>
         </div>
       </div>
+      ${paymentNote}
       <p class="thanks">Thank you — this invoice has been signed and confirmed.</p>
     `;
   } else {
     sigSection = `
+      <div class="sign-card no-print">
+        <h2>Payment</h2>
+        <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:6px">Tap to pay</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <a class="pay-link" href="${BIZ.venmo}" target="_blank" rel="noopener">Venmo</a>
+          <a class="pay-link" href="${BIZ.cashapp}" target="_blank" rel="noopener">Cash App</a>
+          <a class="pay-link" href="${BIZ.zelleLink}" target="_blank" rel="noopener">Zelle</a>
+          <a class="pay-link" href="${BIZ.paypal}" target="_blank" rel="noopener">PayPal</a>
+        </div>
+        <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:4px">Payment Method</label>
+        <select id="client-pay-method">
+          <option>Zelle</option><option>Venmo</option><option>CashApp</option>
+          <option>PayPal</option><option>Card</option><option>Check</option><option>Cash</option>
+        </select>
+        <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Payment Type</label>
+        <select id="client-pay-type" onchange="toggleClientPartialAmount()">
+          <option value="full">Paying in Full ($${total.toFixed(2)})</option>
+          <option value="partial">Partial Payment</option>
+        </select>
+        <div id="client-partial-amount-wrap" style="display:none">
+          <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Amount</label>
+          <input id="client-pay-amount" type="number" step="0.01">
+        </div>
+      </div>
+
       <div class="sign-card no-print">
         <h2>Sign This Invoice</h2>
         <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:4px">Type your full name</label>
@@ -702,7 +753,12 @@ function renderClientInvoice(inv) {
 
   document.getElementById('print-content').innerHTML = actions + body + sigSection;
   const dateInput = document.getElementById('client-date-input');
-  if (dateInput) dateInput.value = new Date().toISOString().slice(0,10);
+  if (dateInput) dateInput.value = todayLocal();
+}
+
+function toggleClientPartialAmount() {
+  const type = document.getElementById('client-pay-type').value;
+  document.getElementById('client-partial-amount-wrap').style.display = type === 'partial' ? 'block' : 'none';
 }
 
 async function submitClientSignature(invId) {
@@ -721,8 +777,24 @@ async function submitClientSignature(invId) {
     const list = (data.record && data.record.invoices) || [];
     const idx = list.findIndex(i => i.id === invId);
     if (idx < 0) { alert('Could not find this invoice anymore. Please contact Richard Parma directly.'); return; }
+
+    const payMethod = document.getElementById('client-pay-method').value;
+    const payType = document.getElementById('client-pay-type').value;
+    const total = lineItemsTotal(list[idx].lineItems);
+    const payAmount = payType === 'full' ? total : (parseFloat(document.getElementById('client-pay-amount').value) || 0);
+    if (payAmount > 0) {
+      list[idx].payments = list[idx].payments || [];
+      list[idx].payments.push({
+        date: todayLocal(),
+        amount: payAmount,
+        method: payMethod,
+        source: 'client',
+        type: payType
+      });
+    }
+
     list[idx].clientSignatureImg = sigDataUrl;
-    list[idx].clientSignDate = dateInput.value || new Date().toISOString().slice(0,10);
+    list[idx].clientSignDate = dateInput.value || todayLocal();
     list[idx].clientSignedName = nameInput.value.trim();
     await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
       method: 'PUT',
