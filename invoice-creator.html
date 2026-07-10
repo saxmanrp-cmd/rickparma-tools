@@ -35,15 +35,13 @@
   }
   header h1 { margin: 0; font-size: 20px; color: var(--accent); font-weight: 600; }
   header p { margin: 2px 0 0; font-size: 12px; color: var(--text-dim); }
-  nav {
-    display: flex; gap: 8px; padding: 10px 16px 0;
+  .header-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  .header-actions { display: flex; gap: 8px; flex-shrink: 0; margin-left: 12px; }
+  .icon-btn {
+    width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--accent); font-size: 19px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; line-height: 1;
   }
-  nav button {
-    flex: 1; padding: 10px 8px; font-size: 14px; font-family: 'Josefin Sans', sans-serif;
-    background: var(--panel); color: var(--text-dim); border: 1px solid var(--border);
-    border-radius: 8px; font-weight: 600; letter-spacing: 0.02em;
-  }
-  nav button.active { color: var(--bg); background: var(--accent); border-color: var(--accent); }
   main { padding: 16px; max-width: 640px; margin: 0 auto; }
   section.card {
     background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
@@ -163,15 +161,18 @@
 <body>
 
 <header>
-  <h1 class="brand">Invoice Creator</h1>
-  <p>Richard Parma — Sax/Vocals</p>
-  <p id="sync-status" style="font-size:11px;color:var(--accent);margin-top:4px">Loading…</p>
+  <div class="header-row">
+    <div>
+      <h1 class="brand">Invoice Creator</h1>
+      <p>Richard Parma — Sax/Vocals</p>
+      <p id="sync-status" style="font-size:11px;color:var(--accent);margin-top:4px">Loading…</p>
+    </div>
+    <div class="header-actions no-print">
+      <button class="icon-btn" onclick="manualSync()" title="Sync now">⟳</button>
+      <button class="icon-btn" onclick="startNewInvoice()" title="New Invoice">+</button>
+    </div>
+  </div>
 </header>
-
-<nav class="no-print">
-  <button id="nav-history" onclick="showView('history')">History</button>
-  <button id="nav-form" onclick="showView('form')">New / Edit</button>
-</nav>
 
 <main>
 
@@ -180,6 +181,10 @@
   </div>
 
   <div id="view-form" style="display:none">
+
+    <div class="no-print" style="margin-bottom:12px">
+      <button class="btn small" onclick="showView('history')">← Back</button>
+    </div>
 
     <section class="card">
       <h2>Client Info</h2>
@@ -307,7 +312,6 @@
       <button class="btn" onclick="shareReceiptLink()">Send Receipt</button>
     </div>
     <div class="btn-row no-print">
-      <button class="btn" onclick="clearForm()">New Invoice</button>
       <button class="btn danger" id="delete-btn" style="display:none" onclick="deleteInvoice()">Delete</button>
     </div>
   </div>
@@ -389,8 +393,9 @@ async function loadInvoices() {
   renderHistory();
   try {
     const binId = await ensureBin();
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
-      headers: { 'X-Master-Key': JSONBIN_KEY }
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, {
+      headers: { 'X-Master-Key': JSONBIN_KEY },
+      cache: 'no-store'
     });
     const data = await res.json();
     invoices = (data.record && data.record.invoices) || [];
@@ -399,6 +404,24 @@ async function loadInvoices() {
     renderHistory();
   } catch (e) {
     setSyncStatus('Offline — showing last saved copy');
+  }
+}
+
+async function manualSync() {
+  setSyncStatus('Syncing…');
+  try {
+    const binId = await ensureBin();
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, {
+      headers: { 'X-Master-Key': JSONBIN_KEY },
+      cache: 'no-store'
+    });
+    const data = await res.json();
+    invoices = (data.record && data.record.invoices) || [];
+    localStorage.setItem(CACHE_KEY, JSON.stringify(invoices));
+    setSyncStatus('Synced');
+    if (document.getElementById('view-history').style.display !== 'none') renderHistory();
+  } catch (e) {
+    setSyncStatus('Sync failed — check connection');
   }
 }
 
@@ -425,9 +448,11 @@ function showView(name) {
   document.getElementById('view-history').style.display = name === 'history' ? 'block' : 'none';
   document.getElementById('view-form').style.display = name === 'form' ? 'block' : 'none';
   document.getElementById('view-print').classList.toggle('showing', name === 'print');
-  document.getElementById('nav-history').classList.toggle('active', name === 'history');
-  document.getElementById('nav-form').classList.toggle('active', name === 'form');
   if (name === 'history') renderHistory();
+}
+
+function startNewInvoice() {
+  clearForm();
 }
 
 function renderHistory() {
@@ -642,7 +667,7 @@ async function saveInvoiceCore() {
 
 async function saveInvoice() {
   await saveInvoiceCore();
-  alert('Invoice saved.');
+  showView('history');
 }
 
 async function shareLink(url, title, text) {
@@ -805,7 +830,7 @@ async function initClientView(invId) {
   document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center;color:#8DB2E5">Loading invoice…</p>';
   try {
     const binId = await ensureBin();
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_KEY }, cache: 'no-store' });
     const data = await res.json();
     const list = (data.record && data.record.invoices) || [];
     const inv = list.find(i => i.id === invId);
@@ -928,7 +953,7 @@ async function recordClientPayment(invId) {
   const wrap = document.getElementById('client-pay-btn-wrap');
   try {
     const binId = await ensureBin();
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_KEY }, cache: 'no-store' });
     const data = await res.json();
     const list = (data.record && data.record.invoices) || [];
     const idx = list.findIndex(i => i.id === invId);
@@ -965,7 +990,7 @@ async function submitClientSignature(invId) {
   try {
     const sigDataUrl = canvas.toDataURL('image/png');
     const binId = await ensureBin();
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_KEY }, cache: 'no-store' });
     const data = await res.json();
     const list = (data.record && data.record.invoices) || [];
     const idx = list.findIndex(i => i.id === invId);
@@ -991,7 +1016,7 @@ async function initPaymentView(invId) {
   document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center;color:#8DB2E5">Loading invoice…</p>';
   try {
     const binId = await ensureBin();
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_KEY }, cache: 'no-store' });
     const data = await res.json();
     const list = (data.record && data.record.invoices) || [];
     const inv = list.find(i => i.id === invId);
@@ -1087,7 +1112,7 @@ async function recordPmtPayment(invId) {
   const wrap = document.getElementById('pmt-btn-wrap');
   try {
     const binId = await ensureBin();
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_KEY }, cache: 'no-store' });
     const data = await res.json();
     const list = (data.record && data.record.invoices) || [];
     const idx = list.findIndex(i => i.id === invId);
@@ -1116,7 +1141,7 @@ async function initReceiptView(invId) {
   document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center;color:#8DB2E5">Loading receipt…</p>';
   try {
     const binId = await ensureBin();
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_KEY }, cache: 'no-store' });
     const data = await res.json();
     const list = (data.record && data.record.invoices) || [];
     const inv = list.find(i => i.id === invId);
@@ -1214,6 +1239,13 @@ if (signId) {
   loadInvoices();
   clearForm();
   showView('history');
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) manualSync();
+  });
+  setInterval(() => {
+    if (!document.hidden) manualSync();
+  }, 20000);
 }
 </script>
 
