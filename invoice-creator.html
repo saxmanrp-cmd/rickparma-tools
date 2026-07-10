@@ -850,27 +850,25 @@ function renderClientInvoice(inv) {
     sigSection = `
       <div class="sign-card no-print">
         <h2>Payment</h2>
-        <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:6px">Tap to pay</label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-          <a class="pay-link" href="${BIZ.venmo}" target="_blank" rel="noopener">Venmo</a>
-          <a class="pay-link" href="${BIZ.cashapp}" target="_blank" rel="noopener">Cash App</a>
-          <a class="pay-link" href="${BIZ.zelleLink}" target="_blank" rel="noopener">Zelle</a>
-          <a class="pay-link" href="${BIZ.paypal}" target="_blank" rel="noopener">PayPal</a>
-        </div>
-        <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:4px">Payment Method</label>
-        <select id="client-pay-method">
-          <option>Zelle</option><option>Venmo</option><option>CashApp</option>
-          <option>PayPal</option><option>Card</option><option>Check</option><option>Cash</option>
-        </select>
-        <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Payment Type</label>
-        <select id="client-pay-type" onchange="toggleClientPartialAmount()">
+        <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:4px">Payment Type</label>
+        <select id="client-pay-type" onchange="toggleClientPartialAmount(); revealClientPayMethod(); updateClientPayButton('${inv.id}')">
+          <option value="">Select...</option>
           <option value="full">Paying in Full ($${total.toFixed(2)})</option>
           <option value="partial">Partial Payment</option>
         </select>
         <div id="client-partial-amount-wrap" style="display:none">
           <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Amount</label>
-          <input id="client-pay-amount" type="number" step="0.01">
+          <input id="client-pay-amount" type="number" step="0.01" oninput="updateClientPayButton('${inv.id}')">
         </div>
+        <div id="client-pay-method-wrap" style="display:none">
+          <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Payment Method</label>
+          <select id="client-pay-method" onchange="updateClientPayButton('${inv.id}')">
+            <option value="">Select...</option>
+            <option>Zelle</option><option>Venmo</option><option>CashApp</option>
+            <option>PayPal</option>
+          </select>
+        </div>
+        <div id="client-pay-btn-wrap" style="display:none;margin-top:14px"></div>
       </div>
 
       <div class="sign-card no-print">
@@ -880,7 +878,7 @@ function renderClientInvoice(inv) {
         <canvas id="cursive-canvas" width="500" height="80"></canvas>
         <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Date</label>
         <input id="client-date-input" type="date">
-        <button class="btn solid" style="margin-top:14px" onclick="submitClientSignature('${inv.id}')">Confirm &amp; Send Signed Copy</button>
+        <button id="sign-submit-btn" class="btn solid" style="margin-top:14px" onclick="submitClientSignature('${inv.id}')">Confirm &amp; Send Signed Copy</button>
       </div>
     `;
   }
@@ -888,6 +886,67 @@ function renderClientInvoice(inv) {
   document.getElementById('print-content').innerHTML = actions + body + sigSection;
   const dateInput = document.getElementById('client-date-input');
   if (dateInput) dateInput.value = todayLocal();
+}
+
+function paymentLinkFor(method) {
+  if (method === 'Venmo') return BIZ.venmo;
+  if (method === 'CashApp') return BIZ.cashapp;
+  if (method === 'Zelle') return BIZ.zelleLink;
+  if (method === 'PayPal') return BIZ.paypal;
+  return null;
+}
+
+function revealClientPayMethod() {
+  const type = document.getElementById('client-pay-type').value;
+  const wrap = document.getElementById('client-pay-method-wrap');
+  wrap.style.display = type ? 'block' : 'none';
+  if (!type) {
+    document.getElementById('client-pay-method').value = '';
+    document.getElementById('client-pay-btn-wrap').style.display = 'none';
+    document.getElementById('client-pay-btn-wrap').innerHTML = '';
+  }
+}
+
+function updateClientPayButton(invId) {
+  const method = document.getElementById('client-pay-method').value;
+  const type = document.getElementById('client-pay-type').value;
+  const amount = type === 'partial' ? parseFloat(document.getElementById('client-pay-amount').value) : 1;
+  const wrap = document.getElementById('client-pay-btn-wrap');
+  const valid = type && method && amount > 0;
+  if (!valid) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  const link = paymentLinkFor(method);
+  const label = link ? `Pay via ${method === 'CashApp' ? 'Cash App' : method}` : 'Confirm Payment';
+  wrap.innerHTML = link
+    ? `<a class="btn solid" href="${link}" target="_blank" rel="noopener" onclick="recordClientPayment('${invId}')">${label}</a>`
+    : `<button class="btn solid" onclick="recordClientPayment('${invId}')">${label}</button>`;
+  wrap.style.display = 'block';
+}
+
+async function recordClientPayment(invId) {
+  const method = document.getElementById('client-pay-method').value;
+  const type = document.getElementById('client-pay-type').value;
+  const wrap = document.getElementById('client-pay-btn-wrap');
+  try {
+    const binId = await ensureBin();
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+    const data = await res.json();
+    const list = (data.record && data.record.invoices) || [];
+    const idx = list.findIndex(i => i.id === invId);
+    if (idx < 0) return;
+    const total = lineItemsTotal(list[idx].lineItems);
+    const amount = type === 'full' ? total : (parseFloat(document.getElementById('client-pay-amount').value) || 0);
+    if (amount <= 0) return;
+    list[idx].payments = list[idx].payments || [];
+    list[idx].payments.push({ date: todayLocal(), amount, method, source: 'client', type });
+    await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+      body: JSON.stringify({ invoices: list })
+    });
+    wrap.innerHTML = '<p style="color:#8DB2E5;font-size:13px;margin-top:6px">✓ Payment recorded — thank you!</p>';
+  } catch (e) {
+    wrap.insertAdjacentHTML('beforeend', '<p style="color:#E8A3A3;font-size:12px;margin-top:6px">Could not record payment — please let Richard know.</p>');
+  }
 }
 
 function toggleClientPartialAmount() {
@@ -900,7 +959,7 @@ async function submitClientSignature(invId) {
   const dateInput = document.getElementById('client-date-input');
   const canvas = document.getElementById('cursive-canvas');
   if (!nameInput.value.trim()) { alert('Please type your name to generate your signature.'); return; }
-  const btn = document.querySelector('.sign-card .btn.solid');
+  const btn = document.getElementById('sign-submit-btn');
   btn.disabled = true;
   btn.textContent = 'Sending…';
   try {
@@ -911,21 +970,6 @@ async function submitClientSignature(invId) {
     const list = (data.record && data.record.invoices) || [];
     const idx = list.findIndex(i => i.id === invId);
     if (idx < 0) { alert('Could not find this invoice anymore. Please contact Richard Parma directly.'); return; }
-
-    const payMethod = document.getElementById('client-pay-method').value;
-    const payType = document.getElementById('client-pay-type').value;
-    const total = lineItemsTotal(list[idx].lineItems);
-    const payAmount = payType === 'full' ? total : (parseFloat(document.getElementById('client-pay-amount').value) || 0);
-    if (payAmount > 0) {
-      list[idx].payments = list[idx].payments || [];
-      list[idx].payments.push({
-        date: todayLocal(),
-        amount: payAmount,
-        method: payMethod,
-        source: 'client',
-        type: payType
-      });
-    }
 
     list[idx].clientSignatureImg = sigDataUrl;
     list[idx].clientSignDate = dateInput.value || todayLocal();
@@ -980,28 +1024,25 @@ function renderPaymentView(inv) {
     paySection = `
       <div class="sign-card no-print">
         <h2>Balance Due: $${balance.toFixed(2)}</h2>
-        <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:6px">Tap to pay</label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-          <a class="pay-link" href="${BIZ.venmo}" target="_blank" rel="noopener">Venmo</a>
-          <a class="pay-link" href="${BIZ.cashapp}" target="_blank" rel="noopener">Cash App</a>
-          <a class="pay-link" href="${BIZ.zelleLink}" target="_blank" rel="noopener">Zelle</a>
-          <a class="pay-link" href="${BIZ.paypal}" target="_blank" rel="noopener">PayPal</a>
-        </div>
-        <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:4px">Payment Method</label>
-        <select id="pmt-method">
-          <option>Zelle</option><option>Venmo</option><option>CashApp</option>
-          <option>PayPal</option><option>Card</option><option>Check</option><option>Cash</option>
-        </select>
-        <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Payment Type</label>
-        <select id="pmt-type" onchange="togglePmtAmount()">
+        <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:4px">Payment Type</label>
+        <select id="pmt-type" onchange="togglePmtAmount(); revealPmtMethod(); updatePmtButton('${inv.id}', ${balance})">
+          <option value="">Select...</option>
           <option value="full">Pay Full Balance ($${balance.toFixed(2)})</option>
           <option value="partial">Partial Payment</option>
         </select>
         <div id="pmt-amount-wrap" style="display:none">
           <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Amount</label>
-          <input id="pmt-amount" type="number" step="0.01">
+          <input id="pmt-amount" type="number" step="0.01" oninput="updatePmtButton('${inv.id}', ${balance})">
         </div>
-        <button class="btn solid" style="margin-top:14px" onclick="submitPayment('${inv.id}')">Confirm Payment</button>
+        <div id="pmt-method-wrap" style="display:none">
+          <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Payment Method</label>
+          <select id="pmt-method" onchange="updatePmtButton('${inv.id}', ${balance})">
+            <option value="">Select...</option>
+            <option>Zelle</option><option>Venmo</option><option>CashApp</option>
+            <option>PayPal</option>
+          </select>
+        </div>
+        <div id="pmt-btn-wrap" style="display:none;margin-top:14px"></div>
       </div>
     `;
   }
@@ -1014,12 +1055,36 @@ function togglePmtAmount() {
   document.getElementById('pmt-amount-wrap').style.display = type === 'partial' ? 'block' : 'none';
 }
 
-async function submitPayment(invId) {
+function revealPmtMethod() {
+  const type = document.getElementById('pmt-type').value;
+  const wrap = document.getElementById('pmt-method-wrap');
+  wrap.style.display = type ? 'block' : 'none';
+  if (!type) {
+    document.getElementById('pmt-method').value = '';
+    document.getElementById('pmt-btn-wrap').style.display = 'none';
+    document.getElementById('pmt-btn-wrap').innerHTML = '';
+  }
+}
+
+function updatePmtButton(invId, balance) {
   const method = document.getElementById('pmt-method').value;
   const type = document.getElementById('pmt-type').value;
-  const btn = document.querySelector('.sign-card .btn.solid');
-  btn.disabled = true;
-  btn.textContent = 'Sending…';
+  const amount = type === 'partial' ? parseFloat(document.getElementById('pmt-amount').value) : balance;
+  const wrap = document.getElementById('pmt-btn-wrap');
+  const valid = type && method && amount > 0;
+  if (!valid) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  const link = paymentLinkFor(method);
+  const label = link ? `Pay via ${method === 'CashApp' ? 'Cash App' : method}` : 'Confirm Payment';
+  wrap.innerHTML = link
+    ? `<a class="btn solid" href="${link}" target="_blank" rel="noopener" onclick="recordPmtPayment('${invId}')">${label}</a>`
+    : `<button class="btn solid" onclick="recordPmtPayment('${invId}')">${label}</button>`;
+  wrap.style.display = 'block';
+}
+
+async function recordPmtPayment(invId) {
+  const method = document.getElementById('pmt-method').value;
+  const type = document.getElementById('pmt-type').value;
+  const wrap = document.getElementById('pmt-btn-wrap');
   try {
     const binId = await ensureBin();
     const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
@@ -1032,12 +1097,7 @@ async function submitPayment(invId) {
     const paidSoFar = paymentsTotal(list[idx].payments);
     const balance = total - paidSoFar;
     const amount = type === 'full' ? balance : (parseFloat(document.getElementById('pmt-amount').value) || 0);
-    if (amount <= 0) {
-      alert('Please enter a payment amount.');
-      btn.disabled = false;
-      btn.textContent = 'Confirm Payment';
-      return;
-    }
+    if (amount <= 0) return;
 
     list[idx].payments = list[idx].payments || [];
     list[idx].payments.push({ date: todayLocal(), amount, method, source: 'client', type });
@@ -1048,9 +1108,7 @@ async function submitPayment(invId) {
     });
     renderPaymentView(list[idx]);
   } catch (e) {
-    alert('Could not send payment. Check your connection and try again.');
-    btn.disabled = false;
-    btn.textContent = 'Confirm Payment';
+    wrap.insertAdjacentHTML('beforeend', '<p style="color:#E8A3A3;font-size:12px;margin-top:6px">Could not record payment — please let Richard know.</p>');
   }
 }
 
