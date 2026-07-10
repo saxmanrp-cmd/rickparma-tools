@@ -330,6 +330,15 @@
     <div id="print-content"></div>
   </div>
 
+  <div id="share-modal" class="no-print" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:50; align-items:center; justify-content:center;">
+    <div style="background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:20px; width:80%; max-width:320px; text-align:center;">
+      <h3 style="margin:0 0 16px; color:var(--accent); font-family:'Josefin Sans',sans-serif; font-size:17px;">Send via</h3>
+      <button class="btn solid" style="margin-bottom:10px" onclick="shareModalChoose('text')">Text Message</button>
+      <button class="btn solid" style="margin-bottom:10px" onclick="shareModalChoose('email')">Email</button>
+      <button class="btn" onclick="closeShareModal()">Cancel</button>
+    </div>
+  </div>
+
 </main>
 
 <script>
@@ -676,18 +685,33 @@ async function saveInvoice() {
   showView('history');
 }
 
-async function shareLink(url, title, text) {
-  if (navigator.share) {
-    try {
-      await navigator.share({ title, text, url });
-    } catch (e) { /* user cancelled share */ }
+let pendingShare = null;
+
+function shareLink(url, title, text) {
+  pendingShare = { url, subject: title, body: text };
+  document.getElementById('share-modal').style.display = 'flex';
+}
+
+function closeShareModal() {
+  document.getElementById('share-modal').style.display = 'none';
+  pendingShare = null;
+}
+
+function shareModalChoose(kind) {
+  if (!pendingShare) return;
+  const { url, subject, body } = pendingShare;
+  const phone = (document.getElementById('f-phone').value || '').trim();
+  const email = (document.getElementById('f-email').value || '').trim();
+  closeShareModal();
+
+  if (kind === 'text') {
+    const smsBody = encodeURIComponent(`${body} ${url}`);
+    const target = phone.replace(/[^\d+]/g, '');
+    window.location.href = `sms:${target}${target ? '&' : ''}body=${smsBody}`;
   } else {
-    try {
-      await navigator.clipboard.writeText(url);
-      alert('Link copied! Paste it into a text or email to your client:\n\n' + url);
-    } catch (e) {
-      prompt('Copy this link to send to your client:', url);
-    }
+    const mailBody = encodeURIComponent(`${body}\n\n${url}`);
+    const mailSubject = encodeURIComponent(subject);
+    window.location.href = `mailto:${email}?subject=${mailSubject}&body=${mailBody}`;
   }
 }
 
@@ -888,18 +912,18 @@ function renderClientInvoice(inv) {
       <div class="sign-card no-print">
         <h2>Payment</h2>
         <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:4px">Payment Type</label>
-        <select id="client-pay-type" onchange="toggleClientPartialAmount(); revealClientPayMethod(); updateClientPayButton('${inv.id}')">
+        <select id="client-pay-type" onchange="toggleClientPartialAmount(); revealClientPayMethod(); updateClientPayButton('${inv.id}', ${total})">
           <option value="">Select...</option>
           <option value="full">Paying in Full ($${total.toFixed(2)})</option>
           <option value="partial">Partial Payment</option>
         </select>
         <div id="client-partial-amount-wrap" style="display:none">
           <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Amount</label>
-          <input id="client-pay-amount" type="number" step="0.01" oninput="updateClientPayButton('${inv.id}')">
+          <input id="client-pay-amount" type="number" step="0.01" oninput="updateClientPayButton('${inv.id}', ${total})">
         </div>
         <div id="client-pay-method-wrap" style="display:none">
           <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Payment Method</label>
-          <select id="client-pay-method" onchange="updateClientPayButton('${inv.id}')">
+          <select id="client-pay-method" onchange="updateClientPayButton('${inv.id}', ${total})">
             <option value="">Select...</option>
             <option>Zelle</option><option>Venmo</option><option>CashApp</option>
             <option>PayPal</option>
@@ -925,11 +949,12 @@ function renderClientInvoice(inv) {
   if (dateInput) dateInput.value = todayLocal();
 }
 
-function paymentLinkFor(method) {
-  if (method === 'Venmo') return BIZ.venmo;
-  if (method === 'CashApp') return BIZ.cashapp;
+function paymentLinkFor(method, amount) {
+  const amt = amount ? (Number(amount) % 1 === 0 ? String(Number(amount)) : Number(amount).toFixed(2)) : null;
+  if (method === 'Venmo') return amt ? `${BIZ.venmo}?txn=pay&amount=${amt}&note=Invoice%20Payment` : BIZ.venmo;
+  if (method === 'CashApp') return amt ? `${BIZ.cashapp}/${amt}` : BIZ.cashapp;
   if (method === 'Zelle') return BIZ.zelleLink;
-  if (method === 'PayPal') return BIZ.paypal;
+  if (method === 'PayPal') return amt ? `${BIZ.paypal}/${amt}` : BIZ.paypal;
   return null;
 }
 
@@ -944,14 +969,14 @@ function revealClientPayMethod() {
   }
 }
 
-function updateClientPayButton(invId) {
+function updateClientPayButton(invId, total) {
   const method = document.getElementById('client-pay-method').value;
   const type = document.getElementById('client-pay-type').value;
-  const amount = type === 'partial' ? parseFloat(document.getElementById('client-pay-amount').value) : 1;
+  const amount = type === 'partial' ? parseFloat(document.getElementById('client-pay-amount').value) : total;
   const wrap = document.getElementById('client-pay-btn-wrap');
   const valid = type && method && amount > 0;
   if (!valid) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
-  const link = paymentLinkFor(method);
+  const link = paymentLinkFor(method, amount);
   const label = link ? `Pay via ${method === 'CashApp' ? 'Cash App' : method}` : 'Confirm Payment';
   wrap.innerHTML = link
     ? `<a class="btn solid" href="${link}" target="_blank" rel="noopener" onclick="recordClientPayment('${invId}')">${label}</a>`
@@ -1110,7 +1135,7 @@ function updatePmtButton(invId, balance) {
   const wrap = document.getElementById('pmt-btn-wrap');
   const valid = type && method && amount > 0;
   if (!valid) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
-  const link = paymentLinkFor(method);
+  const link = paymentLinkFor(method, amount);
   const label = link ? `Pay via ${method === 'CashApp' ? 'Cash App' : method}` : 'Confirm Payment';
   wrap.innerHTML = link
     ? `<a class="btn solid" href="${link}" target="_blank" rel="noopener" onclick="recordPmtPayment('${invId}')">${label}</a>`
