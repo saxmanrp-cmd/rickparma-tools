@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Invoice Creator</title>
+<meta name="description" content="Invoice tool for Richard Parma.">
+<meta property="og:title" content="Invoice Creator">
+<meta property="og:description" content="Invoice tool for Richard Parma.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@400;600;700&family=Lato:wght@400;700&family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
 <style>
@@ -125,6 +128,7 @@
   #view-print .sig-col { flex: 1; min-width: 0; }
   #view-print .sig-col .sig-slot { height: 55px; display: flex; align-items: flex-end; overflow: hidden; }
   #view-print .sig-col img { max-height: 55px; max-width: 100%; width: auto; height: auto; object-fit: contain; }
+  #view-print .sig-col img.rick-sig { max-height: 36px; }
   #view-print .sig-col .line { border-top: 1px solid #1a1a1a; margin-top: 6px; padding-top: 5px; font-size: 11.5px; color: #555; }
   #view-print .sig-col .printed { font-size: 13px; margin-top: 3px; font-weight: 700; }
   #view-print .sig-col .date-line { font-size: 12.5px; color: #555; margin-top: 2px; }
@@ -632,7 +636,7 @@ function renderPrintView() {
   const total = lineItemsTotal(data.lineItems);
   const body = buildInvoiceBody(data, total);
 
-  const rickSigBlock = savedSignature ? `<img src="${savedSignature}">` : '';
+  const rickSigBlock = savedSignature ? `<img class="rick-sig" src="${savedSignature}">` : '';
   const clientSigCol = data.clientSignatureImg
     ? `<div class="sig-slot"><img src="${data.clientSignatureImg}"></div><div class="line">${esc(data.clientName)}</div><div class="date-line">Signed ${fmtDateLong(data.clientSignDate)}</div>`
     : `<div class="sig-slot"></div><div class="line">Client Signature</div><div class="date-line">Date: _______________</div>`;
@@ -654,17 +658,17 @@ function renderPrintView() {
 async function drawCursive(name) {
   const canvas = document.getElementById('cursive-canvas');
   if (!canvas) return;
-  try { await document.fonts.load("52px 'Dancing Script'"); } catch (e) {}
+  try { await document.fonts.load("64px 'Dancing Script'"); } catch (e) {}
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#111';
-  let size = 52;
+  let size = 64;
   ctx.font = `${size}px 'Dancing Script', cursive`;
-  while (ctx.measureText(name).width > canvas.width - 40 && size > 18) {
+  while (ctx.measureText(name).width > canvas.width - 30 && size > 22) {
     size -= 2;
     ctx.font = `${size}px 'Dancing Script', cursive`;
   }
-  ctx.fillText(name, 20, canvas.height / 2 + size / 3);
+  ctx.fillText(name, 15, canvas.height - 16);
 }
 
 async function initClientView(invId) {
@@ -704,7 +708,7 @@ function renderClientInvoice(inv) {
           <div class="date-line">Signed ${fmtDateLong(inv.clientSignDate)}</div>
         </div>
         <div class="sig-col">
-          <div class="sig-slot">${savedSignature ? '<img src="'+savedSignature+'">' : ''}</div>
+          <div class="sig-slot">${savedSignature ? '<img class="rick-sig" src="'+savedSignature+'">' : ''}</div>
           <div class="line">${BIZ.name}</div>
           <div class="date-line">Date: ${fmtDateLong(inv.createdAt)}</div>
         </div>
@@ -743,7 +747,7 @@ function renderClientInvoice(inv) {
         <h2>Sign This Invoice</h2>
         <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:4px">Type your full name</label>
         <input id="client-name-input" type="text" oninput="drawCursive(this.value)">
-        <canvas id="cursive-canvas" width="500" height="110"></canvas>
+        <canvas id="cursive-canvas" width="500" height="80"></canvas>
         <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Date</label>
         <input id="client-date-input" type="date">
         <button class="btn solid" style="margin-top:14px" onclick="submitClientSignature('${inv.id}')">Confirm &amp; Send Signed Copy</button>
@@ -810,6 +814,21 @@ async function submitClientSignature(invId) {
 }
 
 if (signId) {
+  document.title = 'Event Signature Needed';
+
+  const setMeta = (attr, key, content) => {
+    let tag = document.querySelector(`meta[${attr}="${key}"]`);
+    if (!tag) {
+      tag = document.createElement('meta');
+      tag.setAttribute(attr, key);
+      document.head.appendChild(tag);
+    }
+    tag.setAttribute('content', content);
+  };
+  setMeta('name', 'description', 'Tap to review and sign your invoice from Richard Parma.');
+  setMeta('property', 'og:title', 'Event Signature Needed');
+  setMeta('property', 'og:description', 'Tap to review and sign your invoice from Richard Parma.');
+
   document.body.classList.add('client-mode');
   document.getElementById('view-print').classList.add('showing');
   initClientView(signId);
