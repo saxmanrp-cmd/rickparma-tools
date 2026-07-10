@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Invoice Creator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@400;600;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@400;600;700&family=Lato:wght@400;700&family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #130101;
@@ -127,6 +127,20 @@
   #view-print .sig-col .printed { font-size: 13px; margin-top: 3px; font-weight: 700; }
   #view-print .sig-col .date-line { font-size: 12.5px; color: #555; margin-top: 2px; }
   #view-print .thanks { margin-top: 26px; font-size: 13.5px; color: #444; text-align: center; font-style: italic; }
+  .sign-card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; margin-top: 24px; color: var(--text); font-family: 'Lato', sans-serif;
+  }
+  .sign-card h2 { color: var(--accent); font-size: 15px; margin: 0 0 10px; font-family: 'Josefin Sans', sans-serif; }
+  .sign-card input {
+    width: 100%; font-size: 16px; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
+  }
+  #cursive-canvas { width: 100%; background: #fff; border-radius: 8px; margin-top: 10px; }
+  body.client-mode nav,
+  body.client-mode #view-history,
+  body.client-mode #view-form,
+  body.client-mode #print-admin-controls { display: none !important; }
   @media print {
     header, nav, #view-history, #view-form, .no-print { display: none !important; }
     #view-print { display: block !important; }
@@ -211,13 +225,16 @@
       <button class="btn" onclick="renderPrintView(); showView('print')">Print / Share PDF</button>
     </div>
     <div class="btn-row no-print">
+      <button class="btn solid" onclick="shareForSignature()">Share for Signature</button>
+    </div>
+    <div class="btn-row no-print">
       <button class="btn" onclick="clearForm()">New Invoice</button>
       <button class="btn danger" id="delete-btn" style="display:none" onclick="deleteInvoice()">Delete</button>
     </div>
   </div>
 
   <div id="view-print">
-    <div class="no-print btn-row">
+    <div class="no-print btn-row" id="print-admin-controls">
       <button class="btn solid" onclick="window.print()">Print / Save as PDF</button>
       <button class="btn" onclick="showView('form')">Back to Edit</button>
     </div>
@@ -252,12 +269,17 @@ const JSONBIN_KEY = "$2a$10$AE8jTzF3OJJNfqTgYPcPK.SzVAdv0Mqi/obwqWTuQjpE0dOkYkCE
 const BIN_ID_KEY = "rp-invoice-bin-id";
 const CACHE_KEY = "rp-invoices-cache";
 
+const urlParams = new URLSearchParams(location.search);
+const signId = urlParams.get('sign');
+const urlBinId = urlParams.get('bin');
+
 function setSyncStatus(text) {
   const el = document.getElementById('sync-status');
   if (el) el.textContent = text;
 }
 
 async function ensureBin() {
+  if (urlBinId) return urlBinId;
   let binId = localStorage.getItem(BIN_ID_KEY);
   if (binId) return binId;
   const res = await fetch('https://api.jsonbin.io/v3/b', {
@@ -335,10 +357,14 @@ function renderHistory() {
     const paid = paymentsTotal(inv.payments);
     const bal = total - paid;
     const status = statusFor(total, paid);
+    const signedBadge = inv.clientSignatureImg ? '<div class="status-badge paid">✓ CLIENT SIGNED</div>' : '';
     return `<div class="hist-card" onclick="editInvoice('${inv.id}')">
       <div class="top"><span class="name">${esc(inv.clientName||'Untitled')}</span><span class="amt">$${total.toFixed(2)}</span></div>
       <div class="meta">${esc(inv.eventType||'')} — ${inv.eventDate||'no date'}</div>
-      <div class="status-badge ${status.cls}">${status.label}${bal>0 && paid>0 ? ' ($'+bal.toFixed(2)+' due)' : ''}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <div class="status-badge ${status.cls}">${status.label}${bal>0 && paid>0 ? ' ($'+bal.toFixed(2)+' due)' : ''}</div>
+        ${signedBadge}
+      </div>
     </div>`;
   }).join('');
 }
@@ -475,19 +501,44 @@ function collectFormData() {
     timeStart: document.getElementById('f-timestart').value,
     timeEnd: document.getElementById('f-timeend').value,
     lineItems: lineItems.filter(li => li.description || li.amount),
-    payments: payments
+    payments: payments,
+    clientSignatureImg: existingInv ? existingInv.clientSignatureImg : undefined,
+    clientSignDate: existingInv ? existingInv.clientSignDate : undefined,
+    clientSignedName: existingInv ? existingInv.clientSignedName : undefined
   };
 }
 
-async function saveInvoice() {
+async function saveInvoiceCore() {
   const data = collectFormData();
   currentId = data.id;
   const idx = invoices.findIndex(i => i.id === currentId);
   if (idx >= 0) invoices[idx] = data; else invoices.push(data);
   await persistInvoices();
   document.getElementById('delete-btn').style.display = 'block';
-  alert('Invoice saved.');
   renderHistory();
+}
+
+async function saveInvoice() {
+  await saveInvoiceCore();
+  alert('Invoice saved.');
+}
+
+async function shareForSignature() {
+  await saveInvoiceCore();
+  const binId = await ensureBin();
+  const url = `${location.origin}${location.pathname}?sign=${encodeURIComponent(currentId)}&bin=${encodeURIComponent(binId)}`;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Invoice from Richard Parma', text: 'Please review and sign your invoice.', url });
+    } catch (e) { /* user cancelled share */ }
+  } else {
+    try {
+      await navigator.clipboard.writeText(url);
+      alert('Link copied! Paste it into a text or email to your client:\n\n' + url);
+    } catch (e) {
+      prompt('Copy this link to send to your client:', url);
+    }
+  }
 }
 
 function fmtTime(t) {
@@ -505,19 +556,12 @@ function fmtDateLong(d) {
   return dt.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
 }
 
-function renderPrintView() {
-  const data = collectFormData();
-  const total = lineItemsTotal(data.lineItems);
+function buildInvoiceBody(data, total) {
   const rows = data.lineItems.map(li =>
     `<tr><td>${esc(li.description)}</td><td class="amt">$${parseFloat(li.amount||0).toFixed(2)}</td></tr>`
   ).join('');
   const timeRange = data.timeStart && data.timeEnd ? `${fmtTime(data.timeStart)} – ${fmtTime(data.timeEnd)}` : (fmtTime(data.timeStart) || '');
-
-  const rickSigBlock = savedSignature
-    ? `<img src="${savedSignature}">`
-    : '';
-
-  document.getElementById('print-content').innerHTML = `
+  return `
     <div class="p-top">
       <div>
         <div class="biz-name">${BIZ.name}</div>
@@ -559,27 +603,149 @@ function renderPrintView() {
       <strong>Payment:</strong> Venmo, CashApp, Zelle (${BIZ.zelle}), PayPal, or credit card.
       Checks payable to ${BIZ.name}.
     </div>
+  `;
+}
 
+function renderPrintView() {
+  const data = collectFormData();
+  const total = lineItemsTotal(data.lineItems);
+  const body = buildInvoiceBody(data, total);
+
+  const rickSigBlock = savedSignature ? `<img src="${savedSignature}">` : '';
+  const clientSigCol = data.clientSignatureImg
+    ? `<div class="sig-slot"><img src="${data.clientSignatureImg}"></div><div class="line">${esc(data.clientName)}</div><div class="date-line">Signed ${fmtDateLong(data.clientSignDate)}</div>`
+    : `<div class="sig-slot"></div><div class="line">Client Signature</div><div class="date-line">Date: _______________</div>`;
+
+  document.getElementById('print-content').innerHTML = `
+    ${body}
     <div class="sig-grid">
-      <div class="sig-col">
-        <div class="sig-slot"></div>
-        <div class="line">Client Signature</div>
-        <div class="date-line">Date: _______________</div>
-      </div>
+      <div class="sig-col">${clientSigCol}</div>
       <div class="sig-col">
         <div class="sig-slot">${rickSigBlock}</div>
         <div class="line">${BIZ.name}</div>
         <div class="date-line">Date: ${fmtDateLong(data.createdAt)}</div>
       </div>
     </div>
-
     <p class="thanks">Thank you for your business!</p>
   `;
 }
 
-loadInvoices();
-clearForm();
-showView('history');
+async function drawCursive(name) {
+  const canvas = document.getElementById('cursive-canvas');
+  if (!canvas) return;
+  try { await document.fonts.load("52px 'Dancing Script'"); } catch (e) {}
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#111';
+  let size = 52;
+  ctx.font = `${size}px 'Dancing Script', cursive`;
+  while (ctx.measureText(name).width > canvas.width - 40 && size > 18) {
+    size -= 2;
+    ctx.font = `${size}px 'Dancing Script', cursive`;
+  }
+  ctx.fillText(name, 20, canvas.height / 2 + size / 3);
+}
+
+async function initClientView(invId) {
+  document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center;color:#8DB2E5">Loading invoice…</p>';
+  try {
+    const binId = await ensureBin();
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+    const data = await res.json();
+    const list = (data.record && data.record.invoices) || [];
+    const inv = list.find(i => i.id === invId);
+    if (!inv) {
+      document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Invoice not found. Please contact Richard Parma directly.</p>';
+      return;
+    }
+    renderClientInvoice(inv);
+  } catch (e) {
+    document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Could not load invoice. Check your connection and reload the page.</p>';
+  }
+}
+
+function renderClientInvoice(inv) {
+  const total = lineItemsTotal(inv.lineItems);
+  const body = buildInvoiceBody(inv, total);
+  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn" onclick="window.print()">Print This Copy</button></div>`;
+
+  let sigSection;
+  if (inv.clientSignatureImg) {
+    sigSection = `
+      <div class="sig-grid">
+        <div class="sig-col">
+          <div class="sig-slot"><img src="${inv.clientSignatureImg}"></div>
+          <div class="line">${esc(inv.clientSignedName || inv.clientName)}</div>
+          <div class="date-line">Signed ${fmtDateLong(inv.clientSignDate)}</div>
+        </div>
+        <div class="sig-col">
+          <div class="sig-slot">${savedSignature ? '<img src="'+savedSignature+'">' : ''}</div>
+          <div class="line">${BIZ.name}</div>
+          <div class="date-line">Date: ${fmtDateLong(inv.createdAt)}</div>
+        </div>
+      </div>
+      <p class="thanks">Thank you — this invoice has been signed and confirmed.</p>
+    `;
+  } else {
+    sigSection = `
+      <div class="sign-card no-print">
+        <h2>Sign This Invoice</h2>
+        <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:4px">Type your full name</label>
+        <input id="client-name-input" type="text" oninput="drawCursive(this.value)">
+        <canvas id="cursive-canvas" width="500" height="110"></canvas>
+        <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Date</label>
+        <input id="client-date-input" type="date">
+        <button class="btn solid" style="margin-top:14px" onclick="submitClientSignature('${inv.id}')">Confirm &amp; Send Signed Copy</button>
+      </div>
+    `;
+  }
+
+  document.getElementById('print-content').innerHTML = actions + body + sigSection;
+  const dateInput = document.getElementById('client-date-input');
+  if (dateInput) dateInput.value = new Date().toISOString().slice(0,10);
+}
+
+async function submitClientSignature(invId) {
+  const nameInput = document.getElementById('client-name-input');
+  const dateInput = document.getElementById('client-date-input');
+  const canvas = document.getElementById('cursive-canvas');
+  if (!nameInput.value.trim()) { alert('Please type your name to generate your signature.'); return; }
+  const btn = document.querySelector('.sign-card .btn.solid');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    const sigDataUrl = canvas.toDataURL('image/png');
+    const binId = await ensureBin();
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+    const data = await res.json();
+    const list = (data.record && data.record.invoices) || [];
+    const idx = list.findIndex(i => i.id === invId);
+    if (idx < 0) { alert('Could not find this invoice anymore. Please contact Richard Parma directly.'); return; }
+    list[idx].clientSignatureImg = sigDataUrl;
+    list[idx].clientSignDate = dateInput.value || new Date().toISOString().slice(0,10);
+    list[idx].clientSignedName = nameInput.value.trim();
+    await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+      body: JSON.stringify({ invoices: list })
+    });
+    renderClientInvoice(list[idx]);
+  } catch (e) {
+    alert('Could not send. Check your connection and try again.');
+    btn.disabled = false;
+    btn.textContent = 'Confirm & Send Signed Copy';
+  }
+}
+
+if (signId) {
+  document.body.classList.add('client-mode');
+  document.getElementById('view-print').classList.add('showing');
+  initClientView(signId);
+} else {
+  loadInvoices();
+  clearForm();
+  showView('history');
+}
 </script>
 
 </body>
