@@ -193,8 +193,59 @@
 
     <section class="card">
       <h2>Event Info</h2>
+      <label>Event Name</label>
+      <input id="f-eventname" type="text" placeholder="e.g. Sarah &amp; Tom's Wedding">
+
       <label>Event Type</label>
-      <input id="f-eventtype" type="text" placeholder="Birthday, Wedding, Corporate...">
+      <select id="f-eventtype">
+        <option value="">Select...</option>
+        <option>Wedding</option>
+        <option>Private Party</option>
+        <option>Public Restaurant/Club</option>
+        <option>Festival/Concert/Public event</option>
+        <option>Baby/Bridal Shower</option>
+        <option>Anniversary</option>
+        <option>Birthday</option>
+        <option>Celebration of Life</option>
+        <option>Corporate Event</option>
+        <option>Holiday Party</option>
+      </select>
+
+      <label>Performance Type</label>
+      <select id="f-perftype">
+        <option value="">Select...</option>
+        <option>Solo: DJ/Singing/Saxophone/Emcee</option>
+        <option>Band: Full 6 piece</option>
+        <option>Combo: Band/DJ</option>
+        <option>Singer/Saxophonist</option>
+      </select>
+
+      <label>Venue Type</label>
+      <select id="f-venuetype">
+        <option value="">Select...</option>
+        <option>Residential</option>
+        <option>Private business</option>
+        <option>Restaurant</option>
+        <option>Music Venue</option>
+        <option>Banquet Hall</option>
+        <option>Cruise Ship/Yacht</option>
+        <option>Concert Hall</option>
+        <option>Public Park</option>
+      </select>
+
+      <label>Guests Attending</label>
+      <select id="f-guests">
+        <option value="">Select...</option>
+        <option>1-50</option>
+        <option>50-150</option>
+        <option>150-300</option>
+        <option>300-500</option>
+        <option>500-1,000</option>
+        <option>1,000-5,000</option>
+        <option>5,000-10,000</option>
+        <option>10,000+</option>
+      </select>
+
       <div class="row2">
         <div><label>Date</label><input id="f-date" type="date"></div>
       </div>
@@ -399,7 +450,7 @@ function clearForm() {
   currentInvoiceNumber = null;
   lineItems = [{description:'Solo performance', amount:''}];
   payments = [];
-  ['f-name','f-email','f-phone','f-address','f-eventtype','f-date','f-timestart','f-timeend'].forEach(id => document.getElementById(id).value = '');
+  ['f-name','f-email','f-phone','f-address','f-eventname','f-eventtype','f-perftype','f-venuetype','f-guests','f-date','f-timestart','f-timeend'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('delete-btn').style.display = 'none';
   renderLineItems();
   renderPayments();
@@ -416,7 +467,11 @@ function editInvoice(id) {
   document.getElementById('f-email').value = inv.clientEmail || '';
   document.getElementById('f-phone').value = inv.clientPhone || '';
   document.getElementById('f-address').value = inv.clientAddress || '';
+  document.getElementById('f-eventname').value = inv.eventName || '';
   document.getElementById('f-eventtype').value = inv.eventType || '';
+  document.getElementById('f-perftype').value = inv.perfType || '';
+  document.getElementById('f-venuetype').value = inv.venueType || '';
+  document.getElementById('f-guests').value = inv.guests || '';
   document.getElementById('f-date').value = inv.eventDate || '';
   document.getElementById('f-timestart').value = inv.timeStart || '';
   document.getElementById('f-timeend').value = inv.timeEnd || '';
@@ -510,7 +565,11 @@ function collectFormData() {
     clientEmail: document.getElementById('f-email').value,
     clientPhone: document.getElementById('f-phone').value,
     clientAddress: document.getElementById('f-address').value,
+    eventName: document.getElementById('f-eventname').value,
     eventType: document.getElementById('f-eventtype').value,
+    perfType: document.getElementById('f-perftype').value,
+    venueType: document.getElementById('f-venuetype').value,
+    guests: document.getElementById('f-guests').value,
     eventDate: document.getElementById('f-date').value,
     timeStart: document.getElementById('f-timestart').value,
     timeEnd: document.getElementById('f-timeend').value,
@@ -607,6 +666,7 @@ function buildInvoiceBody(data, total) {
       </div>
     </div>
 
+    ${data.eventName ? `<div class="event-line" style="font-size:15px;font-weight:700;margin-bottom:0">${esc(data.eventName)}</div>` : ''}
     <div class="event-line">
       <strong>${(data.eventType||'Event').toUpperCase()}</strong> &nbsp;—&nbsp;
       ${fmtDateLong(data.eventDate)}${timeRange ? ', ' + timeRange : ''}
