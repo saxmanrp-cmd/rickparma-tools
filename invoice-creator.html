@@ -187,6 +187,16 @@
         <div><label>Email</label><input id="f-email" type="email"></div>
         <div><label>Phone</label><input id="f-phone" type="tel"></div>
       </div>
+    </section>
+
+    <section class="card">
+      <h2>Event Info</h2>
+      <label>Event Name</label>
+      <input id="f-eventname" type="text" placeholder="e.g. Sarah &amp; Tom's Wedding">
+
+      <label>Venue Name <span style="color:var(--text-dim);font-weight:400">(if applicable)</span></label>
+      <input id="f-venuename" type="text" placeholder="e.g. The Grand Ballroom">
+
       <label>Street Address</label>
       <input id="f-addr-street" type="text" placeholder="123 Main St">
       <label>Unit / Apt # <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
@@ -197,12 +207,14 @@
       </div>
       <label>ZIP Code</label>
       <input id="f-addr-zip" type="text" inputmode="numeric" placeholder="89084">
-    </section>
 
-    <section class="card">
-      <h2>Event Info</h2>
-      <label>Event Name</label>
-      <input id="f-eventname" type="text" placeholder="e.g. Sarah &amp; Tom's Wedding">
+      <div class="row2">
+        <div><label>Date</label><input id="f-date" type="date"></div>
+      </div>
+      <div class="row2">
+        <div><label>Start Time</label><input id="f-timestart" type="time"></div>
+        <div><label>End Time</label><input id="f-timeend" type="time"></div>
+      </div>
 
       <label>Event Type</label>
       <select id="f-eventtype">
@@ -220,7 +232,7 @@
       </select>
 
       <label>Performance Type</label>
-      <select id="f-perftype">
+      <select id="f-perftype" onchange="applyPerfTypeToLineItem()">
         <option value="">Select...</option>
         <option>Solo: DJ/Singing/Saxophone/Emcee</option>
         <option>Band: Full 6 piece</option>
@@ -253,14 +265,6 @@
         <option>5,000-10,000</option>
         <option>10,000+</option>
       </select>
-
-      <div class="row2">
-        <div><label>Date</label><input id="f-date" type="date"></div>
-      </div>
-      <div class="row2">
-        <div><label>Start Time</label><input id="f-timestart" type="time"></div>
-        <div><label>End Time</label><input id="f-timeend" type="time"></div>
-      </div>
     </section>
 
     <section class="card">
@@ -458,7 +462,7 @@ function clearForm() {
   currentInvoiceNumber = null;
   lineItems = [{description:'Solo performance', amount:''}];
   payments = [];
-  ['f-name','f-email','f-phone','f-addr-street','f-addr-unit','f-addr-city','f-addr-state','f-addr-zip','f-eventname','f-eventtype','f-perftype','f-venuetype','f-guests','f-date','f-timestart','f-timeend'].forEach(id => document.getElementById(id).value = '');
+  ['f-name','f-email','f-phone','f-addr-street','f-addr-unit','f-addr-city','f-addr-state','f-addr-zip','f-eventname','f-venuename','f-eventtype','f-perftype','f-venuetype','f-guests','f-date','f-timestart','f-timeend'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('delete-btn').style.display = 'none';
   renderLineItems();
   renderPayments();
@@ -480,6 +484,7 @@ function editInvoice(id) {
   document.getElementById('f-addr-state').value = inv.addrState || '';
   document.getElementById('f-addr-zip').value = inv.addrZip || '';
   document.getElementById('f-eventname').value = inv.eventName || '';
+  document.getElementById('f-venuename').value = inv.venueName || '';
   document.getElementById('f-eventtype').value = inv.eventType || '';
   document.getElementById('f-perftype').value = inv.perfType || '';
   document.getElementById('f-venuetype').value = inv.venueType || '';
@@ -503,6 +508,14 @@ function deleteInvoice() {
   persistInvoices();
   clearForm();
   showView('history');
+}
+
+function applyPerfTypeToLineItem() {
+  const val = document.getElementById('f-perftype').value;
+  if (!val) return;
+  if (!lineItems.length) lineItems.push({description: '', amount: ''});
+  lineItems[0].description = val;
+  renderLineItems();
 }
 
 function addLineItem() {
@@ -593,6 +606,7 @@ function collectFormData() {
     addrState: addrState,
     addrZip: addrZip,
     eventName: document.getElementById('f-eventname').value,
+    venueName: document.getElementById('f-venuename').value,
     eventType: document.getElementById('f-eventtype').value,
     perfType: document.getElementById('f-perftype').value,
     venueType: document.getElementById('f-venuetype').value,
@@ -665,9 +679,11 @@ function fmtDateLong(d) {
 }
 
 function buildInvoiceBody(data, total) {
-  const rows = data.lineItems.map(li =>
-    `<tr><td>${esc(li.description)}</td><td class="amt">$${parseFloat(li.amount||0).toFixed(2)}</td></tr>`
-  ).join('');
+  const rows = data.lineItems.map((li, idx) => {
+    let desc = li.description;
+    if (idx === 0 && data.guests) desc += ` — Guests: ${data.guests}`;
+    return `<tr><td>${esc(desc)}</td><td class="amt">$${parseFloat(li.amount||0).toFixed(2)}</td></tr>`;
+  }).join('');
   const timeRange = data.timeStart && data.timeEnd ? `${fmtTime(data.timeStart)} – ${fmtTime(data.timeEnd)}` : (fmtTime(data.timeStart) || '');
   return `
     <div class="p-top">
@@ -688,14 +704,14 @@ function buildInvoiceBody(data, total) {
       <div class="label">Bill To</div>
       <div class="name">${esc(data.clientName)}</div>
       <div class="detail">
-        ${esc(data.clientAddress).replace(/\n/g,'<br>')}<br>
         ${esc(data.clientPhone)}${data.clientPhone && data.clientEmail ? ' &nbsp;•&nbsp; ' : ''}${esc(data.clientEmail)}
       </div>
     </div>
 
     ${data.eventName ? `<div class="event-line" style="font-size:15px;font-weight:700;margin-bottom:0">${esc(data.eventName)}</div>` : ''}
+    ${data.venueName ? `<div class="event-line">${esc(data.venueName)}</div>` : ''}
+    ${data.clientAddress ? `<div class="event-line">${esc(data.clientAddress).replace(/\n/g,', ')}</div>` : ''}
     <div class="event-line">
-      <strong>${(data.eventType||'Event').toUpperCase()}</strong> &nbsp;—&nbsp;
       ${fmtDateLong(data.eventDate)}${timeRange ? ', ' + timeRange : ''}
     </div>
 
