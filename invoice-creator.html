@@ -303,6 +303,10 @@
       <button class="btn solid" onclick="shareForSignature()">Share for Signature</button>
     </div>
     <div class="btn-row no-print">
+      <button class="btn" onclick="sharePaymentLink()">Send Payment Link</button>
+      <button class="btn" onclick="shareReceiptLink()">Send Receipt</button>
+    </div>
+    <div class="btn-row no-print">
       <button class="btn" onclick="clearForm()">New Invoice</button>
       <button class="btn danger" id="delete-btn" style="display:none" onclick="deleteInvoice()">Delete</button>
     </div>
@@ -350,6 +354,8 @@ const CACHE_KEY = "rp-invoices-cache";
 
 const urlParams = new URLSearchParams(location.search);
 const signId = urlParams.get('sign');
+const payId = urlParams.get('pay');
+const receiptId = urlParams.get('receipt');
 const urlBinId = urlParams.get('bin');
 
 function setSyncStatus(text) {
@@ -639,13 +645,10 @@ async function saveInvoice() {
   alert('Invoice saved.');
 }
 
-async function shareForSignature() {
-  await saveInvoiceCore();
-  const binId = await ensureBin();
-  const url = `${location.origin}${location.pathname}?sign=${encodeURIComponent(currentId)}&bin=${encodeURIComponent(binId)}`;
+async function shareLink(url, title, text) {
   if (navigator.share) {
     try {
-      await navigator.share({ title: 'Invoice from Richard Parma', text: 'Please review and sign your invoice.', url });
+      await navigator.share({ title, text, url });
     } catch (e) { /* user cancelled share */ }
   } else {
     try {
@@ -655,6 +658,27 @@ async function shareForSignature() {
       prompt('Copy this link to send to your client:', url);
     }
   }
+}
+
+async function shareForSignature() {
+  await saveInvoiceCore();
+  const binId = await ensureBin();
+  const url = `${location.origin}${location.pathname}?sign=${encodeURIComponent(currentId)}&bin=${encodeURIComponent(binId)}`;
+  await shareLink(url, 'Invoice from Richard Parma', 'Please review and sign your invoice.');
+}
+
+async function sharePaymentLink() {
+  await saveInvoiceCore();
+  const binId = await ensureBin();
+  const url = `${location.origin}${location.pathname}?pay=${encodeURIComponent(currentId)}&bin=${encodeURIComponent(binId)}`;
+  await shareLink(url, 'Make a Payment - Richard Parma', 'Tap to make a payment on your invoice from Richard Parma.');
+}
+
+async function shareReceiptLink() {
+  await saveInvoiceCore();
+  const binId = await ensureBin();
+  const url = `${location.origin}${location.pathname}?receipt=${encodeURIComponent(currentId)}&bin=${encodeURIComponent(binId)}`;
+  await shareLink(url, 'Your Receipt - Richard Parma', 'Here is your invoice receipt from Richard Parma.');
 }
 
 function fmtTime(t) {
@@ -919,18 +943,190 @@ async function submitClientSignature(invId) {
   }
 }
 
+async function initPaymentView(invId) {
+  document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center;color:#8DB2E5">Loading invoice…</p>';
+  try {
+    const binId = await ensureBin();
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+    const data = await res.json();
+    const list = (data.record && data.record.invoices) || [];
+    const inv = list.find(i => i.id === invId);
+    if (!inv) {
+      document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Invoice not found. Please contact Richard Parma directly.</p>';
+      return;
+    }
+    renderPaymentView(inv);
+  } catch (e) {
+    document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Could not load invoice. Check your connection and reload the page.</p>';
+  }
+}
+
+function renderPaymentView(inv) {
+  const total = lineItemsTotal(inv.lineItems);
+  const paidSoFar = paymentsTotal(inv.payments);
+  const balance = total - paidSoFar;
+  const body = buildInvoiceBody(inv, total);
+  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn" onclick="window.print()">Print This Page</button></div>`;
+
+  let paySection;
+  if (balance <= 0) {
+    paySection = `
+      <div class="sign-card no-print" style="text-align:center">
+        <h2>Paid in Full</h2>
+        <p style="font-size:14px;color:#C9C9C9">This invoice has already been paid in full. Thank you!</p>
+      </div>
+    `;
+  } else {
+    paySection = `
+      <div class="sign-card no-print">
+        <h2>Balance Due: $${balance.toFixed(2)}</h2>
+        <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:6px">Tap to pay</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <a class="pay-link" href="${BIZ.venmo}" target="_blank" rel="noopener">Venmo</a>
+          <a class="pay-link" href="${BIZ.cashapp}" target="_blank" rel="noopener">Cash App</a>
+          <a class="pay-link" href="${BIZ.zelleLink}" target="_blank" rel="noopener">Zelle</a>
+          <a class="pay-link" href="${BIZ.paypal}" target="_blank" rel="noopener">PayPal</a>
+        </div>
+        <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:4px">Payment Method</label>
+        <select id="pmt-method">
+          <option>Zelle</option><option>Venmo</option><option>CashApp</option>
+          <option>PayPal</option><option>Card</option><option>Check</option><option>Cash</option>
+        </select>
+        <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Payment Type</label>
+        <select id="pmt-type" onchange="togglePmtAmount()">
+          <option value="full">Pay Full Balance ($${balance.toFixed(2)})</option>
+          <option value="partial">Partial Payment</option>
+        </select>
+        <div id="pmt-amount-wrap" style="display:none">
+          <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Amount</label>
+          <input id="pmt-amount" type="number" step="0.01">
+        </div>
+        <button class="btn solid" style="margin-top:14px" onclick="submitPayment('${inv.id}')">Confirm Payment</button>
+      </div>
+    `;
+  }
+
+  document.getElementById('print-content').innerHTML = actions + body + paySection;
+}
+
+function togglePmtAmount() {
+  const type = document.getElementById('pmt-type').value;
+  document.getElementById('pmt-amount-wrap').style.display = type === 'partial' ? 'block' : 'none';
+}
+
+async function submitPayment(invId) {
+  const method = document.getElementById('pmt-method').value;
+  const type = document.getElementById('pmt-type').value;
+  const btn = document.querySelector('.sign-card .btn.solid');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    const binId = await ensureBin();
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+    const data = await res.json();
+    const list = (data.record && data.record.invoices) || [];
+    const idx = list.findIndex(i => i.id === invId);
+    if (idx < 0) { alert('Could not find this invoice anymore. Please contact Richard Parma directly.'); return; }
+
+    const total = lineItemsTotal(list[idx].lineItems);
+    const paidSoFar = paymentsTotal(list[idx].payments);
+    const balance = total - paidSoFar;
+    const amount = type === 'full' ? balance : (parseFloat(document.getElementById('pmt-amount').value) || 0);
+    if (amount <= 0) {
+      alert('Please enter a payment amount.');
+      btn.disabled = false;
+      btn.textContent = 'Confirm Payment';
+      return;
+    }
+
+    list[idx].payments = list[idx].payments || [];
+    list[idx].payments.push({ date: todayLocal(), amount, method, source: 'client', type });
+    await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+      body: JSON.stringify({ invoices: list })
+    });
+    renderPaymentView(list[idx]);
+  } catch (e) {
+    alert('Could not send payment. Check your connection and try again.');
+    btn.disabled = false;
+    btn.textContent = 'Confirm Payment';
+  }
+}
+
+async function initReceiptView(invId) {
+  document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center;color:#8DB2E5">Loading receipt…</p>';
+  try {
+    const binId = await ensureBin();
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+    const data = await res.json();
+    const list = (data.record && data.record.invoices) || [];
+    const inv = list.find(i => i.id === invId);
+    if (!inv) {
+      document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Receipt not found. Please contact Richard Parma directly.</p>';
+      return;
+    }
+    renderReceiptView(inv);
+  } catch (e) {
+    document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Could not load receipt. Check your connection and reload the page.</p>';
+  }
+}
+
+function renderReceiptView(inv) {
+  const total = lineItemsTotal(inv.lineItems);
+  const paid = paymentsTotal(inv.payments);
+  const balance = total - paid;
+  const body = buildInvoiceBody(inv, total);
+  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn" onclick="window.print()">Print This Receipt</button></div>`;
+
+  const historyRows = (inv.payments || []).map(p =>
+    `<tr><td>${p.date}</td><td>${esc(p.method)}</td><td class="amt">$${parseFloat(p.amount).toFixed(2)}</td></tr>`
+  ).join('');
+  const historyTable = historyRows
+    ? `<table style="margin-top:6px"><thead><tr><th>Date</th><th>Method</th><th class="amt">Amount</th></tr></thead><tbody>${historyRows}</tbody></table>`
+    : '<p style="font-size:13px;color:#666">No payments recorded yet.</p>';
+
+  const statusLine = balance <= 0
+    ? `<p style="text-align:center;font-size:16px;font-weight:700;color:#1a1a1a;margin-top:16px">✓ PAID IN FULL</p>`
+    : `<p style="text-align:center;font-size:15px;font-weight:700;margin-top:16px">Balance Due: $${balance.toFixed(2)}</p>`;
+
+  const sigBlock = inv.clientSignatureImg ? `
+    <div class="sig-grid">
+      <div class="sig-col">
+        <div class="sig-slot"><img src="${inv.clientSignatureImg}"></div>
+        <div class="line">${esc(inv.clientSignedName || inv.clientName)}</div>
+        <div class="date-line">Signed ${fmtDateLong(inv.clientSignDate)}</div>
+      </div>
+      <div class="sig-col">
+        <div class="sig-slot">${savedSignature ? '<img class="rick-sig" src="'+savedSignature+'">' : ''}</div>
+        <div class="line">${BIZ.name}</div>
+        <div class="date-line">Date: ${fmtDateLong(inv.createdAt)}</div>
+      </div>
+    </div>
+  ` : '';
+
+  document.getElementById('print-content').innerHTML = `
+    ${actions}
+    ${body}
+    ${sigBlock}
+    ${statusLine}
+    <div class="note-box"><strong>Payment History</strong>${historyTable}</div>
+    <p class="thanks">Thank you for your business!</p>
+  `;
+}
+
+const setMeta = (attr, key, content) => {
+  let tag = document.querySelector(`meta[${attr}="${key}"]`);
+  if (!tag) {
+    tag = document.createElement('meta');
+    tag.setAttribute(attr, key);
+    document.head.appendChild(tag);
+  }
+  tag.setAttribute('content', content);
+};
+
 if (signId) {
   document.title = 'Event Signature Needed';
-
-  const setMeta = (attr, key, content) => {
-    let tag = document.querySelector(`meta[${attr}="${key}"]`);
-    if (!tag) {
-      tag = document.createElement('meta');
-      tag.setAttribute(attr, key);
-      document.head.appendChild(tag);
-    }
-    tag.setAttribute('content', content);
-  };
   setMeta('name', 'description', 'Tap to review and sign your invoice from Richard Parma.');
   setMeta('property', 'og:title', 'Event Signature Needed');
   setMeta('property', 'og:description', 'Tap to review and sign your invoice from Richard Parma.');
@@ -938,6 +1134,24 @@ if (signId) {
   document.body.classList.add('client-mode');
   document.getElementById('view-print').classList.add('showing');
   initClientView(signId);
+} else if (payId) {
+  document.title = 'Make a Payment - Richard Parma';
+  setMeta('name', 'description', 'Tap to make a payment on your invoice from Richard Parma.');
+  setMeta('property', 'og:title', 'Make a Payment - Richard Parma');
+  setMeta('property', 'og:description', 'Tap to make a payment on your invoice from Richard Parma.');
+
+  document.body.classList.add('client-mode');
+  document.getElementById('view-print').classList.add('showing');
+  initPaymentView(payId);
+} else if (receiptId) {
+  document.title = 'Your Receipt - Richard Parma';
+  setMeta('name', 'description', 'Your invoice receipt from Richard Parma.');
+  setMeta('property', 'og:title', 'Your Receipt - Richard Parma');
+  setMeta('property', 'og:description', 'Your invoice receipt from Richard Parma.');
+
+  document.body.classList.add('client-mode');
+  document.getElementById('view-print').classList.add('showing');
+  initReceiptView(receiptId);
 } else {
   loadInvoices();
   clearForm();
