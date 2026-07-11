@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Request a Song — Rick Parma</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@500;600;700&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#130101;
+    --card:rgba(13,5,5,0.55);
+    --card-solid:#1c0808;
+    --accent:#8DB2E5;
+    --white:#F5F3F0;
+    --dim:#C9C2BC;
+    --line:rgba(245,243,240,0.12);
+    --free:#8DB2E5;
+    --general:#E8B84B;
+    --special:#E86B6B;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--white);font-family:'Lato',sans-serif;}
+  body{
+    background-image:
+      radial-gradient(ellipse at top, rgba(141,178,229,0.06), transparent 60%),
+      linear-gradient(180deg, #130101 0%, #0c0000 100%);
+    min-height:100vh;
+    padding-bottom:60px;
+  }
+  h1,h2,h3{font-family:'Josefin Sans',sans-serif; margin:0;}
+
+  header{padding:28px 20px 18px; text-align:center; border-bottom:1px solid var(--line);}
+  header .eyebrow{font-family:'Lato',sans-serif; letter-spacing:2px; text-transform:uppercase; font-size:11px; color:var(--accent); font-weight:700; margin-bottom:6px;}
+  header h1{font-size:28px; font-weight:700; color:var(--white);}
+  header p{color:var(--dim); font-size:14px; margin-top:8px; line-height:1.5; max-width:420px; margin-left:auto; margin-right:auto;}
+
+  .controls{position:sticky; top:0; z-index:10; background:rgba(19,1,1,0.94); backdrop-filter:blur(8px); padding:14px 16px 10px; border-bottom:1px solid var(--line);}
+  #search{width:100%; padding:12px 14px; font-size:16px; border-radius:10px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif;}
+  #search::placeholder{color:#8a8078;}
+  #search:focus{outline:2px solid var(--accent); outline-offset:1px;}
+
+  .chips{display:flex; gap:8px; overflow-x:auto; padding:12px 2px 4px; scrollbar-width:none;}
+  .chips::-webkit-scrollbar{display:none;}
+  .chip{flex:0 0 auto; padding:7px 14px; border-radius:999px; border:1px solid var(--line); background:var(--card-solid); color:var(--dim); font-size:13px; font-weight:700; white-space:nowrap; cursor:pointer; font-family:'Lato',sans-serif;}
+  .chip.active{background:var(--accent); color:#0c1420; border-color:var(--accent);}
+
+  .count-row{padding:10px 20px 0; font-size:12px; color:var(--dim); letter-spacing:0.5px;}
+
+  #list{padding:6px 16px 20px;}
+  .song-row{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 4px; border-bottom:1px solid var(--line); cursor:pointer;}
+  .song-row:active{background:rgba(141,178,229,0.06);}
+  .song-info{min-width:0; flex:1;}
+  .song-title{font-size:16px; font-weight:700; color:var(--white); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .song-artist{font-size:13px; color:var(--dim); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .badge{flex:0 0 auto; font-size:11px; font-weight:700; padding:5px 10px; border-radius:7px; display:flex; align-items:center; gap:5px; white-space:nowrap; border:1px solid;}
+  .badge.free{color:var(--free); border-color:var(--free); background:rgba(141,178,229,0.1);}
+  .badge.general{color:var(--general); border-color:var(--general); background:rgba(232,184,75,0.1);}
+  .badge.special{color:var(--special); border-color:var(--special); background:rgba(232,107,107,0.1);}
+
+  .empty-state{text-align:center; padding:60px 20px; color:var(--dim); font-size:14px; line-height:1.6;}
+
+  #overlay{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; z-index:100;}
+  #overlay.show{display:block;}
+  #sheet{position:fixed; left:0; right:0; bottom:0; background:#160303; border-top:1px solid var(--line); border-radius:18px 18px 0 0; padding:20px 20px 28px; transform:translateY(100%); transition:transform 0.25s ease; z-index:101; max-height:85vh; overflow-y:auto;}
+  #sheet.show{transform:translateY(0);}
+  .sheet-handle{width:40px; height:4px; background:var(--line); border-radius:2px; margin:0 auto 16px;}
+  #sheet h2{font-size:20px; color:var(--white);}
+  #sheet .artist{color:var(--dim); font-size:14px; margin-top:4px;}
+  #sheet .tier-line{margin-top:14px; display:flex; align-items:center; gap:8px; font-size:14px; font-weight:700;}
+  .price-tag{font-size:22px; font-weight:900; color:var(--white); font-family:'Josefin Sans',sans-serif;}
+
+  .btn{display:flex; align-items:center; justify-content:center; gap:10px; width:100%; padding:14px; border-radius:12px; font-size:15px; font-weight:700; font-family:'Lato',sans-serif; border:none; cursor:pointer; margin-top:10px; text-decoration:none; color:var(--white);}
+  .btn-venmo{background:#3D95CE;}
+  .btn-cashapp{background:#00C244; color:#04220f;}
+  .btn-paypal{background:#FFC439; color:#0b2540;}
+  .btn-text{background:var(--accent); color:#0c1420; font-size:16px; padding:16px;}
+
+  .pay-note{font-size:12.5px; color:var(--dim); line-height:1.5; margin-top:14px; padding:12px; background:rgba(245,243,240,0.04); border-radius:10px; border:1px solid var(--line);}
+  .section-label{font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); font-weight:700; margin-top:20px; margin-bottom:2px;}
+
+  #loadingState{text-align:center; padding:80px 20px; color:var(--dim);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Live Request</div>
+  <h1>Request a Song</h1>
+  <p>Browse the list, tap a song, and send your request. Some songs are free — others help support the show.</p>
+</header>
+
+<div id="loadingState">Loading song list…</div>
+
+<div class="controls" id="controls" style="display:none;">
+  <input type="text" id="search" placeholder="Search song or artist…">
+  <div class="chips" id="chips"></div>
+</div>
+
+<div class="count-row" id="countRow"></div>
+<div id="list"></div>
+
+<div id="overlay" onclick="closeSheet()"></div>
+<div id="sheet">
+  <div class="sheet-handle"></div>
+  <h2 id="sheetTitle"></h2>
+  <div class="artist" id="sheetArtist"></div>
+  <div class="tier-line" id="sheetTierLine"></div>
+  <div id="sheetBody"></div>
+</div>
+
+<script>
+/* ============ CONFIG ============ */
+// Paste the Bin ID created in the Song Manager app here. Both apps must use the SAME Bin ID.
+const BIN_ID = ""; // e.g. "65abn12345"
+const MASTER_KEY = "$2a$10$AE8jTzF3OJJNfqTgYPcPK.SzVAdv0Mqi/obwqWTuQjpE0dOkYkCE.";
+const JSONBIN_BASE = "https://api.jsonbin.io/v3/b";
+
+const CONTACT_NUMBER = "8772002651";
+const APPLE_GPAY_NUMBER = "773-209-1124";
+
+const PAYMENT_LINKS = {
+  venmo: "https://venmo.com/u/RickParma",
+  cashapp: "https://cash.app/$RickParma",
+  paypal: "https://www.paypal.com/paypalme/rickparma"
+};
+
+let DEFAULT_PRICES = { general: 5, special: 20 };
+let prices = { ...DEFAULT_PRICES };
+let songs = [];
+let ALL_TAGS = [];
+let activeTag = null;
+let searchTerm = "";
+
+/* ============ LOAD FROM CLOUD ============ */
+async function loadSongs(){
+  if(!BIN_ID){
+    document.getElementById('loadingState').innerHTML =
+      `Song list isn't connected yet.<br><br>Set up cloud storage in the Song Manager app first, then paste the Bin ID into this page.`;
+    return;
+  }
+  try{
+    const res = await fetch(`${JSONBIN_BASE}/${BIN_ID}/latest`, { headers: { "X-Master-Key": MASTER_KEY } });
+    const data = await res.json();
+    const record = data.record || {};
+    songs = record.songs || [];
+    prices = { ...DEFAULT_PRICES, ...(record.prices || {}) };
+    ALL_TAGS = [...new Set(songs.flatMap(s => s.tags || []))].sort();
+
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('controls').style.display = 'block';
+    renderChips();
+    renderList();
+  } catch(err){
+    console.error(err);
+    document.getElementById('loadingState').innerHTML = `Couldn't load the song list. Check your connection and refresh.`;
+  }
+}
+
+/* ============ RENDER: LIST ============ */
+function renderChips(){
+  const chipsEl = document.getElementById('chips');
+  chipsEl.innerHTML = '';
+  const allChip = document.createElement('div');
+  allChip.className = 'chip' + (activeTag === null ? ' active' : '');
+  allChip.textContent = 'All';
+  allChip.onclick = () => { activeTag = null; renderChips(); renderList(); };
+  chipsEl.appendChild(allChip);
+
+  ALL_TAGS.forEach(tag => {
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (activeTag === tag ? ' active' : '');
+    chip.textContent = tag;
+    chip.onclick = () => { activeTag = (activeTag === tag ? null : tag); renderChips(); renderList(); };
+    chipsEl.appendChild(chip);
+  });
+}
+
+function tierBadge(tier){
+  if(tier === 'free') return `<span class="badge free">🎤 Free</span>`;
+  if(tier === 'special') return `<span class="badge special">⭐ $${prices.special}</span>`;
+  return `<span class="badge general">🎵 $${prices.general}</span>`;
+}
+
+function renderList(){
+  const listEl = document.getElementById('list');
+  const term = searchTerm.trim().toLowerCase();
+  const filtered = songs.filter(s => {
+    const matchesTag = !activeTag || (s.tags||[]).includes(activeTag);
+    const matchesTerm = !term || s.t.toLowerCase().includes(term) || (s.a||'').toLowerCase().includes(term);
+    return matchesTag && matchesTerm;
+  });
+
+  document.getElementById('countRow').textContent = `${filtered.length} song${filtered.length===1?'':'s'}`;
+
+  if(filtered.length === 0){
+    listEl.innerHTML = `<div class="empty-state">No songs match — try a different search or filter.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = filtered.map(s => `
+    <div class="song-row" data-id="${s.id}">
+      <div class="song-info">
+        <div class="song-title">${escapeHtml(s.t)}</div>
+        <div class="song-artist">${escapeHtml(s.a || '')}</div>
+      </div>
+      ${tierBadge(s.tier || 'general')}
+    </div>`).join('');
+
+  [...listEl.querySelectorAll('.song-row')].forEach(row => {
+    row.addEventListener('click', () => openSheet(row.dataset.id));
+  });
+}
+
+function escapeHtml(str){
+  return (str||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+document.getElementById('search').addEventListener('input', e => {
+  searchTerm = e.target.value;
+  renderList();
+});
+
+/* ============ REQUEST SHEET ============ */
+function openSheet(id){
+  const s = songs.find(x => x.id === id);
+  if(!s) return;
+  const tier = s.tier || 'general';
+
+  document.getElementById('sheetTitle').textContent = s.t;
+  document.getElementById('sheetArtist').textContent = s.a || '';
+
+  const smsBody = encodeURIComponent(`Song Request: "${s.t}"${s.a ? ' by ' + s.a : ''}`);
+  const smsLink = `sms:${CONTACT_NUMBER}?&body=${smsBody}`;
+
+  let tierLineHtml = '';
+  let bodyHtml = '';
+
+  if(tier === 'free'){
+    tierLineHtml = `<span class="badge free">🎤 Free Request</span>`;
+    bodyHtml = `
+      <div class="section-label">This one's on the house</div>
+      <a class="btn btn-text" href="${smsLink}">📱 Text This Request</a>
+    `;
+  } else {
+    const price = tier === 'special' ? prices.special : prices.general;
+    tierLineHtml = tier === 'special'
+      ? `<span class="badge special">⭐ Special Request</span> <span class="price-tag">$${price}</span>`
+      : `<span class="badge general">🎵 Song Request</span> <span class="price-tag">$${price}</span>`;
+
+    bodyHtml = `
+      <div class="section-label">Step 1 — Send the tip</div>
+      <a class="btn btn-venmo" href="${PAYMENT_LINKS.venmo}" target="_blank">Pay with Venmo</a>
+      <a class="btn btn-cashapp" href="${PAYMENT_LINKS.cashapp}" target="_blank">Pay with Cash App</a>
+      <a class="btn btn-paypal" href="${PAYMENT_LINKS.paypal}" target="_blank">Pay with PayPal</a>
+
+      <div class="section-label">Step 2 — Send the request</div>
+      <a class="btn btn-text" href="${smsLink}">📱 I've Sent Payment — Text Request</a>
+
+      <div class="pay-note">Prefer Apple Cash? You can send it directly to <strong>${APPLE_GPAY_NUMBER}</strong>, then tap the text button above to send your request.</div>
+    `;
+  }
+
+  document.getElementById('sheetTierLine').innerHTML = tierLineHtml;
+  document.getElementById('sheetBody').innerHTML = bodyHtml;
+
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('sheet').classList.add('show');
+}
+
+function closeSheet(){
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('sheet').classList.remove('show');
+}
+
+/* ============ INIT ============ */
+loadSongs();
+</script>
+</body>
+</html>
