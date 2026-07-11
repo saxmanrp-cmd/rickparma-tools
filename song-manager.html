@@ -44,6 +44,7 @@
 
   .controls{padding:16px; border-bottom:1px solid var(--line);}
   #search{width:100%; padding:12px 14px; font-size:16px; border-radius:10px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); margin-bottom:10px;}
+  #sortSelect{width:100%; padding:11px 14px; font-size:16px; border-radius:10px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); margin-bottom:10px; font-family:'Lato',sans-serif;}
   .price-settings{display:flex; gap:10px; margin-top:4px;}
   .price-settings label{flex:1; font-size:12px; color:var(--dim);}
   .price-settings input{width:100%; margin-top:4px; padding:10px; font-size:16px; border-radius:8px; border:1px solid var(--line); background:var(--card-solid); color:var(--white);}
@@ -98,6 +99,12 @@
 
 <div class="controls" id="controlsArea" style="display:none;">
   <input type="text" id="search" placeholder="Search song or artist…">
+  <select id="sortSelect">
+    <option value="title-asc">Title A → Z</option>
+    <option value="title-desc">Title Z → A</option>
+    <option value="artist-asc">Artist A → Z</option>
+    <option value="artist-desc">Artist Z → A</option>
+  </select>
   <div class="price-settings">
     <label>General price ($)
       <input type="number" id="priceGeneral" min="0" step="1">
@@ -160,6 +167,7 @@ let prices = { ...DEFAULT_PRICES };
 let ALL_TAGS = [];
 let activeTag = null;
 let searchTerm = "";
+let sortMode = "title-asc";
 let editingId = null;
 let selectedTags = [];
 let selectedTier = "general";
@@ -277,13 +285,26 @@ function tierBadge(tier){
   return `<span class="badge general">General</span>`;
 }
 
+function sortSongs(list){
+  const sorted = [...list];
+  sorted.sort((a, b) => {
+    if(sortMode === 'title-asc') return a.t.localeCompare(b.t);
+    if(sortMode === 'title-desc') return b.t.localeCompare(a.t);
+    if(sortMode === 'artist-asc') return (a.a||'').localeCompare(b.a||'');
+    if(sortMode === 'artist-desc') return (b.a||'').localeCompare(a.a||'');
+    return 0;
+  });
+  return sorted;
+}
+
 function renderList(){
   const term = searchTerm.trim().toLowerCase();
-  const filtered = songs.filter(s => {
+  let filtered = songs.filter(s => {
     const matchesTag = !activeTag || (s.tags||[]).includes(activeTag);
     const matchesTerm = !term || s.t.toLowerCase().includes(term) || (s.a||'').toLowerCase().includes(term);
     return matchesTag && matchesTerm;
-  }).sort((a,b) => a.t.localeCompare(b.t));
+  });
+  filtered = sortSongs(filtered);
 
   document.getElementById('countRow').textContent = `${filtered.length} of ${songs.length} songs`;
 
@@ -311,6 +332,7 @@ function escapeHtml(str){
 }
 
 document.getElementById('search').addEventListener('input', e => { searchTerm = e.target.value; renderList(); });
+document.getElementById('sortSelect').addEventListener('change', e => { sortMode = e.target.value; renderList(); });
 
 /* ============ PRICES ============ */
 async function savePrices(){
