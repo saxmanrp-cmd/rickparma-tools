@@ -305,8 +305,14 @@ function sendRequest(id){
   if(!s) return;
   const nameInput = document.getElementById('reqName');
   const name = nameInput ? nameInput.value.trim() : '';
-  const shoutout = name ? ` — shout-out for ${name}!` : '';
-  const smsBody = encodeURIComponent(`Song Request: "${s.t}"${s.a ? ' by ' + s.a : ''}${shoutout}`);
+  const namePart = (name ? name : 'Someone').toUpperCase();
+  const songPart = s.t.toUpperCase();
+  const artistPart = (s.a || '').toUpperCase();
+
+  let message = `${namePart} requested a song!!!\n${songPart}`;
+  if(artistPart) message += ` by\n${artistPart}`;
+
+  const smsBody = encodeURIComponent(message);
   const smsLink = `sms:${CONTACT_NUMBER}?&body=${smsBody}`;
   window.location.href = smsLink;
 }
