@@ -40,6 +40,7 @@
   #search::placeholder{color:#8a8078;}
   #search:focus{outline:2px solid var(--accent); outline-offset:1px;}
   #sortSelect{width:100%; margin-top:8px; padding:11px 14px; font-size:16px; border-radius:10px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif;}
+  #tierFilter{width:100%; margin-top:8px; padding:11px 14px; font-size:16px; border-radius:10px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif;}
 
   .chips{display:flex; gap:8px; overflow-x:auto; padding:12px 2px 4px; scrollbar-width:none;}
   .chips::-webkit-scrollbar{display:none;}
@@ -103,6 +104,12 @@
     <option value="artist-asc">Artist A → Z</option>
     <option value="artist-desc">Artist Z → A</option>
   </select>
+  <select id="tierFilter">
+    <option value="all">All Songs</option>
+    <option value="free">🎤 Free</option>
+    <option value="general">🎵 General</option>
+    <option value="special">⭐ Special</option>
+  </select>
   <div class="chips" id="chips"></div>
 </div>
 
@@ -141,6 +148,7 @@ let ALL_TAGS = [];
 let activeTag = null;
 let searchTerm = "";
 let sortMode = "title-asc";
+let tierFilterValue = "all";
 
 /* ============ LOAD FROM CLOUD ============ */
 async function loadSongs(){
@@ -159,12 +167,19 @@ async function loadSongs(){
 
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('controls').style.display = 'block';
+    updateTierFilterLabels();
     renderChips();
     renderList();
   } catch(err){
     console.error(err);
     document.getElementById('loadingState').innerHTML = `Couldn't load the song list. Check your connection and refresh.`;
   }
+}
+
+function updateTierFilterLabels(){
+  const sel = document.getElementById('tierFilter');
+  sel.querySelector('option[value="general"]').textContent = `🎵 General ($${prices.general})`;
+  sel.querySelector('option[value="special"]').textContent = `⭐ Special ($${prices.special})`;
 }
 
 /* ============ RENDER: LIST ============ */
@@ -210,7 +225,8 @@ function renderList(){
   let filtered = songs.filter(s => {
     const matchesTag = !activeTag || (s.tags||[]).includes(activeTag);
     const matchesTerm = !term || s.t.toLowerCase().includes(term) || (s.a||'').toLowerCase().includes(term);
-    return matchesTag && matchesTerm;
+    const matchesTier = tierFilterValue === 'all' || (s.tier || 'general') === tierFilterValue;
+    return matchesTag && matchesTerm && matchesTier;
   });
   filtered = sortSongs(filtered);
 
@@ -246,6 +262,11 @@ document.getElementById('search').addEventListener('input', e => {
 
 document.getElementById('sortSelect').addEventListener('change', e => {
   sortMode = e.target.value;
+  renderList();
+});
+
+document.getElementById('tierFilter').addEventListener('change', e => {
+  tierFilterValue = e.target.value;
   renderList();
 });
 
