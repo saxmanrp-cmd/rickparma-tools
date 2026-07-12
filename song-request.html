@@ -376,17 +376,22 @@ function openSheet(id){
       ? `<span class="badge special">⭐ Special Request</span> <span class="price-tag">$${price}</span>`
       : `<span class="badge general">🎵 Song Request</span> <span class="price-tag">$${price}</span>`;
 
+    const venmoNote = encodeURIComponent(`${s.t} request`);
+    const venmoAppLink = `venmo://paycharge?txn=pay&recipients=RickParma&amount=${price}&note=${venmoNote}`;
+    const cashAppLink = `${PAYMENT_LINKS.cashapp}/${price}`;
+    const paypalLink = `${PAYMENT_LINKS.paypal}/${price}`;
+
     bodyHtml = `
       ${nameFieldHtml}
-      <div class="section-label">Step 2 — Send the tip</div>
-      <a class="btn btn-venmo" href="${PAYMENT_LINKS.venmo}" target="_blank">Pay with Venmo</a>
-      <a class="btn btn-cashapp" href="${PAYMENT_LINKS.cashapp}" target="_blank">Pay with Cash App</a>
-      <a class="btn btn-paypal" href="${PAYMENT_LINKS.paypal}" target="_blank">Pay with PayPal</a>
+      <div class="section-label">Step 2 — Send the tip ($${price})</div>
+      <a class="btn btn-venmo" href="${venmoAppLink}" target="_top">Pay $${price} with Venmo</a>
+      <a class="btn btn-cashapp" href="${cashAppLink}" target="_blank">Pay $${price} with Cash App</a>
+      <a class="btn btn-paypal" href="${paypalLink}" target="_blank">Pay $${price} with PayPal</a>
 
       <div class="section-label">Step 3 — Send the request</div>
       <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}')">📱 I've Sent Payment — Text Request</a>
 
-      <div class="pay-note">Prefer Apple Cash? You can send it directly to <strong>${APPLE_GPAY_NUMBER}</strong>, then tap the text button above to send your request.</div>
+      <div class="pay-note">Venmo button opens the Venmo app directly with the amount and note filled in — if you don't have the app installed, send $${price} to <strong>@RickParma</strong> on venmo.com instead. Prefer Apple Cash? Send $${price} directly to <strong>${APPLE_GPAY_NUMBER}</strong>, then tap the text button above to send your request. Note: you'll still need to confirm the amount inside the app before it actually sends — this just saves you from typing it in.</div>
     `;
   }
 
