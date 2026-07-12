@@ -38,6 +38,21 @@
   #sortSelect{width:100%; margin-top:8px; padding:11px 14px; font-size:16px; border-radius:10px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif;}
   #tierFilter{width:100%; margin-top:8px; padding:11px 14px; font-size:16px; border-radius:10px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif;}
 
+  .home-search-wrap{padding:20px 16px 6px;}
+  #homeSearch{width:100%; padding:14px 16px; font-size:16px; border-radius:12px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif;}
+  #homeSearch::placeholder{color:#8a8078;}
+  #homeSearch:focus{outline:2px solid var(--accent); outline-offset:1px;}
+
+  .bubble-grid{display:flex; flex-wrap:wrap; gap:12px; justify-content:center; padding:22px 20px 40px;}
+  .bubble{padding:14px 22px; border-radius:999px; border:2px solid var(--accent); background:var(--card-solid); color:var(--white); font-size:15px; font-weight:700; cursor:pointer; font-family:'Lato',sans-serif; text-align:center;}
+  .bubble:active{background:var(--accent); color:#0c1420;}
+  .bubble.bubble-pink{border-color:#E86BD5;}
+  .bubble.bubble-all{border-color:var(--white); font-weight:900;}
+
+  .results-header{position:sticky; top:0; z-index:11; display:flex; align-items:center; gap:12px; padding:16px; background:rgba(19,1,1,0.96); border-bottom:1px solid var(--line);}
+  #backBtn{background:var(--card-solid); border:1px solid var(--line); color:var(--white); padding:9px 14px; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Lato',sans-serif;}
+  #resultsLabel{font-size:16px; font-weight:700; color:var(--white); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
   .chips{display:flex; gap:8px; overflow-x:auto; padding:12px 2px 4px; scrollbar-width:none;}
   .chips::-webkit-scrollbar{display:none;}
   .chip{flex:0 0 auto; padding:7px 14px; border-radius:999px; border:1px solid var(--line); background:var(--card-solid); color:var(--dim); font-size:13px; font-weight:700; white-space:nowrap; cursor:pointer; font-family:'Lato',sans-serif;}
@@ -88,25 +103,38 @@
 
 <div id="loadingState">Loading song list…</div>
 
-<div class="controls" id="controls" style="display:none;">
-  <input type="text" id="search" placeholder="Search song or artist…">
-  <select id="sortSelect">
-    <option value="title-asc">Title A → Z</option>
-    <option value="title-desc">Title Z → A</option>
-    <option value="artist-asc">Artist A → Z</option>
-    <option value="artist-desc">Artist Z → A</option>
-  </select>
-  <select id="tierFilter">
-    <option value="all">All Songs</option>
-    <option value="free">🎤 Free</option>
-    <option value="general">🎵 General</option>
-    <option value="special">⭐ Special</option>
-  </select>
-  <div class="chips" id="chips"></div>
+<div id="homeScreen" style="display:none;">
+  <div class="home-search-wrap">
+    <input type="text" id="homeSearch" placeholder="Search song or artist…">
+  </div>
+  <div class="bubble-grid" id="bubbleGrid"></div>
 </div>
 
-<div class="count-row" id="countRow"></div>
-<div id="list"></div>
+<div id="resultsScreen" style="display:none;">
+  <div class="results-header">
+    <button id="backBtn" onclick="goHome()">← Back</button>
+    <div id="resultsLabel"></div>
+  </div>
+  <div class="controls" id="controls">
+    <input type="text" id="search" placeholder="Search song or artist…">
+    <select id="sortSelect">
+      <option value="title-asc">Title A → Z</option>
+      <option value="title-desc">Title Z → A</option>
+      <option value="artist-asc">Artist A → Z</option>
+      <option value="artist-desc">Artist Z → A</option>
+    </select>
+    <select id="tierFilter">
+      <option value="all">All Songs</option>
+      <option value="free">🎤 Free</option>
+      <option value="general">🎵 General</option>
+      <option value="special">⭐ Special</option>
+    </select>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div class="count-row" id="countRow"></div>
+  <div id="list"></div>
+</div>
 
 <div id="overlay" onclick="closeSheet()"></div>
 <div id="sheet">
@@ -158,8 +186,9 @@ async function loadSongs(){
     ALL_TAGS = [...new Set(songs.flatMap(s => s.tags || []))].sort();
 
     document.getElementById('loadingState').style.display = 'none';
-    document.getElementById('controls').style.display = 'block';
+    document.getElementById('homeScreen').style.display = 'block';
     updateTierFilterLabels();
+    renderBubbles();
     renderChips();
     renderList();
   } catch(err){
@@ -175,20 +204,74 @@ function updateTierFilterLabels(){
 }
 
 /* ============ RENDER: LIST ============ */
+function renderBubbles(){
+  const grid = document.getElementById('bubbleGrid');
+  grid.innerHTML = '';
+
+  const allBubble = document.createElement('div');
+  allBubble.className = 'bubble bubble-all';
+  allBubble.textContent = '🎶 All Songs';
+  allBubble.onclick = () => { activeTag = null; searchTerm = ''; goResults(); };
+  grid.appendChild(allBubble);
+
+  ALL_TAGS.forEach((tag, i) => {
+    const b = document.createElement('div');
+    b.className = 'bubble' + (i % 2 === 1 ? ' bubble-pink' : '');
+    b.textContent = tag;
+    b.onclick = () => { activeTag = tag; searchTerm = ''; goResults(); };
+    grid.appendChild(b);
+  });
+}
+
+function updateResultsLabel(){
+  const label = document.getElementById('resultsLabel');
+  if(searchTerm.trim()){
+    label.textContent = `🔍 "${searchTerm.trim()}"`;
+  } else if(activeTag){
+    label.textContent = activeTag;
+  } else {
+    label.textContent = 'All Songs';
+  }
+}
+
+function goResults(){
+  document.getElementById('homeScreen').style.display = 'none';
+  document.getElementById('resultsScreen').style.display = 'block';
+  document.getElementById('search').value = searchTerm;
+  updateResultsLabel();
+  renderChips();
+  renderList();
+  window.scrollTo(0, 0);
+}
+
+function goHome(){
+  document.getElementById('resultsScreen').style.display = 'none';
+  document.getElementById('homeScreen').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+document.getElementById('homeSearch').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){
+    searchTerm = e.target.value;
+    activeTag = null;
+    goResults();
+  }
+});
+
 function renderChips(){
   const chipsEl = document.getElementById('chips');
   chipsEl.innerHTML = '';
   const allChip = document.createElement('div');
   allChip.className = 'chip' + (activeTag === null ? ' active' : '');
   allChip.textContent = 'All';
-  allChip.onclick = () => { activeTag = null; renderChips(); renderList(); };
+  allChip.onclick = () => { activeTag = null; updateResultsLabel(); renderChips(); renderList(); };
   chipsEl.appendChild(allChip);
 
   ALL_TAGS.forEach(tag => {
     const chip = document.createElement('div');
     chip.className = 'chip' + (activeTag === tag ? ' active' : '');
     chip.textContent = tag;
-    chip.onclick = () => { activeTag = (activeTag === tag ? null : tag); renderChips(); renderList(); };
+    chip.onclick = () => { activeTag = (activeTag === tag ? null : tag); updateResultsLabel(); renderChips(); renderList(); };
     chipsEl.appendChild(chip);
   });
 }
@@ -249,6 +332,7 @@ function escapeHtml(str){
 
 document.getElementById('search').addEventListener('input', e => {
   searchTerm = e.target.value;
+  updateResultsLabel();
   renderList();
 });
 
