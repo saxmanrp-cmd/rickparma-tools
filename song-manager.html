@@ -46,6 +46,8 @@
   #search{width:100%; padding:12px 14px; font-size:16px; border-radius:10px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); margin-bottom:10px;}
   #sortSelect{width:100%; padding:11px 14px; font-size:16px; border-radius:10px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); margin-bottom:10px; font-family:'Lato',sans-serif;}
   .price-settings{display:flex; gap:10px; margin-top:4px;}
+  .csv-row{display:flex; gap:10px; margin-top:10px;}
+  .csv-row .btn{flex:1;}
   .price-settings label{flex:1; font-size:12px; color:var(--dim);}
   .price-settings input{width:100%; margin-top:4px; padding:10px; font-size:16px; border-radius:8px; border:1px solid var(--line); background:var(--card-solid); color:var(--white);}
   .filter-chips{display:flex; gap:8px; overflow-x:auto; padding-top:10px; scrollbar-width:none;}
@@ -114,6 +116,13 @@
     </label>
   </div>
   <button class="btn btn-outline btn-full" style="margin-top:10px;" onclick="savePrices()">Save Prices</button>
+
+  <div class="csv-row">
+    <button class="btn btn-outline" onclick="exportCSV()">⬇ Download CSV</button>
+    <button class="btn btn-outline" onclick="document.getElementById('csvFileInput').click()">⬆ Upload CSV</button>
+  </div>
+  <input type="file" id="csvFileInput" accept=".csv" style="display:none;" onchange="handleCSVUpload(event)">
+
   <div class="filter-chips" id="chips"></div>
 </div>
 
@@ -258,6 +267,136 @@ function renderSetupBox(connected, errored){
 }
 
 /* ============ LIST ============ */
+/* ============ CSV EXPORT / IMPORT ============ */
+function csvEscape(val){
+  val = (val === undefined || val === null) ? '' : String(val);
+  if(/[",\n]/.test(val)){
+    return '"' + val.replace(/"/g, '""') + '"';
+  }
+  return val;
+}
+
+function exportCSV(){
+  const header = ['id','title','artist','tier','tags'];
+  const rows = songs.map(s => [
+    s.id,
+    s.t,
+    s.a || '',
+    s.tier || 'general',
+    (s.tags || []).join(';')
+  ].map(csvEscape).join(','));
+
+  const csv = [header.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'rickparma-songs.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Minimal CSV line parser that handles quoted fields containing commas/quotes/newlines
+function parseCSV(text){
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  for(let i = 0; i < text.length; i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field += '"'; i++; }
+        else { inQuotes = false; }
+      } else {
+        field += c;
+      }
+    } else {
+      if(c === '"'){ inQuotes = true; }
+      else if(c === ','){ row.push(field); field = ''; }
+      else if(c === '\n' || c === '\r'){
+        if(c === '\r' && text[i+1] === '\n') i++;
+        row.push(field); field = '';
+        if(row.length > 1 || row[0] !== ''){ rows.push(row); }
+        row = [];
+      } else {
+        field += c;
+      }
+    }
+  }
+  if(field !== '' || row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+
+async function handleCSVUpload(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  event.target.value = ''; // reset so the same file can be re-selected later
+
+  const text = await file.text();
+  const rows = parseCSV(text);
+  if(rows.length < 2){
+    alert('That CSV looks empty.');
+    return;
+  }
+
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const idIdx = header.indexOf('id');
+  const titleIdx = header.indexOf('title');
+  const artistIdx = header.indexOf('artist');
+  const tierIdx = header.indexOf('tier');
+  const tagsIdx = header.indexOf('tags');
+
+  if(titleIdx === -1){
+    alert('CSV must have a "title" column. Download the current list first to see the expected format.');
+    return;
+  }
+
+  let addedCount = 0;
+  let updatedCount = 0;
+
+  for(let i = 1; i < rows.length; i++){
+    const r = rows[i];
+    const title = (r[titleIdx] || '').trim();
+    if(!title) continue;
+
+    const artist = artistIdx > -1 ? (r[artistIdx] || '').trim() : '';
+    let tier = tierIdx > -1 ? (r[tierIdx] || '').trim().toLowerCase() : 'general';
+    if(!['free','general','special'].includes(tier)) tier = 'general';
+    const tags = tagsIdx > -1 ? (r[tagsIdx] || '').split(';').map(t => t.trim()).filter(Boolean) : [];
+    const id = idIdx > -1 ? (r[idIdx] || '').trim() : '';
+
+    const existing = id ? songs.find(s => s.id === id) : null;
+    if(existing){
+      existing.t = title;
+      existing.a = artist;
+      existing.tier = tier;
+      existing.tags = tags;
+      updatedCount++;
+    } else {
+      songs.push({ id: 's' + Date.now() + Math.floor(Math.random()*10000), t: title, a: artist, tier, tags });
+      addedCount++;
+    }
+  }
+
+  const proceed = confirm(`Ready to import:\n${addedCount} new song(s)\n${updatedCount} updated song(s)\n\nSave these changes now?`);
+  if(!proceed){
+    // reload from cloud to discard the in-memory changes we just made
+    await loadFromCloud();
+    return;
+  }
+
+  rebuildTagList();
+  const ok = await saveToCloud();
+  if(ok){
+    renderChips();
+    renderList();
+    alert('Song list updated!');
+  }
+}
+
 function rebuildTagList(){
   ALL_TAGS = [...new Set(songs.flatMap(s => s.tags || []))].sort();
 }
