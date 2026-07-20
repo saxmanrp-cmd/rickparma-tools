@@ -94,25 +94,45 @@
   .name-input{width:100%; padding:14px; font-size:16px; border-radius:12px; border:1px solid var(--accent); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif; margin-top:8px;}
   .name-input::placeholder{color:#8a8078;}
 
-  .wheel-wrap{position:relative; width:260px; height:260px; margin:16px auto 10px;}
-  .wheel-pointer{position:absolute; top:-6px; left:50%; transform:translateX(-50%); font-size:26px; color:var(--white); z-index:2; text-shadow:0 2px 6px rgba(0,0,0,0.6);}
-  .wheel{
-    width:100%; height:100%; border-radius:50%; position:relative;
-    background: conic-gradient(from 0deg,
-      #E8B84B 0deg 36deg, #8DB2E5 36deg 72deg,
-      #E8B84B 72deg 108deg, #8DB2E5 108deg 144deg,
-      #E8B84B 144deg 180deg, #8DB2E5 180deg 216deg,
-      #E8B84B 216deg 252deg, #8DB2E5 252deg 288deg,
-      #E8B84B 288deg 324deg, #8DB2E5 324deg 360deg);
-    border:5px solid var(--card-solid);
-    box-shadow: 0 0 0 3px rgba(245,243,240,0.15), 0 8px 22px rgba(0,0,0,0.5);
-    transition: transform 4.2s cubic-bezier(0.12,0.67,0.1,1);
+  .wheel-wrap{position:relative; width:270px; height:270px; margin:18px auto 10px;}
+  .wheel-pointer{position:absolute; top:-10px; left:50%; transform:translateX(-50%); font-size:30px; color:#fff; z-index:3; text-shadow:0 2px 8px rgba(0,0,0,0.7); filter:drop-shadow(0 0 6px rgba(255,255,255,0.5));}
+  .wheel-glow{position:absolute; inset:-10px; border-radius:50%; background:radial-gradient(circle, rgba(232,184,75,0.35), rgba(141,178,229,0.2) 60%, transparent 75%); animation:wheelPulse 2.2s ease-in-out infinite; z-index:0;}
+  @keyframes wheelPulse{
+    0%,100%{ transform:scale(1); opacity:0.7; }
+    50%{ transform:scale(1.06); opacity:1; }
   }
-  .wheel-label{position:absolute; top:50%; left:50%; font-weight:900; font-size:13px; color:#0c1420; width:60px; text-align:center; margin-left:-30px; margin-top:-9px;}
-  #spinBtn{margin-top:4px;}
+  .wheel{
+    width:100%; height:100%; border-radius:50%; position:relative; z-index:1;
+    background: conic-gradient(from 0deg,
+      #F5C359 0deg 36deg, #6FB3F2 36deg 72deg,
+      #F5C359 72deg 108deg, #6FB3F2 108deg 144deg,
+      #F5C359 144deg 180deg, #6FB3F2 180deg 216deg,
+      #F5C359 216deg 252deg, #6FB3F2 252deg 288deg,
+      #F5C359 288deg 324deg, #6FB3F2 324deg 360deg);
+    border:6px solid var(--card-solid);
+    box-shadow: 0 0 0 3px rgba(245,243,240,0.2), 0 0 30px rgba(232,184,75,0.35), 0 8px 26px rgba(0,0,0,0.55);
+    transition: transform 4.6s cubic-bezier(0.15,0.7,0.15,1);
+  }
+  .wheel-center-dot{position:absolute; top:50%; left:50%; width:22px; height:22px; margin:-11px 0 0 -11px; border-radius:50%; background:var(--white); box-shadow:0 0 12px rgba(255,255,255,0.7); z-index:2;}
+  .wheel-label-arm{position:absolute; top:50%; left:50%; width:0; height:0;}
+  .wheel-label{
+    position:absolute; left:0; top:0;
+    font-weight:900; font-size:13px; color:#0c1420; width:56px; text-align:center; line-height:1.2;
+  }
+  #spinBtn{margin-top:6px; animation:spinBtnGlow 1.8s ease-in-out infinite;}
+  @keyframes spinBtnGlow{
+    0%,100%{ box-shadow:0 0 0 rgba(141,178,229,0); }
+    50%{ box-shadow:0 0 18px rgba(141,178,229,0.65); }
+  }
   .spin-result{font-size:14px; font-weight:700; color:var(--white); text-align:center; padding:12px; margin-top:14px; border-radius:10px; background:rgba(245,243,240,0.06); border:1px solid var(--line);}
   .spin-result-free{color:var(--general); border-color:var(--general);}
   .spin-result-general{color:var(--accent); border-color:var(--accent);}
+
+  .confetti-piece{position:fixed; top:-20px; z-index:500; pointer-events:none; border-radius:2px;}
+  @keyframes confettiFall{
+    0%{ transform:translateY(0) rotate(0deg); opacity:1; }
+    100%{ transform:translateY(110vh) rotate(720deg); opacity:0.9; }
+  }
 
   #loadingState{text-align:center; padding:80px 20px; color:var(--dim);}
 </style>
@@ -414,7 +434,9 @@ function openSheet(id){
       <div class="section-label">Step 2 — Spin for your price!</div>
       <div class="wheel-wrap">
         <div class="wheel-pointer">▼</div>
+        <div class="wheel-glow"></div>
         <div class="wheel" id="spinWheel">${buildWheelLabels(price)}</div>
+        <div class="wheel-center-dot"></div>
       </div>
       <button class="btn btn-text" id="spinBtn" onclick="spinWheel('${s.id}', ${price})">🎡 Spin to Win!</button>
       <div id="spinResultArea"></div>
@@ -435,10 +457,13 @@ function openSheet(id){
 }
 
 function buildWheelLabels(price){
+  const radius = 100; // distance from center, close to the rim of the 270px wheel
   return WHEEL_SLICES.map((label, i) => {
     const angle = i * 36 + 18;
-    const text = label === 'FREE' ? 'FREE' : `$${price}`;
-    return `<div class="wheel-label" style="transform: translate(-50%,-50%) rotate(${angle}deg) translateY(-92px) rotate(0deg);">${text}</div>`;
+    const text = label === 'FREE' ? '🎁<br>FREE' : `🎵<br>$${price}`;
+    return `<div class="wheel-label-arm" style="transform: rotate(${angle}deg);">
+      <div class="wheel-label" style="transform: translate(-50%, -${radius}px);">${text}</div>
+    </div>`;
   }).join('');
 }
 
@@ -463,6 +488,27 @@ function spinWheel(songId, price){
   }, 4300);
 }
 
+function dropConfetti(){
+  const colors = ['#F5C359', '#6FB3F2', '#E86BD5', '#ffffff', '#B06BFF'];
+  const pieceCount = 90;
+  for(let i = 0; i < pieceCount; i++){
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    const size = 6 + Math.random() * 6;
+    const isCircle = Math.random() > 0.5;
+    piece.style.width = size + 'px';
+    piece.style.height = (isCircle ? size : size * 1.6) + 'px';
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.borderRadius = isCircle ? '50%' : '2px';
+    piece.style.left = Math.random() * 100 + 'vw';
+    const duration = 2.2 + Math.random() * 1.6;
+    const delay = Math.random() * 0.4;
+    piece.style.animation = `confettiFall ${duration}s ease-in ${delay}s forwards`;
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), (duration + delay) * 1000 + 200);
+  }
+}
+
 function revealSpinResult(outcome, songId, price){
   const area = document.getElementById('spinResultArea');
   const s = songs.find(x => x.id === songId);
@@ -474,6 +520,7 @@ function revealSpinResult(outcome, songId, price){
       <div class="section-label">Step 3 — Send the request</div>
       <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}')">📱 Text This Request</a>
     `;
+    dropConfetti();
   } else {
     const venmoNote = encodeURIComponent(`${s.t} request`);
     const venmoAppLink = `venmo://paycharge?txn=pay&recipients=RickParma&amount=${price}&note=${venmoNote}`;
