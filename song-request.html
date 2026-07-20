@@ -94,6 +94,26 @@
   .name-input{width:100%; padding:14px; font-size:16px; border-radius:12px; border:1px solid var(--accent); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif; margin-top:8px;}
   .name-input::placeholder{color:#8a8078;}
 
+  .wheel-wrap{position:relative; width:260px; height:260px; margin:16px auto 10px;}
+  .wheel-pointer{position:absolute; top:-6px; left:50%; transform:translateX(-50%); font-size:26px; color:var(--white); z-index:2; text-shadow:0 2px 6px rgba(0,0,0,0.6);}
+  .wheel{
+    width:100%; height:100%; border-radius:50%; position:relative;
+    background: conic-gradient(from 0deg,
+      #E8B84B 0deg 36deg, #8DB2E5 36deg 72deg,
+      #E8B84B 72deg 108deg, #8DB2E5 108deg 144deg,
+      #E8B84B 144deg 180deg, #8DB2E5 180deg 216deg,
+      #E8B84B 216deg 252deg, #8DB2E5 252deg 288deg,
+      #E8B84B 288deg 324deg, #8DB2E5 324deg 360deg);
+    border:5px solid var(--card-solid);
+    box-shadow: 0 0 0 3px rgba(245,243,240,0.15), 0 8px 22px rgba(0,0,0,0.5);
+    transition: transform 4.2s cubic-bezier(0.12,0.67,0.1,1);
+  }
+  .wheel-label{position:absolute; top:50%; left:50%; font-weight:900; font-size:13px; color:#0c1420; width:60px; text-align:center; margin-left:-30px; margin-top:-9px;}
+  #spinBtn{margin-top:4px;}
+  .spin-result{font-size:14px; font-weight:700; color:var(--white); text-align:center; padding:12px; margin-top:14px; border-radius:10px; background:rgba(245,243,240,0.06); border:1px solid var(--line);}
+  .spin-result-free{color:var(--general); border-color:var(--general);}
+  .spin-result-general{color:var(--accent); border-color:var(--accent);}
+
   #loadingState{text-align:center; padding:80px 20px; color:var(--dim);}
 </style>
 </head>
@@ -125,7 +145,6 @@
     </select>
     <select id="tierFilter">
       <option value="all">All Songs</option>
-      <option value="free">🎤 Free</option>
       <option value="general">🎵 General</option>
       <option value="special">⭐ Special</option>
     </select>
@@ -277,7 +296,6 @@ function renderChips(){
 }
 
 function tierBadge(tier){
-  if(tier === 'free') return `<span class="badge free">🎤 Free</span>`;
   if(tier === 'special') return `<span class="badge special">⭐ $${prices.special}</span>`;
   return `<span class="badge general">🎵 $${prices.general}</span>`;
 }
@@ -300,7 +318,8 @@ function renderList(){
   let filtered = songs.filter(s => {
     const matchesTag = !activeTag || (s.tags||[]).includes(activeTag);
     const matchesTerm = !term || s.t.toLowerCase().includes(term) || (s.a||'').toLowerCase().includes(term);
-    const matchesTier = tierFilterValue === 'all' || (s.tier || 'general') === tierFilterValue;
+    const effectiveTier = s.tier === 'special' ? 'special' : 'general';
+    const matchesTier = tierFilterValue === 'all' || effectiveTier === tierFilterValue;
     return matchesTag && matchesTerm && matchesTier;
   });
   filtered = sortSongs(filtered);
@@ -347,10 +366,14 @@ document.getElementById('tierFilter').addEventListener('change', e => {
 });
 
 /* ============ REQUEST SHEET ============ */
+const WHEEL_SLICES = ['GENERAL','FREE','GENERAL','FREE','GENERAL','FREE','GENERAL','FREE','GENERAL','FREE'];
+let wheelSpinning = false;
+let wheelRotationTotal = 0;
+
 function openSheet(id){
   const s = songs.find(x => x.id === id);
   if(!s) return;
-  const tier = s.tier || 'general';
+  const tier = s.tier === 'special' ? 'special' : 'general'; // legacy "free" tags now fold into general
 
   document.getElementById('sheetTitle').textContent = s.t;
   document.getElementById('sheetArtist').textContent = s.a || '';
@@ -363,20 +386,11 @@ function openSheet(id){
   let tierLineHtml = '';
   let bodyHtml = '';
 
-  if(tier === 'free'){
-    tierLineHtml = `<span class="badge free">🎤 Free Request</span>`;
-    bodyHtml = `
-      ${nameFieldHtml}
-      <div class="section-label">Step 2 — Send the request</div>
-      <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}')">📱 Text This Request</a>
-    `;
-  } else {
-    const price = tier === 'special' ? prices.special : prices.general;
-    tierLineHtml = tier === 'special'
-      ? `<span class="badge special">⭐ Special Request</span> <span class="price-tag">$${price}</span>`
-      : `<span class="badge general">🎵 Song Request</span> <span class="price-tag">$${price}</span>`;
+  const venmoNote = encodeURIComponent(`${s.t} request`);
 
-    const venmoNote = encodeURIComponent(`${s.t} request`);
+  if(tier === 'special'){
+    const price = prices.special;
+    tierLineHtml = `<span class="badge special">⭐ Special Request</span> <span class="price-tag">$${price}</span>`;
     const venmoAppLink = `venmo://paycharge?txn=pay&recipients=RickParma&amount=${price}&note=${venmoNote}`;
     const cashAppLink = `${PAYMENT_LINKS.cashapp}/${price}`;
     const paypalLink = `${PAYMENT_LINKS.paypal}/${price}`;
@@ -391,13 +405,91 @@ function openSheet(id){
       <div class="section-label">Step 3 — Send the request</div>
       <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}')">📱 I've Sent Payment — Text Request</a>
     `;
+  } else {
+    const price = prices.general;
+    tierLineHtml = `<span class="badge general">🎵 Song Request</span> <span class="price-tag">$${price}</span>`;
+
+    bodyHtml = `
+      ${nameFieldHtml}
+      <div class="section-label">Step 2 — Spin for your price!</div>
+      <div class="wheel-wrap">
+        <div class="wheel-pointer">▼</div>
+        <div class="wheel" id="spinWheel">${buildWheelLabels(price)}</div>
+      </div>
+      <button class="btn btn-text" id="spinBtn" onclick="spinWheel('${s.id}', ${price})">🎡 Spin to Win!</button>
+      <div id="spinResultArea"></div>
+    `;
   }
 
   document.getElementById('sheetTierLine').innerHTML = tierLineHtml;
   document.getElementById('sheetBody').innerHTML = bodyHtml;
 
+  wheelSpinning = false;
+  wheelRotationTotal = 0;
+  if(document.getElementById('spinWheel')){
+    document.getElementById('spinWheel').style.transform = 'rotate(0deg)';
+  }
+
   document.getElementById('overlay').classList.add('show');
   document.getElementById('sheet').classList.add('show');
+}
+
+function buildWheelLabels(price){
+  return WHEEL_SLICES.map((label, i) => {
+    const angle = i * 36 + 18;
+    const text = label === 'FREE' ? 'FREE' : `$${price}`;
+    return `<div class="wheel-label" style="transform: translate(-50%,-50%) rotate(${angle}deg) translateY(-92px) rotate(0deg);">${text}</div>`;
+  }).join('');
+}
+
+function spinWheel(songId, price){
+  if(wheelSpinning) return;
+  wheelSpinning = true;
+
+  const wheel = document.getElementById('spinWheel');
+  const spinBtn = document.getElementById('spinBtn');
+  spinBtn.disabled = true;
+  spinBtn.style.opacity = '0.6';
+
+  const resultIndex = Math.floor(Math.random() * WHEEL_SLICES.length);
+  const targetSliceCenter = resultIndex * 36 + 18;
+  const extraSpins = 5 * 360;
+  wheelRotationTotal += extraSpins + (360 - targetSliceCenter) - (wheelRotationTotal % 360);
+  wheel.style.transform = `rotate(${wheelRotationTotal}deg)`;
+
+  setTimeout(() => {
+    const outcome = WHEEL_SLICES[resultIndex];
+    revealSpinResult(outcome, songId, price);
+  }, 4300);
+}
+
+function revealSpinResult(outcome, songId, price){
+  const area = document.getElementById('spinResultArea');
+  const s = songs.find(x => x.id === songId);
+  if(!s || !area) return;
+
+  if(outcome === 'FREE'){
+    area.innerHTML = `
+      <div class="spin-result spin-result-free">🎉 You spun FREE! This one's on the house.</div>
+      <div class="section-label">Step 3 — Send the request</div>
+      <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}')">📱 Text This Request</a>
+    `;
+  } else {
+    const venmoNote = encodeURIComponent(`${s.t} request`);
+    const venmoAppLink = `venmo://paycharge?txn=pay&recipients=RickParma&amount=${price}&note=${venmoNote}`;
+    const cashAppLink = `${PAYMENT_LINKS.cashapp}/${price}`;
+    const paypalLink = `${PAYMENT_LINKS.paypal}/${price}`;
+    area.innerHTML = `
+      <div class="spin-result spin-result-general">You spun $${price} — send the tip below to complete your request.</div>
+      <div class="section-label">Step 3 — Send the tip ($${price})</div>
+      <a class="btn btn-venmo" href="${venmoAppLink}" target="_top">Pay $${price} with Venmo</a>
+      <a class="btn btn-cashapp" href="${cashAppLink}" target="_blank">Pay $${price} with Cash App</a>
+      <a class="btn btn-paypal" href="${paypalLink}" target="_blank">Pay $${price} with PayPal</a>
+
+      <div class="section-label">Step 4 — Send the request</div>
+      <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}')">📱 I've Sent Payment — Text Request</a>
+    `;
+  }
 }
 
 function prepareSend(el, id){
