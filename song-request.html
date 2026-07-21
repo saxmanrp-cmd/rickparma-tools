@@ -103,18 +103,22 @@
   }
   .wheel{
     width:100%; height:100%; border-radius:50%; position:relative; z-index:1;
-    background: conic-gradient(from 0deg,
-      #FF6EC7 0deg 36deg, #FFD93D 36deg 72deg,
-      #6FCF97 72deg 108deg, #FF5C5C 108deg 144deg,
-      #63B3ED 144deg 180deg, #FFA94D 180deg 216deg,
-      #B57EDC 216deg 252deg, #4FD1C5 252deg 288deg,
-      #F783AC 288deg 324deg, #9B8BDB 324deg 360deg);
+    background:
+      radial-gradient(circle at 50% 20%, rgba(255,255,255,0.4), rgba(255,255,255,0.08) 35%, transparent 55%),
+      radial-gradient(circle at 50% 85%, rgba(0,0,0,0.35), transparent 50%),
+      conic-gradient(from 0deg,
+      #C41E3A 0deg 36deg, #C99A2E 36deg 72deg,
+      #1C6B3A 72deg 108deg, #1450A3 108deg 144deg,
+      #7B2FBF 144deg 180deg, #B8562F 180deg 216deg,
+      #0E7C7B 216deg 252deg, #A31545 252deg 288deg,
+      #2E4172 288deg 324deg, #8C6A1F 324deg 360deg);
     border:7px solid #2b3a8f;
     box-shadow:
       0 0 0 4px #f5c94a,
       0 0 0 6px #2b3a8f,
       0 0 34px rgba(255,215,100,0.45),
-      0 10px 28px rgba(0,0,0,0.55);
+      0 10px 28px rgba(0,0,0,0.55),
+      inset 0 0 40px rgba(0,0,0,0.3);
     transition: transform 4.6s cubic-bezier(0.15,0.7,0.15,1);
   }
   .wheel-rivet{position:absolute; top:50%; left:50%; width:8px; height:8px; margin:-4px 0 0 -4px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #fff, #d8b74a 60%, #8a6c1f); box-shadow:0 0 4px rgba(0,0,0,0.5); z-index:2;}
@@ -556,9 +560,15 @@ function spinWheel(songId, price){
 }
 
 function dropConfetti(){
-  const colors = ['#FF6EC7', '#FFD93D', '#6FCF97', '#FF5C5C', '#63B3ED', '#FFA94D', '#B57EDC', '#4FD1C5', '#ffffff', '#F5C94A'];
-  const pieceCount = 110;
-  const sparkleChance = 0.22;
+  const metallicColors = [
+    { base: '#FFD700', shine: '#FFF8DC' }, // gold
+    { base: '#E8B84B', shine: '#FFF3C4' }, // deep gold
+    { base: '#C0C0C0', shine: '#F5F5F5' }, // silver
+    { base: '#B8B8B8', shine: '#EAEAEA' }, // steel silver
+    { base: '#D4AF37', shine: '#FFFDE7' }  // antique gold
+  ];
+  const pieceCount = 120;
+  const sparkleChance = 0.3;
   for(let i = 0; i < pieceCount; i++){
     const piece = document.createElement('div');
     const duration = 2.2 + Math.random() * 1.6;
@@ -566,20 +576,26 @@ function dropConfetti(){
     const left = Math.random() * 100 + 'vw';
 
     if(Math.random() < sparkleChance){
+      const isGold = Math.random() > 0.5;
       piece.className = 'confetti-piece sparkle-piece';
       piece.textContent = '✨';
-      piece.style.fontSize = (14 + Math.random() * 10) + 'px';
+      piece.style.fontSize = (14 + Math.random() * 12) + 'px';
       piece.style.left = left;
+      piece.style.color = isGold ? '#FFD700' : '#E8E8E8';
+      piece.style.textShadow = isGold
+        ? '0 0 8px #fff, 0 0 16px #FFD700, 0 0 24px #E8B84B'
+        : '0 0 8px #fff, 0 0 16px #C0C0C0, 0 0 24px #B8B8B8';
       piece.style.animation = `confettiFall ${duration}s ease-in ${delay}s forwards, sparkleTwinkle 0.5s ease-in-out infinite`;
     } else {
       piece.className = 'confetti-piece';
-      const size = 6 + Math.random() * 7;
-      const isCircle = Math.random() > 0.5;
+      const size = 7 + Math.random() * 8;
+      const isCircle = Math.random() > 0.4;
+      const color = metallicColors[Math.floor(Math.random() * metallicColors.length)];
       piece.style.width = size + 'px';
-      piece.style.height = (isCircle ? size : size * 1.6) + 'px';
-      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.height = (isCircle ? size : size * 1.7) + 'px';
+      piece.style.background = `linear-gradient(135deg, ${color.base} 0%, ${color.shine} 45%, ${color.base} 70%, ${color.shine} 100%)`;
       piece.style.borderRadius = isCircle ? '50%' : '2px';
-      piece.style.boxShadow = '0 0 6px rgba(255,255,255,0.8)';
+      piece.style.boxShadow = `0 0 8px rgba(255,255,255,0.9), 0 0 14px ${color.base}`;
       piece.style.left = left;
       piece.style.animation = `confettiFall ${duration}s ease-in ${delay}s forwards`;
     }
