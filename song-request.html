@@ -127,11 +127,11 @@
   .wheel-label-arm{position:absolute; top:50%; left:50%; width:0; height:0;}
   .wheel-label{
     position:absolute; left:0; top:0;
-    font-weight:900; font-size:14px; width:58px; text-align:center; line-height:1.25;
+    font-weight:900; width:44px; text-align:center;
     color:#111; -webkit-text-stroke:2.5px #fff; paint-order:stroke fill;
     text-shadow: 1px 2px 0 rgba(0,0,0,0.35);
-    letter-spacing:0.5px;
   }
+  .wheel-label span{display:block; line-height:0.92;}
   .sparkle{position:absolute; top:0; left:0; pointer-events:none; z-index:5; color:#fff; text-shadow:0 0 6px #fff, 0 0 12px #ffe680; animation:sparkleTwinkle 1.6s ease-in-out infinite;}
   @keyframes sparkleTwinkle{
     0%,100%{ opacity:0; transform:scale(0.4) rotate(0deg); }
@@ -450,7 +450,7 @@ function openSheet(id){
 
     bodyHtml = `
       ${nameFieldHtml}
-      <div class="section-label">Step 2 — Spin for your price!</div>
+      <div class="section-label">Step 2 — Spin to Win a Free Song!</div>
       <div class="wheel-wrap">
         <div class="wheel-pointer">▼</div>
         <div class="wheel-glow"></div>
@@ -475,13 +475,29 @@ function openSheet(id){
   document.getElementById('sheet').classList.add('show');
 }
 
+function stackedLetters(word, outerRadius){
+  const sliceAngleDeg = 36;
+  const halfAngleRad = (sliceAngleDeg / 2) * Math.PI / 180; // 18deg in radians
+  const widthFactor = 0.4; // fraction of the slice's chord width the letter's font-size maps to
+  let r = outerRadius;
+  let html = '';
+  for(let i = 0; i < word.length; i++){
+    const sliceWidthAtR = 2 * r * Math.sin(halfAngleRad);
+    let fontSize = sliceWidthAtR * widthFactor;
+    fontSize = Math.max(9, Math.min(fontSize, 36));
+    html += `<span style="font-size:${fontSize}px;">${word[i]}</span>`;
+    r -= fontSize * 0.92; // step inward by roughly this letter's rendered height
+  }
+  return html;
+}
+
 function buildWheelLabels(price){
-  const radius = 100; // distance from center, close to the rim of the 280px wheel
+  const outerRadius = 122; // top (biggest letter) sits right at the rim
   return WHEEL_SLICES.map((label, i) => {
     const angle = i * 36 + 18;
-    const text = label === 'FREE' ? '🎁<br>FREE' : `🎵<br>$${price}`;
+    const word = label === 'FREE' ? 'FREE' : 'PAID';
     return `<div class="wheel-label-arm" style="transform: rotate(${angle}deg);">
-      <div class="wheel-label" style="transform: translate(-50%, -${radius}px);">${text}</div>
+      <div class="wheel-label" style="transform: translate(-50%, -${outerRadius}px);">${stackedLetters(word, outerRadius)}</div>
     </div>`;
   }).join('');
 }
