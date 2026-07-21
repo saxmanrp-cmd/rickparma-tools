@@ -476,17 +476,21 @@ function openSheet(id){
 }
 
 function stackedLetters(word, outerRadius){
-  const sliceAngleDeg = 36;
-  const halfAngleRad = (sliceAngleDeg / 2) * Math.PI / 180; // 18deg in radians
-  const widthFactor = 0.4; // fraction of the slice's chord width the letter's font-size maps to
+  const boxWidth = 44; // matches the .wheel-label CSS width — scaleX multiplies against this
+  const targetWidthStart = 70;
+  const targetWidthEnd = 50;
+  const stretchStart = targetWidthStart / boxWidth;
+  const stretchEnd = targetWidthEnd / boxWidth;
+  const baseFontSize = 26;
+  const shrinkAmount = 5;
   let r = outerRadius;
   let html = '';
   for(let i = 0; i < word.length; i++){
-    const sliceWidthAtR = 2 * r * Math.sin(halfAngleRad);
-    let fontSize = sliceWidthAtR * widthFactor;
-    fontSize = Math.max(9, Math.min(fontSize, 36));
-    html += `<span style="font-size:${fontSize}px;">${word[i]}</span>`;
-    r -= fontSize * 0.92; // step inward by roughly this letter's rendered height
+    const t = word.length > 1 ? i / (word.length - 1) : 0;
+    const fontSize = baseFontSize - shrinkAmount * t;
+    const stretch = (stretchStart + (stretchEnd - stretchStart) * t).toFixed(3);
+    html += `<span style="font-size:${fontSize.toFixed(1)}px; transform:scaleX(${stretch});">${word[i]}</span>`;
+    r -= fontSize * 0.92;
   }
   return html;
 }
