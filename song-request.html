@@ -151,17 +151,23 @@
   .spin-result-general{color:var(--accent); border-color:var(--accent);}
 
   .firework-rocket{position:fixed; bottom:0; left:0; width:5px; height:5px; border-radius:50%; z-index:500; pointer-events:none; box-shadow:0 0 10px 3px currentColor, 0 6px 14px -2px currentColor;}
+  .firework-rocket-big{width:8px; height:8px; box-shadow:0 0 18px 5px currentColor, 0 8px 20px -2px currentColor;}
+  .screen-flash{position:fixed; inset:0; background:radial-gradient(circle at 50% 42%, rgba(255,255,255,0.55), rgba(255,235,150,0.15) 40%, transparent 70%); z-index:499; pointer-events:none; animation:screenFlashFade 0.5s ease-out forwards;}
+  @keyframes screenFlashFade{
+    0%{ opacity:1; }
+    100%{ opacity:0; }
+  }
   .firework-particle{position:fixed; top:0; left:0; width:6px; height:6px; border-radius:50%; z-index:500; pointer-events:none;}
   .firework-free-text{
     position:fixed; top:0; left:0; z-index:501; pointer-events:none;
-    font-weight:900; font-size:52px; letter-spacing:2px;
-    color:#fff; -webkit-text-stroke:3px #E8B84B; paint-order:stroke fill;
-    text-shadow:0 0 18px #FFD700, 0 0 36px #FFD700, 0 0 60px rgba(255,215,0,0.6);
-    animation: freeTextPop 1.9s ease-out forwards;
+    font-weight:900; font-size:68px; letter-spacing:3px;
+    color:#fff; -webkit-text-stroke:4px #E8B84B; paint-order:stroke fill;
+    text-shadow:0 0 22px #FFD700, 0 0 44px #FFD700, 0 0 80px rgba(255,215,0,0.7);
+    animation: freeTextPop 2.2s ease-out forwards;
   }
   @keyframes freeTextPop{
     0%{ transform:translate(-50%,-50%) scale(0); opacity:0; }
-    18%{ transform:translate(-50%,-50%) scale(1.35); opacity:1; }
+    18%{ transform:translate(-50%,-50%) scale(1.4); opacity:1; }
     30%{ transform:translate(-50%,-50%) scale(1); opacity:1; }
     82%{ transform:translate(-50%,-50%) scale(1); opacity:1; }
     100%{ transform:translate(-50%,-50%) scale(1.05); opacity:0; }
@@ -569,52 +575,69 @@ function spinWheel(songId, price){
   }, 4300);
 }
 
-function launchFirework(x, apexY, color, isSpecial){
+function launchFirework(x, apexY, color, isFinale){
   const rocket = document.createElement('div');
-  rocket.className = 'firework-rocket';
+  rocket.className = 'firework-rocket' + (isFinale ? ' firework-rocket-big' : '');
   rocket.style.left = x + 'px';
   rocket.style.background = color;
   rocket.style.color = color;
   document.body.appendChild(rocket);
 
-  const riseDuration = 850 + Math.random() * 450;
+  const riseDuration = isFinale ? 1100 : 850 + Math.random() * 450;
   const anim = rocket.animate([
     { transform: 'translateY(0)', opacity: 1 },
     { transform: `translateY(-${apexY}px)`, opacity: 1 }
-  ], { duration: riseDuration, easing: 'cubic-bezier(0.25,0.46,0.45,0.94)', fill: 'forwards' });
+  ], { duration: riseDuration, easing: 'cubic-bezier(0.22,0.5,0.35,1)', fill: 'forwards' });
 
   anim.onfinish = () => {
     const rect = rocket.getBoundingClientRect();
-    const burstX = rect.left;
-    const burstY = rect.top;
+    const burstX = isFinale ? window.innerWidth / 2 : rect.left;
+    const burstY = isFinale ? window.innerHeight * 0.42 : rect.top;
     rocket.remove();
-    burstAt(burstX, burstY, color);
-    if(isSpecial){
-      setTimeout(() => showFreeText(burstX, burstY), 120);
+
+    if(isFinale){
+      screenFlash();
+      burstAt(burstX, burstY, color, true);
+      setTimeout(() => burstAt(burstX, burstY, '#FFFFFF', true), 90);
+      setTimeout(() => burstAt(burstX, burstY, colorPalette[Math.floor(Math.random()*colorPalette.length)], true), 200);
+      setTimeout(() => showFreeText(burstX, burstY), 160);
+    } else {
+      burstAt(burstX, burstY, color, false);
     }
   };
 }
 
-function burstAt(x, y, color){
-  const particleCount = 28;
+function screenFlash(){
+  const flash = document.createElement('div');
+  flash.className = 'screen-flash';
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 500);
+}
+
+function burstAt(x, y, color, epic){
+  const particleCount = epic ? 55 : 36;
+  const distRange = epic ? [90, 210] : [60, 130];
   for(let i = 0; i < particleCount; i++){
     const p = document.createElement('div');
     p.className = 'firework-particle';
+    const size = epic ? (5 + Math.random() * 4) : (4 + Math.random() * 3);
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
     p.style.left = x + 'px';
     p.style.top = y + 'px';
     p.style.background = color;
-    p.style.boxShadow = `0 0 6px 2px ${color}`;
+    p.style.boxShadow = `0 0 ${epic ? 10 : 6}px ${epic ? 3 : 2}px ${color}`;
     document.body.appendChild(p);
 
     const angle = Math.random() * Math.PI * 2;
-    const dist = 55 + Math.random() * 95;
+    const dist = distRange[0] + Math.random() * (distRange[1] - distRange[0]);
     const dx = Math.cos(angle) * dist;
-    const dy = Math.sin(angle) * dist + 30; // slight gravity drift downward
-    const duration = 700 + Math.random() * 500;
+    const dy = Math.sin(angle) * dist + (epic ? 45 : 30); // gravity drift downward
+    const duration = (epic ? 950 : 700) + Math.random() * 500;
 
     const pAnim = p.animate([
-      { transform: 'translate(0,0)', opacity: 1 },
-      { transform: `translate(${dx}px, ${dy}px)`, opacity: 0 }
+      { transform: 'translate(0,0) scale(1)', opacity: 1 },
+      { transform: `translate(${dx}px, ${dy}px) scale(0.4)`, opacity: 0 }
     ], { duration, easing: 'cubic-bezier(0.2,0.6,0.4,1)', fill: 'forwards' });
 
     pAnim.onfinish = () => p.remove();
@@ -628,23 +651,29 @@ function showFreeText(x, y){
   el.style.left = x + 'px';
   el.style.top = y + 'px';
   document.body.appendChild(el);
-  setTimeout(() => el.remove(), 1900);
+  setTimeout(() => el.remove(), 2200);
 }
 
+const colorPalette = ['#FF3B3B', '#FFD700', '#3BA1FF', '#39FF6A', '#FF3BE0', '#B23BFF', '#3BFFF0', '#FFFFFF', '#FF8C3B'];
+
 function launchFireworks(){
-  const colors = ['#FF3B3B', '#FFD700', '#3BA1FF', '#39FF6A', '#FF3BE0', '#B23BFF', '#3BFFF0', '#FFFFFF', '#FF8C3B'];
   const count = 12;
-  const specialIndex = Math.floor(Math.random() * count);
   const vw = window.innerWidth;
   const vh = window.innerHeight;
 
   for(let i = 0; i < count; i++){
-    const delay = i * 170 + Math.random() * 120;
-    const x = vw * 0.1 + Math.random() * vw * 0.8;
-    const apexY = vh * 0.38 + Math.random() * vh * 0.32;
-    const color = colors[Math.floor(Math.random() * colors.length)];
-    setTimeout(() => launchFirework(x, apexY, color, i === specialIndex), delay);
+    const delay = i * 150 + Math.random() * 110;
+    const x = vw * 0.08 + Math.random() * vw * 0.84;
+    const apexY = vh * 0.36 + Math.random() * vh * 0.34;
+    const color = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+    setTimeout(() => launchFirework(x, apexY, color, false), delay);
   }
+
+  // Grand finale — always launches last, always lands dead-center
+  const finaleDelay = count * 150 + 500;
+  setTimeout(() => {
+    launchFirework(vw / 2, vh * 0.5, '#FFD700', true);
+  }, finaleDelay);
 }
 
 function revealSpinResult(outcome, songId, price){
