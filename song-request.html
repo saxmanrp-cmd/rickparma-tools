@@ -150,11 +150,21 @@
   .spin-result-free{color:var(--general); border-color:var(--general);}
   .spin-result-general{color:var(--accent); border-color:var(--accent);}
 
-  .confetti-piece{position:fixed; top:-20px; z-index:500; pointer-events:none; border-radius:2px;}
-  .confetti-piece.sparkle-piece{background:none !important; text-align:center; text-shadow:0 0 8px #fff, 0 0 14px #ffe680;}
-  @keyframes confettiFall{
-    0%{ transform:translateY(0) rotate(0deg); opacity:1; }
-    100%{ transform:translateY(110vh) rotate(720deg); opacity:0.9; }
+  .firework-rocket{position:fixed; bottom:0; left:0; width:5px; height:5px; border-radius:50%; z-index:500; pointer-events:none; box-shadow:0 0 10px 3px currentColor, 0 6px 14px -2px currentColor;}
+  .firework-particle{position:fixed; top:0; left:0; width:6px; height:6px; border-radius:50%; z-index:500; pointer-events:none;}
+  .firework-free-text{
+    position:fixed; top:0; left:0; z-index:501; pointer-events:none;
+    font-weight:900; font-size:52px; letter-spacing:2px;
+    color:#fff; -webkit-text-stroke:3px #E8B84B; paint-order:stroke fill;
+    text-shadow:0 0 18px #FFD700, 0 0 36px #FFD700, 0 0 60px rgba(255,215,0,0.6);
+    animation: freeTextPop 1.9s ease-out forwards;
+  }
+  @keyframes freeTextPop{
+    0%{ transform:translate(-50%,-50%) scale(0); opacity:0; }
+    18%{ transform:translate(-50%,-50%) scale(1.35); opacity:1; }
+    30%{ transform:translate(-50%,-50%) scale(1); opacity:1; }
+    82%{ transform:translate(-50%,-50%) scale(1); opacity:1; }
+    100%{ transform:translate(-50%,-50%) scale(1.05); opacity:0; }
   }
 
   #loadingState{text-align:center; padding:80px 20px; color:var(--dim);}
@@ -559,49 +569,81 @@ function spinWheel(songId, price){
   }, 4300);
 }
 
-function dropConfetti(){
-  const metallicColors = [
-    { base: '#FFD700', shine: '#FFF8DC' }, // gold
-    { base: '#E8B84B', shine: '#FFF3C4' }, // deep gold
-    { base: '#C0C0C0', shine: '#F5F5F5' }, // silver
-    { base: '#B8B8B8', shine: '#EAEAEA' }, // steel silver
-    { base: '#D4AF37', shine: '#FFFDE7' }  // antique gold
-  ];
-  const pieceCount = 120;
-  const sparkleChance = 0.3;
-  for(let i = 0; i < pieceCount; i++){
-    const piece = document.createElement('div');
-    const duration = 2.2 + Math.random() * 1.6;
-    const delay = Math.random() * 0.4;
-    const left = Math.random() * 100 + 'vw';
+function launchFirework(x, apexY, color, isSpecial){
+  const rocket = document.createElement('div');
+  rocket.className = 'firework-rocket';
+  rocket.style.left = x + 'px';
+  rocket.style.background = color;
+  rocket.style.color = color;
+  document.body.appendChild(rocket);
 
-    if(Math.random() < sparkleChance){
-      const isGold = Math.random() > 0.5;
-      piece.className = 'confetti-piece sparkle-piece';
-      piece.textContent = '✨';
-      piece.style.fontSize = (14 + Math.random() * 12) + 'px';
-      piece.style.left = left;
-      piece.style.color = isGold ? '#FFD700' : '#E8E8E8';
-      piece.style.textShadow = isGold
-        ? '0 0 8px #fff, 0 0 16px #FFD700, 0 0 24px #E8B84B'
-        : '0 0 8px #fff, 0 0 16px #C0C0C0, 0 0 24px #B8B8B8';
-      piece.style.animation = `confettiFall ${duration}s ease-in ${delay}s forwards, sparkleTwinkle 0.5s ease-in-out infinite`;
-    } else {
-      piece.className = 'confetti-piece';
-      const size = 7 + Math.random() * 8;
-      const isCircle = Math.random() > 0.4;
-      const color = metallicColors[Math.floor(Math.random() * metallicColors.length)];
-      piece.style.width = size + 'px';
-      piece.style.height = (isCircle ? size : size * 1.7) + 'px';
-      piece.style.background = `linear-gradient(135deg, ${color.base} 0%, ${color.shine} 45%, ${color.base} 70%, ${color.shine} 100%)`;
-      piece.style.borderRadius = isCircle ? '50%' : '2px';
-      piece.style.boxShadow = `0 0 8px rgba(255,255,255,0.9), 0 0 14px ${color.base}`;
-      piece.style.left = left;
-      piece.style.animation = `confettiFall ${duration}s ease-in ${delay}s forwards`;
+  const riseDuration = 850 + Math.random() * 450;
+  const anim = rocket.animate([
+    { transform: 'translateY(0)', opacity: 1 },
+    { transform: `translateY(-${apexY}px)`, opacity: 1 }
+  ], { duration: riseDuration, easing: 'cubic-bezier(0.25,0.46,0.45,0.94)', fill: 'forwards' });
+
+  anim.onfinish = () => {
+    const rect = rocket.getBoundingClientRect();
+    const burstX = rect.left;
+    const burstY = rect.top;
+    rocket.remove();
+    burstAt(burstX, burstY, color);
+    if(isSpecial){
+      setTimeout(() => showFreeText(burstX, burstY), 120);
     }
+  };
+}
 
-    document.body.appendChild(piece);
-    setTimeout(() => piece.remove(), (duration + delay) * 1000 + 200);
+function burstAt(x, y, color){
+  const particleCount = 28;
+  for(let i = 0; i < particleCount; i++){
+    const p = document.createElement('div');
+    p.className = 'firework-particle';
+    p.style.left = x + 'px';
+    p.style.top = y + 'px';
+    p.style.background = color;
+    p.style.boxShadow = `0 0 6px 2px ${color}`;
+    document.body.appendChild(p);
+
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 55 + Math.random() * 95;
+    const dx = Math.cos(angle) * dist;
+    const dy = Math.sin(angle) * dist + 30; // slight gravity drift downward
+    const duration = 700 + Math.random() * 500;
+
+    const pAnim = p.animate([
+      { transform: 'translate(0,0)', opacity: 1 },
+      { transform: `translate(${dx}px, ${dy}px)`, opacity: 0 }
+    ], { duration, easing: 'cubic-bezier(0.2,0.6,0.4,1)', fill: 'forwards' });
+
+    pAnim.onfinish = () => p.remove();
+  }
+}
+
+function showFreeText(x, y){
+  const el = document.createElement('div');
+  el.className = 'firework-free-text';
+  el.textContent = 'FREE';
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1900);
+}
+
+function launchFireworks(){
+  const colors = ['#FF3B3B', '#FFD700', '#3BA1FF', '#39FF6A', '#FF3BE0', '#B23BFF', '#3BFFF0', '#FFFFFF', '#FF8C3B'];
+  const count = 12;
+  const specialIndex = Math.floor(Math.random() * count);
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  for(let i = 0; i < count; i++){
+    const delay = i * 170 + Math.random() * 120;
+    const x = vw * 0.1 + Math.random() * vw * 0.8;
+    const apexY = vh * 0.38 + Math.random() * vh * 0.32;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    setTimeout(() => launchFirework(x, apexY, color, i === specialIndex), delay);
   }
 }
 
@@ -616,7 +658,7 @@ function revealSpinResult(outcome, songId, price){
       <div class="section-label">Step 3 — Send the request</div>
       <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}')">📱 Text This Request</a>
     `;
-    dropConfetti();
+    launchFireworks();
   } else {
     const venmoNote = encodeURIComponent(`${s.t} request`);
     const venmoAppLink = `venmo://paycharge?txn=pay&recipients=RickParma&amount=${price}&note=${venmoNote}`;
