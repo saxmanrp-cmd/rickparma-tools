@@ -3,261 +3,640 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Video Manager">
-<meta name="theme-color" content="#0d0505">
 <title>Rick Parma — Video Manager</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0d0505; color: #fff; font-family: Arial, Helvetica, sans-serif; min-height: 100vh; padding: 32px 16px 60px; }
-  .header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
-  h1 { font-size:20px; font-weight:900; letter-spacing:0.08em; text-transform:uppercase; color:#8DB2E5; }
-  .sync-badge { font-size:10px; letter-spacing:0.06em; color:rgba(255,255,255,0.4); display:flex; align-items:center; gap:5px; }
-  .sync-dot { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.3); flex-shrink:0; }
-  .sync-dot.synced { background:#4caf7d; }
-  .sync-dot.syncing { background:#8DB2E5; animation:pulse 1s ease-in-out infinite; }
-  .sync-dot.error { background:#e05555; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-  .subtitle { font-size:12px; color:rgba(255,255,255,0.4); margin-bottom:32px; }
-  .section-label { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.35); margin-bottom:10px; }
-  .add-form { background:#1a0808; border-radius:10px; padding:20px; margin-bottom:28px; }
-  .form-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
-  .form-row input { flex:1; min-width:140px; background:#0d0505; border:1.5px solid rgba(141,178,229,0.3); border-radius:6px; color:#fff; font-size:14px; padding:10px 12px; outline:none; transition:border-color 0.2s; }
-  .form-row input:focus { border-color:#8DB2E5; }
-  .form-row input::placeholder { color:rgba(255,255,255,0.3); }
-  .btn-add { width:100%; background:#8DB2E5; color:#0d0505; border:none; border-radius:6px; font-size:13px; font-weight:900; letter-spacing:0.06em; text-transform:uppercase; padding:11px; cursor:pointer; transition:background 0.15s; }
-  .btn-add:hover { background:#a8c8f0; } .btn-add:active { background:#7aa0d4; }
-  .tip { font-size:11px; color:rgba(255,255,255,0.3); margin-top:10px; line-height:1.5; }
-  .tip a { color:#8DB2E5; }
-  .video-list { margin-bottom:28px; }
-  .video-item { display:flex; align-items:center; gap:10px; background:#1a0808; border-radius:8px; padding:10px 12px; margin-bottom:8px; cursor:grab; user-select:none; transition:background 0.15s; border:1.5px solid transparent; }
-  .video-item:hover { border-color:rgba(141,178,229,0.2); }
-  .video-item.dragging { opacity:0.4; }
-  .video-item.drag-over { border-color:#8DB2E5; background:#2a1010; }
-  .drag-handle { color:rgba(255,255,255,0.2); font-size:16px; flex-shrink:0; cursor:grab; }
-  .video-thumb { width:64px; height:36px; object-fit:cover; border-radius:4px; background:#2a1010; flex-shrink:0; }
-  .video-info { flex:1; min-width:0; }
-  .video-title { font-size:13px; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .video-id { font-size:11px; color:rgba(255,255,255,0.3); font-family:monospace; }
-  .btn-delete { background:none; border:none; color:rgba(255,255,255,0.25); font-size:18px; cursor:pointer; padding:4px 6px; border-radius:4px; transition:color 0.15s,background 0.15s; flex-shrink:0; line-height:1; }
-  .btn-delete:hover { color:#e57a7a; background:rgba(229,122,122,0.1); }
-  .empty-state { text-align:center; color:rgba(255,255,255,0.2); font-size:13px; padding:24px; }
-  .btn-generate { width:100%; background:linear-gradient(135deg,#8DB2E5,#6a94cc); color:#0d0505; border:none; border-radius:8px; font-size:14px; font-weight:900; letter-spacing:0.08em; text-transform:uppercase; padding:14px; cursor:pointer; margin-bottom:16px; transition:opacity 0.15s; }
-  .btn-generate:hover { opacity:0.9; } .btn-generate:active { opacity:0.75; }
-  .output-wrap { display:none; }
-  .output-wrap.visible { display:block; }
-  .output-box { background:#1a0808; border-radius:8px; padding:16px; font-size:11px; font-family:monospace; color:rgba(255,255,255,0.6); white-space:pre-wrap; word-break:break-all; max-height:200px; overflow-y:auto; margin-bottom:12px; border:1.5px solid rgba(141,178,229,0.15); }
-  .btn-copy { width:100%; background:#2a1010; color:#8DB2E5; border:1.5px solid #8DB2E5; border-radius:8px; font-size:13px; font-weight:900; letter-spacing:0.06em; text-transform:uppercase; padding:12px; cursor:pointer; transition:background 0.15s; }
-  .btn-copy:hover { background:rgba(141,178,229,0.1); }
-  .copy-confirm { text-align:center; font-size:12px; color:#8DB2E5; margin-top:10px; height:18px; }
-  .loading-screen { position:fixed; inset:0; background:#0d0505; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; z-index:200; }
-  .spinner { width:24px; height:24px; border:3px solid rgba(141,178,229,0.2); border-top-color:#8DB2E5; border-radius:50%; animation:spin 0.7s linear infinite; }
-  @keyframes spin { to { transform:rotate(360deg); } }
-  .loading-screen p { font-size:11px; color:rgba(255,255,255,0.4); letter-spacing:0.12em; text-transform:uppercase; }
+
+  body {
+    background: #0d0505;
+    color: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+    min-height: 100vh;
+    padding: 32px 16px 60px;
+  }
+
+  h1 {
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8DB2E5;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    font-size: 12px;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 32px;
+  }
+
+  /* ── Section headers ── */
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+    margin-bottom: 10px;
+  }
+
+  /* ── Add video form ── */
+  .add-form {
+    background: #1a0808;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 28px;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .form-row input {
+    flex: 1;
+    min-width: 140px;
+    background: #0d0505;
+    border: 1.5px solid rgba(141,178,229,0.3);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 14px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .form-row input:focus { border-color: #8DB2E5; }
+  .form-row input::placeholder { color: rgba(255,255,255,0.3); }
+
+  .btn-add {
+    width: 100%;
+    background: #8DB2E5;
+    color: #0d0505;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 11px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-add:hover { background: #a8c8f0; }
+  .btn-add:active { background: #7aa0d4; }
+
+  .tip {
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+
+  .tip a { color: #8DB2E5; }
+
+  /* ── Video list ── */
+  .video-list {
+    margin-bottom: 28px;
+  }
+
+  .video-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #1a0808;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    cursor: grab;
+    user-select: none;
+    transition: background 0.15s;
+    border: 1.5px solid transparent;
+  }
+
+  .video-item:hover { border-color: rgba(141,178,229,0.2); }
+  .video-item.dragging { opacity: 0.4; }
+  .video-item.drag-over { border-color: #8DB2E5; background: #2a1010; }
+
+  .drag-handle {
+    color: rgba(255,255,255,0.2);
+    font-size: 16px;
+    flex-shrink: 0;
+    cursor: grab;
+  }
+
+  .video-thumb {
+    width: 64px;
+    height: 36px;
+    object-fit: cover;
+    border-radius: 4px;
+    background: #2a1010;
+    flex-shrink: 0;
+  }
+
+  .video-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .video-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .video-id {
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    font-family: monospace;
+  }
+
+  .btn-delete {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.25);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+
+  .btn-delete:hover { color: #e57a7a; background: rgba(229,122,122,0.1); }
+
+  .empty-state {
+    text-align: center;
+    color: rgba(255,255,255,0.2);
+    font-size: 13px;
+    padding: 24px;
+  }
+
+  /* ── Generate button ── */
+  .btn-generate {
+    width: 100%;
+    background: linear-gradient(135deg, #8DB2E5, #6a94cc);
+    color: #0d0505;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 14px;
+    cursor: pointer;
+    margin-bottom: 16px;
+    transition: opacity 0.15s;
+  }
+
+  .btn-generate:hover { opacity: 0.9; }
+  .btn-generate:active { opacity: 0.75; }
+
+  /* ── Output code box ── */
+  .output-wrap {
+    display: none;
+  }
+
+  .output-wrap.visible { display: block; }
+
+  .output-box {
+    background: #1a0808;
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 11px;
+    font-family: monospace;
+    color: rgba(255,255,255,0.6);
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 12px;
+    border: 1.5px solid rgba(141,178,229,0.15);
+  }
+
+  .btn-copy {
+    width: 100%;
+    background: #2a1010;
+    color: #8DB2E5;
+    border: 1.5px solid #8DB2E5;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-copy:hover { background: rgba(141,178,229,0.1); }
+
+  .copy-confirm {
+    text-align: center;
+    font-size: 12px;
+    color: #8DB2E5;
+    margin-top: 10px;
+    height: 18px;
+    transition: opacity 0.3s;
+  }
 </style>
 </head>
 <body>
 
-<div class="loading-screen" id="loadingScreen">
-  <div class="spinner"></div>
-  <p>Loading from cloud…</p>
+<h1>Rick Parma — Video Manager</h1>
+<p class="subtitle">Add, remove, and reorder your promo videos, then copy the code into Bandzoogle.</p>
+
+<!-- Add Form -->
+<p class="section-label">Add a video</p>
+<div class="add-form">
+  <div class="form-row">
+    <input type="text" id="input-id" placeholder="YouTube Video ID (e.g. A7bKax1LS_g)" />
+    <input type="text" id="input-title" placeholder="Title (e.g. Short Promo)" />
+  </div>
+  <button class="btn-add" onclick="addVideo()">+ Add Video</button>
+  <p class="tip">
+    The video ID is the code after <strong>watch?v=</strong> in a YouTube URL.<br>
+    e.g. youtube.com/watch?v=<strong style="color:#8DB2E5">A7bKax1LS_g</strong>
+  </p>
 </div>
 
-<div id="appWrap" style="display:none">
-  <div class="header-top">
-    <h1>Rick Parma — Video Manager</h1>
-    <div class="sync-badge">
-      <div class="sync-dot" id="syncDot"></div>
-      <span id="syncLabel">Loading…</span>
-    </div>
-  </div>
-  <p class="subtitle">Add, remove, and reorder your promo videos, then copy the code into Bandzoogle.</p>
+<!-- Video List -->
+<p class="section-label">Your videos — drag to reorder</p>
+<div class="video-list" id="video-list"></div>
 
-  <p class="section-label">Add a video</p>
-  <div class="add-form">
-    <div class="form-row">
-      <input type="text" id="input-id" placeholder="YouTube Video ID (e.g. A7bKax1LS_g)" />
-      <input type="text" id="input-title" placeholder="Title (e.g. Short Promo)" />
-    </div>
-    <button class="btn-add" onclick="addVideo()">+ Add Video</button>
-    <p class="tip">The video ID is the code after <strong>watch?v=</strong> in a YouTube URL.<br>e.g. youtube.com/watch?v=<strong style="color:#8DB2E5">A7bKax1LS_g</strong></p>
-  </div>
+<!-- Generate -->
+<button class="btn-generate" onclick="generateCode()">⬇ Generate Bandzoogle Code</button>
 
-  <p class="section-label">Your videos — drag to reorder</p>
-  <div class="video-list" id="video-list"></div>
-
-  <button class="btn-generate" onclick="generateCode()">⬇ Generate Bandzoogle Code</button>
-
-  <div class="output-wrap" id="output-wrap">
-    <p class="section-label">Copy this and paste into your Bandzoogle HTML section</p>
-    <div class="output-box" id="output-box"></div>
-    <button class="btn-copy" onclick="copyCode()">Copy Code to Clipboard</button>
-    <p class="copy-confirm" id="copy-confirm"></p>
-  </div>
+<!-- Output -->
+<div class="output-wrap" id="output-wrap">
+  <p class="section-label">Copy this and paste into your Bandzoogle HTML section</p>
+  <div class="output-box" id="output-box"></div>
+  <button class="btn-copy" onclick="copyCode()">Copy Code to Clipboard</button>
+  <p class="copy-confirm" id="copy-confirm"></p>
 </div>
 
 <script>
-  var BIN_API_KEY = "$2a$10$AE8jTzF3OJJNfqTgYPcPK.SzVAdv0Mqi/obwqWTuQjpE0dOkYkCE.";
-  var BIN_ID_KEY  = "rp_videos_bin_id";
-  var BIN_BASE    = "https://api.jsonbin.io/v3";
+// ── Default video list ──────────────────────────────────────────────
+var videos = [
+  { id: "A7bKax1LS_g", title: "Short Promo" },
+  { id: "ePFoNTC85XY", title: "Compilation 1" },
+  { id: "3bvxyLmyKnI", title: "Superstar" },
+  { id: "AGnspowK_Wo", title: "Before I Let Go" },
+  { id: "Ray3e_HnEb8", title: "Silk Sonic" },
+  { id: "GkMce4gh31I", title: "Never Too Much" },
+  { id: "oW9OYt4XuZ8", title: "EWF Medley" },
+  { id: "1RWIZPpbpnk", title: "Stevie Wonder" },
+  { id: "85q58zOzhsQ", title: "Every Little Step I Take" },
+  { id: "3a1gaKA0zKk", title: "AHA" },
+  { id: "UON75LtrKDo", title: "I Do A Lot of Songs" },
+  { id: "6WmPyq6eoRk", title: "Full Band Promo" }
+];
 
-  var DEFAULT_VIDEOS = [
-    { id: "A7bKax1LS_g", title: "Short Promo" },
-    { id: "ePFoNTC85XY", title: "Compilation 1" },
-    { id: "3bvxyLmyKnI", title: "Superstar" },
-    { id: "AGnspowK_Wo", title: "Before I Let Go" },
-    { id: "Ray3e_HnEb8", title: "Silk Sonic" },
-    { id: "GkMce4gh31I", title: "Never Too Much" },
-    { id: "oW9OYt4XuZ8", title: "EWF Medley" },
-    { id: "1RWIZPpbpnk", title: "Stevie Wonder" },
-    { id: "85q58zOzhsQ", title: "Every Little Step I Take" },
-    { id: "3a1gaKA0zKk", title: "AHA" },
-    { id: "UON75LtrKDo", title: "I Do A Lot of Songs" },
-    { id: "6WmPyq6eoRk", title: "Full Band Promo" }
-  ];
+// ── Drag state ──────────────────────────────────────────────────────
+var dragSrcIndex = null;
 
-  var videos = [];
-  var binId = "6a29c91ff5f4af5e29dab8de";
-  var dragSrcIndex = null;
-  var isSaving = false;
+// ── Render list ─────────────────────────────────────────────────────
+function render() {
+  var list = document.getElementById("video-list");
+  list.innerHTML = "";
 
-  function setSyncStatus(state, label) {
-    document.getElementById("syncDot").className = "sync-dot " + state;
-    document.getElementById("syncLabel").textContent = label;
+  if (videos.length === 0) {
+    list.innerHTML = '<div class="empty-state">No videos yet — add one above.</div>';
+    return;
   }
 
-  async function load() {
-    try {
-      if (binId) {
-        var res = await fetch(BIN_BASE + "/b/" + binId + "/latest", {
-          headers: { "X-Master-Key": BIN_API_KEY }
-        });
-        if (res.ok) {
-          var data = await res.json();
-          videos = data.record.videos || [];
-          setSyncStatus("synced", "Synced ✓");
-          return;
-        }
-      }
-      await createBin(DEFAULT_VIDEOS);
-    } catch(e) {
-      videos = DEFAULT_VIDEOS.slice();
-      setSyncStatus("error", "Load failed");
-      console.error(e);
-    }
-  }
+  videos.forEach(function(v, i) {
+    var item = document.createElement("div");
+    item.className = "video-item";
+    item.draggable = true;
+    item.dataset.index = i;
 
-  async function createBin(initial) {
-    var res = await fetch(BIN_BASE + "/b", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Master-Key": BIN_API_KEY,
-        "X-Bin-Name": "rp-videos",
-        "X-Bin-Private": "true"
-      },
-      body: JSON.stringify({ videos: initial })
+    item.innerHTML =
+      '<span class="drag-handle">⠿</span>' +
+      '<img class="video-thumb" src="https://img.youtube.com/vi/' + v.id + '/mqdefault.jpg" alt="">' +
+      '<div class="video-info">' +
+        '<div class="video-title">' + v.title + '</div>' +
+        '<div class="video-id">' + v.id + '</div>' +
+      '</div>' +
+      '<button class="btn-delete" onclick="removeVideo(' + i + ')" title="Remove">×</button>';
+
+    // Drag events
+    item.addEventListener("dragstart", function(e) {
+      dragSrcIndex = i;
+      setTimeout(function() { item.classList.add("dragging"); }, 0);
     });
-    if (!res.ok) throw new Error("Could not create bin");
-    var data = await res.json();
-    binId = data.metadata.id;
-    localStorage.setItem(BIN_ID_KEY, binId);
-    videos = initial;
-    setSyncStatus("synced", "Ready ✓");
-  }
-
-  async function save() {
-    if (isSaving || !binId) return;
-    isSaving = true;
-    setSyncStatus("syncing", "Saving…");
-    try {
-      var res = await fetch(BIN_BASE + "/b/" + binId, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", "X-Master-Key": BIN_API_KEY },
-        body: JSON.stringify({ videos: videos })
+    item.addEventListener("dragend", function() {
+      item.classList.remove("dragging");
+      document.querySelectorAll(".video-item").forEach(function(el) {
+        el.classList.remove("drag-over");
       });
-      if (!res.ok) throw new Error("Save failed");
-      setSyncStatus("synced", "Saved ✓");
-    } catch(e) {
-      setSyncStatus("error", "Save failed");
-    }
-    isSaving = false;
-  }
-
-  function render() {
-    var list = document.getElementById("video-list");
-    list.innerHTML = "";
-    if (videos.length === 0) { list.innerHTML = '<div class="empty-state">No videos yet — add one above.</div>'; return; }
-    videos.forEach(function(v, i) {
-      var item = document.createElement("div");
-      item.className = "video-item";
-      item.draggable = true;
-      item.innerHTML =
-        '<span class="drag-handle">⠿</span>' +
-        '<img class="video-thumb" src="https://img.youtube.com/vi/' + v.id + '/mqdefault.jpg" alt="">' +
-        '<div class="video-info"><div class="video-title">' + v.title + '</div><div class="video-id">' + v.id + '</div></div>' +
-        '<button class="btn-delete" onclick="removeVideo(' + i + ')" title="Remove">×</button>';
-      item.addEventListener("dragstart", function(e) { dragSrcIndex = i; setTimeout(function(){ item.classList.add("dragging"); }, 0); });
-      item.addEventListener("dragend", function() { item.classList.remove("dragging"); document.querySelectorAll(".video-item").forEach(function(el){ el.classList.remove("drag-over"); }); });
-      item.addEventListener("dragover", function(e) { e.preventDefault(); item.classList.add("drag-over"); });
-      item.addEventListener("dragleave", function() { item.classList.remove("drag-over"); });
-      item.addEventListener("drop", async function(e) { e.preventDefault(); item.classList.remove("drag-over"); if (dragSrcIndex === null || dragSrcIndex === i) return; var moved = videos.splice(dragSrcIndex,1)[0]; videos.splice(i,0,moved); dragSrcIndex=null; render(); await save(); });
-      list.appendChild(item);
     });
-  }
-
-  async function addVideo() {
-    var idInput = document.getElementById("input-id");
-    var titleInput = document.getElementById("input-title");
-    var id = idInput.value.trim().split("&")[0].split("?v=").pop();
-    var title = titleInput.value.trim();
-    if (!id) { alert("Please enter a YouTube video ID."); return; }
-    if (!title) { alert("Please enter a title for the video."); return; }
-    for (var j = 0; j < videos.length; j++) { if (videos[j].id === id) { alert("That video ID is already in the list."); return; } }
-    videos.push({ id: id, title: title });
-    idInput.value = ""; titleInput.value = ""; idInput.focus();
-    render();
-    document.getElementById("output-wrap").classList.remove("visible");
-    await save();
-  }
-
-  async function removeVideo(index) {
-    if (!confirm('Remove "' + videos[index].title + '"?')) return;
-    videos.splice(index, 1);
-    render();
-    document.getElementById("output-wrap").classList.remove("visible");
-    await save();
-  }
-
-  function generateCode() {
-    if (videos.length === 0) { alert("Add at least one video first."); return; }
-    var videoArray = videos.map(function(v){ return '    { id: "' + v.id + '", title: "' + v.title + '" }'; }).join(",\n");
-    var first = videos[0].title;
-    var code = '<!--\n  RICK PARMA \u2014 Mobile-First YouTube Video Gallery\n  Paste this entire block into a Bandzoogle HTML section.\n-->\n\n<style>\n  #rp-video-section{background:rgba(13,5,5,0.5);padding:16px 16px 24px;font-family:Arial,Helvetica,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}\n  #rp-video-section *{box-sizing:border-box}\n  .rp-section-title{font-size:33px;font-weight:900;color:#fff;margin:0 0 12px;text-transform:uppercase;letter-spacing:.04em;text-align:center}\n  .rp-featured-wrap{position:relative;width:100%;padding-bottom:56.25%;background:#1a0808;border-radius:8px;overflow:hidden;margin-bottom:8px}\n  .rp-featured-wrap iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:none;border-radius:8px}\n  .rp-featured-label{font-size:12px;color:#8DB2E5;margin:0 0 20px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;padding-left:2px}\n  .rp-featured-label span{color:rgba(255,255,255,.5);font-weight:400;text-transform:none;letter-spacing:0}\n  .rp-carousel-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);margin:0 0 10px}\n  .rp-carousel{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:4px 2px 10px}\n  .rp-carousel::-webkit-scrollbar{display:none}\n  .rp-thumb{flex:0 0 155px;scroll-snap-align:start;cursor:pointer;border-radius:6px;overflow:hidden;position:relative;background:#1a0808;border:1.5px solid transparent;transition:border-color .2s,transform .15s;-webkit-tap-highlight-color:transparent}\n  @media(min-width:420px){.rp-thumb{flex:0 0 175px}}\n  @media(min-width:600px){.rp-thumb{flex:0 0 200px}}\n  .rp-thumb:active{transform:scale(.97)}\n  .rp-thumb.active{border-color:#8DB2E5}\n  .rp-thumb-img-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#2a1010;overflow:hidden}\n  .rp-thumb-img-wrap img{width:100%;height:100%;object-fit:cover;display:block}\n  .rp-play-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.25);transition:background .15s}\n  .rp-thumb.active .rp-play-overlay{background:rgba(141,178,229,.15)}\n  .rp-play-btn{width:30px;height:30px;background:rgba(255,255,255,.88);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}\n  .rp-play-btn svg{width:11px;height:11px;margin-left:2px;fill:#0d0505}\n  .rp-thumb.active .rp-play-btn{background:#8DB2E5}\n  .rp-thumb.active .rp-play-btn svg{fill:#fff}\n  .rp-thumb-title{font-size:11px;font-weight:700;color:rgba(255,255,255,.85);padding:7px 8px 8px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#130606}\n  .rp-thumb.active .rp-thumb-title{color:#8DB2E5}\n  .rp-dots{display:flex;justify-content:center;gap:6px;margin-top:4px}\n  .rp-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.2);transition:background .2s,transform .2s;cursor:pointer}\n  .rp-dot.active{background:#8DB2E5;transform:scale(1.3)}\n</style>\n\n<div id="rp-video-section">\n  <h2 class="rp-section-title">Promo Videos</h2>\n  <div class="rp-featured-wrap" id="rp-player-wrap"><iframe id="rp-main-player" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe></div>\n  <p class="rp-featured-label">Now playing: <span id="rp-playing-title">' + first + '</span></p>\n  <p class="rp-carousel-label">Swipe to browse \u2014 tap to play</p>\n  <div class="rp-carousel" id="rp-grid"></div>\n  <div class="rp-dots" id="rp-dots"></div>\n</div>\n\n<script>\n(function(){\n  var videos=[\n' + videoArray + '\n  ];\n  var grid=document.getElementById("rp-grid"),player=document.getElementById("rp-main-player"),playingTitle=document.getElementById("rp-playing-title"),dotsContainer=document.getElementById("rp-dots");\n  function embedURL(id,autoplay){return"https://www.youtube-nocookie.com/embed/"+id+"?rel=0&modestbranding=1"+(autoplay?"&autoplay=1":"");}\n  function switchVideo(index){var v=videos[index];player.src=embedURL(v.id,true);playingTitle.textContent=v.title;document.getElementById("rp-player-wrap").scrollIntoView({behavior:"smooth",block:"start"});grid.querySelectorAll(".rp-thumb").forEach(function(t,i){t.classList.toggle("active",i===index);});}\n  player.src=embedURL(videos[0].id,false);\n  videos.forEach(function(v,i){var card=document.createElement("div");card.className="rp-thumb"+(i===0?" active":"");card.setAttribute("role","button");card.setAttribute("tabindex","0");card.innerHTML=\'<div class="rp-thumb-img-wrap"><img src="https://img.youtube.com/vi/\'+v.id+\'/mqdefault.jpg" alt="\'+v.title+\'" loading="lazy"><div class="rp-play-overlay"><div class="rp-play-btn"><svg viewBox="0 0 10 12"><polygon points="0,0 10,6 0,12"/></svg></div></div></div><div class="rp-thumb-title">\'+v.title+\'</div>\';card.addEventListener("click",function(){switchVideo(i);});card.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();switchVideo(i);}});grid.appendChild(card);var dot=document.createElement("div");dot.className="rp-dot"+(i===0?" active":"");dot.addEventListener("click",function(){grid.querySelectorAll(".rp-thumb")[i].scrollIntoView({behavior:"smooth",block:"nearest",inline:"start"});});dotsContainer.appendChild(dot);});\n  grid.addEventListener("scroll",function(){var cards=grid.querySelectorAll(".rp-thumb"),dots=dotsContainer.querySelectorAll(".rp-dot"),closest=0,minDist=Infinity;cards.forEach(function(c,i){var dist=Math.abs(c.offsetLeft-grid.scrollLeft);if(dist<minDist){minDist=dist;closest=i;}});dots.forEach(function(d,i){d.classList.toggle("active",i===closest);});});\n})();\n<\/script>';
-    document.getElementById("output-box").textContent = code;
-    document.getElementById("output-wrap").classList.add("visible");
-    document.getElementById("output-wrap").scrollIntoView({ behavior:"smooth", block:"start" });
-  }
-
-  function copyCode() {
-    var text = document.getElementById("output-box").textContent;
-    navigator.clipboard.writeText(text).then(function() {
-      var c = document.getElementById("copy-confirm");
-      c.textContent = "✓ Copied! Now paste it into Bandzoogle.";
-      setTimeout(function(){ c.textContent = ""; }, 3000);
+    item.addEventListener("dragover", function(e) {
+      e.preventDefault();
+      item.classList.add("drag-over");
     });
-  }
+    item.addEventListener("dragleave", function() {
+      item.classList.remove("drag-over");
+    });
+    item.addEventListener("drop", function(e) {
+      e.preventDefault();
+      item.classList.remove("drag-over");
+      if (dragSrcIndex === null || dragSrcIndex === i) return;
+      var moved = videos.splice(dragSrcIndex, 1)[0];
+      videos.splice(i, 0, moved);
+      dragSrcIndex = null;
+      render();
+    });
 
-  setSyncStatus("syncing", "Loading…");
-  load().then(function() {
-    document.getElementById("loadingScreen").style.display = "none";
-    document.getElementById("appWrap").style.display = "block";
-    render();
+    list.appendChild(item);
   });
+}
 
-  document.getElementById("input-id").addEventListener("keydown", function(e){ if(e.key==="Enter") document.getElementById("input-title").focus(); });
-  document.getElementById("input-title").addEventListener("keydown", function(e){ if(e.key==="Enter") addVideo(); });
+// ── Add video ───────────────────────────────────────────────────────
+function addVideo() {
+  var idInput    = document.getElementById("input-id");
+  var titleInput = document.getElementById("input-title");
+
+  // Strip anything after & (timestamps etc)
+  var id    = idInput.value.trim().split("&")[0].split("?v=").pop();
+  var title = titleInput.value.trim();
+
+  if (!id) { alert("Please enter a YouTube video ID."); return; }
+  if (!title) { alert("Please enter a title for the video."); return; }
+
+  // Check for duplicates
+  for (var j = 0; j < videos.length; j++) {
+    if (videos[j].id === id) { alert("That video ID is already in the list."); return; }
+  }
+
+  videos.push({ id: id, title: title });
+  idInput.value = "";
+  titleInput.value = "";
+  idInput.focus();
+  render();
+
+  // Hide old output
+  document.getElementById("output-wrap").classList.remove("visible");
+}
+
+// ── Remove video ────────────────────────────────────────────────────
+function removeVideo(index) {
+  if (!confirm('Remove "' + videos[index].title + '"?')) return;
+  videos.splice(index, 1);
+  render();
+  document.getElementById("output-wrap").classList.remove("visible");
+}
+
+// ── Generate code ───────────────────────────────────────────────────
+function generateCode() {
+  if (videos.length === 0) { alert("Add at least one video first."); return; }
+
+  var videoArray = videos.map(function(v) {
+    return '    { id: "' + v.id + '", title: "' + v.title + '" }';
+  }).join(",\n");
+
+  var code = `<!--
+  RICK PARMA — Mobile-First YouTube Video Gallery
+  ================================================
+  Paste this entire block into a Bandzoogle HTML section on your homepage.
+-->
+
+<style>
+  #rp-video-section {
+    background: rgba(13, 5, 5, 0.5);
+    padding: 16px 16px 24px;
+    font-family: Arial, Helvetica, sans-serif;
+    max-width: 760px;
+    margin: 0 auto;
+    box-sizing: border-box;
+    border: 1px solid rgba(141, 178, 229, 0.4);
+    border-radius: 12px;
+    box-shadow: 0 0 18px rgba(141, 178, 229, 0.25), 0 0 40px rgba(141, 178, 229, 0.1);
+  }
+  #rp-video-section * { box-sizing: border-box; }
+  .rp-section-title {
+    font-size: 33px;
+    font-weight: 900;
+    color: #ffffff;
+    margin: 0 0 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: center;
+  }
+  .rp-featured-wrap {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    background: #1a0808;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .rp-featured-wrap iframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    border: none;
+    border-radius: 8px;
+  }
+  .rp-featured-label {
+    font-size: 12px;
+    color: #8DB2E5;
+    margin: 0 0 20px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 700;
+    padding-left: 2px;
+  }
+  .rp-featured-label span {
+    color: rgba(255,255,255,0.5);
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .rp-carousel-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+    margin: 0 0 10px;
+  }
+  .rp-carousel-outer { position: relative; }
+  .rp-carousel {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 4px 2px 10px;
+  }
+  .rp-carousel::-webkit-scrollbar { display: none; }
+  .rp-thumb {
+    flex: 0 0 155px;
+    scroll-snap-align: start;
+    cursor: pointer;
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+    background: #1a0808;
+    border: 1.5px solid transparent;
+    transition: border-color 0.2s, transform 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (min-width: 420px) { .rp-thumb { flex: 0 0 175px; } }
+  @media (min-width: 600px) { .rp-thumb { flex: 0 0 200px; } }
+  .rp-thumb:active { transform: scale(0.97); }
+  .rp-thumb.active { border-color: #8DB2E5; }
+  .rp-thumb-img-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: #2a1010;
+    overflow: hidden;
+  }
+  .rp-thumb-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .rp-play-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.25);
+    transition: background 0.15s;
+  }
+  .rp-thumb:hover .rp-play-overlay { background: rgba(0,0,0,0.1); }
+  .rp-thumb.active .rp-play-overlay { background: rgba(141,178,229,0.15); }
+  .rp-play-btn {
+    width: 30px; height: 30px;
+    background: rgba(255,255,255,0.88);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .rp-play-btn svg { width: 11px; height: 11px; margin-left: 2px; fill: #0d0505; }
+  .rp-thumb.active .rp-play-btn { background: #8DB2E5; }
+  .rp-thumb.active .rp-play-btn svg { fill: #ffffff; }
+  .rp-thumb-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.85);
+    padding: 7px 8px 8px;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: #130606;
+  }
+  .rp-thumb.active .rp-thumb-title { color: #8DB2E5; }
+  .rp-dots { display: flex; justify-content: center; gap: 6px; margin-top: 4px; }
+  .rp-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    transition: background 0.2s, transform 0.2s;
+    cursor: pointer;
+  }
+  .rp-dot.active { background: #8DB2E5; transform: scale(1.3); }
+</style>
+
+<div id="rp-video-section">
+  <h2 class="rp-section-title">Promo Videos</h2>
+  <div class="rp-featured-wrap" id="rp-player-wrap">
+    <iframe id="rp-main-player"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen></iframe>
+  </div>
+  <p class="rp-featured-label" id="rp-now-playing">
+    Now playing: <span id="rp-playing-title">${videos[0].title}</span>
+  </p>
+  <p class="rp-carousel-label">Swipe to browse — tap to play</p>
+  <div class="rp-carousel-outer">
+    <div class="rp-carousel" id="rp-grid"></div>
+  </div>
+  <div class="rp-dots" id="rp-dots"></div>
+</div>
+
+<script>
+(function() {
+  var videos = [
+${videoArray}
+  ];
+  var grid = document.getElementById("rp-grid");
+  var player = document.getElementById("rp-main-player");
+  var playingTitle = document.getElementById("rp-playing-title");
+  var dotsContainer = document.getElementById("rp-dots");
+  function embedURL(id, autoplay) {
+    return "https://www.youtube-nocookie.com/embed/" + id + "?rel=0&modestbranding=1" + (autoplay ? "&autoplay=1" : "");
+  }
+  function switchVideo(index) {
+    var v = videos[index];
+    player.src = embedURL(v.id, true);
+    playingTitle.textContent = v.title;
+    document.getElementById("rp-player-wrap").scrollIntoView({ behavior: "smooth", block: "start" });
+    grid.querySelectorAll(".rp-thumb").forEach(function(t, i) { t.classList.toggle("active", i === index); });
+  }
+  player.src = embedURL(videos[0].id, false);
+  function ytThumb(id) { return "https://img.youtube.com/vi/" + id + "/mqdefault.jpg"; }
+  videos.forEach(function(v, i) {
+    var card = document.createElement("div");
+    card.className = "rp-thumb" + (i === 0 ? " active" : "");
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", "Play " + v.title);
+    card.setAttribute("tabindex", "0");
+    card.innerHTML = '<div class="rp-thumb-img-wrap"><img src="' + ytThumb(v.id) + '" alt="' + v.title + '" loading="lazy"><div class="rp-play-overlay"><div class="rp-play-btn"><svg viewBox="0 0 10 12"><polygon points="0,0 10,6 0,12"/></svg></div></div></div><div class="rp-thumb-title">' + v.title + '</div>';
+    card.addEventListener("click", function() { switchVideo(i); });
+    card.addEventListener("keydown", function(e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); switchVideo(i); } });
+    grid.appendChild(card);
+    var dot = document.createElement("div");
+    dot.className = "rp-dot" + (i === 0 ? " active" : "");
+    dot.addEventListener("click", function() { grid.querySelectorAll(".rp-thumb")[i].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" }); });
+    dotsContainer.appendChild(dot);
+  });
+  grid.addEventListener("scroll", function() {
+    var cards = grid.querySelectorAll(".rp-thumb");
+    var dots = dotsContainer.querySelectorAll(".rp-dot");
+    var closest = 0, minDist = Infinity;
+    cards.forEach(function(c, i) { var dist = Math.abs(c.offsetLeft - grid.scrollLeft); if (dist < minDist) { minDist = dist; closest = i; } });
+    dots.forEach(function(d, i) { d.classList.toggle("active", i === closest); });
+  });
+})();
+<\/script>`;
+
+  document.getElementById("output-box").textContent = code;
+  document.getElementById("output-wrap").classList.add("visible");
+  document.getElementById("output-wrap").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// ── Copy to clipboard ───────────────────────────────────────────────
+function copyCode() {
+  var text = document.getElementById("output-box").textContent;
+  navigator.clipboard.writeText(text).then(function() {
+    var confirm = document.getElementById("copy-confirm");
+    confirm.textContent = "✓ Copied! Now paste it into Bandzoogle.";
+    setTimeout(function() { confirm.textContent = ""; }, 3000);
+  });
+}
+
+// ── Init ────────────────────────────────────────────────────────────
+render();
+
+// Allow pressing Enter in inputs to add
+document.getElementById("input-id").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") document.getElementById("input-title").focus();
+});
+document.getElementById("input-title").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") addVideo();
+});
 </script>
+
 </body>
 </html>
