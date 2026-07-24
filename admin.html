@@ -264,7 +264,7 @@
 <script>
   // ---- Configuration ----
   // Point this at your deployed Cloudflare Worker URL.
-  const WORKER_URL = "https://your-worker-subdomain.workers.dev";
+  const WORKER_URL = "https://sms-blast.saxmanrp.workers.dev";
 
   let adminToken = "";
   let subscribers = [];
@@ -311,7 +311,6 @@
       lockScreen.classList.add('hidden');
       app.classList.remove('hidden');
     } else {
-      lockError.textContent = "Incorrect password or connection issue.";
       localStorage.removeItem('sms_admin_token');
     }
   }
@@ -330,12 +329,17 @@
   async function loadSubscribers() {
     try {
       const res = await apiFetch('/api/subscribers');
-      if (!res.ok) return false;
+      if (!res.ok) {
+        const body = await res.text();
+        lockError.textContent = `Server said: ${res.status} ${body}`;
+        return false;
+      }
       const data = await res.json();
       subscribers = data.subscribers || [];
       renderSubscribers();
       return true;
     } catch (e) {
+      lockError.textContent = `Connection error: ${e.message}`;
       return false;
     }
   }
