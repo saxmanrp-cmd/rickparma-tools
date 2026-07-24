@@ -323,18 +323,31 @@
     <!-- BLAST TAB -->
     <div class="tab-panel active" id="tab-blast">
       <div class="card">
-        <h2>Send a Blast <span class="count-pill" id="activeCount">0 active</span></h2>
-        <label for="templateSelect">Insert a template (optional)</label>
+        <h2>Send a Blast <span class="count-pill" id="recipientCountPill">0 recipients</span></h2>
+
+        <label>To</label>
+        <button class="btn btn-secondary" id="toSummaryBtn" style="text-align:left;">All active subscribers ▾</button>
+        <div id="recipientPicker" class="hidden" style="margin-top:10px; margin-bottom:6px; border:1px solid var(--border); border-radius:8px; padding:12px;">
+          <label style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <input type="checkbox" id="allActiveCheck" checked style="width:auto; margin:0;">
+            All active subscribers
+          </label>
+          <div id="tagCheckList" style="max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
+        </div>
+
+        <label for="templateSelect" style="margin-top:14px;">Insert a template (optional)</label>
         <select id="templateSelect">
           <option value="">— None —</option>
         </select>
+
         <label for="blastMessage">Message</label>
-        <textarea id="blastMessage" maxlength="480" placeholder="Hey {{first_name}}! Catch me live this Friday at..."></textarea>
-        <div class="row" style="margin-bottom:12px;">
+        <textarea id="blastMessage" placeholder="Hey {{first_name}}! Catch me live this Friday at..."></textarea>
+        <div class="row" style="margin-bottom:10px;">
           <button class="btn btn-secondary btn-small" id="insertNameTagBtn" style="width:auto;">Insert {{first_name}}</button>
         </div>
-        <div class="char-count"><span id="charCount">0</span>/480 — {{first_name}} auto-fills each person's first name</div>
-        <button class="btn" id="sendBtn">Send to All Subscribers</button>
+        <div class="char-count" id="statsLine">Characters: 0 · Parts: 0 · Est. cost: $0.00</div>
+
+        <button class="btn" id="sendBtn">Send Now</button>
         <div class="message-status" id="sendStatus"></div>
       </div>
     </div>
@@ -500,7 +513,6 @@
   const addBtn = document.getElementById('addBtn');
   const addStatus = document.getElementById('addStatus');
   const subscriberList = document.getElementById('subscriberList');
-  const activeCount = document.getElementById('activeCount');
   const totalCount = document.getElementById('totalCount');
   const refreshBtn = document.getElementById('refreshBtn');
 
@@ -524,8 +536,9 @@
 
   function renderSubscribers() {
     const active = subscribers.filter(s => s.status === 'active');
-    activeCount.textContent = `${active.length} active`;
     totalCount.textContent = `${subscribers.length} total`;
+    if (typeof updateRecipientSummary === 'function') updateRecipientSummary();
+    if (typeof updateStatsLine === 'function') updateStatsLine();
 
     if (subscribers.length === 0) {
       subscriberList.innerHTML = '<p class="subtitle">No subscribers yet.</p>';
@@ -604,21 +617,87 @@
   // ================= BLAST =================
 
   const blastMessage = document.getElementById('blastMessage');
-  const charCount = document.getElementById('charCount');
+  const statsLine = document.getElementById('statsLine');
   const sendBtn = document.getElementById('sendBtn');
   const sendStatus = document.getElementById('sendStatus');
   const insertNameTagBtn = document.getElementById('insertNameTagBtn');
   const templateSelect = document.getElementById('templateSelect');
+  const recipientCountPill = document.getElementById('recipientCountPill');
+  const toSummaryBtn = document.getElementById('toSummaryBtn');
+  const recipientPicker = document.getElementById('recipientPicker');
+  const allActiveCheck = document.getElementById('allActiveCheck');
+  const tagCheckList = document.getElementById('tagCheckList');
 
-  blastMessage.addEventListener('input', () => {
-    charCount.textContent = blastMessage.value.length;
+  let selectedTags = [];
+
+  function allTagsFromSubscribers() {
+    const set = new Set();
+    subscribers.filter(s => s.status === 'active').forEach(s => (s.tags || []).forEach(t => set.add(t)));
+    return Array.from(set).sort();
+  }
+
+  function renderTagCheckList() {
+    const tags = allTagsFromSubscribers();
+    tagCheckList.innerHTML = tags.map(t => `
+      <label style="display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" class="tag-check" value="${t}" style="width:auto; margin:0;" ${selectedTags.includes(t) ? 'checked' : ''}>
+        ${t}
+      </label>
+    `).join('');
+    tagCheckList.querySelectorAll('.tag-check').forEach(cb => {
+      cb.addEventListener('change', () => {
+        selectedTags = Array.from(tagCheckList.querySelectorAll('.tag-check:checked')).map(c => c.value);
+        if (selectedTags.length > 0) allActiveCheck.checked = false;
+        updateRecipientSummary();
+      });
+    });
+  }
+
+  function currentRecipients() {
+    const active = subscribers.filter(s => s.status === 'active');
+    if (allActiveCheck.checked || selectedTags.length === 0) return active;
+    return active.filter(s => (s.tags || []).some(t => selectedTags.includes(t)));
+  }
+
+  function updateRecipientSummary() {
+    const recipients = currentRecipients();
+    recipientCountPill.textContent = `${recipients.length} recipients`;
+    if (allActiveCheck.checked || selectedTags.length === 0) {
+      toSummaryBtn.textContent = `All active subscribers ▾`;
+    } else {
+      toSummaryBtn.textContent = `${selectedTags.join(', ')} ▾`;
+    }
+  }
+
+  allActiveCheck.addEventListener('change', () => {
+    if (allActiveCheck.checked) {
+      selectedTags = [];
+      tagCheckList.querySelectorAll('.tag-check').forEach(cb => cb.checked = false);
+    }
+    updateRecipientSummary();
   });
+
+  toSummaryBtn.addEventListener('click', () => {
+    recipientPicker.classList.toggle('hidden');
+    if (!recipientPicker.classList.contains('hidden')) renderTagCheckList();
+  });
+
+  function updateStatsLine() {
+    const len = blastMessage.value.length;
+    const parts = len === 0 ? 0 : (len <= 160 ? 1 : Math.ceil(len / 153));
+    const costPerRecipient = parts * 0.0079;
+    const recipients = currentRecipients().length;
+    const total = costPerRecipient * recipients;
+    statsLine.textContent = `Characters: ${len} · Parts: ${parts} · Est. cost: $${costPerRecipient.toFixed(4)}/recipient (~$${total.toFixed(2)} total)`;
+  }
+
+  blastMessage.addEventListener('input', updateStatsLine);
 
   insertNameTagBtn.addEventListener('click', () => {
     const pos = blastMessage.selectionStart || blastMessage.value.length;
     const tag = '{{first_name}}';
     blastMessage.value = blastMessage.value.slice(0, pos) + tag + blastMessage.value.slice(pos);
-    charCount.textContent = blastMessage.value.length;
+    updateStatsLine();
     blastMessage.focus();
   });
 
@@ -626,15 +705,15 @@
     const t = templates.find(t => t.id === templateSelect.value);
     if (t) {
       blastMessage.value = t.body;
-      charCount.textContent = blastMessage.value.length;
+      updateStatsLine();
     }
   });
 
   sendBtn.addEventListener('click', async () => {
     const message = blastMessage.value.trim();
     if (!message) return;
-    const active = subscribers.filter(s => s.status === 'active').length;
-    if (!confirm(`Send this message to ${active} active subscriber(s)?`)) return;
+    const recipients = currentRecipients();
+    if (!confirm(`Send this message to ${recipients.length} recipient(s)?`)) return;
 
     sendBtn.disabled = true;
     sendStatus.className = 'message-status';
@@ -644,14 +723,17 @@
       const res = await apiFetch('/api/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({
+          message,
+          tags: (allActiveCheck.checked || selectedTags.length === 0) ? [] : selectedTags,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
         sendStatus.className = 'message-status success';
-        sendStatus.textContent = `Sent to ${data.sent} subscriber(s)${data.failed ? `, ${data.failed} failed` : ''}.`;
+        sendStatus.textContent = `Sent to ${data.sent} recipient(s)${data.failed ? `, ${data.failed} failed` : ''}.`;
         blastMessage.value = '';
-        charCount.textContent = '0';
+        updateStatsLine();
       } else {
         sendStatus.className = 'message-status error';
         sendStatus.textContent = data.error || 'Failed to send.';
