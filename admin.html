@@ -166,7 +166,8 @@
   .subscriber {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
+    gap: 10px;
     padding: 10px 0;
     border-bottom: 1px solid var(--border);
     font-size: 0.92rem;
@@ -367,7 +368,11 @@
       .sort((a, b) => new Date(b.joinedAt) - new Date(a.joinedAt))
       .map(s => `
         <div class="subscriber">
-          <span>${s.phone}</span>
+          <span>
+            ${s.name ? `<strong>${s.name}</strong><br>` : ''}
+            ${s.phone}
+            ${s.tags && s.tags.length ? `<br><span class="subtitle" style="font-size:0.75rem;">${s.tags.join(', ')}</span>` : ''}
+          </span>
           <span>
             <span class="${s.status === 'active' ? 'status-active' : 'status-stopped'}">${s.status}</span>
             &nbsp;·&nbsp;
@@ -513,20 +518,42 @@
     const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase());
     let phoneCol = headers.findIndex(h => h.includes('phone'));
     if (phoneCol === -1) phoneCol = 0; // fallback to first column
+    const firstNameCol = headers.findIndex(h => h.includes('first name'));
+    const lastNameCol = headers.findIndex(h => h.includes('last name'));
+    const listsCol = headers.findIndex(h => h.includes('list'));
 
-    const phones = [];
+    const contacts = [];
     for (let i = 1; i < lines.length; i++) {
       const fields = parseCsvLine(lines[i]);
-      if (fields[phoneCol]) phones.push(fields[phoneCol].trim());
+      const phone = fields[phoneCol] ? fields[phoneCol].trim() : '';
+      if (!phone) continue;
+
+      let name = '';
+      if (firstNameCol !== -1) {
+        const first = (fields[firstNameCol] || '').trim();
+        const last = lastNameCol !== -1 ? (fields[lastNameCol] || '').trim() : '';
+        // Some exports default the "First name" field to the phone number
+        // itself when no real name was entered — skip those.
+        if (first && first !== phone) {
+          name = [first, last].filter(Boolean).join(' ');
+        }
+      }
+
+      let tags = [];
+      if (listsCol !== -1 && fields[listsCol]) {
+        tags = fields[listsCol].split(',').map(t => t.trim()).filter(Boolean);
+      }
+
+      contacts.push({ phone, name, tags });
     }
 
-    importStatus.textContent = `Importing ${phones.length} contacts...`;
+    importStatus.textContent = `Importing ${contacts.length} contacts...`;
 
     try {
       const res = await apiFetch('/api/subscribers/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phones }),
+        body: JSON.stringify({ contacts }),
       });
       const data = await res.json();
       if (res.ok) {
