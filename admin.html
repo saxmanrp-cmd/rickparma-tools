@@ -289,6 +289,27 @@
     padding: 0;
     margin-bottom: 14px;
   }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(141, 178, 229, 0.15);
+    color: var(--steel);
+    font-size: 0.8rem;
+    padding: 5px 10px;
+    border-radius: 999px;
+  }
+
+  .chip button {
+    background: none;
+    border: none;
+    color: var(--steel);
+    cursor: pointer;
+    font-size: 0.9rem;
+    line-height: 1;
+    padding: 0;
+  }
 </style>
 </head>
 <body>
@@ -333,6 +354,15 @@
             All active subscribers
           </label>
           <div id="tagCheckList" style="max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
+
+          <div style="margin-top:12px; border-top:1px solid var(--border); padding-top:12px;">
+            <label>Add a number just for this blast</label>
+            <div class="add-row">
+              <input type="tel" id="manualNumberInput" placeholder="(702) 555-0123">
+              <button class="btn btn-secondary btn-small" id="manualNumberAddBtn" style="width:auto;">+ Add</button>
+            </div>
+            <div id="manualNumberList" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;"></div>
+          </div>
         </div>
 
         <label for="templateSelect" style="margin-top:14px;">Insert a template (optional)</label>
@@ -376,6 +406,16 @@
 
     <!-- SUBSCRIBERS TAB -->
     <div class="tab-panel" id="tab-subscribers">
+      <div class="card">
+        <h2>Import from iPhone Contacts</h2>
+        <p class="subtitle" style="margin-bottom:10px;">
+          In the Contacts app: select the contacts you want (or Select All), tap Share, choose "Share Contact" → Mail/AirDrop/Files as a vCard (.vcf), then upload that file here.
+        </p>
+        <input type="file" id="vcfFile" accept=".vcf" style="margin-bottom: 12px; color: var(--text-dim);">
+        <button class="btn btn-secondary" id="vcfImportBtn">Import vCard</button>
+        <div class="message-status" id="vcfStatus"></div>
+      </div>
+
       <div class="card">
         <h2>Add Subscriber</h2>
         <div class="add-row">
@@ -614,6 +654,70 @@
 
   refreshBtn.addEventListener('click', loadSubscribers);
 
+  // ---- vCard import (from iPhone Contacts export) ----
+  const vcfFile = document.getElementById('vcfFile');
+  const vcfImportBtn = document.getElementById('vcfImportBtn');
+  const vcfStatus = document.getElementById('vcfStatus');
+
+  function parseVCard(text) {
+    const cards = text.split(/BEGIN:VCARD/i).slice(1);
+    const contacts = [];
+    for (const card of cards) {
+      const lines = card.split(/\r?\n/);
+      let name = '';
+      let phone = '';
+      for (const line of lines) {
+        if (/^FN[:;]/i.test(line)) {
+          name = line.split(':').slice(1).join(':').trim();
+        } else if (/^TEL/i.test(line) && !phone) {
+          phone = line.split(':').slice(1).join(':').trim();
+        }
+      }
+      if (phone) contacts.push({ phone, name, tags: ['iPhone Import'] });
+    }
+    return contacts;
+  }
+
+  vcfImportBtn.addEventListener('click', async () => {
+    const file = vcfFile.files[0];
+    if (!file) {
+      vcfStatus.className = 'message-status error';
+      vcfStatus.textContent = 'Choose a .vcf file first.';
+      return;
+    }
+    vcfStatus.className = 'message-status';
+    vcfStatus.textContent = 'Reading file...';
+
+    const text = await file.text();
+    const contacts = parseVCard(text);
+    if (contacts.length === 0) {
+      vcfStatus.className = 'message-status error';
+      vcfStatus.textContent = 'No contacts with phone numbers found in that file.';
+      return;
+    }
+
+    vcfStatus.textContent = `Importing ${contacts.length} contact(s)...`;
+    try {
+      const res = await apiFetch('/api/subscribers/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contacts }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        vcfStatus.className = 'message-status success';
+        vcfStatus.textContent = `Added ${data.added}, skipped ${data.skipped} (duplicates/invalid). Total: ${data.total}.`;
+        await loadSubscribers();
+      } else {
+        vcfStatus.className = 'message-status error';
+        vcfStatus.textContent = data.error || 'Import failed.';
+      }
+    } catch (e) {
+      vcfStatus.className = 'message-status error';
+      vcfStatus.textContent = 'Connection error during import.';
+    }
+  });
+
   // ================= BLAST =================
 
   const blastMessage = document.getElementById('blastMessage');
@@ -629,6 +733,46 @@
   const tagCheckList = document.getElementById('tagCheckList');
 
   let selectedTags = [];
+  let manualNumbers = []; // ad-hoc numbers for this blast only, not saved as subscribers
+
+  const manualNumberInput = document.getElementById('manualNumberInput');
+  const manualNumberAddBtn = document.getElementById('manualNumberAddBtn');
+  const manualNumberList = document.getElementById('manualNumberList');
+
+  function normalizePhoneClient(raw) {
+    const digits = (raw || '').replace(/[^\d+]/g, '');
+    if (digits.startsWith('+')) return digits;
+    if (digits.length === 10) return '+1' + digits;
+    if (digits.length === 11 && digits.startsWith('1')) return '+' + digits;
+    return null;
+  }
+
+  function renderManualNumbers() {
+    manualNumberList.innerHTML = manualNumbers.map(n => `
+      <span class="chip">${n} <button data-n="${n}">&times;</button></span>
+    `).join('');
+    manualNumberList.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        manualNumbers = manualNumbers.filter(n => n !== btn.dataset.n);
+        renderManualNumbers();
+        updateRecipientSummary();
+        updateStatsLine();
+      });
+    });
+  }
+
+  manualNumberAddBtn.addEventListener('click', () => {
+    const normalized = normalizePhoneClient(manualNumberInput.value.trim());
+    if (!normalized) {
+      alert('Enter a valid US phone number.');
+      return;
+    }
+    if (!manualNumbers.includes(normalized)) manualNumbers.push(normalized);
+    manualNumberInput.value = '';
+    renderManualNumbers();
+    updateRecipientSummary();
+    updateStatsLine();
+  });
 
   function allTagsFromSubscribers() {
     const set = new Set();
@@ -655,18 +799,25 @@
 
   function currentRecipients() {
     const active = subscribers.filter(s => s.status === 'active');
-    if (allActiveCheck.checked || selectedTags.length === 0) return active;
-    return active.filter(s => (s.tags || []).some(t => selectedTags.includes(t)));
+    let base;
+    if (allActiveCheck.checked || selectedTags.length === 0) base = active;
+    else base = active.filter(s => (s.tags || []).some(t => selectedTags.includes(t)));
+    const basePhones = new Set(base.map(s => s.phone));
+    const extras = manualNumbers.filter(n => !basePhones.has(n)).map(n => ({ phone: n, name: '', tags: [] }));
+    return base.concat(extras);
   }
 
   function updateRecipientSummary() {
     const recipients = currentRecipients();
     recipientCountPill.textContent = `${recipients.length} recipients`;
+    let label;
     if (allActiveCheck.checked || selectedTags.length === 0) {
-      toSummaryBtn.textContent = `All active subscribers ▾`;
+      label = `All active subscribers`;
     } else {
-      toSummaryBtn.textContent = `${selectedTags.join(', ')} ▾`;
+      label = `${selectedTags.join(', ')}`;
     }
+    if (manualNumbers.length > 0) label += ` + ${manualNumbers.length} manual`;
+    toSummaryBtn.textContent = `${label} ▾`;
   }
 
   allActiveCheck.addEventListener('change', () => {
@@ -726,6 +877,7 @@
         body: JSON.stringify({
           message,
           tags: (allActiveCheck.checked || selectedTags.length === 0) ? [] : selectedTags,
+          extraNumbers: manualNumbers,
         }),
       });
       const data = await res.json();
@@ -733,7 +885,10 @@
         sendStatus.className = 'message-status success';
         sendStatus.textContent = `Sent to ${data.sent} recipient(s)${data.failed ? `, ${data.failed} failed` : ''}.`;
         blastMessage.value = '';
+        manualNumbers = [];
+        renderManualNumbers();
         updateStatsLine();
+        updateRecipientSummary();
       } else {
         sendStatus.className = 'message-status error';
         sendStatus.textContent = data.error || 'Failed to send.';
