@@ -52,6 +52,35 @@
     margin: 0 auto;
   }
 
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+  }
+
+  .tab-btn {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'Lato', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 8px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+
+  .tab-btn.active {
+    background: var(--steel);
+    color: #000;
+    border-color: var(--steel);
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
   .card {
     background: var(--bg-panel);
     border: 1px solid var(--border);
@@ -90,6 +119,7 @@
   input[type="text"],
   input[type="password"],
   input[type="tel"],
+  select,
   textarea {
     width: 100%;
     font-size: 16px; /* prevents iOS auto-zoom */
@@ -107,7 +137,7 @@
     resize: vertical;
   }
 
-  input:focus, textarea:focus {
+  input:focus, textarea:focus, select:focus {
     outline: none;
     border-color: var(--steel);
   }
@@ -144,6 +174,12 @@
     border: 1px solid var(--danger);
   }
 
+  .btn-small {
+    width: auto;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+  }
+
   .char-count {
     text-align: right;
     font-size: 0.78rem;
@@ -158,12 +194,12 @@
 
   .row .btn { flex: 1; }
 
-  .subscriber-list {
-    max-height: 320px;
+  .list-scroll {
+    max-height: 360px;
     overflow-y: auto;
   }
 
-  .subscriber {
+  .subscriber, .list-item, .convo-item {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -173,12 +209,12 @@
     font-size: 0.92rem;
   }
 
-  .subscriber:last-child { border-bottom: none; }
+  .subscriber:last-child, .list-item:last-child, .convo-item:last-child { border-bottom: none; }
 
   .status-active { color: var(--steel); font-size: 0.78rem; }
   .status-stopped { color: var(--danger); font-size: 0.78rem; }
 
-  .remove-link {
+  .remove-link, .action-link {
     background: none;
     border: none;
     color: var(--text-dim);
@@ -208,6 +244,51 @@
   }
 
   .add-row input { margin-bottom: 0; }
+
+  .convo-item { cursor: pointer; }
+  .convo-item .snippet { color: var(--text-dim); font-size: 0.8rem; margin-top: 2px; }
+
+  .thread-bubble {
+    max-width: 80%;
+    padding: 8px 12px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    line-height: 1.35;
+  }
+  .thread-bubble.in {
+    background: #2a1414;
+    align-self: flex-start;
+  }
+  .thread-bubble.out {
+    background: rgba(141, 178, 229, 0.2);
+    align-self: flex-end;
+    margin-left: auto;
+  }
+  .thread-time {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .thread-scroll {
+    display: flex;
+    flex-direction: column;
+    max-height: 320px;
+    overflow-y: auto;
+    margin-bottom: 12px;
+  }
+
+  .back-link {
+    color: var(--steel);
+    background: none;
+    border: none;
+    font-family: 'Lato', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 14px;
+  }
 </style>
 </head>
 <body>
@@ -231,52 +312,131 @@
     <p class="brand">Rick Parma</p>
     <p class="subtitle">Text Blast Admin</p>
 
-    <div class="card">
-      <h2>Send a Blast <span class="count-pill" id="activeCount">0 active</span></h2>
-      <label for="blastMessage">Message</label>
-      <textarea id="blastMessage" maxlength="480" placeholder="Hey! Catch me live this Friday at..."></textarea>
-      <div class="char-count"><span id="charCount">0</span>/480</div>
-      <button class="btn" id="sendBtn">Send to All Subscribers</button>
-      <div class="message-status" id="sendStatus"></div>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="blast">Blast</button>
+      <button class="tab-btn" data-tab="messages">Messages</button>
+      <button class="tab-btn" data-tab="subscribers">Subscribers</button>
+      <button class="tab-btn" data-tab="templates">Templates</button>
+      <button class="tab-btn" data-tab="autorules">Auto-Reply</button>
     </div>
 
-    <div class="card">
-      <h2>Bulk Import</h2>
-      <label for="csvFile">Upload a CSV export (looks for a "Phone number" column)</label>
-      <input type="file" id="csvFile" accept=".csv" style="margin-bottom: 12px; color: var(--text-dim);">
-      <button class="btn btn-secondary" id="importBtn">Import CSV</button>
-      <div class="message-status" id="importStatus"></div>
+    <!-- BLAST TAB -->
+    <div class="tab-panel active" id="tab-blast">
+      <div class="card">
+        <h2>Send a Blast <span class="count-pill" id="activeCount">0 active</span></h2>
+        <label for="templateSelect">Insert a template (optional)</label>
+        <select id="templateSelect">
+          <option value="">— None —</option>
+        </select>
+        <label for="blastMessage">Message</label>
+        <textarea id="blastMessage" maxlength="480" placeholder="Hey {{first_name}}! Catch me live this Friday at..."></textarea>
+        <div class="row" style="margin-bottom:12px;">
+          <button class="btn btn-secondary btn-small" id="insertNameTagBtn" style="width:auto;">Insert {{first_name}}</button>
+        </div>
+        <div class="char-count"><span id="charCount">0</span>/480 — {{first_name}} auto-fills each person's first name</div>
+        <button class="btn" id="sendBtn">Send to All Subscribers</button>
+        <div class="message-status" id="sendStatus"></div>
+      </div>
     </div>
 
-    <div class="card">
-      <h2>Add Subscriber</h2>
-      <div class="add-row">
-        <input type="tel" id="newPhone" placeholder="(702) 555-0123">
-        <button class="btn" id="addBtn" style="width:auto; padding: 12px 18px;">Add</button>
+    <!-- MESSAGES TAB -->
+    <div class="tab-panel" id="tab-messages">
+      <div class="card" id="conversationListCard">
+        <h2>Messages <span class="count-pill" id="convoCount">0</span></h2>
+        <div class="list-scroll" id="conversationList">
+          <p class="subtitle">Loading...</p>
+        </div>
+        <div class="row" style="margin-top: 14px;">
+          <button class="btn btn-secondary" id="refreshConvosBtn">Refresh</button>
+        </div>
       </div>
-      <div class="message-status" id="addStatus"></div>
+
+      <div class="card hidden" id="threadCard">
+        <button class="back-link" id="backToConvosBtn">← Back to Messages</button>
+        <h2 id="threadName">Conversation</h2>
+        <div class="thread-scroll" id="threadScroll"></div>
+        <textarea id="replyMessage" placeholder="Type a reply..." style="min-height:70px;"></textarea>
+        <button class="btn" id="replySendBtn">Send Reply</button>
+        <div class="message-status" id="replyStatus"></div>
+      </div>
     </div>
 
-    <div class="card">
-      <h2>Subscribers <span class="count-pill" id="totalCount">0 total</span></h2>
-      <div class="subscriber-list" id="subscriberList">
-        <p class="subtitle">Loading...</p>
+    <!-- SUBSCRIBERS TAB -->
+    <div class="tab-panel" id="tab-subscribers">
+      <div class="card">
+        <h2>Add Subscriber</h2>
+        <div class="add-row">
+          <input type="tel" id="newPhone" placeholder="(702) 555-0123">
+          <button class="btn" id="addBtn" style="width:auto; padding: 12px 18px;">Add</button>
+        </div>
+        <div class="message-status" id="addStatus"></div>
       </div>
-      <div class="row" style="margin-top: 14px;">
-        <button class="btn btn-secondary" id="refreshBtn">Refresh</button>
+
+      <div class="card">
+        <h2>Subscribers <span class="count-pill" id="totalCount">0 total</span></h2>
+        <div class="list-scroll" id="subscriberList">
+          <p class="subtitle">Loading...</p>
+        </div>
+        <div class="row" style="margin-top: 14px;">
+          <button class="btn btn-secondary" id="refreshBtn">Refresh</button>
+        </div>
       </div>
     </div>
+
+    <!-- TEMPLATES TAB -->
+    <div class="tab-panel" id="tab-templates">
+      <div class="card">
+        <h2>New / Edit Template</h2>
+        <input type="hidden" id="templateEditId">
+        <label for="templateName">Template name</label>
+        <input type="text" id="templateName" placeholder="Show reminder">
+        <label for="templateBody">Message</label>
+        <textarea id="templateBody" placeholder="Hey {{first_name}}! Don't forget..."></textarea>
+        <button class="btn" id="templateSaveBtn">Save Template</button>
+        <div class="message-status" id="templateStatus"></div>
+      </div>
+      <div class="card">
+        <h2>Saved Templates <span class="count-pill" id="templateCount">0</span></h2>
+        <div class="list-scroll" id="templateList">
+          <p class="subtitle">Loading...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- AUTO-REPLY TAB -->
+    <div class="tab-panel" id="tab-autorules">
+      <div class="card">
+        <h2>New / Edit Rule</h2>
+        <input type="hidden" id="ruleEditId">
+        <label for="ruleKeyword">Keyword (exact match, not case-sensitive)</label>
+        <input type="text" id="ruleKeyword" placeholder="SHOWS">
+        <label for="ruleResponse">Auto-reply message</label>
+        <textarea id="ruleResponse" placeholder="Next show is..."></textarea>
+        <button class="btn" id="ruleSaveBtn">Save Rule</button>
+        <div class="message-status" id="ruleStatus"></div>
+      </div>
+      <div class="card">
+        <h2>Active Rules <span class="count-pill" id="ruleCount">0</span></h2>
+        <p class="subtitle" style="margin-bottom:8px;">JOIN/START/YES, STOP variants, and HELP are always built-in and can't be edited here.</p>
+        <div class="list-scroll" id="ruleList">
+          <p class="subtitle">Loading...</p>
+        </div>
+      </div>
+    </div>
+
   </div>
 
 </div>
 
 <script>
   // ---- Configuration ----
-  // Point this at your deployed Cloudflare Worker URL.
   const WORKER_URL = "https://sms-blast.saxmanrp.workers.dev";
 
   let adminToken = "";
   let subscribers = [];
+  let templates = [];
+  let autorules = [];
+  let currentThreadPhone = null;
 
   const lockScreen = document.getElementById('lockScreen');
   const app = document.getElementById('app');
@@ -284,21 +444,17 @@
   const unlockBtn = document.getElementById('unlockBtn');
   const lockError = document.getElementById('lockError');
 
-  const blastMessage = document.getElementById('blastMessage');
-  const charCount = document.getElementById('charCount');
-  const sendBtn = document.getElementById('sendBtn');
-  const sendStatus = document.getElementById('sendStatus');
+  // ---- Tabs ----
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
 
-  const newPhone = document.getElementById('newPhone');
-  const addBtn = document.getElementById('addBtn');
-  const addStatus = document.getElementById('addStatus');
-
-  const subscriberList = document.getElementById('subscriberList');
-  const activeCount = document.getElementById('activeCount');
-  const totalCount = document.getElementById('totalCount');
-  const refreshBtn = document.getElementById('refreshBtn');
-
-  // Remember the token locally on this device only (not synced anywhere).
+  // Remember the token locally on this device only.
   const savedToken = localStorage.getItem('sms_admin_token');
   if (savedToken) {
     adminToken = savedToken;
@@ -319,6 +475,9 @@
     if (ok) {
       lockScreen.classList.add('hidden');
       app.classList.remove('hidden');
+      loadTemplates();
+      loadAutoRules();
+      loadConversations();
     } else {
       localStorage.removeItem('sms_admin_token');
     }
@@ -334,6 +493,16 @@
     });
     return res;
   }
+
+  // ================= SUBSCRIBERS =================
+
+  const newPhone = document.getElementById('newPhone');
+  const addBtn = document.getElementById('addBtn');
+  const addStatus = document.getElementById('addStatus');
+  const subscriberList = document.getElementById('subscriberList');
+  const activeCount = document.getElementById('activeCount');
+  const totalCount = document.getElementById('totalCount');
+  const refreshBtn = document.getElementById('refreshBtn');
 
   async function loadSubscribers() {
     try {
@@ -386,43 +555,6 @@
     });
   }
 
-  blastMessage.addEventListener('input', () => {
-    charCount.textContent = blastMessage.value.length;
-  });
-
-  sendBtn.addEventListener('click', async () => {
-    const message = blastMessage.value.trim();
-    if (!message) return;
-    const active = subscribers.filter(s => s.status === 'active').length;
-    if (!confirm(`Send this message to ${active} active subscriber(s)?`)) return;
-
-    sendBtn.disabled = true;
-    sendStatus.className = 'message-status';
-    sendStatus.textContent = 'Sending...';
-
-    try {
-      const res = await apiFetch('/api/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        sendStatus.className = 'message-status success';
-        sendStatus.textContent = `Sent to ${data.sent} subscriber(s)${data.failed ? `, ${data.failed} failed` : ''}.`;
-        blastMessage.value = '';
-        charCount.textContent = '0';
-      } else {
-        sendStatus.className = 'message-status error';
-        sendStatus.textContent = data.error || 'Failed to send.';
-      }
-    } catch (e) {
-      sendStatus.className = 'message-status error';
-      sendStatus.textContent = 'Connection error.';
-    }
-    sendBtn.disabled = false;
-  });
-
   addBtn.addEventListener('click', async () => {
     const phone = newPhone.value.trim();
     if (!phone) return;
@@ -464,109 +596,371 @@
         subscribers = data.subscribers;
         renderSubscribers();
       }
-    } catch (e) {
-      // silent
-    }
+    } catch (e) {}
   }
 
   refreshBtn.addEventListener('click', loadSubscribers);
 
-  // ---- Bulk CSV import ----
-  const csvFile = document.getElementById('csvFile');
-  const importBtn = document.getElementById('importBtn');
-  const importStatus = document.getElementById('importStatus');
+  // ================= BLAST =================
 
-  function parseCsvLine(line) {
-    const fields = [];
-    let cur = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (inQuotes) {
-        if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
-        else if (c === '"') { inQuotes = false; }
-        else { cur += c; }
-      } else {
-        if (c === '"') inQuotes = true;
-        else if (c === ',') { fields.push(cur); cur = ''; }
-        else cur += c;
-      }
+  const blastMessage = document.getElementById('blastMessage');
+  const charCount = document.getElementById('charCount');
+  const sendBtn = document.getElementById('sendBtn');
+  const sendStatus = document.getElementById('sendStatus');
+  const insertNameTagBtn = document.getElementById('insertNameTagBtn');
+  const templateSelect = document.getElementById('templateSelect');
+
+  blastMessage.addEventListener('input', () => {
+    charCount.textContent = blastMessage.value.length;
+  });
+
+  insertNameTagBtn.addEventListener('click', () => {
+    const pos = blastMessage.selectionStart || blastMessage.value.length;
+    const tag = '{{first_name}}';
+    blastMessage.value = blastMessage.value.slice(0, pos) + tag + blastMessage.value.slice(pos);
+    charCount.textContent = blastMessage.value.length;
+    blastMessage.focus();
+  });
+
+  templateSelect.addEventListener('change', () => {
+    const t = templates.find(t => t.id === templateSelect.value);
+    if (t) {
+      blastMessage.value = t.body;
+      charCount.textContent = blastMessage.value.length;
     }
-    fields.push(cur);
-    return fields;
-  }
+  });
 
-  importBtn.addEventListener('click', async () => {
-    const file = csvFile.files[0];
-    if (!file) {
-      importStatus.className = 'message-status error';
-      importStatus.textContent = 'Choose a CSV file first.';
-      return;
-    }
+  sendBtn.addEventListener('click', async () => {
+    const message = blastMessage.value.trim();
+    if (!message) return;
+    const active = subscribers.filter(s => s.status === 'active').length;
+    if (!confirm(`Send this message to ${active} active subscriber(s)?`)) return;
 
-    importStatus.className = 'message-status';
-    importStatus.textContent = 'Reading file...';
-
-    const text = await file.text();
-    const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-    if (lines.length < 2) {
-      importStatus.className = 'message-status error';
-      importStatus.textContent = 'CSV appears empty.';
-      return;
-    }
-
-    const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase());
-    let phoneCol = headers.findIndex(h => h.includes('phone'));
-    if (phoneCol === -1) phoneCol = 0; // fallback to first column
-    const firstNameCol = headers.findIndex(h => h.includes('first name'));
-    const lastNameCol = headers.findIndex(h => h.includes('last name'));
-    const listsCol = headers.findIndex(h => h.includes('list'));
-
-    const contacts = [];
-    for (let i = 1; i < lines.length; i++) {
-      const fields = parseCsvLine(lines[i]);
-      const phone = fields[phoneCol] ? fields[phoneCol].trim() : '';
-      if (!phone) continue;
-
-      let name = '';
-      if (firstNameCol !== -1) {
-        const first = (fields[firstNameCol] || '').trim();
-        const last = lastNameCol !== -1 ? (fields[lastNameCol] || '').trim() : '';
-        // Some exports default the "First name" field to the phone number
-        // itself when no real name was entered — skip those.
-        if (first && first !== phone) {
-          name = [first, last].filter(Boolean).join(' ');
-        }
-      }
-
-      let tags = [];
-      if (listsCol !== -1 && fields[listsCol]) {
-        tags = fields[listsCol].split(',').map(t => t.trim()).filter(Boolean);
-      }
-
-      contacts.push({ phone, name, tags });
-    }
-
-    importStatus.textContent = `Importing ${contacts.length} contacts...`;
+    sendBtn.disabled = true;
+    sendStatus.className = 'message-status';
+    sendStatus.textContent = 'Sending...';
 
     try {
-      const res = await apiFetch('/api/subscribers/import', {
+      const res = await apiFetch('/api/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contacts }),
+        body: JSON.stringify({ message }),
       });
       const data = await res.json();
       if (res.ok) {
-        importStatus.className = 'message-status success';
-        importStatus.textContent = `Added ${data.added}, skipped ${data.skipped} (duplicates/invalid). Total: ${data.total}.`;
-        await loadSubscribers();
+        sendStatus.className = 'message-status success';
+        sendStatus.textContent = `Sent to ${data.sent} subscriber(s)${data.failed ? `, ${data.failed} failed` : ''}.`;
+        blastMessage.value = '';
+        charCount.textContent = '0';
       } else {
-        importStatus.className = 'message-status error';
-        importStatus.textContent = data.error || 'Import failed.';
+        sendStatus.className = 'message-status error';
+        sendStatus.textContent = data.error || 'Failed to send.';
       }
     } catch (e) {
-      importStatus.className = 'message-status error';
-      importStatus.textContent = 'Connection error during import.';
+      sendStatus.className = 'message-status error';
+      sendStatus.textContent = 'Connection error.';
+    }
+    sendBtn.disabled = false;
+  });
+
+  // ================= MESSAGES / INBOX =================
+
+  const conversationList = document.getElementById('conversationList');
+  const convoCount = document.getElementById('convoCount');
+  const refreshConvosBtn = document.getElementById('refreshConvosBtn');
+  const conversationListCard = document.getElementById('conversationListCard');
+  const threadCard = document.getElementById('threadCard');
+  const threadName = document.getElementById('threadName');
+  const threadScroll = document.getElementById('threadScroll');
+  const replyMessage = document.getElementById('replyMessage');
+  const replySendBtn = document.getElementById('replySendBtn');
+  const replyStatus = document.getElementById('replyStatus');
+  const backToConvosBtn = document.getElementById('backToConvosBtn');
+
+  async function loadConversations() {
+    try {
+      const res = await apiFetch('/api/conversations');
+      if (!res.ok) return;
+      const data = await res.json();
+      const convos = data.conversations || [];
+      convoCount.textContent = convos.length;
+      if (convos.length === 0) {
+        conversationList.innerHTML = '<p class="subtitle">No messages yet.</p>';
+        return;
+      }
+      conversationList.innerHTML = convos.map(c => `
+        <div class="convo-item" data-phone="${c.phone}">
+          <span>
+            <strong>${c.name || c.phone}</strong>
+            ${c.name ? `<br><span class="subtitle" style="font-size:0.75rem;">${c.phone}</span>` : ''}
+            <div class="snippet">${c.lastDirection === 'out' ? 'You: ' : ''}${(c.lastMessage || '').slice(0, 60)}</div>
+          </span>
+        </div>
+      `).join('');
+      conversationList.querySelectorAll('.convo-item').forEach(el => {
+        el.addEventListener('click', () => openThread(el.dataset.phone));
+      });
+    } catch (e) {}
+  }
+
+  async function openThread(phone) {
+    currentThreadPhone = phone;
+    const sub = subscribers.find(s => s.phone === phone);
+    threadName.textContent = (sub && sub.name) ? sub.name : phone;
+    conversationListCard.classList.add('hidden');
+    threadCard.classList.remove('hidden');
+    threadScroll.innerHTML = '<p class="subtitle">Loading...</p>';
+
+    try {
+      const res = await apiFetch('/api/conversations/thread?phone=' + encodeURIComponent(phone));
+      const data = await res.json();
+      const messages = data.messages || [];
+      threadScroll.innerHTML = messages.map(m => `
+        <div class="thread-bubble ${m.dir}">
+          ${m.body}
+          <div class="thread-time">${new Date(m.at).toLocaleString()}</div>
+        </div>
+      `).join('');
+      threadScroll.scrollTop = threadScroll.scrollHeight;
+    } catch (e) {
+      threadScroll.innerHTML = '<p class="subtitle">Could not load messages.</p>';
+    }
+  }
+
+  backToConvosBtn.addEventListener('click', () => {
+    threadCard.classList.add('hidden');
+    conversationListCard.classList.remove('hidden');
+    loadConversations();
+  });
+
+  replySendBtn.addEventListener('click', async () => {
+    const message = replyMessage.value.trim();
+    if (!message || !currentThreadPhone) return;
+    replySendBtn.disabled = true;
+    replyStatus.className = 'message-status';
+    replyStatus.textContent = 'Sending...';
+    try {
+      const res = await apiFetch('/api/conversations/reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: currentThreadPhone, message }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        replyMessage.value = '';
+        replyStatus.className = 'message-status success';
+        replyStatus.textContent = 'Sent.';
+        openThread(currentThreadPhone);
+      } else {
+        replyStatus.className = 'message-status error';
+        replyStatus.textContent = data.error || 'Failed to send.';
+      }
+    } catch (e) {
+      replyStatus.className = 'message-status error';
+      replyStatus.textContent = 'Connection error.';
+    }
+    replySendBtn.disabled = false;
+  });
+
+  refreshConvosBtn.addEventListener('click', loadConversations);
+
+  // ================= TEMPLATES =================
+
+  const templateEditId = document.getElementById('templateEditId');
+  const templateName = document.getElementById('templateName');
+  const templateBody = document.getElementById('templateBody');
+  const templateSaveBtn = document.getElementById('templateSaveBtn');
+  const templateStatus = document.getElementById('templateStatus');
+  const templateList = document.getElementById('templateList');
+  const templateCount = document.getElementById('templateCount');
+
+  async function loadTemplates() {
+    try {
+      const res = await apiFetch('/api/templates');
+      const data = await res.json();
+      templates = data.templates || [];
+      renderTemplates();
+      renderTemplateSelect();
+    } catch (e) {}
+  }
+
+  function renderTemplateSelect() {
+    templateSelect.innerHTML = '<option value="">— None —</option>' +
+      templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  }
+
+  function renderTemplates() {
+    templateCount.textContent = templates.length;
+    if (templates.length === 0) {
+      templateList.innerHTML = '<p class="subtitle">No templates yet.</p>';
+      return;
+    }
+    templateList.innerHTML = templates.map(t => `
+      <div class="list-item">
+        <span>
+          <strong>${t.name}</strong><br>
+          <span class="subtitle" style="font-size:0.8rem;">${t.body.slice(0, 80)}</span>
+        </span>
+        <span>
+          <button class="action-link" data-id="${t.id}" data-action="edit">edit</button>
+          &nbsp;·&nbsp;
+          <button class="action-link" data-id="${t.id}" data-action="delete">delete</button>
+        </span>
+      </div>
+    `).join('');
+    templateList.querySelectorAll('[data-action="edit"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const t = templates.find(t => t.id === btn.dataset.id);
+        if (t) {
+          templateEditId.value = t.id;
+          templateName.value = t.name;
+          templateBody.value = t.body;
+        }
+      });
+    });
+    templateList.querySelectorAll('[data-action="delete"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Delete this template?')) return;
+        const res = await apiFetch('/api/templates/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: btn.dataset.id }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          templates = data.templates;
+          renderTemplates();
+          renderTemplateSelect();
+        }
+      });
+    });
+  }
+
+  templateSaveBtn.addEventListener('click', async () => {
+    const name = templateName.value.trim();
+    const body = templateBody.value.trim();
+    if (!name || !body) return;
+    templateStatus.className = 'message-status';
+    templateStatus.textContent = 'Saving...';
+    try {
+      const res = await apiFetch('/api/templates/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: templateEditId.value || undefined, name, body }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        templates = data.templates;
+        renderTemplates();
+        renderTemplateSelect();
+        templateEditId.value = '';
+        templateName.value = '';
+        templateBody.value = '';
+        templateStatus.className = 'message-status success';
+        templateStatus.textContent = 'Saved.';
+      } else {
+        templateStatus.className = 'message-status error';
+        templateStatus.textContent = data.error || 'Failed to save.';
+      }
+    } catch (e) {
+      templateStatus.className = 'message-status error';
+      templateStatus.textContent = 'Connection error.';
+    }
+  });
+
+  // ================= AUTO-REPLY RULES =================
+
+  const ruleEditId = document.getElementById('ruleEditId');
+  const ruleKeyword = document.getElementById('ruleKeyword');
+  const ruleResponse = document.getElementById('ruleResponse');
+  const ruleSaveBtn = document.getElementById('ruleSaveBtn');
+  const ruleStatus = document.getElementById('ruleStatus');
+  const ruleList = document.getElementById('ruleList');
+  const ruleCount = document.getElementById('ruleCount');
+
+  async function loadAutoRules() {
+    try {
+      const res = await apiFetch('/api/autorules');
+      const data = await res.json();
+      autorules = data.rules || [];
+      renderAutoRules();
+    } catch (e) {}
+  }
+
+  function renderAutoRules() {
+    ruleCount.textContent = autorules.length;
+    if (autorules.length === 0) {
+      ruleList.innerHTML = '<p class="subtitle">No custom rules yet.</p>';
+      return;
+    }
+    ruleList.innerHTML = autorules.map(r => `
+      <div class="list-item">
+        <span>
+          <strong>${r.keyword}</strong><br>
+          <span class="subtitle" style="font-size:0.8rem;">${r.response.slice(0, 80)}</span>
+        </span>
+        <span>
+          <button class="action-link" data-id="${r.id}" data-action="edit">edit</button>
+          &nbsp;·&nbsp;
+          <button class="action-link" data-id="${r.id}" data-action="delete">delete</button>
+        </span>
+      </div>
+    `).join('');
+    ruleList.querySelectorAll('[data-action="edit"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const r = autorules.find(r => r.id === btn.dataset.id);
+        if (r) {
+          ruleEditId.value = r.id;
+          ruleKeyword.value = r.keyword;
+          ruleResponse.value = r.response;
+        }
+      });
+    });
+    ruleList.querySelectorAll('[data-action="delete"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Delete this rule?')) return;
+        const res = await apiFetch('/api/autorules/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: btn.dataset.id }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          autorules = data.rules;
+          renderAutoRules();
+        }
+      });
+    });
+  }
+
+  ruleSaveBtn.addEventListener('click', async () => {
+    const keyword = ruleKeyword.value.trim();
+    const response = ruleResponse.value.trim();
+    if (!keyword || !response) return;
+    ruleStatus.className = 'message-status';
+    ruleStatus.textContent = 'Saving...';
+    try {
+      const res = await apiFetch('/api/autorules/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: ruleEditId.value || undefined, keyword, response }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        autorules = data.rules;
+        renderAutoRules();
+        ruleEditId.value = '';
+        ruleKeyword.value = '';
+        ruleResponse.value = '';
+        ruleStatus.className = 'message-status success';
+        ruleStatus.textContent = 'Saved.';
+      } else {
+        ruleStatus.className = 'message-status error';
+        ruleStatus.textContent = data.error || 'Failed to save.';
+      }
+    } catch (e) {
+      ruleStatus.className = 'message-status error';
+      ruleStatus.textContent = 'Connection error.';
     }
   });
 </script>
