@@ -240,6 +240,14 @@
     </div>
 
     <div class="card">
+      <h2>Bulk Import</h2>
+      <label for="csvFile">Upload a CSV export (looks for a "Phone number" column)</label>
+      <input type="file" id="csvFile" accept=".csv" style="margin-bottom: 12px; color: var(--text-dim);">
+      <button class="btn btn-secondary" id="importBtn">Import CSV</button>
+      <div class="message-status" id="importStatus"></div>
+    </div>
+
+    <div class="card">
       <h2>Add Subscriber</h2>
       <div class="add-row">
         <input type="tel" id="newPhone" placeholder="(702) 555-0123">
@@ -457,6 +465,83 @@
   }
 
   refreshBtn.addEventListener('click', loadSubscribers);
+
+  // ---- Bulk CSV import ----
+  const csvFile = document.getElementById('csvFile');
+  const importBtn = document.getElementById('importBtn');
+  const importStatus = document.getElementById('importStatus');
+
+  function parseCsvLine(line) {
+    const fields = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (inQuotes) {
+        if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+        else if (c === '"') { inQuotes = false; }
+        else { cur += c; }
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ',') { fields.push(cur); cur = ''; }
+        else cur += c;
+      }
+    }
+    fields.push(cur);
+    return fields;
+  }
+
+  importBtn.addEventListener('click', async () => {
+    const file = csvFile.files[0];
+    if (!file) {
+      importStatus.className = 'message-status error';
+      importStatus.textContent = 'Choose a CSV file first.';
+      return;
+    }
+
+    importStatus.className = 'message-status';
+    importStatus.textContent = 'Reading file...';
+
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+    if (lines.length < 2) {
+      importStatus.className = 'message-status error';
+      importStatus.textContent = 'CSV appears empty.';
+      return;
+    }
+
+    const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase());
+    let phoneCol = headers.findIndex(h => h.includes('phone'));
+    if (phoneCol === -1) phoneCol = 0; // fallback to first column
+
+    const phones = [];
+    for (let i = 1; i < lines.length; i++) {
+      const fields = parseCsvLine(lines[i]);
+      if (fields[phoneCol]) phones.push(fields[phoneCol].trim());
+    }
+
+    importStatus.textContent = `Importing ${phones.length} contacts...`;
+
+    try {
+      const res = await apiFetch('/api/subscribers/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phones }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        importStatus.className = 'message-status success';
+        importStatus.textContent = `Added ${data.added}, skipped ${data.skipped} (duplicates/invalid). Total: ${data.total}.`;
+        await loadSubscribers();
+      } else {
+        importStatus.className = 'message-status error';
+        importStatus.textContent = data.error || 'Import failed.';
+      }
+    } catch (e) {
+      importStatus.className = 'message-status error';
+      importStatus.textContent = 'Connection error during import.';
+    }
+  });
 </script>
 
 </body>
