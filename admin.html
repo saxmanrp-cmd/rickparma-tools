@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Text Blast Admin — Rick Parma</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@400;600;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #130101;
+    --bg-panel: #1c0808;
+    --steel: #8DB2E5;
+    --steel-dim: #6c93c9;
+    --text: #ffffff;
+    --text-dim: #d8cfcf;
+    --danger: #e57373;
+    --border: rgba(141, 178, 229, 0.25);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Lato', sans-serif;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  h1, h2, .brand {
+    font-family: 'Josefin Sans', sans-serif;
+  }
+
+  .brand {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: var(--steel);
+    margin: 0 0 2px 0;
+  }
+
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    margin: 0 0 24px 0;
+  }
+
+  .container {
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  .card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+
+  .card h2 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 14px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .count-pill {
+    font-family: 'Lato', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: rgba(141, 178, 229, 0.15);
+    color: var(--steel);
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+
+  label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  input[type="text"],
+  input[type="password"],
+  input[type="tel"],
+  textarea {
+    width: 100%;
+    font-size: 16px; /* prevents iOS auto-zoom */
+    font-family: 'Lato', sans-serif;
+    background: #0d0202;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+
+  textarea {
+    min-height: 110px;
+    resize: vertical;
+  }
+
+  input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--steel);
+  }
+
+  .btn {
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+    background: var(--steel);
+    color: #000000;
+    font-family: 'Lato', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    border: none;
+    border-radius: 8px;
+    padding: 13px;
+    cursor: pointer;
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--steel);
+    border: 1px solid var(--steel);
+  }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid var(--danger);
+  }
+
+  .char-count {
+    text-align: right;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    margin: -6px 0 12px 0;
+  }
+
+  .row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .row .btn { flex: 1; }
+
+  .subscriber-list {
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  .subscriber {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.92rem;
+  }
+
+  .subscriber:last-child { border-bottom: none; }
+
+  .status-active { color: var(--steel); font-size: 0.78rem; }
+  .status-stopped { color: var(--danger); font-size: 0.78rem; }
+
+  .remove-link {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .message-status {
+    font-size: 0.85rem;
+    margin-top: 10px;
+    min-height: 1.2em;
+  }
+
+  .message-status.success { color: #8de5a8; }
+  .message-status.error { color: var(--danger); }
+
+  #lockScreen .card { margin-top: 60px; }
+
+  .hidden { display: none !important; }
+
+  .add-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .add-row input { margin-bottom: 0; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Lock screen -->
+  <div id="lockScreen">
+    <p class="brand">Rick Parma</p>
+    <p class="subtitle">Text Blast Admin</p>
+    <div class="card">
+      <h2>Enter Admin Password</h2>
+      <input type="password" id="adminPassword" placeholder="Password">
+      <button class="btn" id="unlockBtn">Unlock</button>
+      <div class="message-status error" id="lockError"></div>
+    </div>
+  </div>
+
+  <!-- Main app -->
+  <div id="app" class="hidden">
+    <p class="brand">Rick Parma</p>
+    <p class="subtitle">Text Blast Admin</p>
+
+    <div class="card">
+      <h2>Send a Blast <span class="count-pill" id="activeCount">0 active</span></h2>
+      <label for="blastMessage">Message</label>
+      <textarea id="blastMessage" maxlength="480" placeholder="Hey! Catch me live this Friday at..."></textarea>
+      <div class="char-count"><span id="charCount">0</span>/480</div>
+      <button class="btn" id="sendBtn">Send to All Subscribers</button>
+      <div class="message-status" id="sendStatus"></div>
+    </div>
+
+    <div class="card">
+      <h2>Add Subscriber</h2>
+      <div class="add-row">
+        <input type="tel" id="newPhone" placeholder="(702) 555-0123">
+        <button class="btn" id="addBtn" style="width:auto; padding: 12px 18px;">Add</button>
+      </div>
+      <div class="message-status" id="addStatus"></div>
+    </div>
+
+    <div class="card">
+      <h2>Subscribers <span class="count-pill" id="totalCount">0 total</span></h2>
+      <div class="subscriber-list" id="subscriberList">
+        <p class="subtitle">Loading...</p>
+      </div>
+      <div class="row" style="margin-top: 14px;">
+        <button class="btn btn-secondary" id="refreshBtn">Refresh</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ---- Configuration ----
+  // Point this at your deployed Cloudflare Worker URL.
+  const WORKER_URL = "https://your-worker-subdomain.workers.dev";
+
+  let adminToken = "";
+  let subscribers = [];
+
+  const lockScreen = document.getElementById('lockScreen');
+  const app = document.getElementById('app');
+  const adminPasswordInput = document.getElementById('adminPassword');
+  const unlockBtn = document.getElementById('unlockBtn');
+  const lockError = document.getElementById('lockError');
+
+  const blastMessage = document.getElementById('blastMessage');
+  const charCount = document.getElementById('charCount');
+  const sendBtn = document.getElementById('sendBtn');
+  const sendStatus = document.getElementById('sendStatus');
+
+  const newPhone = document.getElementById('newPhone');
+  const addBtn = document.getElementById('addBtn');
+  const addStatus = document.getElementById('addStatus');
+
+  const subscriberList = document.getElementById('subscriberList');
+  const activeCount = document.getElementById('activeCount');
+  const totalCount = document.getElementById('totalCount');
+  const refreshBtn = document.getElementById('refreshBtn');
+
+  // Remember the token locally on this device only (not synced anywhere).
+  const savedToken = localStorage.getItem('sms_admin_token');
+  if (savedToken) {
+    adminToken = savedToken;
+    unlock();
+  }
+
+  unlockBtn.addEventListener('click', () => {
+    const pw = adminPasswordInput.value.trim();
+    if (!pw) return;
+    adminToken = pw;
+    localStorage.setItem('sms_admin_token', pw);
+    unlock();
+  });
+
+  async function unlock() {
+    lockError.textContent = "";
+    const ok = await loadSubscribers();
+    if (ok) {
+      lockScreen.classList.add('hidden');
+      app.classList.remove('hidden');
+    } else {
+      lockError.textContent = "Incorrect password or connection issue.";
+      localStorage.removeItem('sms_admin_token');
+    }
+  }
+
+  async function apiFetch(path, options = {}) {
+    const res = await fetch(WORKER_URL + path, {
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        'X-Admin-Token': adminToken,
+      },
+    });
+    return res;
+  }
+
+  async function loadSubscribers() {
+    try {
+      const res = await apiFetch('/api/subscribers');
+      if (!res.ok) return false;
+      const data = await res.json();
+      subscribers = data.subscribers || [];
+      renderSubscribers();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function renderSubscribers() {
+    const active = subscribers.filter(s => s.status === 'active');
+    activeCount.textContent = `${active.length} active`;
+    totalCount.textContent = `${subscribers.length} total`;
+
+    if (subscribers.length === 0) {
+      subscriberList.innerHTML = '<p class="subtitle">No subscribers yet.</p>';
+      return;
+    }
+
+    subscriberList.innerHTML = subscribers
+      .slice()
+      .sort((a, b) => new Date(b.joinedAt) - new Date(a.joinedAt))
+      .map(s => `
+        <div class="subscriber">
+          <span>${s.phone}</span>
+          <span>
+            <span class="${s.status === 'active' ? 'status-active' : 'status-stopped'}">${s.status}</span>
+            &nbsp;·&nbsp;
+            <button class="remove-link" data-phone="${s.phone}">remove</button>
+          </span>
+        </div>
+      `).join('');
+
+    subscriberList.querySelectorAll('.remove-link').forEach(btn => {
+      btn.addEventListener('click', () => removeSubscriber(btn.dataset.phone));
+    });
+  }
+
+  blastMessage.addEventListener('input', () => {
+    charCount.textContent = blastMessage.value.length;
+  });
+
+  sendBtn.addEventListener('click', async () => {
+    const message = blastMessage.value.trim();
+    if (!message) return;
+    const active = subscribers.filter(s => s.status === 'active').length;
+    if (!confirm(`Send this message to ${active} active subscriber(s)?`)) return;
+
+    sendBtn.disabled = true;
+    sendStatus.className = 'message-status';
+    sendStatus.textContent = 'Sending...';
+
+    try {
+      const res = await apiFetch('/api/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        sendStatus.className = 'message-status success';
+        sendStatus.textContent = `Sent to ${data.sent} subscriber(s)${data.failed ? `, ${data.failed} failed` : ''}.`;
+        blastMessage.value = '';
+        charCount.textContent = '0';
+      } else {
+        sendStatus.className = 'message-status error';
+        sendStatus.textContent = data.error || 'Failed to send.';
+      }
+    } catch (e) {
+      sendStatus.className = 'message-status error';
+      sendStatus.textContent = 'Connection error.';
+    }
+    sendBtn.disabled = false;
+  });
+
+  addBtn.addEventListener('click', async () => {
+    const phone = newPhone.value.trim();
+    if (!phone) return;
+    addStatus.className = 'message-status';
+    addStatus.textContent = 'Adding...';
+    try {
+      const res = await apiFetch('/api/subscribers/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        subscribers = data.subscribers;
+        renderSubscribers();
+        newPhone.value = '';
+        addStatus.className = 'message-status success';
+        addStatus.textContent = 'Added.';
+      } else {
+        addStatus.className = 'message-status error';
+        addStatus.textContent = data.error || 'Failed to add.';
+      }
+    } catch (e) {
+      addStatus.className = 'message-status error';
+      addStatus.textContent = 'Connection error.';
+    }
+  });
+
+  async function removeSubscriber(phone) {
+    if (!confirm(`Remove ${phone}?`)) return;
+    try {
+      const res = await apiFetch('/api/subscribers/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        subscribers = data.subscribers;
+        renderSubscribers();
+      }
+    } catch (e) {
+      // silent
+    }
+  }
+
+  refreshBtn.addEventListener('click', loadSubscribers);
+</script>
+
+</body>
+</html>
