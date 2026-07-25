@@ -427,6 +427,12 @@
 
       <div class="card">
         <h2>Subscribers <span class="count-pill" id="totalCount">0 total</span></h2>
+        <label for="subscriberSearch">Search by name or phone</label>
+        <input type="text" id="subscriberSearch" placeholder="Search...">
+        <label for="subscriberCategoryFilter">Filter by category</label>
+        <select id="subscriberCategoryFilter">
+          <option value="">All categories</option>
+        </select>
         <div class="list-scroll" id="subscriberList">
           <p class="subtitle">Loading...</p>
         </div>
@@ -574,18 +580,49 @@
     }
   }
 
+  const subscriberSearch = document.getElementById('subscriberSearch');
+  const subscriberCategoryFilter = document.getElementById('subscriberCategoryFilter');
+
+  function populateCategoryFilter() {
+    const set = new Set();
+    subscribers.forEach(s => (s.tags || []).forEach(t => set.add(t)));
+    const tags = Array.from(set).sort();
+    const currentVal = subscriberCategoryFilter.value;
+    subscriberCategoryFilter.innerHTML = '<option value="">All categories</option>' +
+      tags.map(t => `<option value="${t}">${t}</option>`).join('');
+    if (tags.includes(currentVal)) subscriberCategoryFilter.value = currentVal;
+  }
+
+  function filteredSubscribers() {
+    const q = subscriberSearch.value.trim().toLowerCase();
+    const cat = subscriberCategoryFilter.value;
+    return subscribers.filter(s => {
+      const matchesSearch = !q ||
+        (s.name && s.name.toLowerCase().includes(q)) ||
+        (s.phone && s.phone.toLowerCase().includes(q));
+      const matchesCat = !cat || (s.tags || []).includes(cat);
+      return matchesSearch && matchesCat;
+    });
+  }
+
+  subscriberSearch.addEventListener('input', renderSubscribers);
+  subscriberCategoryFilter.addEventListener('change', renderSubscribers);
+
   function renderSubscribers() {
     const active = subscribers.filter(s => s.status === 'active');
     totalCount.textContent = `${subscribers.length} total`;
+    populateCategoryFilter();
     if (typeof updateRecipientSummary === 'function') updateRecipientSummary();
     if (typeof updateStatsLine === 'function') updateStatsLine();
 
-    if (subscribers.length === 0) {
-      subscriberList.innerHTML = '<p class="subtitle">No subscribers yet.</p>';
+    const list = filteredSubscribers();
+
+    if (list.length === 0) {
+      subscriberList.innerHTML = '<p class="subtitle">No matching subscribers.</p>';
       return;
     }
 
-    subscriberList.innerHTML = subscribers
+    subscriberList.innerHTML = list
       .slice()
       .sort((a, b) => new Date(b.joinedAt) - new Date(a.joinedAt))
       .map(s => `
