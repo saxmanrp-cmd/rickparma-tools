@@ -52,13 +52,13 @@
   .draft-actions .btn{flex:1; padding:9px;}
   .btn-live{background:#ff4d4d; color:#fff;}
 
-  .option-row{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
-  .option-row .field{flex:1;}
+  .option-row{display:flex; align-items:flex-start; gap:8px; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--line);}
+  .option-row:last-child{border-bottom:none;}
+  .opt-row-main{flex:1; display:flex; flex-direction:column; gap:8px;}
+  .opt-filters{display:flex; gap:8px;}
+  .opt-filters select{flex:1;}
+  select.field{width:100%; padding:11px; font-size:15px; border-radius:9px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif;}
   .option-row .remove-opt{flex:0 0 auto; color:var(--danger); font-size:20px; cursor:pointer; padding:4px 8px;}
-  .song-picker-results{max-height:160px; overflow-y:auto; border:1px solid var(--line); border-radius:9px; margin-top:6px; display:none;}
-  .song-picker-item{padding:10px 12px; font-size:13px; border-bottom:1px solid var(--line); cursor:pointer;}
-  .song-picker-item:last-child{border-bottom:none;}
-  .song-picker-item:active{background:rgba(141,178,229,0.1);}
   .setup-box p{font-size:13px; color:var(--dim); line-height:1.5; margin:0 0 10px;}
   .setup-box input{width:100%; padding:10px; font-size:16px; border-radius:8px; border:1px solid var(--line); background:#130101; color:var(--white); margin-bottom:10px;}
 
@@ -816,35 +816,65 @@ function addOptionRow(){
   const row = document.createElement('div');
   row.className = 'option-row';
   row.dataset.rowIndex = rowIndex;
+
+  const artists = [...new Set(songs.map(s => s.a).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+  const artistOptionsHtml = ['<option value="">All Artists</option>']
+    .concat(artists.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`))
+    .join('');
+  const genreOptionsHtml = ['<option value="">All Genres</option>']
+    .concat(ALL_TAGS.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`))
+    .join('');
+
   row.innerHTML = `
-    <input type="text" class="field song-search-input" placeholder="Search a song…" autocomplete="off">
+    <div class="opt-row-main">
+      <div class="opt-filters">
+        <select class="field opt-artist">${artistOptionsHtml}</select>
+        <select class="field opt-genre">${genreOptionsHtml}</select>
+      </div>
+      <select class="field opt-song"></select>
+    </div>
     <span class="remove-opt" onclick="removeOptionRow(${rowIndex})">×</span>
   `;
   list.appendChild(row);
 
-  const searchInput = row.querySelector('.song-search-input');
-  const resultsBox = document.createElement('div');
-  resultsBox.className = 'song-picker-results';
-  row.appendChild(resultsBox);
+  const artistSel = row.querySelector('.opt-artist');
+  const genreSel = row.querySelector('.opt-genre');
+  const songSel = row.querySelector('.opt-song');
 
-  searchInput.addEventListener('input', () => {
-    const term = searchInput.value.trim().toLowerCase();
-    if(!term){ resultsBox.style.display = 'none'; return; }
-    const matches = songs.filter(s => s.t.toLowerCase().includes(term) || (s.a||'').toLowerCase().includes(term)).slice(0, 8);
-    if(matches.length === 0){ resultsBox.innerHTML = '<div class="song-picker-item">No matches</div>'; resultsBox.style.display = 'block'; return; }
-    resultsBox.innerHTML = matches.map(s => `<div class="song-picker-item" data-song-id="${s.id}">${escapeHtml(s.t)}${s.a ? ' — ' + escapeHtml(s.a) : ''}</div>`).join('');
-    resultsBox.style.display = 'block';
-    [...resultsBox.querySelectorAll('.song-picker-item')].forEach(item => {
-      item.onclick = () => {
-        const songId = item.dataset.songId;
-        if(!songId) return;
-        const song = songs.find(s => s.id === songId);
-        searchInput.value = song ? song.t + (song.a ? ' — ' + song.a : '') : '';
-        optionSelections[rowIndex] = songId;
-        resultsBox.style.display = 'none';
-      };
-    });
+  function refreshSongOptions(){
+    const artist = artistSel.value;
+    const genre = genreSel.value;
+    const filtered = songs.filter(s =>
+      (!artist || s.a === artist) &&
+      (!genre || (s.tags||[]).includes(genre))
+    ).sort((a,b) => a.t.localeCompare(b.t));
+
+    if(filtered.length === 0){
+      songSel.innerHTML = '<option value="">No songs match</option>';
+      optionSelections[rowIndex] = null;
+      return;
+    }
+
+    const prevSelected = optionSelections[rowIndex];
+    songSel.innerHTML = filtered.map(s =>
+      `<option value="${s.id}">${escapeHtml(s.t)}${s.a ? ' — ' + escapeHtml(s.a) : ''}</option>`
+    ).join('');
+
+    if(prevSelected && filtered.some(s => s.id === prevSelected)){
+      songSel.value = prevSelected;
+    } else {
+      songSel.value = filtered[0].id;
+      optionSelections[rowIndex] = filtered[0].id;
+    }
+  }
+
+  songSel.addEventListener('change', () => {
+    optionSelections[rowIndex] = songSel.value || null;
   });
+  artistSel.addEventListener('change', refreshSongOptions);
+  genreSel.addEventListener('change', refreshSongOptions);
+
+  refreshSongOptions();
 }
 
 function removeOptionRow(rowIndex){
