@@ -55,7 +55,7 @@
   .option-row{display:flex; align-items:flex-start; gap:8px; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--line);}
   .option-row:last-child{border-bottom:none;}
   .opt-row-main{flex:1; display:flex; flex-direction:column; gap:8px;}
-  .opt-filters{display:flex; gap:8px;}
+  .opt-placeholder{color:var(--dim); font-size:13px; padding:12px 0;}
   .opt-filters select{flex:1;}
   select.field{width:100%; padding:11px; font-size:15px; border-radius:9px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif;}
   .option-row .remove-opt{flex:0 0 auto; color:var(--danger); font-size:20px; cursor:pointer; padding:4px 8px;}
@@ -211,7 +211,7 @@
   <div class="field-label">Question</div>
   <input type="text" class="field" id="fQuestion" placeholder="e.g. Which Journey song should I play?">
 
-  <div class="field-label">Options (2–6 songs)</div>
+  <div class="field-label">Options (2–6)</div>
   <div id="optionsList"></div>
   <button class="btn btn-outline btn-full" onclick="addOptionRow()" style="margin-top:6px;">+ Add Option</button>
 
@@ -711,7 +711,7 @@ function renderLiveSection(){
   const total = live.options.reduce((sum, o) => sum + (o.votes || 0), 0);
   const rows = live.options.map(opt => {
     const song = songs.find(s => s.id === opt.songId);
-    const label = song ? song.t : 'Unknown song';
+    const label = opt.label || (song ? song.t : 'Unknown song');
     const votes = opt.votes || 0;
     const pct = total > 0 ? Math.round((votes / total) * 100) : 0;
     return `
@@ -812,7 +812,11 @@ const QUESTION_TEMPLATES = {
   song: 'WHAT SONG WOULD YOU LIKE TO HEAR'
 };
 
+let currentPollType = null; // 'genre' | 'artist' | 'song'
+
 function selectPollType(type){
+  currentPollType = type;
+
   const input = document.getElementById('fQuestion');
   const currentVal = input.value.trim();
   const isTemplateOrEmpty = !currentVal || Object.values(QUESTION_TEMPLATES).includes(currentVal);
@@ -822,6 +826,13 @@ function selectPollType(type){
   document.querySelectorAll('.poll-type-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.type === type);
   });
+
+  // Rebuild the option rows to match the newly chosen type
+  document.getElementById('optionsList').innerHTML = '';
+  optionRowCount = 0;
+  optionSelections = {};
+  addOptionRow();
+  addOptionRow();
 }
 
 function openPollEditor(){
@@ -829,11 +840,10 @@ function openPollEditor(){
     if(!POLL_BIN_ID){ alert('Set up poll storage first (see the button above).'); return; }
     document.getElementById('fQuestion').value = '';
     document.querySelectorAll('.poll-type-btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById('optionsList').innerHTML = '';
+    currentPollType = null;
     optionRowCount = 0;
     optionSelections = {};
-    addOptionRow();
-    addOptionRow();
+    document.getElementById('optionsList').innerHTML = `<div class="opt-placeholder">Pick Genre, Artist, or Song above to add options.</div>`;
     document.getElementById('pollOverlay').classList.add('show');
     document.getElementById('pollSheet').classList.add('show');
   } catch(err){
@@ -848,71 +858,44 @@ function closePollSheet(){
 }
 
 function addOptionRow(){
+  if(!currentPollType){ alert('Pick Genre, Artist, or Song above first.'); return; }
   if(optionRowCount >= 6){ alert('Max 6 options per poll.'); return; }
   const rowIndex = optionRowCount++;
   const list = document.getElementById('optionsList');
+  const placeholder = list.querySelector('.opt-placeholder');
+  if(placeholder) placeholder.remove();
+
   const row = document.createElement('div');
   row.className = 'option-row';
   row.dataset.rowIndex = rowIndex;
 
-  const artists = [...new Set(songs.map(s => s.a).filter(Boolean))].sort((a,b) => a.localeCompare(b));
-  const artistOptionsHtml = ['<option value="">All Artists</option>']
-    .concat(artists.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`))
-    .join('');
-  const genreOptionsHtml = ['<option value="">All Genres</option>']
-    .concat(ALL_TAGS.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`))
-    .join('');
+  let selectOptionsHtml = '';
+  if(currentPollType === 'genre'){
+    selectOptionsHtml = ALL_TAGS.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+  } else if(currentPollType === 'artist'){
+    const artists = [...new Set(songs.map(s => s.a).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+    selectOptionsHtml = artists.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
+  } else { // song
+    const sorted = [...songs].sort((a,b) => a.t.localeCompare(b.t));
+    selectOptionsHtml = sorted.map(s => `<option value="${s.id}">${escapeHtml(s.t)}${s.a ? ' — ' + escapeHtml(s.a) : ''}</option>`).join('');
+  }
+
+  if(!selectOptionsHtml){
+    selectOptionsHtml = '<option value="">Nothing available</option>';
+  }
 
   row.innerHTML = `
     <div class="opt-row-main">
-      <div class="opt-filters">
-        <select class="field opt-artist">${artistOptionsHtml}</select>
-        <select class="field opt-genre">${genreOptionsHtml}</select>
-      </div>
-      <select class="field opt-song"></select>
+      <select class="field opt-single">${selectOptionsHtml}</select>
     </div>
     <span class="remove-opt" onclick="removeOptionRow(${rowIndex})">×</span>
   `;
   list.appendChild(row);
 
-  const artistSel = row.querySelector('.opt-artist');
-  const genreSel = row.querySelector('.opt-genre');
-  const songSel = row.querySelector('.opt-song');
-
-  function refreshSongOptions(){
-    const artist = artistSel.value;
-    const genre = genreSel.value;
-    const filtered = songs.filter(s =>
-      (!artist || s.a === artist) &&
-      (!genre || (s.tags||[]).includes(genre))
-    ).sort((a,b) => a.t.localeCompare(b.t));
-
-    if(filtered.length === 0){
-      songSel.innerHTML = '<option value="">No songs match</option>';
-      optionSelections[rowIndex] = null;
-      return;
-    }
-
-    const prevSelected = optionSelections[rowIndex];
-    songSel.innerHTML = filtered.map(s =>
-      `<option value="${s.id}">${escapeHtml(s.t)}${s.a ? ' — ' + escapeHtml(s.a) : ''}</option>`
-    ).join('');
-
-    if(prevSelected && filtered.some(s => s.id === prevSelected)){
-      songSel.value = prevSelected;
-    } else {
-      songSel.value = filtered[0].id;
-      optionSelections[rowIndex] = filtered[0].id;
-    }
-  }
-
-  songSel.addEventListener('change', () => {
-    optionSelections[rowIndex] = songSel.value || null;
-  });
-  artistSel.addEventListener('change', refreshSongOptions);
-  genreSel.addEventListener('change', refreshSongOptions);
-
-  refreshSongOptions();
+  const sel = row.querySelector('.opt-single');
+  const captureSelection = () => { optionSelections[rowIndex] = sel.value || null; };
+  sel.addEventListener('change', captureSelection);
+  captureSelection(); // capture the default (first) option immediately
 }
 
 function removeOptionRow(rowIndex){
@@ -924,18 +907,35 @@ function removeOptionRow(rowIndex){
 async function savePoll(){
   const question = document.getElementById('fQuestion').value.trim();
   if(!question){ alert('Please enter a question.'); return; }
+  if(!currentPollType){ alert('Pick Genre, Artist, or Song above first.'); return; }
 
-  const selectedSongIds = Object.values(optionSelections).filter(Boolean);
-  if(selectedSongIds.length < 2){
-    alert('Pick at least 2 songs from the search results for your options.');
+  const rawSelections = Object.values(optionSelections).filter(Boolean);
+  if(rawSelections.length < 2){
+    alert('Pick at least 2 options.');
     return;
+  }
+
+  let options;
+  if(currentPollType === 'song'){
+    options = rawSelections.map(songId => ({ songId, votes: 0 }));
+  } else if(currentPollType === 'artist'){
+    options = rawSelections.map(artistName => {
+      const rep = songs.filter(s => s.a === artistName).sort((a,b) => a.t.localeCompare(b.t))[0];
+      return { label: artistName, songId: rep ? rep.id : null, votes: 0 };
+    });
+  } else { // genre
+    options = rawSelections.map(genreTag => {
+      const rep = songs.filter(s => (s.tags||[]).includes(genreTag)).sort((a,b) => a.t.localeCompare(b.t))[0];
+      return { label: genreTag, songId: rep ? rep.id : null, votes: 0 };
+    });
   }
 
   const newPoll = {
     id: 'poll' + Date.now(),
     question,
     status: 'draft',
-    options: selectedSongIds.map(songId => ({ songId, votes: 0 }))
+    pollType: currentPollType,
+    options
   };
   polls.push(newPoll);
 
