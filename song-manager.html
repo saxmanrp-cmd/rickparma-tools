@@ -45,11 +45,8 @@
   .result-bar{height:100%; background:var(--accent); transition:width 0.4s ease;}
   .result-count{flex:0 0 auto; font-weight:700; width:36px; text-align:right;}
 
-  .draft-card{padding:14px; border-radius:12px; background:var(--card-solid); border:1px solid var(--line); margin-bottom:10px;}
-  .draft-q{font-weight:700; font-size:14px; margin-bottom:6px;}
-  .draft-opts{font-size:12px; color:var(--dim); margin-bottom:10px;}
-  .draft-actions{display:flex; gap:8px;}
-  .draft-actions .btn{flex:1; padding:9px;}
+  .saved-poll-actions{display:flex; gap:8px; margin-top:8px;}
+  .saved-poll-actions .btn{flex:1;}
   .btn-live{background:#ff4d4d; color:#fff;}
 
   .poll-type-toggle{display:flex; gap:8px;}
@@ -134,8 +131,15 @@
   <div id="liveSection" style="display:none;">
     <div id="liveCardArea"></div>
   </div>
-  <div id="draftList"></div>
-  <button class="btn btn-outline btn-full" style="margin-top:8px;" onclick="openPollEditor()">+ New Poll</button>
+
+  <div class="field-label">Saved Polls</div>
+  <select class="field" id="savedPollsSelect"></select>
+  <div class="saved-poll-actions">
+    <button class="btn btn-live" onclick="goLiveFromDropdown()">Go Live</button>
+    <button class="btn btn-danger" onclick="deleteFromDropdown()">Delete</button>
+  </div>
+
+  <button class="btn btn-outline btn-full" style="margin-top:14px;" onclick="openPollEditor()">+ New Poll</button>
 </div>
 
 <div class="controls" id="controlsArea" style="display:none;">
@@ -741,30 +745,35 @@ function copyBlastMessage(pollId){
 }
 
 function renderDraftList(){
-  const list = document.getElementById('draftList');
-  const drafts = polls.filter(p => p.status !== 'live');
+  const select = document.getElementById('savedPollsSelect');
+  const selectable = polls.filter(p => p.status !== 'live'); // the live one has its own section above
 
-  if(drafts.length === 0){
-    list.innerHTML = `<div style="color:var(--dim); font-size:14px; padding:10px 0;">No polls prepped yet. Tap + New Poll below.</div>`;
+  if(selectable.length === 0){
+    select.innerHTML = `<option value="">No polls saved yet — tap + New Poll below.</option>`;
     return;
   }
 
-  list.innerHTML = drafts.map(p => {
-    const optNames = p.options.map(o => {
-      const s = songs.find(x => x.id === o.songId);
-      return s ? s.t : 'Unknown';
-    }).join(', ');
-    const isClosed = p.status === 'closed';
-    return `
-      <div class="draft-card">
-        <div class="draft-q">${escapeHtml(p.question)}</div>
-        <div class="draft-opts">${escapeHtml(optNames)}</div>
-        <div class="draft-actions">
-          ${isClosed ? '' : `<button class="btn btn-live" onclick="goLive('${p.id}')">Go Live</button>`}
-          <button class="btn btn-outline" onclick="deletePoll('${p.id}')">Delete</button>
-        </div>
-      </div>`;
+  const prevValue = select.value;
+  select.innerHTML = selectable.map(p => {
+    const usedTag = p.status === 'closed' ? ' (used before)' : '';
+    return `<option value="${p.id}">${escapeHtml(p.question)}${usedTag}</option>`;
   }).join('');
+
+  if(prevValue && selectable.some(p => p.id === prevValue)){
+    select.value = prevValue;
+  }
+}
+
+async function goLiveFromDropdown(){
+  const id = document.getElementById('savedPollsSelect').value;
+  if(!id){ alert('No saved poll selected.'); return; }
+  await goLive(id);
+}
+
+async function deleteFromDropdown(){
+  const id = document.getElementById('savedPollsSelect').value;
+  if(!id){ alert('No saved poll selected.'); return; }
+  await deletePoll(id);
 }
 
 async function goLive(pollId){
@@ -775,7 +784,7 @@ async function goLive(pollId){
   }
   const poll = polls.find(p => p.id === pollId);
   poll.status = 'live';
-  poll.options.forEach(o => o.votes = 0);
+  poll.options.forEach(o => o.votes = 0); // fresh votes each time it's relaunched
   activePollId = pollId;
   const ok = await savePollsToCloud();
   if(ok) renderPollAll();
