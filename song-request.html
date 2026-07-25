@@ -39,19 +39,38 @@
 
   .home-search-wrap{padding:20px 16px 6px;}
 
-  #pollBanner{margin:18px 16px 4px; padding:16px; border-radius:16px; background:linear-gradient(135deg, rgba(141,178,229,0.14), rgba(232,107,213,0.10)); border:1.5px solid var(--accent); box-shadow:0 0 24px rgba(141,178,229,0.25);}
-  .poll-eyebrow{font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent); font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:6px;}
-  .poll-live-dot{width:8px; height:8px; border-radius:50%; background:#ff4d4d; box-shadow:0 0 8px #ff4d4d; animation:pollDotPulse 1.2s ease-in-out infinite;}
+  #pollTakeover{
+    position:fixed; inset:0; z-index:900; overflow-y:auto;
+    display:flex; flex-direction:column; justify-content:center;
+    padding:60px 20px 40px;
+    background:
+      radial-gradient(ellipse at top, rgba(255,215,0,0.12), transparent 55%),
+      radial-gradient(ellipse at bottom, rgba(232,107,213,0.14), transparent 55%),
+      linear-gradient(180deg, #150202 0%, #0a0000 100%);
+  }
+  #pollCloseBtn{
+    position:fixed; top:16px; right:16px; z-index:901;
+    width:40px; height:40px; border-radius:50%; border:1px solid var(--line);
+    background:var(--card-solid); color:var(--white); font-size:18px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .poll-takeover-inner{max-width:480px; margin:0 auto; width:100%;}
+  .poll-eyebrow{font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#fff; font-weight:700; margin-bottom:10px; display:flex; align-items:center; justify-content:center; gap:8px;}
+  .poll-live-dot{width:10px; height:10px; border-radius:50%; background:#ff4d4d; box-shadow:0 0 10px #ff4d4d; animation:pollDotPulse 1.2s ease-in-out infinite;}
   @keyframes pollDotPulse{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
-  .poll-question{font-size:16px; font-weight:700; color:var(--white); margin-bottom:12px; font-family:'Josefin Sans',sans-serif;}
-  .poll-option{position:relative; padding:11px 14px; border-radius:10px; background:var(--card-solid); border:1px solid var(--line); margin-bottom:8px; cursor:pointer; overflow:hidden;}
-  .poll-option-fill{position:absolute; top:0; left:0; bottom:0; background:rgba(141,178,229,0.22); transition:width 0.5s ease; z-index:0;}
-  .poll-option-content{position:relative; z-index:1; display:flex; justify-content:space-between; align-items:center; gap:8px;}
-  .poll-option-label{font-size:14px; font-weight:700; color:var(--white);}
-  .poll-option-pct{font-size:13px; font-weight:700; color:var(--accent); flex:0 0 auto;}
-  .poll-option.voted-for{border-color:var(--general);}
-  .poll-request-link{display:block; text-align:center; font-size:12px; color:var(--dim); margin-top:2px; text-decoration:underline; cursor:pointer;}
-  .poll-voted-note{font-size:12px; color:var(--dim); text-align:center; margin-top:8px;}
+  .poll-question{font-size:26px; font-weight:900; color:var(--white); margin-bottom:26px; font-family:'Josefin Sans',sans-serif; text-align:center; line-height:1.25; text-shadow:0 2px 10px rgba(0,0,0,0.5);}
+  .poll-option{
+    position:relative; padding:18px 18px; border-radius:16px; margin-bottom:12px; cursor:pointer; overflow:hidden;
+    box-shadow:0 6px 18px rgba(0,0,0,0.35); border:2px solid rgba(255,255,255,0.25);
+  }
+  .poll-option-fill{position:absolute; top:0; left:0; bottom:0; background:rgba(0,0,0,0.28); transition:width 0.6s ease; z-index:0;}
+  .poll-option-content{position:relative; z-index:1; display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  .poll-option-label{font-size:16px; font-weight:800; color:#0c1420; text-shadow:0 1px 0 rgba(255,255,255,0.25);}
+  .poll-option-pct{font-size:16px; font-weight:900; color:#0c1420; flex:0 0 auto;}
+  .poll-option.voted-for{border-color:#fff; box-shadow:0 0 0 3px rgba(255,255,255,0.5), 0 6px 18px rgba(0,0,0,0.35);}
+  .poll-request-link{display:block; text-align:center; font-size:12.5px; color:var(--dim); margin:-4px 0 12px; text-decoration:underline; cursor:pointer;}
+  .poll-voted-note{font-size:14px; color:var(--white); text-align:center; margin-top:16px; font-weight:700;}
+  .poll-continue-btn{display:block; width:100%; margin-top:20px; padding:14px; border-radius:12px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); font-weight:700; font-size:14px; text-align:center; cursor:pointer;}
   #homeSearch{width:100%; padding:14px 16px; font-size:16px; border-radius:12px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif;}
   #homeSearch::placeholder{color:#8a8078;}
   #homeSearch:focus{outline:2px solid var(--accent); outline-offset:1px;}
@@ -196,11 +215,19 @@
 <div id="loadingState">Loading song list…</div>
 
 <div id="homeScreen" style="display:none;">
-  <div id="pollBanner" style="display:none;"></div>
   <div class="home-search-wrap">
     <input type="text" id="homeSearch" placeholder="Search song or artist…">
   </div>
   <div class="bubble-grid" id="bubbleGrid"></div>
+</div>
+
+<div id="pollTakeover" style="display:none;">
+  <button id="pollCloseBtn" onclick="dismissPollTakeover()">✕</button>
+  <div class="poll-takeover-inner">
+    <div class="poll-eyebrow"><span class="poll-live-dot"></span> LIVE POLL</div>
+    <div class="poll-question" id="pollQuestionText"></div>
+    <div id="pollOptionsArea"></div>
+  </div>
 </div>
 
 <div id="resultsScreen" style="display:none;">
@@ -258,6 +285,7 @@ const POLL_BIN_ID = "6a65070cda38895dfe8f39bf";
 let pollPollingTimer = null;
 let currentPollId = null;
 let hasVotedThisPoll = false;
+let pollDismissed = false;
 let activeTag = null;
 let searchTerm = "";
 let sortMode = "title-asc";
@@ -704,6 +732,8 @@ function closeSheet(){
 }
 
 /* ============ LIVE POLLS ============ */
+const POLL_COLORS = ['#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#B983FF', '#FF9F45'];
+
 function startPollChecking(){
   if(!POLL_BIN_ID) return; // polls feature not set up yet
   checkForLivePoll();
@@ -723,21 +753,35 @@ async function checkForLivePoll(){
 
     if(!activePoll){
       currentPollId = null;
-      document.getElementById('pollBanner').style.display = 'none';
+      pollDismissed = false;
+      document.getElementById('pollTakeover').style.display = 'none';
       return;
     }
 
+    if(activePoll.id !== currentPollId){
+      pollDismissed = false; // a new poll just went live — show it fresh
+    }
     currentPollId = activePoll.id;
     const votedKey = 'voted_poll_' + activePoll.id;
     hasVotedThisPoll = !!localStorage.getItem(votedKey);
-    renderPollBanner(activePoll);
+    renderPollTakeover(activePoll);
+
+    if(!pollDismissed){
+      document.getElementById('pollTakeover').style.display = 'flex';
+    }
   } catch(err){
     console.error('Poll check failed:', err);
   }
 }
 
-function renderPollBanner(poll){
-  const banner = document.getElementById('pollBanner');
+function dismissPollTakeover(){
+  pollDismissed = true;
+  document.getElementById('pollTakeover').style.display = 'none';
+}
+
+function renderPollTakeover(poll){
+  document.getElementById('pollQuestionText').textContent = poll.question;
+  const area = document.getElementById('pollOptionsArea');
   const totalVotes = poll.options.reduce((sum, o) => sum + (o.votes || 0), 0);
 
   const optionsHtml = poll.options.map((opt, i) => {
@@ -745,6 +789,7 @@ function renderPollBanner(poll){
     const label = song ? song.t + (song.a ? ' — ' + song.a : '') : 'Unknown song';
     const pct = totalVotes > 0 ? Math.round(((opt.votes || 0) / totalVotes) * 100) : 0;
     const votedForThis = hasVotedThisPoll && localStorage.getItem('voted_poll_' + poll.id) === String(i);
+    const color = POLL_COLORS[i % POLL_COLORS.length];
 
     const showResults = hasVotedThisPoll;
     const fillHtml = showResults ? `<div class="poll-option-fill" style="width:${pct}%;"></div>` : '';
@@ -752,7 +797,7 @@ function renderPollBanner(poll){
     const clickAttr = hasVotedThisPoll ? '' : `onclick="castVote('${poll.id}', ${i})"`;
 
     return `
-      <div class="poll-option${votedForThis ? ' voted-for' : ''}" ${clickAttr}>
+      <div class="poll-option${votedForThis ? ' voted-for' : ''}" style="background:${color};" ${clickAttr}>
         ${fillHtml}
         <div class="poll-option-content">
           <span class="poll-option-label">${escapeHtml(label)}</span>
@@ -763,13 +808,13 @@ function renderPollBanner(poll){
     `;
   }).join('');
 
-  banner.innerHTML = `
-    <div class="poll-eyebrow"><span class="poll-live-dot"></span> LIVE POLL</div>
-    <div class="poll-question">${escapeHtml(poll.question)}</div>
+  area.innerHTML = `
     ${optionsHtml}
-    ${hasVotedThisPoll ? `<div class="poll-voted-note">✓ Your vote is in — thanks!</div>` : ''}
+    ${hasVotedThisPoll ? `
+      <div class="poll-voted-note">✓ Your vote is in — thanks!</div>
+      <div class="poll-continue-btn" onclick="dismissPollTakeover()">Continue Browsing</div>
+    ` : ''}
   `;
-  banner.style.display = 'block';
 }
 
 async function castVote(pollId, optionIndex){
