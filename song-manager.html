@@ -786,15 +786,20 @@ async function deletePoll(pollId){
 }
 
 function openPollEditor(){
-  if(!POLL_BIN_ID){ alert('Set up poll storage first (see the button above).'); return; }
-  document.getElementById('fQuestion').value = '';
-  document.getElementById('optionsList').innerHTML = '';
-  optionRowCount = 0;
-  optionSelections = {};
-  addOptionRow();
-  addOptionRow();
-  document.getElementById('pollOverlay').classList.add('show');
-  document.getElementById('pollSheet').classList.add('show');
+  try{
+    if(!POLL_BIN_ID){ alert('Set up poll storage first (see the button above).'); return; }
+    document.getElementById('fQuestion').value = '';
+    document.getElementById('optionsList').innerHTML = '';
+    optionRowCount = 0;
+    optionSelections = {};
+    addOptionRow();
+    addOptionRow();
+    document.getElementById('pollOverlay').classList.add('show');
+    document.getElementById('pollSheet').classList.add('show');
+  } catch(err){
+    alert('New Poll error: ' + err.message);
+    console.error(err);
+  }
 }
 
 function closePollSheet(){
