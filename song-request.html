@@ -786,7 +786,7 @@ function renderPollTakeover(poll){
 
   const optionsHtml = poll.options.map((opt, i) => {
     const song = songs.find(s => s.id === opt.songId);
-    const label = song ? song.t + (song.a ? ' — ' + song.a : '') : 'Unknown song';
+    const label = opt.label || (song ? song.t + (song.a ? ' — ' + song.a : '') : 'Unknown song');
     const pct = totalVotes > 0 ? Math.round(((opt.votes || 0) / totalVotes) * 100) : 0;
     const votedForThis = hasVotedThisPoll && localStorage.getItem('voted_poll_' + poll.id) === String(i);
     const color = POLL_COLORS[i % POLL_COLORS.length];
@@ -795,6 +795,9 @@ function renderPollTakeover(poll){
     const fillHtml = showResults ? `<div class="poll-option-fill" style="width:${pct}%;"></div>` : '';
     const pctHtml = showResults ? `<span class="poll-option-pct">${pct}%</span>` : '';
     const clickAttr = hasVotedThisPoll ? '' : `onclick="castVote('${poll.id}', ${i})"`;
+    const requestLinkText = opt.label
+      ? `Want a specific song instead? Request one — $${prices.general}`
+      : `Want this one anyway? Request it — $${prices.general}`;
 
     return `
       <div class="poll-option${votedForThis ? ' voted-for' : ''}" style="background:${color};" ${clickAttr}>
@@ -804,7 +807,7 @@ function renderPollTakeover(poll){
           ${pctHtml}
         </div>
       </div>
-      ${hasVotedThisPoll && opt.songId ? `<div class="poll-request-link" onclick="event.stopPropagation(); openSheet('${opt.songId}')">Want this one anyway? Request it — $${prices.general}</div>` : ''}
+      ${hasVotedThisPoll && opt.songId ? `<div class="poll-request-link" onclick="event.stopPropagation(); openSheet('${opt.songId}')">${requestLinkText}</div>` : ''}
     `;
   }).join('');
 
