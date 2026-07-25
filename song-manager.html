@@ -52,6 +52,9 @@
   .draft-actions .btn{flex:1; padding:9px;}
   .btn-live{background:#ff4d4d; color:#fff;}
 
+  .poll-type-toggle{display:flex; gap:8px;}
+  .poll-type-btn{flex:1; padding:12px 8px; text-align:center; border-radius:9px; border:1px solid var(--line); background:var(--card-solid); color:var(--dim); font-weight:700; font-size:13px; cursor:pointer;}
+  .poll-type-btn.active{background:rgba(141,178,229,0.18); border-color:var(--accent); color:var(--accent);}
   .option-row{display:flex; align-items:flex-start; gap:8px; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--line);}
   .option-row:last-child{border-bottom:none;}
   .opt-row-main{flex:1; display:flex; flex-direction:column; gap:8px;}
@@ -193,6 +196,13 @@
 <div id="pollSheet">
   <div class="sheet-handle"></div>
   <h2>New Poll</h2>
+
+  <div class="field-label">What's this poll about?</div>
+  <div class="poll-type-toggle" id="pollTypeToggle">
+    <div class="poll-type-btn" data-type="genre" onclick="selectPollType('genre')">🎵 Genre</div>
+    <div class="poll-type-btn" data-type="artist" onclick="selectPollType('artist')">🎤 Artist</div>
+    <div class="poll-type-btn" data-type="song" onclick="selectPollType('song')">🎶 Song</div>
+  </div>
 
   <div class="field-label">Question</div>
   <input type="text" class="field" id="fQuestion" placeholder="e.g. Which Journey song should I play?">
@@ -787,10 +797,29 @@ async function deletePoll(pollId){
   if(ok) renderPollAll();
 }
 
+const QUESTION_TEMPLATES = {
+  genre: 'YOU PICK THE GENRE',
+  artist: 'WHO WOULD YOU RATHER HEAR',
+  song: 'WHAT SONG WOULD YOU LIKE TO HEAR'
+};
+
+function selectPollType(type){
+  const input = document.getElementById('fQuestion');
+  const currentVal = input.value.trim();
+  const isTemplateOrEmpty = !currentVal || Object.values(QUESTION_TEMPLATES).includes(currentVal);
+  if(isTemplateOrEmpty){
+    input.value = QUESTION_TEMPLATES[type];
+  }
+  document.querySelectorAll('.poll-type-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.type === type);
+  });
+}
+
 function openPollEditor(){
   try{
     if(!POLL_BIN_ID){ alert('Set up poll storage first (see the button above).'); return; }
     document.getElementById('fQuestion').value = '';
+    document.querySelectorAll('.poll-type-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById('optionsList').innerHTML = '';
     optionRowCount = 0;
     optionSelections = {};
