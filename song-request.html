@@ -36,9 +36,22 @@
   #search::placeholder{color:#8a8078;}
   #search:focus{outline:2px solid var(--accent); outline-offset:1px;}
   #sortSelect{width:100%; margin-top:8px; padding:11px 14px; font-size:16px; border-radius:10px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif;}
-  #tierFilter{width:100%; margin-top:8px; padding:11px 14px; font-size:16px; border-radius:10px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif;}
 
   .home-search-wrap{padding:20px 16px 6px;}
+
+  #pollBanner{margin:18px 16px 4px; padding:16px; border-radius:16px; background:linear-gradient(135deg, rgba(141,178,229,0.14), rgba(232,107,213,0.10)); border:1.5px solid var(--accent); box-shadow:0 0 24px rgba(141,178,229,0.25);}
+  .poll-eyebrow{font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent); font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:6px;}
+  .poll-live-dot{width:8px; height:8px; border-radius:50%; background:#ff4d4d; box-shadow:0 0 8px #ff4d4d; animation:pollDotPulse 1.2s ease-in-out infinite;}
+  @keyframes pollDotPulse{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+  .poll-question{font-size:16px; font-weight:700; color:var(--white); margin-bottom:12px; font-family:'Josefin Sans',sans-serif;}
+  .poll-option{position:relative; padding:11px 14px; border-radius:10px; background:var(--card-solid); border:1px solid var(--line); margin-bottom:8px; cursor:pointer; overflow:hidden;}
+  .poll-option-fill{position:absolute; top:0; left:0; bottom:0; background:rgba(141,178,229,0.22); transition:width 0.5s ease; z-index:0;}
+  .poll-option-content{position:relative; z-index:1; display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .poll-option-label{font-size:14px; font-weight:700; color:var(--white);}
+  .poll-option-pct{font-size:13px; font-weight:700; color:var(--accent); flex:0 0 auto;}
+  .poll-option.voted-for{border-color:var(--general);}
+  .poll-request-link{display:block; text-align:center; font-size:12px; color:var(--dim); margin-top:2px; text-decoration:underline; cursor:pointer;}
+  .poll-voted-note{font-size:12px; color:var(--dim); text-align:center; margin-top:8px;}
   #homeSearch{width:100%; padding:14px 16px; font-size:16px; border-radius:12px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif;}
   #homeSearch::placeholder{color:#8a8078;}
   #homeSearch:focus{outline:2px solid var(--accent); outline-offset:1px;}
@@ -183,6 +196,7 @@
 <div id="loadingState">Loading song list…</div>
 
 <div id="homeScreen" style="display:none;">
+  <div id="pollBanner" style="display:none;"></div>
   <div class="home-search-wrap">
     <input type="text" id="homeSearch" placeholder="Search song or artist…">
   </div>
@@ -201,11 +215,6 @@
       <option value="title-desc">Title Z → A</option>
       <option value="artist-asc">Artist A → Z</option>
       <option value="artist-desc">Artist Z → A</option>
-    </select>
-    <select id="tierFilter">
-      <option value="all">All Songs</option>
-      <option value="general">🎵 General</option>
-      <option value="special">⭐ Special</option>
     </select>
     <div class="chips" id="chips"></div>
   </div>
@@ -239,14 +248,19 @@ const PAYMENT_LINKS = {
   paypal: "https://www.paypal.com/paypalme/rickparma"
 };
 
-let DEFAULT_PRICES = { general: 5, special: 20 };
+let DEFAULT_PRICES = { general: 5 };
 let prices = { ...DEFAULT_PRICES };
 let songs = [];
 let ALL_TAGS = [];
+
+// Paste the Poll Bin ID created in the Poll Manager app here. Leave blank to disable live polls.
+const POLL_BIN_ID = "";
+let pollPollingTimer = null;
+let currentPollId = null;
+let hasVotedThisPoll = false;
 let activeTag = null;
 let searchTerm = "";
 let sortMode = "title-asc";
-let tierFilterValue = "all";
 
 /* ============ LOAD FROM CLOUD ============ */
 async function loadSongs(){
@@ -265,20 +279,14 @@ async function loadSongs(){
 
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('homeScreen').style.display = 'block';
-    updateTierFilterLabels();
     renderBubbles();
     renderChips();
     renderList();
+    startPollChecking();
   } catch(err){
     console.error(err);
     document.getElementById('loadingState').innerHTML = `Couldn't load the song list. Check your connection and refresh.`;
   }
-}
-
-function updateTierFilterLabels(){
-  const sel = document.getElementById('tierFilter');
-  sel.querySelector('option[value="general"]').textContent = `🎵 General ($${prices.general})`;
-  sel.querySelector('option[value="special"]').textContent = `⭐ Special ($${prices.special})`;
 }
 
 /* ============ RENDER: LIST ============ */
@@ -354,8 +362,7 @@ function renderChips(){
   });
 }
 
-function tierBadge(tier){
-  if(tier === 'special') return `<span class="badge special">⭐ $${prices.special}</span>`;
+function tierBadge(){
   return `<span class="badge general">🎵 $${prices.general}</span>`;
 }
 
@@ -377,9 +384,7 @@ function renderList(){
   let filtered = songs.filter(s => {
     const matchesTag = !activeTag || (s.tags||[]).includes(activeTag);
     const matchesTerm = !term || s.t.toLowerCase().includes(term) || (s.a||'').toLowerCase().includes(term);
-    const effectiveTier = s.tier === 'special' ? 'special' : 'general';
-    const matchesTier = tierFilterValue === 'all' || effectiveTier === tierFilterValue;
-    return matchesTag && matchesTerm && matchesTier;
+    return matchesTag && matchesTerm;
   });
   filtered = sortSongs(filtered);
 
@@ -396,7 +401,7 @@ function renderList(){
         <div class="song-title">${escapeHtml(s.t)}</div>
         <div class="song-artist">${escapeHtml(s.a || '')}</div>
       </div>
-      ${tierBadge(s.tier || 'general')}
+      ${tierBadge()}
     </div>`).join('');
 
   [...listEl.querySelectorAll('.song-row')].forEach(row => {
@@ -419,11 +424,6 @@ document.getElementById('sortSelect').addEventListener('change', e => {
   renderList();
 });
 
-document.getElementById('tierFilter').addEventListener('change', e => {
-  tierFilterValue = e.target.value;
-  renderList();
-});
-
 /* ============ REQUEST SHEET ============ */
 const WHEEL_SLICES = ['GENERAL','FREE','GENERAL','FREE','GENERAL','FREE','GENERAL','FREE','GENERAL','FREE'];
 let wheelSpinning = false;
@@ -432,7 +432,6 @@ let wheelRotationTotal = 0;
 function openSheet(id){
   const s = songs.find(x => x.id === id);
   if(!s) return;
-  const tier = s.tier === 'special' ? 'special' : 'general'; // legacy "free" tags now fold into general
 
   document.getElementById('sheetTitle').textContent = s.t;
   document.getElementById('sheetArtist').textContent = s.a || '';
@@ -442,45 +441,21 @@ function openSheet(id){
     <input type="text" id="reqName" class="name-input" placeholder="So I can give you a shout-out on the mic!">
   `;
 
-  let tierLineHtml = '';
-  let bodyHtml = '';
+  const price = prices.general;
+  const tierLineHtml = `<span class="badge general">🎵 Song Request</span> <span class="price-tag">$${price}</span>`;
 
-  const venmoNote = encodeURIComponent(`${s.t} request`);
-
-  if(tier === 'special'){
-    const price = prices.special;
-    tierLineHtml = `<span class="badge special">⭐ Special Request</span> <span class="price-tag">$${price}</span>`;
-    const venmoAppLink = `venmo://paycharge?txn=pay&recipients=RickParma&amount=${price}&note=${venmoNote}`;
-    const cashAppLink = `${PAYMENT_LINKS.cashapp}/${price}`;
-    const paypalLink = `${PAYMENT_LINKS.paypal}/${price}`;
-
-    bodyHtml = `
-      ${nameFieldHtml}
-      <div class="section-label">Step 2 — Send the tip ($${price})</div>
-      <a class="btn btn-venmo" href="${venmoAppLink}" target="_top">Pay $${price} with Venmo</a>
-      <a class="btn btn-cashapp" href="${cashAppLink}" target="_blank">Pay $${price} with Cash App</a>
-      <a class="btn btn-paypal" href="${paypalLink}" target="_blank">Pay $${price} with PayPal</a>
-
-      <div class="section-label">Step 3 — Send the request</div>
-      <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}')">📱 I've Sent Payment — Text Request</a>
-    `;
-  } else {
-    const price = prices.general;
-    tierLineHtml = `<span class="badge general">🎵 Song Request</span> <span class="price-tag">$${price}</span>`;
-
-    bodyHtml = `
-      ${nameFieldHtml}
-      <div class="section-label">Step 2 — Spin to Win a Free Song!</div>
-      <div class="wheel-wrap">
-        <div class="wheel-pointer">▼</div>
-        <div class="wheel-glow"></div>
-        <div class="wheel" id="spinWheel">${buildWheelLabels(price)}${buildWheelSparkles()}${buildWheelRivets()}</div>
-        <div class="wheel-center-dot"></div>
-      </div>
-      <button class="btn btn-text" id="spinBtn" onclick="spinWheel('${s.id}', ${price})">🎡 Spin to Win!</button>
-      <div id="spinResultArea"></div>
-    `;
-  }
+  const bodyHtml = `
+    ${nameFieldHtml}
+    <div class="section-label">Step 2 — Spin to Win a Free Song!</div>
+    <div class="wheel-wrap">
+      <div class="wheel-pointer">▼</div>
+      <div class="wheel-glow"></div>
+      <div class="wheel" id="spinWheel">${buildWheelLabels(price)}${buildWheelSparkles()}${buildWheelRivets()}</div>
+      <div class="wheel-center-dot"></div>
+    </div>
+    <button class="btn btn-text" id="spinBtn" onclick="spinWheel('${s.id}', ${price})">🎡 Spin to Win!</button>
+    <div id="spinResultArea"></div>
+  `;
 
   document.getElementById('sheetTierLine').innerHTML = tierLineHtml;
   document.getElementById('sheetBody').innerHTML = bodyHtml;
@@ -726,6 +701,98 @@ function prepareSend(el, id){
 function closeSheet(){
   document.getElementById('overlay').classList.remove('show');
   document.getElementById('sheet').classList.remove('show');
+}
+
+/* ============ LIVE POLLS ============ */
+function startPollChecking(){
+  if(!POLL_BIN_ID) return; // polls feature not set up yet
+  checkForLivePoll();
+  pollPollingTimer = setInterval(checkForLivePoll, 4000);
+}
+
+async function fetchPollData(){
+  const res = await fetch(`${JSONBIN_BASE}/${POLL_BIN_ID}/latest`, { headers: { "X-Master-Key": MASTER_KEY } });
+  const data = await res.json();
+  return data.record || { polls: [], activePollId: null };
+}
+
+async function checkForLivePoll(){
+  try{
+    const record = await fetchPollData();
+    const activePoll = (record.polls || []).find(p => p.id === record.activePollId && p.status === 'live');
+
+    if(!activePoll){
+      currentPollId = null;
+      document.getElementById('pollBanner').style.display = 'none';
+      return;
+    }
+
+    currentPollId = activePoll.id;
+    const votedKey = 'voted_poll_' + activePoll.id;
+    hasVotedThisPoll = !!localStorage.getItem(votedKey);
+    renderPollBanner(activePoll);
+  } catch(err){
+    console.error('Poll check failed:', err);
+  }
+}
+
+function renderPollBanner(poll){
+  const banner = document.getElementById('pollBanner');
+  const totalVotes = poll.options.reduce((sum, o) => sum + (o.votes || 0), 0);
+
+  const optionsHtml = poll.options.map((opt, i) => {
+    const song = songs.find(s => s.id === opt.songId);
+    const label = song ? song.t + (song.a ? ' — ' + song.a : '') : 'Unknown song';
+    const pct = totalVotes > 0 ? Math.round(((opt.votes || 0) / totalVotes) * 100) : 0;
+    const votedForThis = hasVotedThisPoll && localStorage.getItem('voted_poll_' + poll.id) === String(i);
+
+    const showResults = hasVotedThisPoll;
+    const fillHtml = showResults ? `<div class="poll-option-fill" style="width:${pct}%;"></div>` : '';
+    const pctHtml = showResults ? `<span class="poll-option-pct">${pct}%</span>` : '';
+    const clickAttr = hasVotedThisPoll ? '' : `onclick="castVote('${poll.id}', ${i})"`;
+
+    return `
+      <div class="poll-option${votedForThis ? ' voted-for' : ''}" ${clickAttr}>
+        ${fillHtml}
+        <div class="poll-option-content">
+          <span class="poll-option-label">${escapeHtml(label)}</span>
+          ${pctHtml}
+        </div>
+      </div>
+      ${hasVotedThisPoll && opt.songId ? `<div class="poll-request-link" onclick="event.stopPropagation(); openSheet('${opt.songId}')">Want this one anyway? Request it — $${prices.general}</div>` : ''}
+    `;
+  }).join('');
+
+  banner.innerHTML = `
+    <div class="poll-eyebrow"><span class="poll-live-dot"></span> LIVE POLL</div>
+    <div class="poll-question">${escapeHtml(poll.question)}</div>
+    ${optionsHtml}
+    ${hasVotedThisPoll ? `<div class="poll-voted-note">✓ Your vote is in — thanks!</div>` : ''}
+  `;
+  banner.style.display = 'block';
+}
+
+async function castVote(pollId, optionIndex){
+  if(hasVotedThisPoll) return;
+  hasVotedThisPoll = true; // optimistic lock so a double-tap can't double-vote
+  localStorage.setItem('voted_poll_' + pollId, String(optionIndex));
+
+  try{
+    const record = await fetchPollData();
+    const poll = (record.polls || []).find(p => p.id === pollId);
+    if(poll && poll.status === 'live'){
+      poll.options[optionIndex].votes = (poll.options[optionIndex].votes || 0) + 1;
+      await fetch(`${JSONBIN_BASE}/${POLL_BIN_ID}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY },
+        body: JSON.stringify(record)
+      });
+    }
+  } catch(err){
+    console.error('Vote failed to save:', err);
+  }
+
+  checkForLivePoll();
 }
 
 /* ============ INIT ============ */
