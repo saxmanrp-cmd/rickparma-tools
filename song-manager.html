@@ -760,8 +760,7 @@ function renderDraftList(){
 
   const prevValue = select.value;
   select.innerHTML = selectable.map(p => {
-    const usedTag = p.status === 'closed' ? ' (used before)' : '';
-    return `<option value="${p.id}">${escapeHtml(p.question)}${usedTag}</option>`;
+    return `<option value="${p.id}">${escapeHtml(p.question)}</option>`;
   }).join('');
 
   if(prevValue && selectable.some(p => p.id === prevValue)){
