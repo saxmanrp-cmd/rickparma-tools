@@ -460,7 +460,7 @@ document.getElementById('sortSelect').addEventListener('change', e => {
 });
 
 /* ============ REQUEST SHEET ============ */
-const WHEEL_SLICES = ['GENERAL','FREE','GENERAL','BOGO','GENERAL','FREE','GENERAL','BOGO','FREE','BOGO'];
+const WHEEL_SLICES = ['GENERAL','FREE','GENERAL','FREE','GENERAL','FREE','GENERAL','FREE','GENERAL','BOGO'];
 let wheelSpinning = false;
 let wheelRotationTotal = 0;
 
@@ -783,7 +783,7 @@ function prepareSendBogo(el, songAId, songBId){
   const name = nameInput ? nameInput.value.trim() : '';
   const namePart = (name ? name : 'Someone').toUpperCase();
 
-  let message = `${namePart} requested a BOGO song request!!!\n${sA.t.toUpperCase()}`;
+  let message = `${namePart} SPUN a BOGO song request!!!\n${sA.t.toUpperCase()}`;
   if(sA.a) message += ` by ${sA.a.toUpperCase()}`;
   message += `\n+\n${sB.t.toUpperCase()}`;
   if(sB.a) message += ` by ${sB.a.toUpperCase()}`;
