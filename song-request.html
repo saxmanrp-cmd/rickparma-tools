@@ -55,6 +55,7 @@
     display:flex; align-items:center; justify-content:center; cursor:pointer;
   }
   .poll-takeover-inner{max-width:480px; margin:0 auto; width:100%;}
+  .poll-title{font-size:38px; font-weight:900; letter-spacing:1px; color:#fff; text-align:center; font-family:'Josefin Sans',sans-serif; margin-bottom:14px; text-shadow:0 0 20px rgba(255,215,0,0.5), 0 2px 10px rgba(0,0,0,0.6);}
   .poll-eyebrow{font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#fff; font-weight:700; margin-bottom:10px; display:flex; align-items:center; justify-content:center; gap:8px;}
   .poll-live-dot{width:10px; height:10px; border-radius:50%; background:#ff4d4d; box-shadow:0 0 10px #ff4d4d; animation:pollDotPulse 1.2s ease-in-out infinite;}
   @keyframes pollDotPulse{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
@@ -224,6 +225,7 @@
 <div id="pollTakeover" style="display:none;">
   <button id="pollCloseBtn" onclick="dismissPollTakeover()">✕</button>
   <div class="poll-takeover-inner">
+    <div class="poll-title">JOIN THE FUN!</div>
     <div class="poll-eyebrow"><span class="poll-live-dot"></span> LIVE POLL</div>
     <div class="poll-question" id="pollQuestionText"></div>
     <div id="pollOptionsArea"></div>
@@ -697,14 +699,14 @@ function revealSpinResult(outcome, songId, price){
     const cashAppLink = `${PAYMENT_LINKS.cashapp}/${price}`;
     const paypalLink = `${PAYMENT_LINKS.paypal}/${price}`;
     area.innerHTML = `
-      <div class="spin-result spin-result-general">You spun $${price} — text your request now, then send the tip.</div>
-      <div class="section-label">Step 3 — Send the request</div>
-      <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}')">📱 Text This Request</a>
-
-      <div class="section-label">Step 4 — Send the tip ($${price})</div>
+      <div class="spin-result spin-result-general">You spun $${price} — send the tip below, then text your request.</div>
+      <div class="section-label">Step 3 — Send the tip ($${price})</div>
       <a class="btn btn-venmo" href="${venmoAppLink}" target="_top">Pay $${price} with Venmo</a>
       <a class="btn btn-cashapp" href="${cashAppLink}" target="_blank">Pay $${price} with Cash App</a>
       <a class="btn btn-paypal" href="${paypalLink}" target="_blank">Pay $${price} with PayPal</a>
+
+      <div class="section-label">Step 4 — Send the request</div>
+      <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}')">📱 Text This Request</a>
     `;
   }
 }
