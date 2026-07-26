@@ -87,37 +87,30 @@
     background:radial-gradient(ellipse at 50% 38%, rgba(0,0,0,0) 45%, rgba(0,0,0,.55) 100%);
   }
   video, .shot-preview{width:100%; height:100%; object-fit:cover; display:block;}
-  .rec-ring{
-    position:absolute; top:14px; left:14px; z-index:3; display:none;
-    align-items:center; gap:6px; background:rgba(19,1,1,.55); backdrop-filter:blur(3px);
-    padding:5px 10px 5px 8px; border-radius:20px; font-size:.78rem;
-    font-family:'Josefin Sans',sans-serif; letter-spacing:.03em;
-  }
-  .rec-dot{width:9px; height:9px; border-radius:50%; background:#e5527a;
-    animation:pulse 1s infinite ease-in-out;}
-  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 
-  .controls{display:flex; align-items:center; justify-content:center; gap:26px;
+  .controls{display:flex; align-items:center; justify-content:center; gap:22px;
     margin-top:22px; width:100%; max-width:420px;}
-  .flip-btn, .mode-btn{
+  .flip-btn{
     background:transparent; border:1px solid rgba(141,178,229,.5); color:var(--accent);
-    width:46px; height:46px; border-radius:50%; font-size:1.1rem; cursor:pointer;
+    width:46px; height:46px; border-radius:50%; font-size:1.1rem; cursor:pointer; flex-shrink:0;
   }
   .shutter{
     width:78px; height:78px; border-radius:50%; border:4px solid var(--white);
-    background:var(--accent); cursor:pointer; position:relative;
+    background:var(--accent); cursor:pointer; position:relative; flex-shrink:0;
     box-shadow:0 6px 18px rgba(0,0,0,.5);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Josefin Sans',sans-serif; font-weight:700; font-size:1.3rem; color:#0d1420;
   }
-  .shutter.video-armed{background:#e5527a;}
+  .shutter.video-armed{background:#e5527a; color:var(--white);}
   .shutter:active{transform:scale(.94);}
-  .mode-row{display:flex; gap:10px; margin-top:14px; font-family:'Josefin Sans',sans-serif;}
-  .mode-row button{
-    background:none; border:none; color:var(--white); opacity:.55; font-size:.9rem;
-    letter-spacing:.04em; padding:6px 10px; cursor:pointer; border-bottom:2px solid transparent;
-  }
-  .mode-row button.active{opacity:1; border-color:var(--accent); color:var(--accent);}
+  .shutter:disabled{cursor:default;}
 
-  .hint{font-size:.82rem; color:#c9b8b8; margin-top:14px; text-align:center; max-width:340px;}
+  .mode-toggle{display:flex; flex-direction:column; gap:8px; flex-shrink:0;}
+  .mode-toggle button{
+    width:46px; height:46px; border-radius:50%; cursor:pointer; font-size:1.15rem;
+    background:transparent; border:1px solid rgba(141,178,229,.4); color:var(--white); opacity:.55;
+  }
+  .mode-toggle button.active{opacity:1; background:var(--accent); color:#0d1420; border-color:var(--accent);}
 
   /* ---- polaroid review card ---- */
   .polaroid-wrap{display:none; width:100%; max-width:340px; margin-top:10px;}
@@ -162,21 +155,16 @@
 
   <div class="stage" id="stage">
     <video id="preview" autoplay playsinline muted></video>
-    <div class="rec-ring" id="recRing"><span class="rec-dot"></span><span id="recTime">0:00</span></div>
   </div>
 
   <div class="controls">
     <button class="flip-btn" id="flipBtn" aria-label="Switch camera">⟲</button>
-    <button class="shutter" id="shutterBtn" aria-label="Capture"></button>
-    <div style="width:46px;"></div>
+    <button class="shutter" id="shutterBtn" aria-label="Capture"><span id="shutterCount"></span></button>
+    <div class="mode-toggle">
+      <button id="photoModeBtn" class="active" aria-label="Photo mode">📷</button>
+      <button id="videoModeBtn" aria-label="Video mode">🎥</button>
+    </div>
   </div>
-
-  <div class="mode-row">
-    <button id="photoModeBtn" class="active">PHOTO</button>
-    <button id="videoModeBtn">VIDEO</button>
-  </div>
-
-  <p class="hint">Tap once for a photo. In video mode, tap to start and tap again to stop (max <span id="maxSecLabel"></span>s).</p>
 
   <div class="polaroid-wrap" id="polaroidWrap">
     <div class="polaroid">
@@ -197,8 +185,6 @@
   </div>
 
 <script>
-document.getElementById('maxSecLabel').textContent = CONFIG.maxVideoSeconds;
-
 let stream = null;
 let facingMode = 'environment';
 let mode = 'photo'; // 'photo' | 'video'
@@ -215,8 +201,7 @@ const shutterBtn = document.getElementById('shutterBtn');
 const flipBtn = document.getElementById('flipBtn');
 const photoModeBtn = document.getElementById('photoModeBtn');
 const videoModeBtn = document.getElementById('videoModeBtn');
-const recRing = document.getElementById('recRing');
-const recTime = document.getElementById('recTime');
+const shutterCount = document.getElementById('shutterCount');
 const polaroidWrap = document.getElementById('polaroidWrap');
 const polaroidMedia = document.getElementById('polaroidMedia');
 const stageEl = document.getElementById('stage');
@@ -237,7 +222,6 @@ async function startCamera(){
     document.getElementById('deniedMsg').style.display = 'block';
     stageEl.style.display = 'none';
     document.querySelector('.controls').style.display = 'none';
-    document.querySelector('.mode-row').style.display = 'none';
   }
 }
 function stopCamera(){
@@ -261,7 +245,8 @@ function setMode(m){
 
 shutterBtn.addEventListener('click', ()=>{
   if(mode === 'photo') takePhoto();
-  else recording ? stopRecording() : startRecording();
+  else if(!recording) startRecording();
+  // while already recording, ignore further taps — it auto-stops on its own
 });
 
 function takePhoto(){
@@ -296,28 +281,29 @@ function startRecording(){
   };
   mediaRecorder.start();
   recording = true;
+  shutterBtn.disabled = true;
+  shutterBtn.classList.add('video-armed');
   recSeconds = 0;
-  recRing.style.display = 'flex';
-  recTime.textContent = '0:00';
+  let remaining = CONFIG.maxVideoSeconds;
+  shutterCount.textContent = remaining;
   recTimerInterval = setInterval(()=>{
     recSeconds++;
-    const m = Math.floor(recSeconds/60), s = recSeconds%60;
-    recTime.textContent = m+':'+String(s).padStart(2,'0');
+    remaining = CONFIG.maxVideoSeconds - recSeconds;
+    shutterCount.textContent = remaining > 0 ? remaining : '';
     if(recSeconds >= CONFIG.maxVideoSeconds) stopRecording();
   }, 1000);
 }
 function stopRecording(){
   if(mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
   recording = false;
+  shutterBtn.disabled = false;
+  shutterCount.textContent = '';
   clearInterval(recTimerInterval);
-  recRing.style.display = 'none';
 }
 
 function showPolaroid(url, kind){
   stopCamera();
   document.querySelector('.controls').style.display = 'none';
-  document.querySelector('.mode-row').style.display = 'none';
-  document.querySelector('.hint').style.display = 'none';
   stageEl.style.display = 'none';
   polaroidMedia.innerHTML = kind === 'image'
     ? `<img src="${url}" alt="your capture">`
@@ -332,8 +318,6 @@ document.getElementById('retakeBtn').addEventListener('click', ()=>{
   polaroidWrap.style.display = 'none';
   stageEl.style.display = '';
   document.querySelector('.controls').style.display = 'flex';
-  document.querySelector('.mode-row').style.display = 'flex';
-  document.querySelector('.hint').style.display = 'block';
   nameInput.value = '';
   startCamera();
 });
@@ -364,8 +348,6 @@ async function sendToRick(){
       polaroidWrap.style.display = 'none';
       capturedBlob = null; capturedKind = null;
       document.querySelector('.controls').style.display = 'flex';
-      document.querySelector('.mode-row').style.display = 'flex';
-      document.querySelector('.hint').style.display = 'block';
       stageEl.style.display = '';
       nameInput.value = '';
       sendBtn.disabled = false;
