@@ -377,6 +377,16 @@
         </div>
         <div class="char-count" id="statsLine">Characters: 0 · Parts: 0 · Est. cost: $0.00</div>
 
+        <label for="blastPhoto">Attach a photo (optional — sends as MMS)</label>
+        <input type="file" id="blastPhoto" accept="image/*">
+        <div id="blastPhotoPreviewWrap" class="hidden" style="margin-bottom:12px;">
+          <img id="blastPhotoPreview" style="max-width:100%; max-height:180px; border-radius:8px; display:block; margin-bottom:6px;">
+          <span class="subtitle" id="blastPhotoInfo"></span>
+          &nbsp;·&nbsp;
+          <button class="action-link" id="blastPhotoRemoveBtn">remove photo</button>
+        </div>
+        <div class="message-status" id="blastPhotoStatus"></div>
+
         <button class="btn" id="sendBtn">Send Now</button>
         <div class="message-status" id="sendStatus"></div>
       </div>
@@ -399,6 +409,15 @@
         <h2 id="threadName">Conversation</h2>
         <div class="thread-scroll" id="threadScroll"></div>
         <textarea id="replyMessage" placeholder="Type a reply..." style="min-height:70px;"></textarea>
+        <label for="replyPhoto">Attach a photo (optional — sends as MMS)</label>
+        <input type="file" id="replyPhoto" accept="image/*">
+        <div id="replyPhotoPreviewWrap" class="hidden" style="margin-bottom:12px;">
+          <img id="replyPhotoPreview" style="max-width:100%; max-height:180px; border-radius:8px; display:block; margin-bottom:6px;">
+          <span class="subtitle" id="replyPhotoInfo"></span>
+          &nbsp;·&nbsp;
+          <button class="action-link" id="replyPhotoRemoveBtn">remove photo</button>
+        </div>
+        <div class="message-status" id="replyPhotoStatus"></div>
         <button class="btn" id="replySendBtn">Send Reply</button>
         <div class="message-status" id="replyStatus"></div>
       </div>
@@ -757,6 +776,113 @@
 
   // ================= BLAST =================
 
+  // ---- Image compression + upload (shared) ----
+
+  async function compressImage(file, maxDim = 1600, maxBytes = 600 * 1024) {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = reject;
+      im.src = dataUrl;
+    });
+
+    let { width, height } = img;
+    if (width > maxDim || height > maxDim) {
+      if (width > height) {
+        height = Math.round(height * (maxDim / width));
+        width = maxDim;
+      } else {
+        width = Math.round(width * (maxDim / height));
+        height = maxDim;
+      }
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+
+    let quality = 0.85;
+    let blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+    while (blob.size > maxBytes && quality > 0.3) {
+      quality -= 0.1;
+      blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+    }
+
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    return { base64, blob, contentType: 'image/jpeg' };
+  }
+
+  async function uploadPhoto(file, statusEl) {
+    statusEl.className = 'message-status';
+    statusEl.textContent = 'Compressing photo...';
+    try {
+      const { base64, blob, contentType } = await compressImage(file);
+      statusEl.textContent = 'Uploading photo...';
+      const res = await apiFetch('/api/media/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: base64, contentType }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        statusEl.className = 'message-status success';
+        statusEl.textContent = `Ready (${(blob.size / 1024).toFixed(0)}KB).`;
+        return { url: data.url, previewUrl: URL.createObjectURL(blob), size: blob.size };
+      } else {
+        statusEl.className = 'message-status error';
+        statusEl.textContent = data.error || 'Upload failed.';
+        return null;
+      }
+    } catch (e) {
+      statusEl.className = 'message-status error';
+      statusEl.textContent = 'Could not process that image.';
+      return null;
+    }
+  }
+
+  // ---- Blast photo attach ----
+
+  let blastMediaUrl = null;
+  const blastPhoto = document.getElementById('blastPhoto');
+  const blastPhotoPreviewWrap = document.getElementById('blastPhotoPreviewWrap');
+  const blastPhotoPreview = document.getElementById('blastPhotoPreview');
+  const blastPhotoInfo = document.getElementById('blastPhotoInfo');
+  const blastPhotoStatus = document.getElementById('blastPhotoStatus');
+  const blastPhotoRemoveBtn = document.getElementById('blastPhotoRemoveBtn');
+
+  blastPhoto.addEventListener('change', async () => {
+    const file = blastPhoto.files[0];
+    if (!file) return;
+    const result = await uploadPhoto(file, blastPhotoStatus);
+    if (result) {
+      blastMediaUrl = result.url;
+      blastPhotoPreview.src = result.previewUrl;
+      blastPhotoInfo.textContent = `${(result.size / 1024).toFixed(0)}KB, ready to send`;
+      blastPhotoPreviewWrap.classList.remove('hidden');
+    }
+  });
+
+  blastPhotoRemoveBtn.addEventListener('click', () => {
+    blastMediaUrl = null;
+    blastPhoto.value = '';
+    blastPhotoPreviewWrap.classList.add('hidden');
+    blastPhotoStatus.textContent = '';
+  });
+
   const blastMessage = document.getElementById('blastMessage');
   const statsLine = document.getElementById('statsLine');
   const sendBtn = document.getElementById('sendBtn');
@@ -899,9 +1025,9 @@
 
   sendBtn.addEventListener('click', async () => {
     const message = blastMessage.value.trim();
-    if (!message) return;
+    if (!message && !blastMediaUrl) return;
     const recipients = currentRecipients();
-    if (!confirm(`Send this message to ${recipients.length} recipient(s)?`)) return;
+    if (!confirm(`Send this ${blastMediaUrl ? 'MMS' : 'message'} to ${recipients.length} recipient(s)?`)) return;
 
     sendBtn.disabled = true;
     sendStatus.className = 'message-status';
@@ -915,6 +1041,7 @@
           message,
           tags: (allActiveCheck.checked || selectedTags.length === 0) ? [] : selectedTags,
           extraNumbers: manualNumbers,
+          mediaUrl: blastMediaUrl,
         }),
       });
       const data = await res.json();
@@ -924,6 +1051,10 @@
         blastMessage.value = '';
         manualNumbers = [];
         renderManualNumbers();
+        blastMediaUrl = null;
+        blastPhoto.value = '';
+        blastPhotoPreviewWrap.classList.add('hidden');
+        blastPhotoStatus.textContent = '';
         updateStatsLine();
         updateRecipientSummary();
       } else {
@@ -950,6 +1081,33 @@
   const replySendBtn = document.getElementById('replySendBtn');
   const replyStatus = document.getElementById('replyStatus');
   const backToConvosBtn = document.getElementById('backToConvosBtn');
+
+  let replyMediaUrl = null;
+  const replyPhoto = document.getElementById('replyPhoto');
+  const replyPhotoPreviewWrap = document.getElementById('replyPhotoPreviewWrap');
+  const replyPhotoPreview = document.getElementById('replyPhotoPreview');
+  const replyPhotoInfo = document.getElementById('replyPhotoInfo');
+  const replyPhotoStatus = document.getElementById('replyPhotoStatus');
+  const replyPhotoRemoveBtn = document.getElementById('replyPhotoRemoveBtn');
+
+  replyPhoto.addEventListener('change', async () => {
+    const file = replyPhoto.files[0];
+    if (!file) return;
+    const result = await uploadPhoto(file, replyPhotoStatus);
+    if (result) {
+      replyMediaUrl = result.url;
+      replyPhotoPreview.src = result.previewUrl;
+      replyPhotoInfo.textContent = `${(result.size / 1024).toFixed(0)}KB, ready to send`;
+      replyPhotoPreviewWrap.classList.remove('hidden');
+    }
+  });
+
+  replyPhotoRemoveBtn.addEventListener('click', () => {
+    replyMediaUrl = null;
+    replyPhoto.value = '';
+    replyPhotoPreviewWrap.classList.add('hidden');
+    replyPhotoStatus.textContent = '';
+  });
 
   async function loadConversations() {
     try {
@@ -991,7 +1149,10 @@
       const messages = data.messages || [];
       threadScroll.innerHTML = messages.map(m => `
         <div class="thread-bubble ${m.dir}">
-          ${m.body}
+          ${m.media ? (m.dir === 'out'
+            ? `<img src="${m.media}" style="max-width:100%; border-radius:6px; margin-bottom:4px; display:block;">`
+            : `<div class="subtitle" style="margin-bottom:4px;">📷 Photo received</div>`) : ''}
+          ${m.body || ''}
           <div class="thread-time">${new Date(m.at).toLocaleString()}</div>
         </div>
       `).join('');
@@ -1009,7 +1170,7 @@
 
   replySendBtn.addEventListener('click', async () => {
     const message = replyMessage.value.trim();
-    if (!message || !currentThreadPhone) return;
+    if ((!message && !replyMediaUrl) || !currentThreadPhone) return;
     replySendBtn.disabled = true;
     replyStatus.className = 'message-status';
     replyStatus.textContent = 'Sending...';
@@ -1017,11 +1178,15 @@
       const res = await apiFetch('/api/conversations/reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: currentThreadPhone, message }),
+        body: JSON.stringify({ phone: currentThreadPhone, message, mediaUrl: replyMediaUrl }),
       });
       const data = await res.json();
       if (res.ok) {
         replyMessage.value = '';
+        replyMediaUrl = null;
+        replyPhoto.value = '';
+        replyPhotoPreviewWrap.classList.add('hidden');
+        replyPhotoStatus.textContent = '';
         replyStatus.className = 'message-status success';
         replyStatus.textContent = 'Sent.';
         openThread(currentThreadPhone);
