@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Song Manager — Rick Parma</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@500;600;700&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#130101;
+    --card-solid:#1c0808;
+    --accent:#8DB2E5;
+    --white:#F5F3F0;
+    --dim:#C9C2BC;
+    --line:rgba(245,243,240,0.12);
+    --free:#8DB2E5;
+    --general:#E8B84B;
+    --special:#E86B6B;
+    --danger:#E86B6B;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--white);font-family:'Lato',sans-serif;}
+  body{background:linear-gradient(180deg, #130101 0%, #0c0000 100%); min-height:100vh; padding-bottom:90px;}
+  h1,h2,h3{font-family:'Josefin Sans',sans-serif; margin:0;}
+
+  header{padding:24px 20px 16px; border-bottom:1px solid var(--line);}
+  header .eyebrow{letter-spacing:2px; text-transform:uppercase; font-size:11px; color:var(--accent); font-weight:700; margin-bottom:6px;}
+  header h1{font-size:24px;}
+  #statusLine{margin-top:10px; font-size:12px;}
+  .pill{display:inline-block; padding:4px 10px; border-radius:999px; font-weight:700;}
+  .pill-ok{background:rgba(141,178,229,0.15); color:var(--accent);}
+  .pill-warn{background:rgba(232,107,107,0.15); color:var(--special);}
+
+  .setup-box{margin-top:14px; padding:14px; border:1px solid var(--line); border-radius:12px; background:var(--card-solid);}
+
+  .section{padding:18px 20px; border-bottom:1px solid var(--line);}
+  .section-title{font-family:'Josefin Sans',sans-serif; font-size:16px; margin-bottom:12px;}
+  .pill-live{background:rgba(255,77,77,0.18); color:#ff4d4d;}
+
+  .live-card{padding:16px; border-radius:14px; background:rgba(255,77,77,0.08); border:1.5px solid #ff4d4d; margin-bottom:12px;}
+  .live-card .q{font-weight:700; font-size:15px; margin-bottom:10px;}
+  .result-row{display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:13px;}
+  .result-bar-wrap{flex:1; height:20px; background:var(--card-solid); border-radius:6px; overflow:hidden; border:1px solid var(--line);}
+  .result-bar{height:100%; background:var(--accent); transition:width 0.4s ease;}
+  .result-count{flex:0 0 auto; font-weight:700; width:36px; text-align:right;}
+
+  .saved-poll-actions{display:flex; gap:8px; margin-top:8px;}
+  .saved-poll-actions .btn{flex:1;}
+  .btn-live{background:#ff4d4d; color:#fff;}
+
+  .poll-type-toggle{display:flex; gap:8px;}
+  .poll-type-btn{flex:1; padding:12px 8px; text-align:center; border-radius:9px; border:1px solid var(--line); background:var(--card-solid); color:var(--dim); font-weight:700; font-size:13px; cursor:pointer;}
+  .poll-type-btn.active{background:rgba(141,178,229,0.18); border-color:var(--accent); color:var(--accent);}
+  select.field{width:100%; padding:11px; font-size:15px; border-radius:9px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif;}
+  .opt-placeholder{color:var(--dim); font-size:13px; padding:12px 0;}
+
+  .option-picker-list{max-height:280px; overflow-y:auto; border:1px solid var(--line); border-radius:10px; margin-top:8px;}
+  .option-pick-item{display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); cursor:pointer;}
+  .option-pick-item:last-child{border-bottom:none;}
+  .option-pick-item:active{background:rgba(141,178,229,0.08);}
+  .option-pick-item.selected{background:rgba(141,178,229,0.16);}
+  .opt-pick-check{flex:0 0 auto; width:22px; height:22px; border-radius:50%; border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#0c1420;}
+  .option-pick-item.selected .opt-pick-check{background:var(--accent); border-color:var(--accent);}
+  .opt-pick-label{font-size:14px; color:var(--white); flex:1;}
+  .selected-count-label{font-size:12px; color:var(--dim); margin-top:8px; text-align:right;}
+
+  .setup-box p{font-size:13px; color:var(--dim); line-height:1.5; margin:0 0 10px;}
+  .setup-box input{width:100%; padding:10px; font-size:16px; border-radius:8px; border:1px solid var(--line); background:#130101; color:var(--white); margin-bottom:10px;}
+
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:11px 16px; border-radius:10px; font-weight:700; font-size:14px; border:none; cursor:pointer; font-family:'Lato',sans-serif;}
+  .btn-primary{background:var(--accent); color:#0c1420;}
+  .btn-outline{background:transparent; border:1px solid var(--line); color:var(--white);}
+  .btn-danger{background:rgba(232,107,107,0.15); color:var(--special); border:1px solid var(--special);}
+  .btn-full{width:100%;}
+
+  .controls{padding:16px; border-bottom:1px solid var(--line);}
+  #search{width:100%; padding:12px 14px; font-size:16px; border-radius:10px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); margin-bottom:10px;}
+  #sortSelect{width:100%; padding:11px 14px; font-size:16px; border-radius:10px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); margin-bottom:10px; font-family:'Lato',sans-serif;}
+  .price-settings{display:flex; gap:10px; margin-top:4px;}
+  .csv-row{display:flex; gap:10px; margin-top:10px;}
+  .csv-row .btn{flex:1;}
+  .price-settings label{flex:1; font-size:12px; color:var(--dim);}
+  .price-settings input{width:100%; margin-top:4px; padding:10px; font-size:16px; border-radius:8px; border:1px solid var(--line); background:var(--card-solid); color:var(--white);}
+  .filter-chips{display:flex; gap:8px; overflow-x:auto; padding-top:10px; scrollbar-width:none;}
+  .filter-chips::-webkit-scrollbar{display:none;}
+  .chip{flex:0 0 auto; padding:6px 12px; border-radius:999px; border:1px solid var(--line); background:var(--card-solid); color:var(--dim); font-size:12px; font-weight:700; white-space:nowrap; cursor:pointer;}
+  .chip.active{background:var(--accent); color:#0c1420; border-color:var(--accent);}
+
+  #countRow{padding:12px 16px 0; font-size:12px; color:var(--dim);}
+  #list{padding:6px 16px 20px;}
+  .song-row{display:flex; align-items:center; gap:10px; padding:13px 4px; border-bottom:1px solid var(--line); cursor:pointer;}
+  .song-info{flex:1; min-width:0;}
+  .song-title{font-size:15px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .song-meta{font-size:12px; color:var(--dim); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .badge{flex:0 0 auto; font-size:11px; font-weight:700; padding:5px 9px; border-radius:7px; border:1px solid;}
+  .badge.free{color:var(--free); border-color:var(--free); background:rgba(141,178,229,0.1);}
+  .badge.general{color:var(--general); border-color:var(--general); background:rgba(232,184,75,0.1);}
+  .badge.special{color:var(--special); border-color:var(--special); background:rgba(232,107,107,0.1);}
+
+  #fab{position:fixed; right:18px; bottom:18px; width:56px; height:56px; border-radius:50%; background:var(--accent); color:#0c1420; font-size:28px; display:flex; align-items:center; justify-content:center; border:none; box-shadow:0 4px 14px rgba(0,0,0,0.4); z-index:50; cursor:pointer;}
+
+  #overlay{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; z-index:100;}
+  #overlay.show{display:block;}
+  #pollOverlay{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; z-index:100;}
+  #pollOverlay.show{display:block;}
+  #sheet{position:fixed; left:0; right:0; bottom:0; background:#160303; border-top:1px solid var(--line); border-radius:18px 18px 0 0; padding:20px 20px 28px; transform:translateY(100%); transition:transform 0.25s ease; z-index:101; max-height:88vh; overflow-y:auto;}
+  #pollSheet{position:fixed; left:0; right:0; bottom:0; background:#160303; border-top:1px solid var(--line); border-radius:18px 18px 0 0; padding:20px 20px 28px; transform:translateY(100%); transition:transform 0.25s ease; z-index:101; max-height:88vh; overflow-y:auto;}
+  #pollSheet.show{transform:translateY(0);}
+  #sheet.show{transform:translateY(0);}
+  .sheet-handle{width:40px; height:4px; background:var(--line); border-radius:2px; margin:0 auto 16px;}
+  .field-label{font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:var(--dim); font-weight:700; margin:16px 0 6px;}
+  .field-label:first-of-type{margin-top:0;}
+  input[type=text].field, input[type=number].field{width:100%; padding:11px; font-size:16px; border-radius:9px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif;}
+  .tag-grid{display:flex; flex-wrap:wrap; gap:8px;}
+  .tag-opt{padding:7px 12px; border-radius:999px; border:1px solid var(--line); background:var(--card-solid); color:var(--dim); font-size:12.5px; font-weight:700; cursor:pointer;}
+  .tag-opt.selected{background:var(--accent); color:#0c1420; border-color:var(--accent);}
+  .sheet-actions{display:flex; gap:10px; margin-top:22px;}
+  .sheet-actions .btn{flex:1;}
+  #addTagRow{display:flex; gap:8px; margin-top:10px;}
+  #addTagRow input{flex:1;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Admin Tool</div>
+  <h1>Song Manager</h1>
+  <div id="statusLine"></div>
+  <div id="setupBox"></div>
+</header>
+
+<div class="section" id="pollSection" style="display:none;">
+  <div class="section-title">🎤 Live Polls</div>
+  <div id="pollStatusLine"></div>
+  <div id="pollSetupBox"></div>
+  <div id="liveSection" style="display:none;">
+    <div id="liveCardArea"></div>
+  </div>
+
+  <div class="field-label">Saved Polls</div>
+  <select class="field" id="savedPollsSelect"></select>
+  <div class="saved-poll-actions">
+    <button class="btn btn-live" onclick="goLiveFromDropdown()">Go Live</button>
+    <button class="btn btn-danger" onclick="deleteFromDropdown()">Delete</button>
+  </div>
+
+  <button class="btn btn-outline btn-full" style="margin-top:14px;" onclick="openPollEditor()">+ New Poll</button>
+</div>
+
+<div class="controls" id="controlsArea" style="display:none;">
+  <input type="text" id="search" placeholder="Search song or artist…">
+  <select id="sortSelect">
+    <option value="title-asc">Title A → Z</option>
+    <option value="title-desc">Title Z → A</option>
+    <option value="artist-asc">Artist A → Z</option>
+    <option value="artist-desc">Artist Z → A</option>
+  </select>
+  <div class="price-settings">
+    <label>Price per request ($)
+      <input type="number" id="priceGeneral" min="0" step="1">
+    </label>
+  </div>
+  <button class="btn btn-outline btn-full" style="margin-top:10px;" onclick="savePrices()">Save Price</button>
+
+  <div class="csv-row">
+    <button class="btn btn-outline" onclick="exportCSV()">⬇ Download CSV</button>
+    <button class="btn btn-outline" onclick="document.getElementById('csvFileInput').click()">⬆ Upload CSV</button>
+  </div>
+  <input type="file" id="csvFileInput" accept=".csv" style="display:none;" onchange="handleCSVUpload(event)">
+
+  <div class="filter-chips" id="chips"></div>
+</div>
+
+<div id="countRow"></div>
+<div id="list"></div>
+
+<button id="fab" onclick="openEditor(null)" style="display:none;">+</button>
+
+<div id="overlay" onclick="closeSheet()"></div>
+<div id="sheet">
+  <div class="sheet-handle"></div>
+  <h2 id="sheetHeading">Add Song</h2>
+
+  <div class="field-label">Song title</div>
+  <input type="text" class="field" id="fTitle" placeholder="e.g. 24K Magic">
+
+  <div class="field-label">Artist</div>
+  <input type="text" class="field" id="fArtist" placeholder="e.g. Bruno Mars">
+
+  <div class="field-label">Tags / categories</div>
+  <div class="tag-grid" id="tagGrid"></div>
+  <div id="addTagRow">
+    <input type="text" class="field" id="newTagInput" placeholder="Add a new tag…">
+    <button class="btn btn-outline" onclick="addNewTag()">Add</button>
+  </div>
+
+  <div class="sheet-actions">
+    <button class="btn btn-outline" onclick="closeSheet()">Cancel</button>
+    <button class="btn btn-danger" id="deleteBtn" onclick="deleteSong()" style="display:none;">Delete</button>
+    <button class="btn btn-primary" onclick="saveSong()">Save Song</button>
+  </div>
+</div>
+
+<div id="pollOverlay" onclick="closePollSheet()"></div>
+<div id="pollSheet">
+  <div class="sheet-handle"></div>
+  <h2>New Poll</h2>
+
+  <div class="field-label">What's this poll about?</div>
+  <div class="poll-type-toggle" id="pollTypeToggle">
+    <div class="poll-type-btn" data-type="genre" onclick="selectPollType('genre')">🎵 Genre</div>
+    <div class="poll-type-btn" data-type="artist" onclick="selectPollType('artist')">🎤 Artist</div>
+    <div class="poll-type-btn" data-type="song" onclick="selectPollType('song')">🎶 Song</div>
+  </div>
+
+  <div class="field-label">Question</div>
+  <input type="text" class="field" id="fQuestion" placeholder="e.g. Which Journey song should I play?">
+
+  <div class="field-label">Options (pick 2–6)</div>
+  <input type="text" class="field" id="optionSearch" placeholder="Search…">
+  <div id="optionPickerList" class="option-picker-list"></div>
+  <div id="selectedCountLabel" class="selected-count-label"></div>
+
+  <div class="sheet-actions">
+    <button class="btn btn-outline" onclick="closePollSheet()">Cancel</button>
+    <button class="btn btn-primary" onclick="savePoll()">Save as Draft</button>
+  </div>
+</div>
+
+<script>
+/* ============ CONFIG ============ */
+// Paste the same Bin ID here that's used in the public request page.
+const BIN_ID = "6a52d2c6f5f4af5e2982691a";
+const MASTER_KEY = "$2a$10$AE8jTzF3OJJNfqTgYPcPK.SzVAdv0Mqi/obwqWTuQjpE0dOkYkCE.";
+const JSONBIN_BASE = "https://api.jsonbin.io/v3/b";
+const POLL_BIN_ID = "6a65070cda38895dfe8f39bf"; // paste your Poll Bin ID here after setup
+const REQUEST_PAGE_URL = "https://rickparma.com/song-request";
+
+let DEFAULT_PRICES = { general: 5 };
+let songs = [];
+let prices = { ...DEFAULT_PRICES };
+let ALL_TAGS = [];
+let activeTag = null;
+let searchTerm = "";
+let sortMode = "title-asc";
+let editingId = null;
+let selectedTags = [];
+let polls = [];
+let activePollId = null;
+
+/* Seed data used only when creating a brand-new bin for the first time */
+const SEED_SONGS = [{"t": "24K Magic", "a": "Bruno Mars", "tags": ["POP", "Dance"], "id": "s1", "tier": "general"}, {"t": "A House Is Not A Home", "a": "Luther Vandross", "tags": ["Old School", "Love Songs", "Classics"], "id": "s2", "tier": "general"}, {"t": "A Song for You", "a": "Ray Charles", "tags": ["Old School", "Love Songs"], "id": "s3", "tier": "general"}, {"t": "Africa", "a": "Toto", "tags": ["Yacht Rock"], "id": "s4", "tier": "general"}, {"t": "Ain't No Stopping Us Now", "a": "", "tags": ["Old School", "Dance"], "id": "s5", "tier": "general"}, {"t": "Ain't No Sunshine", "a": "Bill Whithers", "tags": ["Old School"], "id": "s6", "tier": "general"}, {"t": "All I Do", "a": "Stevie Wonder", "tags": ["Old School", "Dance", "Motown"], "id": "s7", "tier": "general"}, {"t": "All Night Long", "a": "Lionel Ritchie", "tags": ["Old School", "Dance"], "id": "s8", "tier": "general"}, {"t": "All of Me", "a": "John Legend", "tags": ["Modern", "Love Songs"], "id": "s9", "tier": "general"}, {"t": "Always and Forever", "a": "Luther Vandross", "tags": ["Old School", "Love Songs"], "id": "s10", "tier": "general"}, {"t": "Amazed", "a": "Lone Star", "tags": ["Country", "Love Songs"], "id": "s11", "tier": "general"}, {"t": "Anniversary", "a": "Toni Toni Toni", "tags": ["RnB", "Love Songs", "80s/90s/2000s"], "id": "s12", "tier": "general"}, {"t": "Another Day In Paradise", "a": "Phil Collins", "tags": ["POP"], "id": "s13", "tier": "general"}, {"t": "Anytime", "a": "Brian McKnight", "tags": ["RnB", "Love Songs", "80s/90s/2000s"], "id": "s14", "tier": "general"}, {"t": "Apologize", "a": "", "tags": ["POP"], "id": "s15", "tier": "general"}, {"t": "As", "a": "Stevie Wonder", "tags": ["Old School"], "id": "s16", "tier": "general"}, {"t": "Ascension", "a": "Maxwell", "tags": ["RnB", "80s/90s/2000s"], "id": "s17", "tier": "general"}, {"t": "Baby Come Back", "a": "Player", "tags": ["Yacht Rock", "Love Songs"], "id": "s18", "tier": "general"}, {"t": "Back at One", "a": "Brian McKnight", "tags": ["RnB", "Love Songs", "80s/90s/2000s"], "id": "s19", "tier": "general"}, {"t": "Back Jack Do It Again", "a": "Steely Dan", "tags": ["Yacht Rock"], "id": "s20", "tier": "general"}, {"t": "Bad Day", "a": "Daniel Porter", "tags": ["POP"], "id": "s21", "tier": "general"}, {"t": "Because of You", "a": "Ne-Yo", "tags": ["RnB", "Dance"], "id": "s22", "tier": "general"}, {"t": "Before I Let Go", "a": "Maze", "tags": ["Old School", "Dance"], "id": "s23", "tier": "general"}, {"t": "Before I Let You Go", "a": "Black Street", "tags": ["RnB", "Love Songs", "80s/90s/2000s"], "id": "s24", "tier": "general"}, {"t": "Being With You", "a": "Smokey Robinson", "tags": ["Old School", "Love Songs", "Motown"], "id": "s25", "tier": "general"}, {"t": "Best of My Love", "a": "Eagles", "tags": ["Classic Rock", "Love Songs"], "id": "s26", "tier": "general"}, {"t": "Biggest Part of Me", "a": "Ambrosia", "tags": ["Yacht Rock"], "id": "s27", "tier": "general"}, {"t": "Billionaire", "a": "Bruno Mars", "tags": ["POP"], "id": "s28", "tier": "general"}, {"t": "Black Magic Woman", "a": "Santana", "tags": ["Old School", "Latin"], "id": "s29", "tier": "general"}, {"t": "Blurred Lines", "a": "Robin Thicke", "tags": ["RnB", "Dance"], "id": "s30", "tier": "general"}, {"t": "Breakeven", "a": "The Script", "tags": ["POP"], "id": "s31", "tier": "general"}, {"t": "Brick House", "a": "Commodores", "tags": ["Old School", "Dance"], "id": "s32", "tier": "general"}, {"t": "Brown Eyed Girl", "a": "", "tags": ["Yacht Rock", "Classics"], "id": "s33", "tier": "general"}, {"t": "Bust a Move", "a": "Young MC", "tags": ["RnB", "Dance", "Hip Hop"], "id": "s34", "tier": "general"}, {"t": "By Your Side", "a": "Sade", "tags": ["RnB", "Love Songs"], "id": "s35", "tier": "general"}, {"t": "Can't Be Friends", "a": "Trey Songs", "tags": ["RnB", "80s/90s/2000s"], "id": "s36", "tier": "general"}, {"t": "Can't Feel My Face", "a": "Weeknd", "tags": ["POP", "Dance"], "id": "s37", "tier": "general"}, {"t": "Can't Help Falling In Love", "a": "Elvis", "tags": ["Love Songs", "Classics"], "id": "s38", "tier": "general"}, {"t": "Can't Hide Love", "a": "EWF", "tags": ["Old School", "Love Songs"], "id": "s39", "tier": "general"}, {"t": "Can't Stop the Feeling", "a": "Justin Timberlake", "tags": ["POP", "Dance"], "id": "s40", "tier": "general"}, {"t": "Can't Take My Eyes Off You", "a": "Frankie Valli", "tags": ["POP", "Classics"], "id": "s41", "tier": "general"}, {"t": "Careless Whisper", "a": "George Michael", "tags": ["POP", "Love Songs"], "id": "s42", "tier": "general"}, {"t": "Caribbean Queen (", "a": "Billy Ocean", "tags": ["Old School", "Dance"], "id": "s43", "tier": "general"}, {"t": "Celebration", "a": "Kool & the Gang", "tags": ["Old School", "Dance"], "id": "s44", "tier": "general"}, {"t": "Change the World", "a": "Eric Clapton", "tags": ["POP", "Love Songs"], "id": "s45", "tier": "general"}, {"t": "Cheerleader", "a": "Omi", "tags": ["POP"], "id": "s46", "tier": "general"}, {"t": "Cherry Bomb", "a": "John Mellencamp", "tags": ["Classic Rock"], "id": "s47", "tier": "general"}, {"t": "Closer", "a": "Ne-Yo", "tags": ["RnB", "Dance"], "id": "s48", "tier": "general"}, {"t": "Come Fly With Me", "a": "Frank Sinatra", "tags": ["Classics"], "id": "s49", "tier": "general"}, {"t": "Crazy", "a": "Gnarls Barkley", "tags": ["POP", "Dance"], "id": "s50", "tier": "general"}, {"t": "Cruisin'", "a": "Smokey Robinson", "tags": ["Old School", "Love Songs"], "id": "s51", "tier": "general"}, {"t": "December '63", "a": "The Four Seasons", "tags": ["POP", "Classics"], "id": "s52", "tier": "general"}, {"t": "Decon Blues", "a": "Steely Dan", "tags": ["Yacht Rock"], "id": "s53", "tier": "general"}, {"t": "Desperado", "a": "Eagles", "tags": ["Classic Rock", "Classics"], "id": "s54", "tier": "general"}, {"t": "Do I Do", "a": "Stevie Wonder", "tags": ["Old School", "Dance", "Motown"], "id": "s55", "tier": "general"}, {"t": "Do You Love Me", "a": "Jonathan Butler", "tags": ["RnB", "Love Songs"], "id": "s56", "tier": "general"}, {"t": "Do You Want to Know a Secret", "a": "Beatles", "tags": ["Classic Rock"], "id": "s57", "tier": "general"}, {"t": "Don't Know Why", "a": "Nora Jones", "tags": ["POP", "Love Songs"], "id": "s58", "tier": "general"}, {"t": "Don't Stop Believin'", "a": "Journey", "tags": ["Classic Rock", "Dance"], "id": "s59", "tier": "general"}, {"t": "Don't Want to Miss a Thing", "a": "Aerosmith", "tags": ["Classic Rock", "Love Songs"], "id": "s60", "tier": "general"}, {"t": "Drift Away", "a": "Dobie Gray", "tags": ["Yacht Rock"], "id": "s61", "tier": "general"}, {"t": "Earned It", "a": "Weeknd", "tags": ["RnB", "Love Songs"], "id": "s62", "tier": "general"}, {"t": "Earth Angel", "a": "The Penguins", "tags": ["Love Songs", "Classics"], "id": "s63", "tier": "general"}, {"t": "Easy", "a": "Lionel Ritchie", "tags": ["Old School", "Love Songs"], "id": "s64", "tier": "general"}, {"t": "Endless Love", "a": "Lionel Ritchie", "tags": ["Old School", "Love Songs"], "id": "s65", "tier": "general"}, {"t": "Every Breath You Take", "a": "Sting", "tags": ["POP"], "id": "s66", "tier": "general"}, {"t": "Every Time I Close My Eyes", "a": "Babyface", "tags": ["RnB", "Love Songs", "80s/90s/2000s"], "id": "s67", "tier": "general"}, {"t": "Evil Ways", "a": "Santana", "tags": ["Old School", "Latin"], "id": "s68", "tier": "general"}, {"t": "Eye Of The Tiger", "a": "Survivor", "tags": ["Classic Rock", "Classics"], "id": "s69", "tier": "general"}, {"t": "Feel It Coming", "a": "Weeknd", "tags": ["RnB", "Dance"], "id": "s70", "tier": "general"}, {"t": "Feel Like Makin' Love", "a": "Roberta Flack", "tags": ["Old School", "Love Songs"], "id": "s71", "tier": "general"}, {"t": "Feeling Good", "a": "Michael Buble", "tags": ["POP", "Classics"], "id": "s72", "tier": "general"}, {"t": "Fields of Gold", "a": "Sting", "tags": ["POP", "Love Songs"], "id": "s73", "tier": "general"}, {"t": "Fine China", "a": "Chris Brown", "tags": ["RnB", "Dance", "80s/90s/2000s"], "id": "s74", "tier": "general"}, {"t": "Flashing Lights", "a": "Kanye West", "tags": ["POP", "80s/90s/2000s"], "id": "s75", "tier": "general"}, {"t": "Fly Like an Eagle", "a": "Steve Miller Band", "tags": ["Classic Rock"], "id": "s76", "tier": "general"}, {"t": "Fly Me to the Moon", "a": "Frank Sinatra", "tags": ["Classics"], "id": "s77", "tier": "general"}, {"t": "Footsteps In The Dark", "a": "Iskey Brothers", "tags": ["Old School", "Love Songs"], "id": "s78", "tier": "general"}, {"t": "For the Love of You", "a": "Iskey Brothers", "tags": ["Old School", "Love Songs"], "id": "s79", "tier": "general"}, {"t": "For You", "a": "Kenny Lattimore", "tags": ["RnB", "Love Songs", "80s/90s/2000s"], "id": "s80", "tier": "general"}, {"t": "Forget You", "a": "Gnarls Barkley", "tags": ["POP", "Dance"], "id": "s81", "tier": "general"}, {"t": "Fragile", "a": "Sting", "tags": ["POP", "Love Songs"], "id": "s82", "tier": "general"}, {"t": "Fresh", "a": "Kool & the Gang", "tags": ["Old School", "Dance"], "id": "s83", "tier": "general"}, {"t": "Georgia", "a": "Ray Charles", "tags": ["Old School", "Love Songs", "Classics"], "id": "s84", "tier": "general"}, {"t": "Georgy Porgy", "a": "Toto", "tags": ["Yacht Rock"], "id": "s85", "tier": "general"}, {"t": "Get Down On It", "a": "Kool & the Gang", "tags": ["Old School", "Dance"], "id": "s86", "tier": "general"}, {"t": "Get Lucky", "a": "Daft Punk", "tags": ["POP", "Dance"], "id": "s87", "tier": "general"}, {"t": "Get Outta My Dreams, Get Into My Car", "a": "Billy Ocean", "tags": ["Old School", "Dance"], "id": "s88", "tier": "general"}, {"t": "Give It to Me Baby", "a": "Rick James", "tags": ["Old School", "Dance"], "id": "s89", "tier": "general"}, {"t": "Give Me the Night", "a": "George Benson", "tags": ["Yacht Rock"], "id": "s90", "tier": "general"}, {"t": "Glory of Love", "a": "Peter Cetera", "tags": ["Classic Rock", "Love Songs"], "id": "s91", "tier": "general"}, {"t": "Golden Time Of Day", "a": "Maze", "tags": ["Old School"], "id": "s92", "tier": "general"}, {"t": "Gravity", "a": "John Meyer", "tags": ["POP"], "id": "s93", "tier": "general"}, {"t": "Green Light", "a": "John Legend", "tags": ["RnB", "Dance", "80s/90s/2000s"], "id": "s94", "tier": "general"}, {"t": "Grenade", "a": "Bruno Mars", "tags": ["POP"], "id": "s95", "tier": "general"}, {"t": "Hang On to Your Love", "a": "Sade", "tags": ["RnB", "Love Songs"], "id": "s96", "tier": "general"}, {"t": "Happy", "a": "Pharrell", "tags": ["POP", "Dance", "80s/90s/2000s"], "id": "s97", "tier": "general"}, {"t": "Have I Told You Lately That I Love You", "a": "Rod Stewart", "tags": ["POP", "Love Songs"], "id": "s98", "tier": "general"}, {"t": "Have You Ever Really Loved A Woman", "a": "Bryan Adams", "tags": ["POP", "Love Songs"], "id": "s99", "tier": "general"}, {"t": "Haven't Met You Yet", "a": "Michael Buble", "tags": ["POP", "Love Songs", "80s/90s/2000s"], "id": "s100", "tier": "general"}, {"t": "Heart to Heart", "a": "Kenny Loggins", "tags": ["Yacht Rock"], "id": "s101", "tier": "general"}, {"t": "Here and Now", "a": "Luther Vandross", "tags": ["Old School", "Love Songs"], "id": "s102", "tier": "general"}, {"t": "Here I Am", "a": "Al Green", "tags": ["Old School", "Love Songs", "Motown"], "id": "s103", "tier": "general"}, {"t": "Hey There Delilah", "a": "Plain White T\u2019s", "tags": ["POP", "Love Songs"], "id": "s104", "tier": "general"}, {"t": "Hey, Soul Sister", "a": "Train", "tags": ["POP"], "id": "s105", "tier": "general"}, {"t": "Higher Ground", "a": "Stevie Wonder", "tags": ["Old School", "Dance", "Motown"], "id": "s106", "tier": "general"}, {"t": "Hold On, We're Going Home", "a": "Drake", "tags": ["RnB", "Dance", "80s/90s/2000s"], "id": "s107", "tier": "general"}, {"t": "Holding Back the Years", "a": "Simply Red", "tags": ["Yacht Rock"], "id": "s108", "tier": "general"}, {"t": "Home", "a": "Maze", "tags": ["POP", "Love Songs", "80s/90s/2000s"], "id": "s109", "tier": "general"}, {"t": "Hotel California", "a": "Eagles", "tags": ["Classic Rock"], "id": "s110", "tier": "general"}, {"t": "How Am I Supposed To Live Without You", "a": "Michael Bolton", "tags": ["POP", "Love Songs", "Classics"], "id": "s111", "tier": "general"}, {"t": "How Deep Is Your Love", "a": "Bee Gees", "tags": ["POP", "Love Songs"], "id": "s112", "tier": "general"}, {"t": "How Far Is Heaven", "a": "Los Lonely Boys", "tags": ["POP", "Latin"], "id": "s113", "tier": "general"}, {"t": "How Much I Feel", "a": "Ambrosia", "tags": ["Yacht Rock", "Love Songs"], "id": "s114", "tier": "general"}, {"t": "Human Nature", "a": "Michael Jackson", "tags": ["POP", "Love Songs", "80s/90s/2000s"], "id": "s115", "tier": "general"}, {"t": "I Can See Clearly Now", "a": "Johnny Nash", "tags": ["Classic Rock"], "id": "s116", "tier": "general"}, {"t": "I Can't Go for That", "a": "Hall & Oates", "tags": ["Yacht Rock"], "id": "s117", "tier": "general"}, {"t": "I Can't Help It", "a": "Michael Jackson", "tags": ["POP", "Love Songs", "80s/90s/2000s"], "id": "s118", "tier": "general"}, {"t": "I Can't Make You Love Me", "a": "Bonnie Raitt", "tags": ["POP", "Love Songs", "Classics"], "id": "s119", "tier": "general"}, {"t": "I Can't Stop Loving You", "a": "Kem", "tags": ["RnB", "Love Songs", "80s/90s/2000s"], "id": "s120", "tier": "general"}, {"t": "I Heard It Through the Grapevine", "a": "Marvin Gaye", "tags": ["Old School", "Dance"], "id": "s121", "tier": "general"}, {"t": "I Just Called To Say I Love You", "a": "Stevie Wonder", "tags": ["Old School", "Love Songs", "Motown"], "id": "s122", "tier": "general"}, {"t": "I Keep Forgettin'", "a": "Michael McDonald", "tags": ["Yacht Rock"], "id": "s123", "tier": "general"}, {"t": "I Still Haven't Found What I'm Looking for (Karaoke Version)", "a": "U2", "tags": ["POP"], "id": "s124", "tier": "general"}, {"t": "I Wanna Know", "a": "Joe", "tags": ["RnB", "Love Songs", "80s/90s/2000s"], "id": "s125", "tier": "general"}, {"t": "I Wanna Sex You Up", "a": "Color Me Bad", "tags": ["RnB", "Dance", "80s/90s/2000s"], "id": "s126", "tier": "general"}, {"t": "I Want Her", "a": "Keith Sweat", "tags": ["RnB", "Dance", "80s/90s/2000s"], "id": "s127", "tier": "general"}, {"t": "I Wish", "a": "Carl Thomas", "tags": ["RnB", "Love Songs", "80s/90s/2000s"], "id": "s128", "tier": "general"}, {"t": "I Wish", "a": "Stevie Wonder", "tags": ["Old School", "Dance", "Motown"], "id": "s129", "tier": "general"}, {"t": "I'll Be Around", "a": "Spinners", "tags": ["Old School", "Dance"], "id": "s130", "tier": "general"}, {"t": "I'll Make Love To You", "a": "Boyz II Men", "tags": ["RnB", "Love Songs", "80s/90s/2000s"], "id": "s131", "tier": "general"}, {"t": "I'm Not the Only One", "a": "Sam Smith", "tags": ["POP", "Love Songs"], "id": "s132", "tier": "general"}, {"t": "I'm Still In Love With You", "a": "Al Green", "tags": ["Old School", "Love Songs", "Motown"], "id": "s133", "tier": "general"}, {"t": "I'm Yours", "a": "Jason Mraz", "tags": ["POP"], "id": "s134", "tier": "general"}, {"t": "I've Got You Under My Skin", "a": "Frank Sinatra", "tags": ["Classics"], "id": "s135", "tier": "general"}, {"t": "If Only for One Night", "a": "Luther Vandross", "tags": ["Old School", "Love Songs"], "id": "s136", "tier": "general"}, {"t": "If You Really Love Me", "a": "Stevie Wonder", "tags": ["Old School", "Love Songs", "Motown"], "id": "s137", "tier": "general"}, {"t": "Imagine", "a": "Beatles", "tags": ["Classic Rock"], "id": "s138", "tier": "general"}, {"t": "In the Air Tonight", "a": "Phil Collins", "tags": ["POP", "Classics"], "id": "s139", "tier": "general"}, {"t": "Is it a Crime", "a": "Sade", "tags": ["POP", "Love Songs", "80s/90s/2000s"], "id": "s140", "tier": "general"}, {"t": "Isn't She Lovely", "a": "Stevie Wonder", "tags": ["Old School", "Love Songs", "Motown"], "id": "s141", "tier": "general"}, {"t": "It Ain't Over Till It's Over", "a": "Lenny Kravitz", "tags": ["POP", "Love Songs", "80s/90s/2000s"], "id": "s142", "tier": "general"}, {"t": "Just Friends", "a": "Music Soulchild", "tags": ["80s/90s/2000s"], "id": "s143", "tier": "general"}, {"t": "Just My Imagination", "a": "Temptations", "tags": ["Old School", "Love Songs", "Motown"], "id": "s144", "tier": "general"}, {"t": "Just the Two of Us", "a": "Bill Whithers", "tags": ["Old School", "Love Songs", "Motown"], "id": "s145", "tier": "general"}, {"t": "Just The Way", "a": "Bruno Mars", "tags": ["POP", "Dance"], "id": "s146", "tier": "general"}, {"t": "Just The Way You Are", "a": "Billy Joel", "tags": ["POP", "Love Songs"], "id": "s147", "tier": "general"}, {"t": "Just to See Her", "a": "Smokey Robinson", "tags": ["Old School", "Love Songs", "Motown"], "id": "s148", "tier": "general"}, {"t": "Kiss On My List", "a": "Hall & Oates", "tags": ["Yacht Rock", "Love Songs"], "id": "s149", "tier": "general"}, {"t": "Ladies Night", "a": "Kool & the Gang", "tags": ["Old School", "Dance"], "id": "s150", "tier": "general"}, {"t": "Lady You Bring Me Up (Karaoke Version)", "a": "", "tags": [], "id": "s151", "tier": "general"}, {"t": "Latch", "a": "Sam Smith", "tags": ["POP", "Dance"], "id": "s152", "tier": "general"}, {"t": "Lately", "a": "Stevie Wonder", "tags": ["Old School", "Love Songs", "Motown"], "id": "s153", "tier": "general"}, {"t": "Let Me Love You", "a": "Mario", "tags": ["POP", "Dance", "80s/90s/2000s"], "id": "s154", "tier": "general"}, {"t": "Let Me Love You", "a": "Ne-Yo", "tags": ["POP", "Dance", "80s/90s/2000s"], "id": "s155", "tier": "general"}, {"t": "Let's Get It On", "a": "Marvin Gaye", "tags": ["Old School", "Love Songs", "Motown"], "id": "s156", "tier": "general"}, {"t": "Let's Groove", "a": "EWF", "tags": ["Old School", "Dance"], "id": "s157", "tier": "general"}, {"t": "Let's Stay Together", "a": "Al Green", "tags": ["Old School", "Love Songs", "Motown"], "id": "s158", "tier": "general"}, {"t": "Lights", "a": "Journey", "tags": ["POP", "Love Songs", "80s/90s/2000s"], "id": "s159", "tier": "general"}, {"t": "Listen to the Music", "a": "Doobie Brothers", "tags": ["Classic Rock", "Dance"], "id": "s160", "tier": "general"}, {"t": "Locked Out of Heaven", "a": "Bruno Mars", "tags": ["POP", "Dance", "80s/90s/2000s"], "id": "s161", "tier": "general"}, {"t": "Long Train Running", "a": "Doobie Brothers", "tags": ["Classic Rock", "Dance"], "id": "s162", "tier": "general"}, {"t": "Lost Without U", "a": "Robin Thicke", "tags": ["POP", "Love Songs"], "id": "s163", "tier": "general"}, {"t": "Love After War", "a": "Robin Thicke", "tags": ["POP", "Love Songs"], "id": "s164", "tier": "general"}, {"t": "Love Never Felt so Good", "a": "Michael Jackson", "tags": ["POP", "Dance"], "id": "s165", "tier": "general"}, {"t": "Love Shack", "a": "B-52s", "tags": ["POP", "Dance"], "id": "s166", "tier": "general"}, {"t": "Love T.K.O.", "a": "Teddy Pendergrass", "tags": ["Old School", "Love Songs"], "id": "s167", "tier": "general"}, {"t": "Love Won't Let Me Wait", "a": "Luther Vandross", "tags": ["Old School", "Love Songs"], "id": "s168", "tier": "general"}, {"t": "Love's Divine", "a": "Seal", "tags": ["POP", "Love Songs", "80s/90s/2000s"], "id": "s169", "tier": "general"}, {"t": "Lovely Day", "a": "Bill Whithers", "tags": ["Old School"], "id": "s170", "tier": "general"}, {"t": "Lowdown", "a": "Boz Scaggs", "tags": ["Yacht Rock"], "id": "s171", "tier": "general"}, {"t": "Magic", "a": "Robin Thicke", "tags": ["POP", "Dance"], "id": "s172", "tier": "general"}, {"t": "Mambo No. 5", "a": "Lou Bega", "tags": ["POP", "Dance", "80s/90s/2000s"], "id": "s173", "tier": "general"}, {"t": "Margaritaville", "a": "Jimmy Buffet", "tags": ["POP", "Classics"], "id": "s174", "tier": "general"}, {"t": "Maria Maria", "a": "Santana", "tags": ["POP", "80s/90s/2000s"], "id": "s175", "tier": "general"}, {"t": "Marry You", "a": "Bruno Mars", "tags": ["POP"], "id": "s176", "tier": "general"}, {"t": "Mary Jane", "a": "Rick James", "tags": ["Old School", "Dance"], "id": "s177", "tier": "general"}, {"t": "Masquerade", "a": "George Benson", "tags": ["Old School", "Love Songs"], "id": "s178", "tier": "general"}, {"t": "Me and Mrs Jones", "a": "Billy Paul", "tags": ["Old School", "Love Songs", "Classics"], "id": "s179", "tier": "general"}, {"t": "Mercy, Mercy Me", "a": "Marvin Gaye", "tags": ["Old School", "Classics"], "id": "s180", "tier": "general"}, {"t": "Message In a Bottle", "a": "Sting", "tags": ["Classic Rock", "Dance"], "id": "s181", "tier": "general"}, {"t": "Minute By Minute", "a": "Doobie Brothers", "tags": ["Yacht Rock"], "id": "s182", "tier": "general"}, {"t": "Miss You", "a": "Rolling Stones", "tags": ["Classic Rock", "Dance"], "id": "s183", "tier": "general"}, {"t": "Moondance", "a": "Van Morrison", "tags": ["Classic Rock", "Classics"], "id": "s184", "tier": "general"}, {"t": "More Than Words", "a": "Extreme", "tags": ["Classic Rock", "Love Songs", "Classics"], "id": "s185", "tier": "general"}, {"t": "Mornin", "a": "Al Jarreau", "tags": ["Yacht Rock"], "id": "s186", "tier": "general"}, {"t": "Moves Like Jagger", "a": "Maroon 5", "tags": ["POP", "Dance"], "id": "s187", "tier": "general"}, {"t": "Mustang Sally", "a": "Wilson Pickett", "tags": ["Old School", "Dance", "Classics"], "id": "s188", "tier": "general"}, {"t": "My Cherie Amour", "a": "Stevie Wonder", "tags": ["Old School", "Motown"], "id": "s189", "tier": "general"}, {"t": "My Girl", "a": "Temptations", "tags": ["Old School", "Love Songs", "Motown"], "id": "s190", "tier": "general"}, {"t": "My Prerogative", "a": "Bobby Brown", "tags": ["POP", "Dance", "80s/90s/2000s"], "id": "s191", "tier": "general"}, {"t": "My Way", "a": "Frank Sinatra", "tags": ["Classics"], "id": "s192", "tier": "general"}, {"t": "My, My, My", "a": "Johnny Gill", "tags": ["Old School", "Love Songs"], "id": "s193", "tier": "general"}, {"t": "Need You Now", "a": "Lady Antebellum", "tags": ["Country", "Love Songs"], "id": "s194", "tier": "general"}, {"t": "Never Gonna Give You Up", "a": "Rick Astley", "tags": ["POP", "Dance", "80s/90s/2000s"], "id": "s195", "tier": "general"}, {"t": "Never Too Much", "a": "Luther Vandross", "tags": ["Old School", "Dance"], "id": "s196", "tier": "general"}, {"t": "New York, New York", "a": "Frank Sinatra", "tags": ["Classics"], "id": "s197", "tier": "general"}, {"t": "Nice & Slow", "a": "Usher", "tags": ["POP", "Love Songs", "80s/90s/2000s"], "id": "s198", "tier": "general"}, {"t": "No Ordinary Love", "a": "Sade", "tags": ["POP", "Love Songs", "80s/90s/2000s"], "id": "s199", "tier": "general"}, {"t": "Nothin' On You", "a": "Bruno Mars", "tags": ["POP", "Dance"], "id": "s200", "tier": "general"}, {"t": "Now and Forever", "a": "Richard Marx", "tags": ["POP", "Love Songs", "80s/90s/2000s"], "id": "s201", "tier": "general"}, {"t": "Off The Wall", "a": "Michael Jackson", "tags": ["POP", "Dance"], "id": "s202", "tier": "general"}, {"t": "Old Time Rock & Roll", "a": "Bob Seger", "tags": ["Classic Rock", "Dance"], "id": "s203", "tier": "general"}, {"t": "On Broadway", "a": "George Benson", "tags": ["Old School"], "id": "s204", "tier": "general"}, {"t": "One Hundred Ways", "a": "James Ingram", "tags": ["Old School", "Love Songs"], "id": "s205", "tier": "general"}, {"t": "Open Arms", "a": "Journey", "tags": ["POP", "Love Songs", "80s/90s/2000s"], "id": "s206", "tier": "general"}, {"t": "Ordinary People", "a": "John Legend", "tags": ["POP", "Love Songs", "80s/90s/2000s"], "id": "s207", "tier": "general"}, {"t": "Outstanding", "a": "Gap Band", "tags": ["Old School", "Dance"], "id": "s208", "tier": "general"}, {"t": "Overjoyed", "a": "Stevie Wonder", "tags": ["Old School", "Love Songs", "Motown"], "id": "s209", "tier": "general"}, {"t": "Paradise", "a": "Sade", "tags": ["POP", "Love Songs", "80s/90s/2000s"], "id": "s210", "tier": "general"}, {"t": "Peg", "a": "Steely Dan", "tags": ["Yacht Rock"], "id": "s211", "tier": "general"}, {"t": "People Everyday", "a": "Arrested Development", "tags": ["POP", "Dance", "80s/90s/2000s"], "id": "s212", "tier": "general"}, {"t": "Pink Houses", "a": "John Mellencamp", "tags": ["Classic Rock"], "id": "s213", "tier": "general"}, {"t": "Play That Funky Music", "a": "Wild Cherry", "tags": ["Old School", "Dance"], "id": "s214", "tier": "general"}, {"t": "Purple Rain", "a": "Prince", "tags": ["POP", "Classics"], "id": "s215", "tier": "general"}, {"t": "PYT", "a": "Michael Jackson", "tags": ["POP", "Dance", "80s/90s/2000s"], "id": "s216", "tier": "general"}, {"t": "Remember The Time", "a": "Michael Jackson", "tags": ["POP", "Dance", "80s/90s/2000s"], "id": "s217", "tier": "general"}, {"t": "Ribbon In the Sky", "a": "Stevie Wonder", "tags": ["Old School", "Love Songs", "Motown"], "id": "s218", "tier": "general"}, {"t": "Rock With You", "a": "Michael Jackson", "tags": ["POP", "Dance", "80s/90s/2000s"], "id": "s219", "tier": "general"}, {"t": "Rock Your Body", "a": "Justin Timberlake", "tags": ["POP", "Dance"], "id": "s220", "tier": "general"}, {"t": "Roxanne", "a": "Sting", "tags": ["POP"], "id": "s221", "tier": "general"}, {"t": "Sailing", "a": "Christopher Cross", "tags": ["Yacht Rock"], "id": "s222", "tier": "general"}, {"t": "Santeria", "a": "Sublime", "tags": ["POP", "80s/90s/2000s"], "id": "s223", "tier": "general"}, {"t": "Sara Smile", "a": "Hall & Oates", "tags": ["Yacht Rock"], "id": "s224", "tier": "general"}, {"t": "Save Room", "a": "John Legend", "tags": ["POP", "Love Songs"], "id": "s225", "tier": "general"}, {"t": "Save The Last Dance For Me", "a": "Michael Buble", "tags": ["POP"], "id": "s226", "tier": "general"}, {"t": "Secret", "a": "Maroon 5", "tags": ["POP"], "id": "s227", "tier": "general"}, {"t": "September", "a": "EWF", "tags": ["Old School", "Dance"], "id": "s228", "tier": "general"}, {"t": "Sex Therapy", "a": "Robin Thicke", "tags": ["POP", "Love Songs"], "id": "s229", "tier": "general"}, {"t": "Sexual Healing", "a": "Marvin Gaye", "tags": ["Old School", "Love Songs"], "id": "s230", "tier": "general"}, {"t": "Shake Your Body", "a": "Michael Jackson", "tags": ["Old School", "Dance", "Motown"], "id": "s231", "tier": "general"}, {"t": "Shape Of You", "a": "Ed Sheeran", "tags": ["POP", "Dance"], "id": "s232", "tier": "general"}, {"t": "Share My Life", "a": "Kem", "tags": ["RnB", "Love Songs", "80s/90s/2000s"], "id": "s233", "tier": "general"}, {"t": "She's A Bad Mama Jama", "a": "Kool & the Gang", "tags": ["Old School", "Dance"], "id": "s234", "tier": "general"}, {"t": "Signed, Sealed, Delivered", "a": "Stevie Wonder", "tags": ["Old School", "Dance", "Motown"], "id": "s235", "tier": "general"}, {"t": "Sir Duke", "a": "Stevie Wonder", "tags": ["Old School", "Dance", "Motown"], "id": "s236", "tier": "general"}, {"t": "Smooth Operator", "a": "Sade", "tags": ["POP", "Love Songs"], "id": "s237", "tier": "general"}, {"t": "So Amazing", "a": "Luther Vandross", "tags": ["Old School", "Love Songs"], "id": "s238", "tier": "general"}, {"t": "So Sick", "a": "Ne-Yo", "tags": ["RnB", "80s/90s/2000s"], "id": "s239", "tier": "general"}, {"t": "Stay With Me", "a": "Sam Smith", "tags": ["POP", "Love Songs"], "id": "s240", "tier": "general"}, {"t": "Stay With Me Tonight", "a": "Jeffrey Osborne", "tags": ["Yacht Rock"], "id": "s241", "tier": "general"}, {"t": "Step In The Name Of Love", "a": "R Kelly", "tags": ["RnB", "Dance", "80s/90s/2000s"], "id": "s242", "tier": "general"}, {"t": "Stuck On You", "a": "Lionel Ritchie", "tags": ["Old School", "Love Songs"], "id": "s243", "tier": "general"}, {"t": "Suit & Tie", "a": "Justin Timberlake", "tags": ["POP", "Dance"], "id": "s244", "tier": "general"}, {"t": "Summertime", "a": "", "tags": [], "id": "s245", "tier": "general"}, {"t": "Summertime", "a": "Fresh Prince", "tags": ["POP", "80s/90s/2000s"], "id": "s246", "tier": "general"}, {"t": "Sunday Morning", "a": "Maroon 5", "tags": ["POP"], "id": "s247", "tier": "general"}, {"t": "Sunrise", "a": "Simply Red", "tags": ["Yacht Rock"], "id": "s248", "tier": "general"}, {"t": "Super Freak", "a": "Rick James", "tags": ["Old School", "Dance"], "id": "s249", "tier": "general"}, {"t": "Superstition", "a": "Stevie Wonder", "tags": ["Old School", "Dance", "Motown"], "id": "s250", "tier": "general"}, {"t": "Sweet Home Alabama", "a": "Lynyrd Skynyrd", "tags": ["Classic Rock"], "id": "s251", "tier": "general"}, {"t": "Sweet Home Chicago", "a": "Blues Brothers", "tags": ["Old School", "Dance", "Classics"], "id": "s252", "tier": "general"}, {"t": "Take Back the Night", "a": "Justin Timberlake", "tags": ["RnB", "Dance"], "id": "s253", "tier": "general"}, {"t": "Take You Out", "a": "Luther Vandross", "tags": ["Old School", "Love Songs"], "id": "s254", "tier": "general"}, {"t": "Tears In Heaven", "a": "Eric Clapton", "tags": ["POP", "Love Songs"], "id": "s255", "tier": "general"}, {"t": "Tennessee Whiskey", "a": "Chris Stapleton", "tags": ["Country"], "id": "s256", "tier": "general"}, {"t": "That's What I Like", "a": "Bruno Mars", "tags": ["POP", "Dance"], "id": "s257", "tier": "general"}, {"t": "The Closer I Get to You", "a": "Luther Vandross", "tags": ["Old School", "Love Songs"], "id": "s258", "tier": "general"}, {"t": "The Dock of the Bay", "a": "Otis Redding", "tags": ["Yacht Rock"], "id": "s259", "tier": "general"}, {"t": "The Girl Is Mine", "a": "Michael Jackson", "tags": ["Yacht Rock"], "id": "s260", "tier": "general"}, {"t": "The Joker", "a": "Steve Miller Band", "tags": ["Classic Rock"], "id": "s261", "tier": "general"}, {"t": "The Lady in My Life", "a": "Michael Jackson", "tags": ["Yacht Rock"], "id": "s262", "tier": "general"}, {"t": "The Lady In Red", "a": "Chris De Burgh", "tags": ["Classics"], "id": "s263", "tier": "general"}, {"t": "The Lazy Song", "a": "Bruno Mars", "tags": ["POP"], "id": "s264", "tier": "general"}, {"t": "The Power of Love", "a": "", "tags": [], "id": "s265", "tier": "general"}, {"t": "The Secret Garden", "a": "", "tags": [], "id": "s266", "tier": "general"}, {"t": "The Sweetest Love (In the Style of Robin Thicke) [Karaoke Version]", "a": "", "tags": [], "id": "s267", "tier": "general"}, {"t": "There Goes My Baby (In the Style of Usher) (Karaoke Version)", "a": "", "tags": [], "id": "s268", "tier": "general"}, {"t": "Thinking out Loud (In the Style of Ed Sheeran) [Karaoke Instrumental Version]", "a": "", "tags": [], "id": "s269", "tier": "general"}, {"t": "This Is How We Do It (Karaoke Version)", "a": "", "tags": [], "id": "s270", "tier": "general"}, {"t": "This Is It", "a": "", "tags": [], "id": "s271", "tier": "general"}, {"t": "This Love (In the Style of Maroon 5)", "a": "", "tags": [], "id": "s272", "tier": "general"}, {"t": "Tonight \"Best You Ever Had\" (Originally Performed By John Legend Feat. Ludacris) [Karaoke Version]", "a": "", "tags": [], "id": "s273", "tier": "general"}, {"t": "Too Close (In the Style of Next) [Karaoke Version]", "a": "", "tags": [], "id": "s274", "tier": "general"}, {"t": "Treasure (Clean) (In the Style of Bruno Mars) [Karaoke Version]", "a": "", "tags": [], "id": "s275", "tier": "general"}, {"t": "True", "a": "", "tags": [], "id": "s276", "tier": "general"}, {"t": "Turn the Page - Instrumental Karaoke Sing-along", "a": "", "tags": [], "id": "s277", "tier": "general"}, {"t": "Turn Your Love Around (Karaoke Version Without Backgrounds) [In the Style of George Benson]", "a": "", "tags": [], "id": "s278", "tier": "general"}, {"t": "Twist and Shout (In the Style of the Beatles) [Karaoke Version]", "a": "", "tags": [], "id": "s279", "tier": "general"}, {"t": "Unchained Melody", "a": "", "tags": [], "id": "s280", "tier": "general"}, {"t": "Unforgettable", "a": "", "tags": [], "id": "s281", "tier": "general"}, {"t": "Until The End Of Time (In the Style of Justin Timberlake and Beyonce) [Karaoke Version With Backup Vocals]", "a": "", "tags": [], "id": "s282", "tier": "general"}, {"t": "Uptown Funk (Karaoke Version with Backing Vocals) [Originally Performed By Mark Ronson & Bruno Mars]", "a": "", "tags": [], "id": "s283", "tier": "general"}, {"t": "Use Me (In the Style of Bill Withers) [Karaoke Version]", "a": "", "tags": [], "id": "s284", "tier": "general"}, {"t": "Versace On The Floor", "a": "", "tags": [], "id": "s285", "tier": "general"}, {"t": "Viva la Vida (Originally Performed by Coldplay) [Karaoke]", "a": "", "tags": [], "id": "s286", "tier": "general"}, {"t": "Waiting For A Girl Like You (In the Style of Foreigner) [Karaoke Version]", "a": "", "tags": [], "id": "s287", "tier": "general"}, {"t": "Waiting On the World to Change (Karaoke Version With Background Vocals)", "a": "", "tags": [], "id": "s288", "tier": "general"}, {"t": "We're in This Love Together (In the Style of Al Jarreau) [Karaoke Version]", "a": "", "tags": [], "id": "s289", "tier": "general"}, {"t": "What a Fool Believes (In the Style of the Doobie Brothers) [Karaoke Version With Backup Vocals]", "a": "", "tags": [], "id": "s290", "tier": "general"}, {"t": "What A Wonderful World", "a": "", "tags": [], "id": "s291", "tier": "general"}, {"t": "What Is Hip? (Karaoke Version)", "a": "", "tags": [], "id": "s292", "tier": "general"}, {"t": "What You Won't Do for Love (Karaoke Version)", "a": "", "tags": [], "id": "s293", "tier": "general"}, {"t": "What's Going On (Karaoke Version)", "a": "", "tags": [], "id": "s294", "tier": "general"}, {"t": "When A Man Loves A Woman", "a": "", "tags": [], "id": "s295", "tier": "general"}, {"t": "When Can I See You Again (Karaoke In the Style of Babyface)", "a": "", "tags": [], "id": "s296", "tier": "general"}, {"t": "Whip Appeal", "a": "", "tags": [], "id": "s297", "tier": "general"}, {"t": "With or Without You (Karaoke Version)", "a": "", "tags": [], "id": "s298", "tier": "general"}, {"t": "Wonderful Tonight (As Made Famous By Eric Clapton) [Karaoke Version]", "a": "", "tags": [], "id": "s299", "tier": "general"}, {"t": "Yah Mo B There", "a": "", "tags": [], "id": "s300", "tier": "general"}, {"t": "Yearning For Your Love - The Gap Band", "a": "", "tags": [], "id": "s301", "tier": "general"}, {"t": "Yesterday (Karaoke Version)", "a": "", "tags": [], "id": "s302", "tier": "general"}, {"t": "You Are (Karaoke Version)", "a": "", "tags": [], "id": "s303", "tier": "general"}, {"t": "You Are Everything Michael Mcdonald", "a": "", "tags": [], "id": "s304", "tier": "general"}, {"t": "You Are Not Alone (Karaoke 2010 Tribute)", "a": "", "tags": [], "id": "s305", "tier": "general"}, {"t": "You Are The Sunshine Of My Life", "a": "", "tags": [], "id": "s306", "tier": "general"}, {"t": "You Make Me Feel So Young - (in the Style Of: Frank Sinatra) - [Karaoke Version Instrumental Only]", "a": "", "tags": [], "id": "s307", "tier": "general"}, {"t": "You Rock My World (Karaoke Version)", "a": "", "tags": [], "id": "s308", "tier": "general"}, {"t": "You Send Me - (in the Style Of: Michael Bolton) - [Instrumental Karaoke Version]", "a": "", "tags": [], "id": "s309", "tier": "general"}, {"t": "You're Still a Young Man (Karaoke Version)", "a": "", "tags": [], "id": "s310", "tier": "general"}, {"t": "You've Got A Friend (Karaoke Instrumental Track) [In the style of James Taylor]", "a": "", "tags": [], "id": "s311", "tier": "general"}, {"t": "Your Love Is King (Karaoke Version)", "a": "", "tags": [], "id": "s312", "tier": "general"}]
+;
+
+/* ============ INIT / CLOUD ============ */
+async function init(){
+  if(!BIN_ID){
+    renderSetupBox(false);
+    return;
+  }
+  await loadFromCloud();
+
+  document.getElementById('pollSection').style.display = 'block';
+  if(!POLL_BIN_ID){
+    renderPollSetupBox(false);
+    return;
+  }
+  await loadPolls();
+}
+
+async function loadFromCloud(){
+  try{
+    const res = await fetch(`${JSONBIN_BASE}/${BIN_ID}/latest`, { headers: { "X-Master-Key": MASTER_KEY } });
+    const data = await res.json();
+    const record = data.record || {};
+    songs = record.songs || [];
+    prices = { ...DEFAULT_PRICES, ...(record.prices || {}) };
+    rebuildTagList();
+    renderSetupBox(true);
+    document.getElementById('controlsArea').style.display = 'block';
+    document.getElementById('fab').style.display = 'flex';
+    document.getElementById('priceGeneral').value = prices.general;
+    renderChips();
+    renderList();
+  } catch(err){
+    console.error(err);
+    renderSetupBox(false, true);
+  }
+}
+
+async function saveToCloud(){
+  try{
+    const res = await fetch(`${JSONBIN_BASE}/${BIN_ID}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY },
+      body: JSON.stringify({ songs, prices })
+    });
+    if(!res.ok) throw new Error("save failed");
+    return true;
+  } catch(err){
+    alert("Couldn't save — check your connection and try again.");
+    return false;
+  }
+}
+
+async function createCloudBin(seedWithExisting){
+  try{
+    const initialSongs = seedWithExisting ? SEED_SONGS : [];
+    const res = await fetch(JSONBIN_BASE, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY, "X-Bin-Name": "rickparma-song-requests" },
+      body: JSON.stringify({ songs: initialSongs, prices: DEFAULT_PRICES })
+    });
+    const data = await res.json();
+    const newId = data.metadata.id;
+    alert(`Cloud storage created!\n\nCopy this Bin ID and paste it into the BIN_ID constant in BOTH this file and the public request page, then re-upload both:\n\n${newId}`);
+  } catch(err){
+    alert("Couldn't create cloud storage — check your connection and try again.");
+  }
+}
+
+function renderSetupBox(connected, errored){
+  const status = document.getElementById('statusLine');
+  const box = document.getElementById('setupBox');
+  if(connected){
+    status.innerHTML = `<span class="pill pill-ok">☁️ Synced with cloud storage</span>`;
+    box.innerHTML = '';
+    return;
+  }
+  status.innerHTML = errored
+    ? `<span class="pill pill-warn">⚠️ Couldn't reach cloud storage</span>`
+    : `<span class="pill pill-warn">⚠️ No cloud storage connected yet</span>`;
+  box.innerHTML = `
+    <div class="setup-box">
+      <p>Create the shared song database once. Both this manager and the public request page will read/write to it.</p>
+      <button class="btn btn-primary btn-full" onclick="createCloudBin(true)">Create &amp; Import My Existing ${SEED_SONGS.length}-Song List</button>
+      <div style="height:8px;"></div>
+      <button class="btn btn-outline btn-full" onclick="createCloudBin(false)">Create Empty (Start From Scratch)</button>
+    </div>`;
+}
+
+/* ============ LIST ============ */
+/* ============ CSV EXPORT / IMPORT ============ */
+function csvEscape(val){
+  val = (val === undefined || val === null) ? '' : String(val);
+  if(/[",\n]/.test(val)){
+    return '"' + val.replace(/"/g, '""') + '"';
+  }
+  return val;
+}
+
+function exportCSV(){
+  const header = ['id','title','artist','tier','tags'];
+  const rows = songs.map(s => [
+    s.id,
+    s.t,
+    s.a || '',
+    s.tier || 'general',
+    (s.tags || []).join(';')
+  ].map(csvEscape).join(','));
+
+  const csv = [header.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'rickparma-songs.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Minimal CSV line parser that handles quoted fields containing commas/quotes/newlines
+function parseCSV(text){
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  for(let i = 0; i < text.length; i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field += '"'; i++; }
+        else { inQuotes = false; }
+      } else {
+        field += c;
+      }
+    } else {
+      if(c === '"'){ inQuotes = true; }
+      else if(c === ','){ row.push(field); field = ''; }
+      else if(c === '\n' || c === '\r'){
+        if(c === '\r' && text[i+1] === '\n') i++;
+        row.push(field); field = '';
+        if(row.length > 1 || row[0] !== ''){ rows.push(row); }
+        row = [];
+      } else {
+        field += c;
+      }
+    }
+  }
+  if(field !== '' || row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+
+async function handleCSVUpload(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  event.target.value = ''; // reset so the same file can be re-selected later
+
+  const text = await file.text();
+  const rows = parseCSV(text);
+  if(rows.length < 2){
+    alert('That CSV looks empty.');
+    return;
+  }
+
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const idIdx = header.indexOf('id');
+  const titleIdx = header.indexOf('title');
+  const artistIdx = header.indexOf('artist');
+  const tierIdx = header.indexOf('tier');
+  const tagsIdx = header.indexOf('tags');
+
+  if(titleIdx === -1){
+    alert('CSV must have a "title" column. Download the current list first to see the expected format.');
+    return;
+  }
+
+  let addedCount = 0;
+  let updatedCount = 0;
+
+  for(let i = 1; i < rows.length; i++){
+    const r = rows[i];
+    const title = (r[titleIdx] || '').trim();
+    if(!title) continue;
+
+    const artist = artistIdx > -1 ? (r[artistIdx] || '').trim() : '';
+    let tier = tierIdx > -1 ? (r[tierIdx] || '').trim().toLowerCase() : 'general';
+    tier = 'general'; // only one price tier now — legacy free/special rows all fold into general
+    const tags = tagsIdx > -1 ? (r[tagsIdx] || '').split(';').map(t => t.trim()).filter(Boolean) : [];
+    const id = idIdx > -1 ? (r[idIdx] || '').trim() : '';
+
+    const existing = id ? songs.find(s => s.id === id) : null;
+    if(existing){
+      existing.t = title;
+      existing.a = artist;
+      existing.tier = tier;
+      existing.tags = tags;
+      updatedCount++;
+    } else {
+      songs.push({ id: 's' + Date.now() + Math.floor(Math.random()*10000), t: title, a: artist, tier, tags });
+      addedCount++;
+    }
+  }
+
+  const proceed = confirm(`Ready to import:\n${addedCount} new song(s)\n${updatedCount} updated song(s)\n\nSave these changes now?`);
+  if(!proceed){
+    // reload from cloud to discard the in-memory changes we just made
+    await loadFromCloud();
+    return;
+  }
+
+  rebuildTagList();
+  const ok = await saveToCloud();
+  if(ok){
+    renderChips();
+    renderList();
+    alert('Song list updated!');
+  }
+}
+
+function rebuildTagList(){
+  ALL_TAGS = [...new Set(songs.flatMap(s => s.tags || []))].sort();
+}
+
+function renderChips(){
+  const chipsEl = document.getElementById('chips');
+  chipsEl.innerHTML = '';
+  const allChip = document.createElement('div');
+  allChip.className = 'chip' + (activeTag === null ? ' active' : '');
+  allChip.textContent = 'All';
+  allChip.onclick = () => { activeTag = null; renderChips(); renderList(); };
+  chipsEl.appendChild(allChip);
+  ALL_TAGS.forEach(tag => {
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (activeTag === tag ? ' active' : '');
+    chip.textContent = tag;
+    chip.onclick = () => { activeTag = (activeTag === tag ? null : tag); renderChips(); renderList(); };
+    chipsEl.appendChild(chip);
+  });
+}
+
+function tierBadge(){
+  return `<span class="badge general">$${prices.general}</span>`;
+}
+
+function sortSongs(list){
+  const sorted = [...list];
+  sorted.sort((a, b) => {
+    if(sortMode === 'title-asc') return a.t.localeCompare(b.t);
+    if(sortMode === 'title-desc') return b.t.localeCompare(a.t);
+    if(sortMode === 'artist-asc') return (a.a||'').localeCompare(b.a||'');
+    if(sortMode === 'artist-desc') return (b.a||'').localeCompare(a.a||'');
+    return 0;
+  });
+  return sorted;
+}
+
+function renderList(){
+  const term = searchTerm.trim().toLowerCase();
+  let filtered = songs.filter(s => {
+    const matchesTag = !activeTag || (s.tags||[]).includes(activeTag);
+    const matchesTerm = !term || s.t.toLowerCase().includes(term) || (s.a||'').toLowerCase().includes(term);
+    return matchesTag && matchesTerm;
+  });
+  filtered = sortSongs(filtered);
+
+  document.getElementById('countRow').textContent = `${filtered.length} of ${songs.length} songs`;
+
+  const listEl = document.getElementById('list');
+  if(filtered.length === 0){
+    listEl.innerHTML = `<div style="padding:40px 4px; color:var(--dim); font-size:14px;">No songs match. Tap + to add one.</div>`;
+    return;
+  }
+  listEl.innerHTML = filtered.map(s => `
+    <div class="song-row" data-id="${s.id}">
+      <div class="song-info">
+        <div class="song-title">${escapeHtml(s.t)}</div>
+        <div class="song-meta">${escapeHtml(s.a||'—')}${s.tags && s.tags.length ? ' · ' + s.tags.join(', ') : ''}</div>
+      </div>
+      ${tierBadge()}
+    </div>`).join('');
+
+  [...listEl.querySelectorAll('.song-row')].forEach(row => {
+    row.addEventListener('click', () => openEditor(row.dataset.id));
+  });
+}
+
+function escapeHtml(str){
+  return (str||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+document.getElementById('search').addEventListener('input', e => { searchTerm = e.target.value; renderList(); });
+document.getElementById('sortSelect').addEventListener('change', e => { sortMode = e.target.value; renderList(); });
+
+/* ============ PRICES ============ */
+async function savePrices(){
+  prices.general = parseFloat(document.getElementById('priceGeneral').value) || DEFAULT_PRICES.general;
+  const ok = await saveToCloud();
+  if(ok) renderList();
+}
+
+/* ============ EDIT / ADD SHEET ============ */
+function openEditor(id){
+  editingId = id;
+  const s = id ? songs.find(x => x.id === id) : null;
+
+  document.getElementById('sheetHeading').textContent = s ? 'Edit Song' : 'Add Song';
+  document.getElementById('fTitle').value = s ? s.t : '';
+  document.getElementById('fArtist').value = s ? (s.a||'') : '';
+  document.getElementById('deleteBtn').style.display = s ? 'inline-flex' : 'none';
+
+  selectedTags = s ? [...(s.tags||[])] : [];
+
+  renderTagGrid();
+
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('sheet').classList.add('show');
+}
+
+function renderTagGrid(){
+  const grid = document.getElementById('tagGrid');
+  grid.innerHTML = ALL_TAGS.map(tag => `<div class="tag-opt ${selectedTags.includes(tag)?'selected':''}" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</div>`).join('');
+  [...grid.querySelectorAll('.tag-opt')].forEach(el => {
+    el.onclick = () => {
+      const tag = el.dataset.tag;
+      if(selectedTags.includes(tag)) selectedTags = selectedTags.filter(t => t !== tag);
+      else selectedTags.push(tag);
+      renderTagGrid();
+    };
+  });
+}
+
+function addNewTag(){
+  const input = document.getElementById('newTagInput');
+  const val = input.value.trim();
+  if(!val) return;
+  if(!ALL_TAGS.includes(val)) ALL_TAGS.push(val);
+  if(!selectedTags.includes(val)) selectedTags.push(val);
+  input.value = '';
+  renderTagGrid();
+}
+
+function closeSheet(){
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('sheet').classList.remove('show');
+}
+
+async function saveSong(){
+  const title = document.getElementById('fTitle').value.trim();
+  if(!title){ alert('Song title is required.'); return; }
+  const artist = document.getElementById('fArtist').value.trim();
+
+  if(editingId){
+    const s = songs.find(x => x.id === editingId);
+    s.t = title; s.a = artist; s.tier = 'general'; s.tags = [...selectedTags];
+  } else {
+    const newId = 's' + Date.now();
+    songs.push({ id: newId, t: title, a: artist, tier: 'general', tags: [...selectedTags] });
+  }
+
+  rebuildTagList();
+  const ok = await saveToCloud();
+  if(ok){
+    renderChips();
+    renderList();
+    closeSheet();
+  }
+}
+
+async function deleteSong(){
+  if(!editingId) return;
+  if(!confirm('Delete this song? This can\'t be undone.')) return;
+  songs = songs.filter(x => x.id !== editingId);
+  rebuildTagList();
+  const ok = await saveToCloud();
+  if(ok){
+    renderChips();
+    renderList();
+    closeSheet();
+  }
+}
+
+/* ============ LIVE POLLS ============ */
+async function loadPolls(){
+  try{
+    const res = await fetch(`${JSONBIN_BASE}/${POLL_BIN_ID}/latest`, { headers: { "X-Master-Key": MASTER_KEY } });
+    const data = await res.json();
+    const record = data.record || {};
+    polls = record.polls || [];
+    activePollId = record.activePollId || null;
+    renderPollSetupBox(true);
+    renderPollAll();
+  } catch(err){
+    console.error(err);
+    renderPollSetupBox(false, true);
+  }
+}
+
+async function savePollsToCloud(){
+  try{
+    const res = await fetch(`${JSONBIN_BASE}/${POLL_BIN_ID}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY },
+      body: JSON.stringify({ polls, activePollId })
+    });
+    if(!res.ok) throw new Error('save failed');
+    return true;
+  } catch(err){
+    alert("Couldn't save — check your connection and try again.");
+    return false;
+  }
+}
+
+async function createPollBin(){
+  try{
+    const res = await fetch(JSONBIN_BASE, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY, "X-Bin-Name": "rickparma-polls" },
+      body: JSON.stringify({ polls: [], activePollId: null })
+    });
+    const data = await res.json();
+    const newId = data.metadata.id;
+    alert(`Poll storage created!\n\nCopy this Bin ID and paste it into the POLL_BIN_ID constant near the top of this file, then re-upload:\n\n${newId}`);
+  } catch(err){
+    alert("Couldn't create poll storage — check your connection and try again.");
+  }
+}
+
+function renderPollSetupBox(connected, errored){
+  const status = document.getElementById('pollStatusLine');
+  const box = document.getElementById('pollSetupBox');
+  if(connected){
+    status.innerHTML = `<span class="pill pill-ok">☁️ Synced with poll storage</span>`;
+    box.innerHTML = '';
+    return;
+  }
+  status.innerHTML = errored
+    ? `<span class="pill pill-warn">⚠️ Couldn't reach poll storage</span>`
+    : `<span class="pill pill-warn">⚠️ No poll storage connected yet</span>`;
+  box.innerHTML = `
+    <div class="setup-box">
+      <p>Create the poll database once. This lets you prep polls ahead of time and go live during a show.</p>
+      <button class="btn btn-primary btn-full" onclick="createPollBin()">Create Poll Storage</button>
+    </div>`;
+}
+
+function renderPollAll(){
+  renderLiveSection();
+  renderDraftList();
+}
+
+function renderLiveSection(){
+  const section = document.getElementById('liveSection');
+  const area = document.getElementById('liveCardArea');
+  const live = polls.find(p => p.id === activePollId && p.status === 'live');
+
+  if(!live){
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+
+  const total = live.options.reduce((sum, o) => sum + (o.votes || 0), 0);
+  const rows = live.options.map(opt => {
+    const song = songs.find(s => s.id === opt.songId);
+    const label = opt.label || (song ? song.t : 'Unknown song');
+    const votes = opt.votes || 0;
+    const pct = total > 0 ? Math.round((votes / total) * 100) : 0;
+    return `
+      <div class="result-row">
+        <div style="flex:0 0 120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(label)}</div>
+        <div class="result-bar-wrap"><div class="result-bar" style="width:${pct}%;"></div></div>
+        <div class="result-count">${votes}</div>
+      </div>`;
+  }).join('');
+
+  area.innerHTML = `
+    <div class="live-card">
+      <div class="q">${escapeHtml(live.question)}</div>
+      ${rows}
+      <div style="margin-top:12px; display:flex; gap:8px;">
+        <button class="btn btn-outline" style="flex:1;" onclick="copyBlastMessage('${live.id}')">📋 Copy Blast Message</button>
+        <button class="btn btn-danger" style="flex:1;" onclick="endPoll('${live.id}')">End Poll</button>
+      </div>
+    </div>`;
+}
+
+function copyBlastMessage(pollId){
+  const poll = polls.find(p => p.id === pollId);
+  if(!poll) return;
+  const message = `🎤 LIVE POLL! ${poll.question} Check your phones and vote now: ${REQUEST_PAGE_URL}`;
+  navigator.clipboard.writeText(message).then(() => {
+    alert('Copied! Paste this into your text blast admin:\n\n' + message);
+  }).catch(() => {
+    prompt('Copy this manually:', message);
+  });
+}
+
+function renderDraftList(){
+  const select = document.getElementById('savedPollsSelect');
+  const selectable = polls.filter(p => p.status !== 'live'); // the live one has its own section above
+
+  if(selectable.length === 0){
+    select.innerHTML = `<option value="">No polls saved yet — tap + New Poll below.</option>`;
+    return;
+  }
+
+  const prevValue = select.value;
+  select.innerHTML = selectable.map(p => {
+    const usedTag = p.status === 'closed' ? ' (used before)' : '';
+    return `<option value="${p.id}">${escapeHtml(p.question)}${usedTag}</option>`;
+  }).join('');
+
+  if(prevValue && selectable.some(p => p.id === prevValue)){
+    select.value = prevValue;
+  }
+}
+
+async function goLiveFromDropdown(){
+  const id = document.getElementById('savedPollsSelect').value;
+  if(!id){ alert('No saved poll selected.'); return; }
+  await goLive(id);
+}
+
+async function deleteFromDropdown(){
+  const id = document.getElementById('savedPollsSelect').value;
+  if(!id){ alert('No saved poll selected.'); return; }
+  await deletePoll(id);
+}
+
+async function goLive(pollId){
+  if(activePollId){
+    if(!confirm('Another poll is already live. End it and go live with this one instead?')) return;
+    const current = polls.find(p => p.id === activePollId);
+    if(current) current.status = 'closed';
+  }
+  const poll = polls.find(p => p.id === pollId);
+  poll.status = 'live';
+  poll.options.forEach(o => o.votes = 0); // fresh votes each time it's relaunched
+  activePollId = pollId;
+  const ok = await savePollsToCloud();
+  if(ok) renderPollAll();
+}
+
+async function endPoll(pollId){
+  const poll = polls.find(p => p.id === pollId);
+  if(poll) poll.status = 'closed';
+  if(activePollId === pollId) activePollId = null;
+  const ok = await savePollsToCloud();
+  if(ok) renderPollAll();
+}
+
+async function deletePoll(pollId){
+  if(!confirm('Delete this poll?')) return;
+  polls = polls.filter(p => p.id !== pollId);
+  if(activePollId === pollId) activePollId = null;
+  const ok = await savePollsToCloud();
+  if(ok) renderPollAll();
+}
+
+const QUESTION_TEMPLATES = {
+  genre: 'YOU PICK THE GENRE',
+  artist: 'WHO WOULD YOU RATHER HEAR',
+  song: 'WHAT SONG WOULD YOU LIKE TO HEAR'
+};
+
+let currentPollType = null; // 'genre' | 'artist' | 'song'
+let selectedOptionKeys = []; // ordered list of songId / artist name / genre tag, in the order picked
+
+function selectPollType(type){
+  currentPollType = type;
+  selectedOptionKeys = [];
+
+  const input = document.getElementById('fQuestion');
+  const currentVal = input.value.trim();
+  const isTemplateOrEmpty = !currentVal || Object.values(QUESTION_TEMPLATES).includes(currentVal);
+  if(isTemplateOrEmpty){
+    input.value = QUESTION_TEMPLATES[type];
+  }
+  document.querySelectorAll('.poll-type-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.type === type);
+  });
+
+  document.getElementById('optionSearch').value = '';
+  renderOptionPicker();
+}
+
+function openPollEditor(){
+  try{
+    if(!POLL_BIN_ID){ alert('Set up poll storage first (see the button above).'); return; }
+    document.getElementById('fQuestion').value = '';
+    document.querySelectorAll('.poll-type-btn').forEach(btn => btn.classList.remove('active'));
+    currentPollType = null;
+    selectedOptionKeys = [];
+    document.getElementById('optionSearch').value = '';
+    document.getElementById('optionPickerList').innerHTML = `<div class="opt-placeholder">Pick Genre, Artist, or Song above first.</div>`;
+    document.getElementById('selectedCountLabel').textContent = '';
+    document.getElementById('pollOverlay').classList.add('show');
+    document.getElementById('pollSheet').classList.add('show');
+  } catch(err){
+    alert('New Poll error: ' + err.message);
+    console.error(err);
+  }
+}
+
+function closePollSheet(){
+  document.getElementById('pollOverlay').classList.remove('show');
+  document.getElementById('pollSheet').classList.remove('show');
+}
+
+function getPickerItems(){
+  const term = document.getElementById('optionSearch').value.trim().toLowerCase();
+
+  if(currentPollType === 'genre'){
+    return ALL_TAGS
+      .filter(t => !term || t.toLowerCase().includes(term))
+      .map(t => ({ key: t, label: t }));
+  }
+  if(currentPollType === 'artist'){
+    const artists = [...new Set(songs.map(s => s.a).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+    return artists
+      .filter(a => !term || a.toLowerCase().includes(term))
+      .map(a => ({ key: a, label: a }));
+  }
+  if(currentPollType === 'song'){
+    return [...songs]
+      .filter(s => !term || s.t.toLowerCase().includes(term) || (s.a||'').toLowerCase().includes(term))
+      .sort((a,b) => a.t.localeCompare(b.t))
+      .map(s => ({ key: s.id, label: s.t + (s.a ? ' — ' + s.a : '') }));
+  }
+  return [];
+}
+
+function renderOptionPicker(){
+  const listEl = document.getElementById('optionPickerList');
+  if(!currentPollType){
+    listEl.innerHTML = `<div class="opt-placeholder">Pick Genre, Artist, or Song above first.</div>`;
+    updateSelectedCountLabel();
+    return;
+  }
+
+  const items = getPickerItems();
+  if(items.length === 0){
+    listEl.innerHTML = `<div class="opt-placeholder">No matches.</div>`;
+    updateSelectedCountLabel();
+    return;
+  }
+
+  listEl.innerHTML = items.slice(0, 80).map(item => {
+    const selIndex = selectedOptionKeys.indexOf(item.key);
+    const isSelected = selIndex > -1;
+    return `
+      <div class="option-pick-item${isSelected ? ' selected' : ''}" data-key="${escapeHtml(item.key)}">
+        <span class="opt-pick-check">${isSelected ? (selIndex + 1) : ''}</span>
+        <span class="opt-pick-label">${escapeHtml(item.label)}</span>
+      </div>`;
+  }).join('');
+
+  [...listEl.querySelectorAll('.option-pick-item')].forEach(el => {
+    el.onclick = () => toggleOptionKey(el.dataset.key);
+  });
+
+  updateSelectedCountLabel();
+}
+
+function toggleOptionKey(key){
+  const idx = selectedOptionKeys.indexOf(key);
+  if(idx > -1){
+    selectedOptionKeys.splice(idx, 1);
+  } else {
+    if(selectedOptionKeys.length >= 6){ alert('Max 6 options per poll.'); return; }
+    selectedOptionKeys.push(key);
+  }
+  renderOptionPicker();
+}
+
+function updateSelectedCountLabel(){
+  const label = document.getElementById('selectedCountLabel');
+  if(!currentPollType){ label.textContent = ''; return; }
+  label.textContent = `${selectedOptionKeys.length} selected (need 2–6)`;
+}
+
+document.getElementById('optionSearch').addEventListener('input', renderOptionPicker);
+
+async function savePoll(){
+  const question = document.getElementById('fQuestion').value.trim();
+  if(!question){ alert('Please enter a question.'); return; }
+  if(!currentPollType){ alert('Pick Genre, Artist, or Song above first.'); return; }
+
+  if(selectedOptionKeys.length < 2){
+    alert('Pick at least 2 options.');
+    return;
+  }
+
+  let options;
+  if(currentPollType === 'song'){
+    options = selectedOptionKeys.map(songId => ({ songId, votes: 0 }));
+  } else if(currentPollType === 'artist'){
+    options = selectedOptionKeys.map(artistName => {
+      const rep = songs.filter(s => s.a === artistName).sort((a,b) => a.t.localeCompare(b.t))[0];
+      return { label: artistName, songId: rep ? rep.id : null, votes: 0 };
+    });
+  } else { // genre
+    options = selectedOptionKeys.map(genreTag => {
+      const rep = songs.filter(s => (s.tags||[]).includes(genreTag)).sort((a,b) => a.t.localeCompare(b.t))[0];
+      return { label: genreTag, songId: rep ? rep.id : null, votes: 0 };
+    });
+  }
+
+  const newPoll = {
+    id: 'poll' + Date.now(),
+    question,
+    status: 'draft',
+    pollType: currentPollType,
+    options
+  };
+  polls.push(newPoll);
+
+  const ok = await savePollsToCloud();
+  if(ok){
+    renderPollAll();
+    closePollSheet();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
