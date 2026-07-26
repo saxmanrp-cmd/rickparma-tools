@@ -183,6 +183,7 @@
   .spin-result-free{color:var(--general); border-color:var(--general);}
   .spin-result-general{color:var(--accent); border-color:var(--accent);}
   .spin-result-bogo{color:#E86BD5; border-color:#E86BD5;}
+  .bogo-sort-select{width:100%; margin-top:8px; padding:11px 14px; font-size:16px; border-radius:10px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif;}
   .bogo-results{max-height:200px; overflow-y:auto; border:1px solid var(--line); border-radius:10px; margin-top:8px;}
   .bogo-result-item{padding:12px 14px; font-size:14px; color:var(--white); border-bottom:1px solid var(--line); cursor:pointer;}
   .bogo-result-item:last-child{border-bottom:none;}
@@ -704,6 +705,14 @@ function revealSpinResult(outcome, songId, price){
       <div class="spin-result spin-result-bogo">🎉 You spun BOGO! Pick a second song — it's free.</div>
       <div class="section-label">Step 3 — Pick your free second song</div>
       <input type="text" id="bogoSearch" class="name-input" placeholder="Search song or artist…" autocomplete="off">
+      <select id="bogoSort" class="bogo-sort-select">
+        <option value="title-asc">Title A → Z</option>
+        <option value="title-desc">Title Z → A</option>
+        <option value="artist-asc">Artist A → Z</option>
+        <option value="artist-desc">Artist Z → A</option>
+      </select>
+      <div class="chips" id="bogoChips"></div>
+      <div class="count-row" id="bogoCountRow"></div>
       <div id="bogoResults" class="bogo-results"></div>
       <div id="bogoNextSteps"></div>
     `;
@@ -727,35 +736,91 @@ function revealSpinResult(outcome, songId, price){
   }
 }
 
+let bogoFilter = { search: '', sort: 'title-asc', tag: null };
+
+function sortSongsByMode(list, mode){
+  const sorted = [...list];
+  sorted.sort((a, b) => {
+    if(mode === 'title-asc') return a.t.localeCompare(b.t);
+    if(mode === 'title-desc') return b.t.localeCompare(a.t);
+    if(mode === 'artist-asc') return (a.a||'').localeCompare(b.a||'');
+    if(mode === 'artist-desc') return (b.a||'').localeCompare(a.a||'');
+    return 0;
+  });
+  return sorted;
+}
+
 function setupBogoPicker(songAId, price){
-  const searchInput = document.getElementById('bogoSearch');
+  bogoFilter = { search: '', sort: 'title-asc', tag: null };
+
+  const chipsEl = document.getElementById('bogoChips');
+  chipsEl.innerHTML = '';
+  const allChip = document.createElement('div');
+  allChip.className = 'chip active';
+  allChip.textContent = 'All';
+  allChip.onclick = () => { bogoFilter.tag = null; renderBogoChips(); renderBogoResults(songAId, price); };
+  chipsEl.appendChild(allChip);
+
+  ALL_TAGS.forEach(tag => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.textContent = tag;
+    chip.onclick = () => {
+      bogoFilter.tag = (bogoFilter.tag === tag ? null : tag);
+      renderBogoChips();
+      renderBogoResults(songAId, price);
+    };
+    chipsEl.appendChild(chip);
+  });
+
+  document.getElementById('bogoSearch').addEventListener('input', e => {
+    bogoFilter.search = e.target.value;
+    renderBogoResults(songAId, price);
+  });
+  document.getElementById('bogoSort').addEventListener('change', e => {
+    bogoFilter.sort = e.target.value;
+    renderBogoResults(songAId, price);
+  });
+
+  renderBogoResults(songAId, price);
+}
+
+function renderBogoChips(){
+  const chipsEl = document.getElementById('bogoChips');
+  [...chipsEl.children].forEach(chip => {
+    const isAllChip = chip === chipsEl.firstElementChild;
+    chip.classList.toggle('active', isAllChip ? bogoFilter.tag === null : chip.textContent === bogoFilter.tag);
+  });
+}
+
+function renderBogoResults(songAId, price){
+  const term = bogoFilter.search.trim().toLowerCase();
+  let filtered = songs.filter(sg =>
+    sg.id !== songAId &&
+    (!bogoFilter.tag || (sg.tags||[]).includes(bogoFilter.tag)) &&
+    (!term || sg.t.toLowerCase().includes(term) || (sg.a||'').toLowerCase().includes(term))
+  );
+  filtered = sortSongsByMode(filtered, bogoFilter.sort);
+
   const resultsBox = document.getElementById('bogoResults');
+  const countRow = document.getElementById('bogoCountRow');
+  if(countRow) countRow.textContent = `${filtered.length} song${filtered.length === 1 ? '' : 's'}`;
 
-  searchInput.addEventListener('input', () => {
-    const term = searchInput.value.trim().toLowerCase();
-    if(!term){ resultsBox.innerHTML = ''; return; }
-    const matches = songs.filter(sg =>
-      sg.id !== songAId &&
-      (sg.t.toLowerCase().includes(term) || (sg.a||'').toLowerCase().includes(term))
-    ).slice(0, 8);
+  if(filtered.length === 0){
+    resultsBox.innerHTML = `<div class="bogo-result-item">No matches</div>`;
+    return;
+  }
 
-    if(matches.length === 0){
-      resultsBox.innerHTML = `<div class="bogo-result-item">No matches</div>`;
-      return;
-    }
-    resultsBox.innerHTML = matches.map(sg =>
-      `<div class="bogo-result-item" data-song-id="${sg.id}">${escapeHtml(sg.t)}${sg.a ? ' — ' + escapeHtml(sg.a) : ''}</div>`
-    ).join('');
+  resultsBox.innerHTML = filtered.slice(0, 60).map(sg =>
+    `<div class="bogo-result-item" data-song-id="${sg.id}">${escapeHtml(sg.t)}${sg.a ? ' — ' + escapeHtml(sg.a) : ''}</div>`
+  ).join('');
 
-    [...resultsBox.querySelectorAll('.bogo-result-item')].forEach(item => {
-      item.onclick = () => {
-        const songBId = item.dataset.songId;
-        if(!songBId) return;
-        searchInput.value = item.textContent;
-        resultsBox.innerHTML = '';
-        renderBogoNextSteps(songAId, songBId, price);
-      };
-    });
+  [...resultsBox.querySelectorAll('.bogo-result-item')].forEach(item => {
+    item.onclick = () => {
+      const songBId = item.dataset.songId;
+      if(!songBId) return;
+      renderBogoNextSteps(songAId, songBId, price);
+    };
   });
 }
 
@@ -766,13 +831,13 @@ function renderBogoNextSteps(songAId, songBId, price){
   const paypalLink = `${PAYMENT_LINKS.paypal}/${price}`;
   const nextSteps = document.getElementById('bogoNextSteps');
   nextSteps.innerHTML = `
-    <div class="section-label">Step 4 — Send the tip ($${price} for both songs!)</div>
+    <div class="section-label">Step 4 — Send the request</div>
+    <a class="btn btn-text" href="#" target="_top" onclick="return prepareSendBogo(this, '${songAId}', '${songBId}')">📱 Text This Request</a>
+
+    <div class="section-label">Step 5 — Send the tip ($${price} for both songs!)</div>
     <a class="btn btn-venmo" href="${venmoAppLink}" target="_top">Pay $${price} with Venmo</a>
     <a class="btn btn-cashapp" href="${cashAppLink}" target="_blank">Pay $${price} with Cash App</a>
     <a class="btn btn-paypal" href="${paypalLink}" target="_blank">Pay $${price} with PayPal</a>
-
-    <div class="section-label">Step 5 — Send the request</div>
-    <a class="btn btn-text" href="#" target="_top" onclick="return prepareSendBogo(this, '${songAId}', '${songBId}')">📱 Text This Request</a>
   `;
 }
 
