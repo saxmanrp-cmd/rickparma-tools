@@ -697,14 +697,14 @@ function revealSpinResult(outcome, songId, price){
     const cashAppLink = `${PAYMENT_LINKS.cashapp}/${price}`;
     const paypalLink = `${PAYMENT_LINKS.paypal}/${price}`;
     area.innerHTML = `
-      <div class="spin-result spin-result-general">You spun $${price} — send the tip below to complete your request.</div>
-      <div class="section-label">Step 3 — Send the tip ($${price})</div>
+      <div class="spin-result spin-result-general">You spun $${price} — text your request now, then send the tip.</div>
+      <div class="section-label">Step 3 — Send the request</div>
+      <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}')">📱 Text This Request</a>
+
+      <div class="section-label">Step 4 — Send the tip ($${price})</div>
       <a class="btn btn-venmo" href="${venmoAppLink}" target="_top">Pay $${price} with Venmo</a>
       <a class="btn btn-cashapp" href="${cashAppLink}" target="_blank">Pay $${price} with Cash App</a>
       <a class="btn btn-paypal" href="${paypalLink}" target="_blank">Pay $${price} with PayPal</a>
-
-      <div class="section-label">Step 4 — Send the request</div>
-      <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}')">📱 I've Sent Payment — Text Request</a>
     `;
   }
 }
