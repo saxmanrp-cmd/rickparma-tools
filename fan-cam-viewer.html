@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Fan Cam — Inbox</title>
+
+<!--
+  SETUP: use the same JSONBIN_ID and JSONBIN_KEY you set in
+  fan-cam.html, plus a passcode of your choosing. This is a
+  simple gate, not real security — don't link to this page
+  publicly, just bookmark it yourself.
+-->
+<script>
+  const CONFIG = {
+    jsonbinId: "YOUR_JSONBIN_BIN_ID",
+    jsonbinKey: "YOUR_JSONBIN_MASTER_KEY",
+    passcode: "CHOOSE_A_PASSCODE"
+  };
+</script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@500;600;700&family=Lato:wght@400;700&display=swap');
+  :root{ --bg:#130101; --panel:#1c0606; --accent:#8DB2E5; --white:#F5F0EA; }
+  *{box-sizing:border-box;}
+  body{margin:0; min-height:100vh; background:var(--bg); color:var(--white);
+    font-family:'Lato',sans-serif; padding:20px 14px 50px;}
+  h1{font-family:'Josefin Sans',sans-serif; font-weight:700; letter-spacing:.04em;
+    font-size:1.4rem; text-align:center; margin:6px 0 20px;}
+
+  .gate{max-width:320px; margin:60px auto 0; text-align:center;}
+  .gate input{width:100%; padding:13px; font-size:16px; border-radius:10px;
+    border:1px solid rgba(141,178,229,.4); background:var(--panel); color:var(--white); margin-bottom:12px;}
+  .gate button{width:100%; padding:13px; border-radius:10px; border:none; background:var(--accent);
+    color:#0d1420; font-family:'Josefin Sans',sans-serif; font-weight:600; font-size:16px; cursor:pointer;}
+  .gate .err{color:#e5527a; font-size:.85rem; min-height:1.2em; margin-top:8px;}
+
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px;
+    max-width:960px; margin:0 auto; display:none;}
+  .card{background:var(--panel); border-radius:10px; overflow:hidden; border:1px solid rgba(141,178,229,.15);}
+  .card img, .card video{width:100%; aspect-ratio:3/4; object-fit:cover; display:block; background:#000;}
+  .card .meta{padding:8px 10px 10px; font-size:.78rem; color:#c9b8b8;}
+  .card .who{color:var(--accent); font-family:'Josefin Sans',sans-serif; font-size:.85rem; display:block;}
+  .empty{text-align:center; color:#c9b8b8; margin-top:60px; display:none;}
+</style>
+</head>
+<body>
+  <h1>🎷 Fan Cam Inbox</h1>
+
+  <div class="gate" id="gate">
+    <input type="password" id="pass" placeholder="Passcode">
+    <button id="unlockBtn">Unlock</button>
+    <div class="err" id="gateErr"></div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty">No submissions yet — check back after the next gig.</div>
+
+<script>
+document.getElementById('unlockBtn').addEventListener('click', unlock);
+document.getElementById('pass').addEventListener('keydown', e=>{ if(e.key==='Enter') unlock(); });
+
+function unlock(){
+  const val = document.getElementById('pass').value;
+  if(val !== CONFIG.passcode){
+    document.getElementById('gateErr').textContent = 'Not quite — try again.';
+    return;
+  }
+  document.getElementById('gate').style.display = 'none';
+  loadEntries();
+}
+
+async function loadEntries(){
+  try{
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.jsonbinId}/latest`, {
+      headers:{ 'X-Master-Key': CONFIG.jsonbinKey }
+    });
+    const data = await res.json();
+    const entries = Array.isArray(data.record) ? data.record : [];
+    const grid = document.getElementById('grid');
+    if(entries.length === 0){
+      document.getElementById('empty').style.display = 'block';
+      return;
+    }
+    grid.style.display = 'grid';
+    grid.innerHTML = entries.map(entryToCard).join('');
+  }catch(err){
+    document.getElementById('empty').style.display = 'block';
+    document.getElementById('empty').textContent = "Couldn't load submissions — check your connection.";
+  }
+}
+
+function entryToCard(e){
+  const when = e.timestamp ? new Date(e.timestamp).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '';
+  const media = e.kind === 'video'
+    ? `<video src="${e.mediaUrl}" controls playsinline></video>`
+    : `<img src="${e.mediaUrl}" loading="lazy" alt="fan photo">`;
+  return `<a href="${e.mediaUrl}" target="_blank" style="text-decoration:none;color:inherit;">
+    <div class="card">
+      ${media}
+      <div class="meta"><span class="who">${escapeHtml(e.name || 'A fan')}</span>${when}</div>
+    </div>
+  </a>`;
+}
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+</script>
+</body>
+</html>
