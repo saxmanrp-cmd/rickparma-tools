@@ -585,7 +585,7 @@ function spinWheel(songId, price){
   }, 4300);
 }
 
-function launchFirework(x, apexY, color, isFinale){
+function launchFirework(x, apexY, color, isFinale, finaleText){
   const rocket = document.createElement('div');
   rocket.className = 'firework-rocket' + (isFinale ? ' firework-rocket-big' : '');
   rocket.style.left = x + 'px';
@@ -610,7 +610,7 @@ function launchFirework(x, apexY, color, isFinale){
       burstAt(burstX, burstY, color, true);
       setTimeout(() => burstAt(burstX, burstY, '#FFFFFF', true), 90);
       setTimeout(() => burstAt(burstX, burstY, colorPalette[Math.floor(Math.random()*colorPalette.length)], true), 200);
-      setTimeout(() => showFreeText(burstX, burstY), 160);
+      setTimeout(() => showFreeText(burstX, burstY, finaleText), 160);
     } else {
       burstAt(burstX, burstY, color, false);
     }
@@ -654,10 +654,10 @@ function burstAt(x, y, color, epic){
   }
 }
 
-function showFreeText(x, y){
+function showFreeText(x, y, text){
   const el = document.createElement('div');
   el.className = 'firework-free-text';
-  el.textContent = 'FREE';
+  el.textContent = text || 'FREE';
   el.style.left = x + 'px';
   el.style.top = y + 'px';
   document.body.appendChild(el);
@@ -666,7 +666,8 @@ function showFreeText(x, y){
 
 const colorPalette = ['#FF3B3B', '#FFD700', '#3BA1FF', '#39FF6A', '#FF3BE0', '#B23BFF', '#3BFFF0', '#FFFFFF', '#FF8C3B'];
 
-function launchFireworks(){
+function launchFireworks(finaleText){
+  const label = finaleText || 'FREE';
   const count = 12;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
@@ -682,7 +683,7 @@ function launchFireworks(){
   // Grand finale — always launches last, always lands dead-center
   const finaleDelay = count * 150 + 500;
   setTimeout(() => {
-    launchFirework(vw / 2, vh * 0.5, '#FFD700', true);
+    launchFirework(vw / 2, vh * 0.5, '#FFD700', true, label);
   }, finaleDelay);
 }
 
@@ -695,9 +696,9 @@ function revealSpinResult(outcome, songId, price){
     area.innerHTML = `
       <div class="spin-result spin-result-free">🎉 You spun FREE! This one's on the house.</div>
       <div class="section-label">Step 3 — Send the request</div>
-      <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}')">📱 Text This Request</a>
+      <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}', 'FREE')">📱 Text This Request</a>
     `;
-    launchFireworks();
+    launchFireworks('FREE');
   } else if(outcome === 'BOGO'){
     area.innerHTML = `
       <div class="spin-result spin-result-bogo">🎉 You spun BOGO! Pick a second song — it's free.</div>
@@ -707,21 +708,21 @@ function revealSpinResult(outcome, songId, price){
       <div id="bogoNextSteps"></div>
     `;
     setupBogoPicker(songId, price);
-    launchFireworks();
+    launchFireworks('BOGO');
   } else {
     const venmoNote = encodeURIComponent(`${s.t} request`);
     const venmoAppLink = `venmo://paycharge?txn=pay&recipients=RickParma&amount=${price}&note=${venmoNote}`;
     const cashAppLink = `${PAYMENT_LINKS.cashapp}/${price}`;
     const paypalLink = `${PAYMENT_LINKS.paypal}/${price}`;
     area.innerHTML = `
-      <div class="spin-result spin-result-general">You spun $${price} — send the tip below, then text your request.</div>
-      <div class="section-label">Step 3 — Send the tip ($${price})</div>
+      <div class="spin-result spin-result-general">You spun $${price} — text your request, then send the tip.</div>
+      <div class="section-label">Step 3 — Send the request</div>
+      <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}', 'PAID')">📱 Text This Request</a>
+
+      <div class="section-label">Step 4 — Send the tip ($${price})</div>
       <a class="btn btn-venmo" href="${venmoAppLink}" target="_top">Pay $${price} with Venmo</a>
       <a class="btn btn-cashapp" href="${cashAppLink}" target="_blank">Pay $${price} with Cash App</a>
       <a class="btn btn-paypal" href="${paypalLink}" target="_blank">Pay $${price} with PayPal</a>
-
-      <div class="section-label">Step 4 — Send the request</div>
-      <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}')">📱 Text This Request</a>
     `;
   }
 }
@@ -783,17 +784,17 @@ function prepareSendBogo(el, songAId, songBId){
   const name = nameInput ? nameInput.value.trim() : '';
   const namePart = (name ? name : 'Someone').toUpperCase();
 
-  let message = `${namePart} SPUN a BOGO song request!!!\n${sA.t.toUpperCase()}`;
-  if(sA.a) message += ` by ${sA.a.toUpperCase()}`;
+  let message = `${namePart} SPUN a BOGO!!!\n${sA.t.toUpperCase()}`;
+  if(sA.a) message += ` by\n${sA.a.toUpperCase()}`;
   message += `\n+\n${sB.t.toUpperCase()}`;
-  if(sB.a) message += ` by ${sB.a.toUpperCase()}`;
+  if(sB.a) message += ` by\n${sB.a.toUpperCase()}`;
 
   const smsBody = encodeURIComponent(message);
   el.href = `sms:${CONTACT_NUMBER}?&body=${smsBody}`;
   return true;
 }
 
-function prepareSend(el, id){
+function prepareSend(el, id, outcomeType){
   const s = songs.find(x => x.id === id);
   if(!s) return false;
   const nameInput = document.getElementById('reqName');
@@ -801,8 +802,9 @@ function prepareSend(el, id){
   const namePart = (name ? name : 'Someone').toUpperCase();
   const songPart = s.t.toUpperCase();
   const artistPart = (s.a || '').toUpperCase();
+  const typeLabel = outcomeType || 'PAID';
 
-  let message = `${namePart} requested a song!!!\n${songPart}`;
+  let message = `${namePart} SPUN a ${typeLabel}!!!\n${songPart}`;
   if(artistPart) message += ` by\n${artistPart}`;
 
   const smsBody = encodeURIComponent(message);
