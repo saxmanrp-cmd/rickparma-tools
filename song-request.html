@@ -182,6 +182,11 @@
   .spin-result{font-size:14px; font-weight:700; color:var(--white); text-align:center; padding:12px; margin-top:14px; border-radius:10px; background:rgba(245,243,240,0.06); border:1px solid var(--line);}
   .spin-result-free{color:var(--general); border-color:var(--general);}
   .spin-result-general{color:var(--accent); border-color:var(--accent);}
+  .spin-result-bogo{color:#E86BD5; border-color:#E86BD5;}
+  .bogo-results{max-height:200px; overflow-y:auto; border:1px solid var(--line); border-radius:10px; margin-top:8px;}
+  .bogo-result-item{padding:12px 14px; font-size:14px; color:var(--white); border-bottom:1px solid var(--line); cursor:pointer;}
+  .bogo-result-item:last-child{border-bottom:none;}
+  .bogo-result-item:active{background:rgba(141,178,229,0.1);}
 
   .firework-rocket{position:fixed; bottom:0; left:0; width:5px; height:5px; border-radius:50%; z-index:500; pointer-events:none; box-shadow:0 0 10px 3px currentColor, 0 6px 14px -2px currentColor;}
   .firework-rocket-big{width:8px; height:8px; box-shadow:0 0 18px 5px currentColor, 0 8px 20px -2px currentColor;}
@@ -455,7 +460,7 @@ document.getElementById('sortSelect').addEventListener('change', e => {
 });
 
 /* ============ REQUEST SHEET ============ */
-const WHEEL_SLICES = ['GENERAL','FREE','GENERAL','FREE','GENERAL','FREE','GENERAL','FREE','GENERAL','FREE'];
+const WHEEL_SLICES = ['GENERAL','FREE','GENERAL','BOGO','GENERAL','FREE','GENERAL','BOGO','FREE','BOGO'];
 let wheelSpinning = false;
 let wheelRotationTotal = 0;
 
@@ -524,7 +529,7 @@ function buildWheelLabels(price){
   const outerRadius = 122; // top (biggest letter) sits right at the rim
   return WHEEL_SLICES.map((label, i) => {
     const angle = i * 36 + 18;
-    const word = label === 'FREE' ? 'FREE' : 'PAID';
+    const word = label === 'FREE' ? 'FREE' : label === 'BOGO' ? 'BOGO' : 'PAID';
     return `<div class="wheel-label-arm" style="transform: rotate(${angle}deg);">
       <div class="wheel-label" style="transform: translate(-50%, -${outerRadius}px);">${stackedLetters(word, outerRadius)}</div>
     </div>`;
@@ -693,6 +698,16 @@ function revealSpinResult(outcome, songId, price){
       <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}')">📱 Text This Request</a>
     `;
     launchFireworks();
+  } else if(outcome === 'BOGO'){
+    area.innerHTML = `
+      <div class="spin-result spin-result-bogo">🎉 You spun BOGO! Pick a second song — it's free.</div>
+      <div class="section-label">Step 3 — Pick your free second song</div>
+      <input type="text" id="bogoSearch" class="name-input" placeholder="Search song or artist…" autocomplete="off">
+      <div id="bogoResults" class="bogo-results"></div>
+      <div id="bogoNextSteps"></div>
+    `;
+    setupBogoPicker(songId, price);
+    launchFireworks();
   } else {
     const venmoNote = encodeURIComponent(`${s.t} request`);
     const venmoAppLink = `venmo://paycharge?txn=pay&recipients=RickParma&amount=${price}&note=${venmoNote}`;
@@ -709,6 +724,73 @@ function revealSpinResult(outcome, songId, price){
       <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}')">📱 Text This Request</a>
     `;
   }
+}
+
+function setupBogoPicker(songAId, price){
+  const searchInput = document.getElementById('bogoSearch');
+  const resultsBox = document.getElementById('bogoResults');
+
+  searchInput.addEventListener('input', () => {
+    const term = searchInput.value.trim().toLowerCase();
+    if(!term){ resultsBox.innerHTML = ''; return; }
+    const matches = songs.filter(sg =>
+      sg.id !== songAId &&
+      (sg.t.toLowerCase().includes(term) || (sg.a||'').toLowerCase().includes(term))
+    ).slice(0, 8);
+
+    if(matches.length === 0){
+      resultsBox.innerHTML = `<div class="bogo-result-item">No matches</div>`;
+      return;
+    }
+    resultsBox.innerHTML = matches.map(sg =>
+      `<div class="bogo-result-item" data-song-id="${sg.id}">${escapeHtml(sg.t)}${sg.a ? ' — ' + escapeHtml(sg.a) : ''}</div>`
+    ).join('');
+
+    [...resultsBox.querySelectorAll('.bogo-result-item')].forEach(item => {
+      item.onclick = () => {
+        const songBId = item.dataset.songId;
+        if(!songBId) return;
+        searchInput.value = item.textContent;
+        resultsBox.innerHTML = '';
+        renderBogoNextSteps(songAId, songBId, price);
+      };
+    });
+  });
+}
+
+function renderBogoNextSteps(songAId, songBId, price){
+  const venmoNote = encodeURIComponent(`BOGO request`);
+  const venmoAppLink = `venmo://paycharge?txn=pay&recipients=RickParma&amount=${price}&note=${venmoNote}`;
+  const cashAppLink = `${PAYMENT_LINKS.cashapp}/${price}`;
+  const paypalLink = `${PAYMENT_LINKS.paypal}/${price}`;
+  const nextSteps = document.getElementById('bogoNextSteps');
+  nextSteps.innerHTML = `
+    <div class="section-label">Step 4 — Send the tip ($${price} for both songs!)</div>
+    <a class="btn btn-venmo" href="${venmoAppLink}" target="_top">Pay $${price} with Venmo</a>
+    <a class="btn btn-cashapp" href="${cashAppLink}" target="_blank">Pay $${price} with Cash App</a>
+    <a class="btn btn-paypal" href="${paypalLink}" target="_blank">Pay $${price} with PayPal</a>
+
+    <div class="section-label">Step 5 — Send the request</div>
+    <a class="btn btn-text" href="#" target="_top" onclick="return prepareSendBogo(this, '${songAId}', '${songBId}')">📱 Text This Request</a>
+  `;
+}
+
+function prepareSendBogo(el, songAId, songBId){
+  const sA = songs.find(x => x.id === songAId);
+  const sB = songs.find(x => x.id === songBId);
+  if(!sA || !sB) return false;
+  const nameInput = document.getElementById('reqName');
+  const name = nameInput ? nameInput.value.trim() : '';
+  const namePart = (name ? name : 'Someone').toUpperCase();
+
+  let message = `${namePart} requested a BOGO song request!!!\n${sA.t.toUpperCase()}`;
+  if(sA.a) message += ` by ${sA.a.toUpperCase()}`;
+  message += `\n+\n${sB.t.toUpperCase()}`;
+  if(sB.a) message += ` by ${sB.a.toUpperCase()}`;
+
+  const smsBody = encodeURIComponent(message);
+  el.href = `sms:${CONTACT_NUMBER}?&body=${smsBody}`;
+  return true;
 }
 
 function prepareSend(el, id){
