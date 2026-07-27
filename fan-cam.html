@@ -306,12 +306,24 @@ document.getElementById('retakeBtn').addEventListener('click', ()=>{
   startCamera();
 });
 
-document.getElementById('saveBtn').addEventListener('click', ()=>{
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
   if(!capturedBlob) return;
   const ext = capturedKind === 'image' ? 'jpg' : (capturedBlob.type.includes('mp4') ? 'mp4' : 'webm');
+  const file = new File([capturedBlob], `fancam-${Date.now()}.${ext}`, {type: capturedBlob.type});
+
+  try{
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file]});
+      return;
+    }
+  }catch(err){
+    if(err.name === 'AbortError') return; // they cancelled the share sheet — nothing else to do
+  }
+
+  // fallback for browsers without file-sharing support — downloads to Files/Downloads instead
   const a = document.createElement('a');
   a.href = URL.createObjectURL(capturedBlob);
-  a.download = `fancam-${Date.now()}.${ext}`;
+  a.download = file.name;
   document.body.appendChild(a);
   a.click();
   a.remove();
