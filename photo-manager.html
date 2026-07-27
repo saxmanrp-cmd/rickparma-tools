@@ -118,6 +118,7 @@
       <span id="syncLabel">Loading…</span>
     </div>
   </div>
+  <div id="binIdDisplay" style="font-size:9px;color:rgba(255,255,255,0.25);font-family:monospace;margin-bottom:8px;word-break:break-all;user-select:all;"></div>
 
   <!-- Add panel -->
   <div class="add-panel">
@@ -457,6 +458,8 @@
   load().then(function() {
     document.getElementById("loadingScreen").style.display = "none";
     document.getElementById("appWrap").style.display = "block";
+    var binDisplay = document.getElementById("binIdDisplay");
+    if (binDisplay) binDisplay.textContent = "BIN: " + (BIN_ID || "none");
     render();
   });
 </script>
