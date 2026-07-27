@@ -383,15 +383,20 @@ async function performDelete(idx){
   try{
     const fresh = await fetchLatest();
     const updated = fresh.filter(e => e.mediaUrl !== entry.mediaUrl);
-    await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.jsonbinId}`, {
+    const putRes = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.jsonbinId}`, {
       method:'PUT',
       headers:{ 'Content-Type':'application/json', 'X-Master-Key': CONFIG.jsonbinKey },
       body: JSON.stringify(updated)
     });
+    if(!putRes.ok){
+      const errText = await putRes.text().catch(()=> '');
+      throw new Error(`JSONbin save failed (${putRes.status}): ${errText}`);
+    }
     currentEntries = updated;
     renderGrid();
     showToast(storageCleared ? 'Permanently deleted' : 'Removed — it was uploaded over 10 min ago, so storage cleanup could not run');
   }catch(err){
+    console.error('Delete failed:', err);
     showToast("Couldn't delete — try again");
   }
 }
