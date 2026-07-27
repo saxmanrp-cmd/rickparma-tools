@@ -372,7 +372,6 @@ async function uploadToCloudinary(blob, kind){
   const ext = kind === 'image' ? 'jpg' : (blob.type.includes('mp4') ? 'mp4' : 'webm');
   form.append('file', blob, `fancam-${Date.now()}.${ext}`);
   form.append('upload_preset', CONFIG.uploadPreset);
-  form.append('return_delete_token', 'true');
   const res = await fetch(`https://api.cloudinary.com/v1_1/${CONFIG.cloudName}/auto/upload`, {
     method: 'POST', body: form
   });
