@@ -118,6 +118,7 @@
       <span id="syncLabel">Loading…</span>
     </div>
   </div>
+  <div id="lastUpdated" style="font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:0.06em;margin-bottom:12px;"></div>
 
   <!-- Add panel -->
   <div class="add-panel">
@@ -149,10 +150,13 @@
   var BIN_ID      = "6a29c91cda38895dfea92f08";
 
   var DEFAULT_PHOTOS = [
-    { src: "https://lh3.googleusercontent.com/pw/AP1GczO7q7dLOV28_wXU0ZWRvk6D8VaZFvYcZ9UpuTkudqZz_yAi5omxK9tJwxaQP3us0qhWgDu9i8rT_i7i8_rEbaKTUO91OTJfr2A1Rw5Ltw4FRoMdTGw", name: "" },
-    { src: "https://lh3.googleusercontent.com/pw/AP1GczMweTg_qXi0_1To51rCOGjM7n1K8_USnur3FRcqn4hs3ja0_BNHUMJ1bt18CZiaiK_ylLjHPvzYv990SnNRWFJxEsSThzo4M9CAaV_GsR_8eHLhW5w", name: "" },
-    { src: "https://lh3.googleusercontent.com/pw/AP1GczMyhEnrXID7kYq1QRSI2rldGexfbf5VWoHiNMhSD-k2lFbCNqSO9tu9Z4iGG8t37uxbgM3sE4UCs51gtzL1arTxsDSjcc3RlMgWvNH_GlMGGAnohLA", name: "" },
-    { src: "https://lh3.googleusercontent.com/pw/AP1GczNhfd5ho6lxmlXh-OiX04DqqASSzaeq8J4XVmKEeIfM1dztDLIWJDXiE6xrGQrQ2TkbXbqFeA5uUmCXSPCZsYurUs0WRiy-91degrb6FxMEBK3Q0E4", name: "" }
+    { src: "https://rickparma.com/files/1419089/copy-6db55e3b-fb40-4e24-86cd-7a2ecf6e20ec.mov", name: "Toga flyer1" },
+    { src: "https://rickparma.com/files/1419773/copy-9d34f402-cf29-4adf-8eed-cabadfc19927.mov", name: "Tommy august flyer7" },
+    { src: "https://rickparma.com/files/1418924/copy-63935e91-0edc-494a-8b6f-4c11823a2b7d.mov", name: "Easys july flyer6" },
+    { src: "https://rickparma.com/files/1420563/copy-299a0e83-807d-4b57-93ff-941f482a7596.mov", name: "soundz flyer5" },
+    { src: "https://rickparma.com/files/1421831/copy-3838b5e3-a9de-4a0c-828b-37b856509e35.mov", name: "tommy flyer3" },
+    { src: "https://rickparma.com/files/1420552/copy-77530a7a-d763-43d2-a99d-7b5d6adf751f.mov", name: "" },
+    { src: "https://rickparma.com/files/1421829/copy-7ba60c49-dc8a-43d4-9307-7e7908c34978.mov", name: "" }
   ];
 
   var photos = [];
@@ -171,7 +175,11 @@
       if (res.ok) {
         var data = await res.json();
         photos = data.record.photos || [];
-        if (photos.length === 0) { photos = DEFAULT_PHOTOS.slice(); await save(); }
+        if (photos.length <= 5 && photos.some(function(p){ return p.src.includes("lh3.google"); })) {
+          photos = DEFAULT_PHOTOS.slice();
+          await save();
+        }
+        showLastUpdated(data.record.lastUpdated || null);
         setSyncStatus("synced", "Synced ✓");
       } else {
         throw new Error("Load failed");
@@ -182,20 +190,47 @@
     }
   }
 
+  // Auto-refresh every 30 seconds to always pull latest
+  setInterval(async function() {
+    try {
+      var res = await fetch(BIN_BASE + "/b/" + BIN_ID + "/latest", { headers: { "X-Master-Key": BIN_API_KEY } });
+      if (res.ok) {
+        var data = await res.json();
+        var fresh = data.record.photos || [];
+        // Only re-render if something changed
+        if (JSON.stringify(fresh) !== JSON.stringify(photos)) {
+          photos = fresh;
+          render();
+          showLastUpdated(data.record.lastUpdated || null);
+          setSyncStatus("synced", "Synced ✓");
+        }
+      }
+    } catch(e) {}
+  }, 30000);
+
   async function save() {
     if (isSaving) return;
     isSaving = true;
     setSyncStatus("syncing", "Saving…");
     try {
+      var now = new Date().toISOString();
       var res = await fetch(BIN_BASE + "/b/" + BIN_ID, {
         method: "PUT",
         headers: { "Content-Type":"application/json", "X-Master-Key":BIN_API_KEY },
-        body: JSON.stringify({ photos: photos })
+        body: JSON.stringify({ photos: photos, lastUpdated: now })
       });
       if (!res.ok) throw new Error("Save failed");
       setSyncStatus("synced", "Saved ✓");
+      showLastUpdated(now);
     } catch(e) { setSyncStatus("error", "Save failed"); }
     isSaving = false;
+  }
+
+  function showLastUpdated(iso) {
+    var el = document.getElementById("lastUpdated");
+    if (!el || !iso) return;
+    var d = new Date(iso);
+    el.textContent = "Last updated: " + d.toLocaleDateString("en-US", { month:"short", day:"numeric", year:"numeric" }) + " at " + d.toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit" });
   }
 
   // ── Media helpers ───────────────────────────────────────────
