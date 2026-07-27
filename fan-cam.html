@@ -9,8 +9,8 @@
   ============================================================
   SETUP — fill these in before publishing. None of this needs
   a server; every value below is safe to expose in client code
-  as long as you configure the matching preset/template as
-  UNSIGNED / public-safe on each service's dashboard.
+  as long as you configure the matching preset as UNSIGNED on
+  Cloudinary's dashboard.
 
   1) CLOUDINARY (stores the photo/video, gives back a link)
      - Sign up free at cloudinary.com
@@ -21,21 +21,6 @@
      gallery viewer — same pattern as your Photo Gallery Manager)
      - Create a bin at jsonbin.io containing: []
      - Copy the Bin ID and your X-Master-Key.
-
-  3) EMAILJS (sends you the instant alert — no backend needed)
-     - Sign up free at emailjs.com, connect your email account
-       as a Service.
-     - Create a Template with a "To Email" field set to the
-       variable {{to_email}}, and body using {{name}} and
-       {{media_url}}.
-     - Copy your Public Key, Service ID, and Template ID.
-
-  4) YOUR PHONE'S EMAIL-TO-TEXT ADDRESS (the "instant text" half)
-     Most US carriers turn an email into a text message:
-       AT&T:      yournumber@txt.att.net
-       Verizon:   yournumber@vtext.com
-       T-Mobile:  yournumber@tmomail.net
-     Search "[your carrier] email to text" if yours isn't listed.
   ============================================================
 -->
 <script>
@@ -44,15 +29,10 @@
     uploadPreset: "e7siodn3",
     jsonbinId: "6a668bb8f5f4af5e29c51472",
     jsonbinKey: "$2a$10$AE8jTzF3OJJNfqTgYPcPK.SzVAdv0Mqi/obwqWTuQjpE0dOkYkCE.",
-    emailjsPublicKey: "SEWLi2Tr98RNT5x5-",
-    emailjsServiceId: "service_aqee1fo",
-    emailjsTemplateId: "template_c4vxf9t",
-    notifyEmail: "saxman@rickparma.com",
-    notifySmsGateway: "7732091124@vtext.com",
     maxVideoSeconds: 20
   };
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
 
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@500;600;700&family=Lato:wght@400;700&display=swap');
@@ -133,7 +113,8 @@
   }
   input[type=text]::placeholder{color:#a99;}
 
-  .review-actions{display:flex; gap:10px; margin-top:14px; width:100%; max-width:340px;}
+  .review-actions{display:flex; flex-direction:column; gap:10px; margin-top:14px; width:100%; max-width:340px;}
+  .review-row{display:flex; gap:10px;}
   .btn{flex:1; padding:13px 10px; border-radius:10px; border:none; font-size:16px;
     font-family:'Josefin Sans',sans-serif; font-weight:600; letter-spacing:.02em; cursor:pointer;}
   .btn.primary{background:var(--accent); color:#0d1420;}
@@ -173,7 +154,10 @@
     </div>
     <input type="text" id="nameInput" placeholder="Your name (optional)">
     <div class="review-actions">
-      <button class="btn ghost" id="retakeBtn">Retake</button>
+      <div class="review-row">
+        <button class="btn ghost" id="retakeBtn">Retake</button>
+        <button class="btn ghost" id="saveBtn">Save to device</button>
+      </div>
       <button class="btn primary" id="sendBtn">Send to Rick</button>
     </div>
     <div class="status" id="status"></div>
@@ -322,6 +306,18 @@ document.getElementById('retakeBtn').addEventListener('click', ()=>{
   startCamera();
 });
 
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  if(!capturedBlob) return;
+  const ext = capturedKind === 'image' ? 'jpg' : (capturedBlob.type.includes('mp4') ? 'mp4' : 'webm');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(capturedBlob);
+  a.download = `fancam-${Date.now()}.${ext}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=> URL.revokeObjectURL(a.href), 4000);
+});
+
 document.getElementById('sendBtn').addEventListener('click', sendToRick);
 
 async function sendToRick(){
@@ -333,14 +329,11 @@ async function sendToRick(){
   statusEl.textContent = 'Sending…';
 
   try{
-    const mediaUrl = await uploadToCloudinary(capturedBlob, capturedKind);
+    const upload = await uploadToCloudinary(capturedBlob, capturedKind);
     const name = nameInput.value.trim() || 'A fan';
     const timestamp = new Date().toISOString();
 
-    await Promise.allSettled([
-      logToJsonbin({ name, mediaUrl, kind: capturedKind, timestamp }),
-      notifyRick(name, mediaUrl)
-    ]);
+    await logToJsonbin({ name, mediaUrl: upload.url, deleteToken: upload.deleteToken, kind: capturedKind, timestamp });
 
     statusEl.className = 'status success';
     statusEl.textContent = 'Rick got it — thank you! 🎷';
@@ -368,12 +361,13 @@ async function uploadToCloudinary(blob, kind){
   const ext = kind === 'image' ? 'jpg' : (blob.type.includes('mp4') ? 'mp4' : 'webm');
   form.append('file', blob, `fancam-${Date.now()}.${ext}`);
   form.append('upload_preset', CONFIG.uploadPreset);
+  form.append('return_delete_token', 'true');
   const res = await fetch(`https://api.cloudinary.com/v1_1/${CONFIG.cloudName}/auto/upload`, {
     method: 'POST', body: form
   });
   if(!res.ok) throw new Error('Cloudinary upload failed');
   const data = await res.json();
-  return data.secure_url;
+  return { url: data.secure_url, deleteToken: data.delete_token || null };
 }
 
 async function logToJsonbin(entry){
@@ -383,18 +377,6 @@ async function logToJsonbin(entry){
   const list = Array.isArray(current.record) ? current.record : [];
   list.unshift(entry);
   await fetch(base, { method:'PUT', headers, body: JSON.stringify(list) });
-}
-
-function notifyRick(name, mediaUrl){
-  if(!window.emailjs || CONFIG.emailjsPublicKey.startsWith('YOUR_')) return Promise.resolve();
-  emailjs.init({ publicKey: CONFIG.emailjsPublicKey });
-  const baseParams = { name, media_url: mediaUrl };
-  return Promise.allSettled([
-    emailjs.send(CONFIG.emailjsServiceId, CONFIG.emailjsTemplateId,
-      { ...baseParams, to_email: CONFIG.notifyEmail }),
-    emailjs.send(CONFIG.emailjsServiceId, CONFIG.emailjsTemplateId,
-      { ...baseParams, to_email: CONFIG.notifySmsGateway })
-  ]);
 }
 
 startCamera();
