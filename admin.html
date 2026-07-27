@@ -335,6 +335,13 @@
       <input type="password" id="adminPassword" placeholder="Password">
       <button class="btn" id="unlockBtn">Unlock</button>
       <div class="message-status error" id="lockError"></div>
+
+      <div id="faceIdUnlockWrap" class="hidden" style="margin-top:14px;">
+        <button class="btn btn-secondary" id="faceIdUnlockBtn">🔒 Unlock with Face ID</button>
+      </div>
+      <div id="faceIdEnableWrap" class="hidden" style="margin-top:14px; text-align:center;">
+        <button class="action-link" id="faceIdEnableBtn">Enable Face ID unlock for next time</button>
+      </div>
     </div>
   </div>
 
@@ -531,6 +538,80 @@
   const adminPasswordInput = document.getElementById('adminPassword');
   const unlockBtn = document.getElementById('unlockBtn');
   const lockError = document.getElementById('lockError');
+  const faceIdUnlockWrap = document.getElementById('faceIdUnlockWrap');
+  const faceIdUnlockBtn = document.getElementById('faceIdUnlockBtn');
+  const faceIdEnableWrap = document.getElementById('faceIdEnableWrap');
+  const faceIdEnableBtn = document.getElementById('faceIdEnableBtn');
+
+  const FACEID_CRED_KEY = 'sms_faceid_credential_id';
+
+  function bufToBase64(buf) {
+    return btoa(String.fromCharCode(...new Uint8Array(buf)));
+  }
+  function base64ToBuf(b64) {
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes.buffer;
+  }
+
+  async function faceIdAvailable() {
+    return !!(window.PublicKeyCredential &&
+      (await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().catch(() => false)));
+  }
+
+  async function enableFaceId() {
+    try {
+      const credential = await navigator.credentials.create({
+        publicKey: {
+          challenge: crypto.getRandomValues(new Uint8Array(32)),
+          rp: { name: 'Rick Parma Text Blast Admin' },
+          user: {
+            id: crypto.getRandomValues(new Uint8Array(16)),
+            name: 'admin',
+            displayName: 'Rick Parma Admin',
+          },
+          pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+          authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+          timeout: 60000,
+        },
+      });
+      localStorage.setItem(FACEID_CRED_KEY, bufToBase64(credential.rawId));
+      faceIdEnableWrap.classList.add('hidden');
+    } catch (e) {
+      alert('Could not enable Face ID on this device.');
+    }
+  }
+
+  async function unlockWithFaceId() {
+    const credId = localStorage.getItem(FACEID_CRED_KEY);
+    if (!credId) return false;
+    try {
+      await navigator.credentials.get({
+        publicKey: {
+          challenge: crypto.getRandomValues(new Uint8Array(32)),
+          allowCredentials: [{ id: base64ToBuf(credId), type: 'public-key' }],
+          userVerification: 'required',
+          timeout: 60000,
+        },
+      });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  faceIdEnableBtn.addEventListener('click', enableFaceId);
+
+  faceIdUnlockBtn.addEventListener('click', async () => {
+    const ok = await unlockWithFaceId();
+    if (ok) {
+      adminToken = localStorage.getItem('sms_admin_token');
+      unlock();
+    } else {
+      lockError.textContent = 'Face ID unlock failed — enter your password instead.';
+    }
+  });
 
   // ---- Tabs ----
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -542,12 +623,24 @@
     });
   });
 
-  // Remember the token locally on this device only.
-  const savedToken = localStorage.getItem('sms_admin_token');
-  if (savedToken) {
-    adminToken = savedToken;
-    unlock();
-  }
+  // On load: if Face ID is enabled, prompt it instead of silently auto-logging in.
+  // Otherwise fall back to the previous behavior (auto-unlock with saved token,
+  // or show the password field if nothing is saved yet).
+  (async () => {
+    const savedToken = localStorage.getItem('sms_admin_token');
+    const hasFaceId = !!localStorage.getItem(FACEID_CRED_KEY);
+    if (savedToken && hasFaceId) {
+      faceIdUnlockWrap.classList.remove('hidden');
+      const ok = await unlockWithFaceId();
+      if (ok) {
+        adminToken = savedToken;
+        unlock();
+      }
+    } else if (savedToken) {
+      adminToken = savedToken;
+      unlock();
+    }
+  })();
 
   unlockBtn.addEventListener('click', () => {
     const pw = adminPasswordInput.value.trim();
@@ -566,6 +659,9 @@
       loadTemplates();
       loadAutoRules();
       loadConversations();
+      if (!localStorage.getItem(FACEID_CRED_KEY) && await faceIdAvailable()) {
+        faceIdEnableWrap.classList.remove('hidden');
+      }
     } else {
       localStorage.removeItem('sms_admin_token');
     }
