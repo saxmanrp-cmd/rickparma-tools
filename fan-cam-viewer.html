@@ -53,7 +53,8 @@
   .actions{display:flex; border-top:1px solid rgba(141,178,229,.15);}
   .actions button{
     flex:1; background:none; border:none; color:var(--white); opacity:.75;
-    padding:10px 4px; font-size:1.05rem; cursor:pointer; border-right:1px solid rgba(141,178,229,.15);
+    padding:10px 4px; cursor:pointer; border-right:1px solid rgba(141,178,229,.15);
+    display:flex; align-items:center; justify-content:center;
   }
   .actions button:last-child{border-right:none;}
   .actions button:active{opacity:1; background:rgba(141,178,229,.12);}
@@ -163,6 +164,11 @@ function renderGrid(){
   grid.innerHTML = currentEntries.map(entryToCard).join('');
 }
 
+const ICONS = {
+  share: `<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>`,
+  trash: `<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>`
+};
+
 function entryToCard(e, idx){
   const when = e.timestamp ? new Date(e.timestamp).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '';
   const media = e.kind === 'video'
@@ -172,33 +178,10 @@ function entryToCard(e, idx){
     <button class="thumb" onclick="window.open('${e.mediaUrl}','_blank')">${media}</button>
     <div class="meta"><span class="who">${escapeHtml(e.name || 'A fan')}</span>${when}</div>
     <div class="actions">
-      <button aria-label="Download" onclick="downloadMedia(${idx})">⬇</button>
-      <button aria-label="Share" onclick="shareMedia(${idx})">↗</button>
-      <button class="danger" aria-label="Delete" onclick="deleteEntry(${idx})">🗑</button>
+      <button aria-label="Share" onclick="shareMedia(${idx})">${ICONS.share}</button>
+      <button class="danger" aria-label="Delete" onclick="deleteEntry(${idx})">${ICONS.trash}</button>
     </div>
   </div>`;
-}
-
-async function downloadMedia(idx){
-  const entry = currentEntries[idx];
-  if(!entry) return;
-  showToast('Downloading…');
-  try{
-    const res = await fetch(entry.mediaUrl);
-    const blob = await res.blob();
-    const ext = entry.kind === 'video' ? (entry.mediaUrl.split('.').pop().split('?')[0] || 'mp4') : 'jpg';
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `fancam-${(entry.name||'fan').replace(/[^a-z0-9]/gi,'_')}-${idx}.${ext}`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(()=> URL.revokeObjectURL(a.href), 4000);
-  }catch(err){
-    // fallback: just open it so they can save manually
-    window.open(entry.mediaUrl, '_blank');
-    showToast('Opened in a new tab — save it from there');
-  }
 }
 
 async function shareMedia(idx){
@@ -228,7 +211,7 @@ async function shareMedia(idx){
         await navigator.clipboard.writeText(entry.mediaUrl);
         showToast('Link copied — paste it anywhere');
       }catch(e2){
-        showToast("Couldn't share — try the download button instead");
+        showToast("Couldn't share — try again");
       }
     }
   }
