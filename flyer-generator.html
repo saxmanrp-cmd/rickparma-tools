@@ -2,883 +2,1546 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Flyer Generator">
-<meta name="theme-color" content="#0a0a0f">
-<title>Flyer Generator — AI Powered</title>
+<meta name="theme-color" content="#ebebeb">
+<title>Flyer Generator</title>
+<link rel="apple-touch-icon" sizes="180x180" href="https://saxmanrp-cmd.github.io/rickparma-tools/images/FLYER GENERATOR-icon-180.png">
+<link rel="apple-touch-icon" sizes="167x167" href="https://saxmanrp-cmd.github.io/rickparma-tools/images/FLYER GENERATOR-icon-167.png">
+<link rel="apple-touch-icon" sizes="152x152" href="https://saxmanrp-cmd.github.io/rickparma-tools/images/FLYER GENERATOR-icon-152.png">
+<link rel="icon" type="image/png" sizes="192x192" href="https://saxmanrp-cmd.github.io/rickparma-tools/images/FLYER GENERATOR-icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="https://saxmanrp-cmd.github.io/rickparma-tools/images/FLYER GENERATOR-icon-512.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-:root {
-  --bg: #0a0a0f;
-  --surface: #13131a;
-  --surface2: #1c1c26;
-  --border: #2a2a3a;
-  --blue: #8DB2E5;
-  --blue-dim: rgba(141,178,229,0.12);
-  --blue-border: rgba(141,178,229,0.3);
-  --text: #f0eef8;
-  --text-dim: rgba(240,238,248,0.45);
-  --green: #4caf7d;
-  --red: #e05555;
-  --gold: #f0c060;
+html, body {
+  height: 100%;
+  height: -webkit-fill-available;
+  background: #0d0a1a;
+  font-family: 'Inter', sans-serif;
+  -webkit-text-size-adjust: 100%;
+  overflow: hidden;
 }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: Arial, Helvetica, sans-serif;
-  min-height: 100vh;
-  padding: 0 0 80px;
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: -webkit-fill-available;
+  max-width: 600px;
+  margin: 0 auto;
+  background: #0d0a1a;
+  overflow: hidden;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+}
+@media (min-width: 600px) {
+  .app { left: 50%; transform: translateX(-50%); right: auto; width: 600px; }
 }
 
 /* ── Header ── */
-.app-header {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 20px 20px 16px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
+.hdr { flex-shrink: 0; z-index: 10; }
+.hdr img { width: 100%; display: block; }
 
-.app-header-inner {
-  max-width: 640px;
-  margin: 0 auto;
+/* ── Slider ── */
+.slider-wrap { flex: 1; overflow: hidden; position: relative; }
+.slider-track {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  width: 1100%;
+  height: 100%;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.slide {
+  width: calc(100% / 11);
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px 16px 24px;
+  flex-shrink: 0;
 }
 
-.app-title {
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--blue);
-}
-
-.ai-toggle {
-  display: flex;
-  gap: 6px;
-}
-
-.ai-btn {
-  padding: 5px 12px;
-  border-radius: 20px;
-  border: 1.5px solid var(--border);
-  background: transparent;
-  color: var(--text-dim);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-  transition: all 0.15s;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.ai-btn.active {
-  background: var(--blue);
-  border-color: var(--blue);
-  color: #0a0a0f;
-}
-
-/* ── Main ── */
-.main {
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 24px 20px;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-  margin-top: 28px;
-}
-
-.section-header:first-child { margin-top: 0; }
-
-.section-label {
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--blue);
-}
-
-.section-line {
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
-.optional-tag {
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 2px 8px;
-}
-
-/* ── Form fields ── */
-.field {
-  margin-bottom: 14px;
-}
-
-.field label {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin-bottom: 6px;
-}
-
-.field label .req {
-  color: var(--blue);
-  margin-left: 2px;
-}
-
-.field input,
-.field textarea,
-.field select {
-  width: 100%;
-  background: var(--surface2);
-  border: 1.5px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  font-size: 14px;
-  font-family: Arial, Helvetica, sans-serif;
-  padding: 11px 14px;
-  outline: none;
-  transition: border-color 0.2s;
-  -webkit-appearance: none;
-}
-
-.field input:focus,
-.field textarea:focus,
-.field select:focus {
-  border-color: var(--blue-border);
-}
-
-.field input::placeholder,
-.field textarea::placeholder {
-  color: var(--text-dim);
-}
-
-.field select option {
-  background: var(--surface2);
-  color: var(--text);
-}
-
-.field textarea {
-  resize: vertical;
-  min-height: 80px;
-  line-height: 1.5;
-}
-
-.field-row {
-  display: flex;
-  gap: 10px;
-}
-
-.field-row .field {
-  flex: 1;
-}
-
-/* ── Style chips ── */
-.style-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.chip {
-  padding: 7px 14px;
-  border-radius: 20px;
-  border: 1.5px solid var(--border);
-  background: transparent;
-  color: var(--text-dim);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.chip.selected {
-  background: var(--blue-dim);
-  border-color: var(--blue);
-  color: var(--blue);
-}
-
-/* ── Size selector ── */
-.size-grid {
+/* ── Footer ── */
+.ftr {
+  background: #0d0a1a;
+  border-top: 1px solid rgba(233,30,140,0.25);
+  padding: 12px 16px;
+  padding-bottom: max(env(safe-area-inset-bottom), 12px);
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
   gap: 8px;
+  flex-shrink: 0;
+  z-index: 10;
 }
+.dots { display: flex; gap: 5px; align-items: center; justify-content: center; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.12); transition: all 0.3s; }
+.dot.done { background: rgba(233,30,140,0.6); }
+.dot.active { background: #e91e8c; width: 18px; border-radius: 4px; box-shadow: 0 0 8px rgba(233,30,140,0.7); }
+.btn-back {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px; font-weight: 700;
+  padding: 14px 20px; cursor: pointer;
+  display: flex; align-items: center; gap: 7px;
+  justify-content: center;
+  visibility: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-back:active { opacity: 0.7; }
+.btn-next {
+  background: linear-gradient(135deg, #e91e8c 0%, #7b2fff 100%);
+  border: none; border-radius: 10px;
+  color: #fff; font-family: 'Inter', sans-serif;
+  font-size: 15px; font-weight: 700;
+  padding: 14px 20px; cursor: pointer;
+  display: flex; align-items: center; gap: 7px;
+  justify-content: center;
+  justify-self: end;
+  box-shadow: 0 4px 18px rgba(233,30,140,0.45);
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-next:active { opacity: 0.85; transform: scale(0.97); }
 
-.size-card {
-  background: var(--surface2);
-  border: 1.5px solid var(--border);
-  border-radius: 8px;
-  padding: 12px 8px;
+/* ── Step labels ── */
+.step-title {
+  font-size: 24px; font-weight: 900;
+  color: #fff;
+  text-transform: uppercase;
   text-align: center;
-  cursor: pointer;
-  transition: all 0.15s;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.size-card.selected {
-  border-color: var(--blue);
-  background: var(--blue-dim);
-}
-
-.size-icon {
-  margin: 0 auto 6px;
-  background: var(--border);
-  border-radius: 3px;
-}
-
-.size-card.selected .size-icon {
-  background: var(--blue);
-  opacity: 0.6;
-}
-
-.size-name {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: 0.06em;
-}
-
-.size-card.selected .size-name { color: var(--blue); }
-
-.size-dim {
-  font-size: 10px;
-  color: var(--text-dim);
-  margin-top: 2px;
-}
-
-/* ── Generate button ── */
-.generate-wrap {
-  margin-top: 32px;
-}
-
-.generate-btn {
-  width: 100%;
-  background: var(--blue);
-  color: #0a0a0f;
-  border: none;
-  border-radius: 10px;
-  padding: 16px;
-  font-size: 14px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.generate-btn:active { transform: scale(0.98); background: #aecbf0; }
-.generate-btn:disabled { opacity: 0.4; cursor: default; }
-
-/* ── Output area ── */
-.output-section {
-  margin-top: 32px;
-  display: none;
-}
-
-.output-section.visible { display: block; }
-
-.output-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-
-.output-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.action-btn {
-  padding: 7px 14px;
-  border-radius: 6px;
-  border: 1.5px solid var(--blue-border);
-  background: transparent;
-  color: var(--blue);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background 0.15s;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.action-btn:hover { background: var(--blue-dim); }
-
-/* ── Flyer preview ── */
-.flyer-preview {
-  width: 100%;
-  border-radius: 10px;
-  overflow: hidden;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 300px;
-}
-
-.flyer-preview img {
-  width: 100%;
-  display: block;
-  border-radius: 10px;
-}
-
-/* ── Prompt box ── */
-.prompt-box {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px;
-  font-size: 12px;
-  font-family: monospace;
-  color: var(--text-dim);
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-word;
-  margin-top: 14px;
-}
-
-/* ── Loading state ── */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  gap: 16px;
-  width: 100%;
-}
-
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--blue-border);
-  border-top-color: var(--blue);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.loading-text {
-  font-size: 12px;
-  color: var(--text-dim);
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  margin-bottom: 20px;
+  text-shadow: 0 0 20px rgba(233,30,140,0.4);
 }
 
-/* ── Error state ── */
-.error-box {
-  background: rgba(224,85,85,0.1);
-  border: 1.5px solid rgba(224,85,85,0.3);
+/* ── Cards ── */
+.card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(123,47,255,0.25);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  padding: 16px;
+  transition: border-color 0.2s;
+}
+.card:focus-within {
+  border-color: rgba(233,30,140,0.6);
+  box-shadow: 0 0 0 3px rgba(233,30,140,0.08), 0 0 16px rgba(233,30,140,0.1);
+}
+
+.lbl {
+  display: block;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 8px;
+}
+
+/* ── Inputs ── */
+input[type=text], input[type=date], input[type=url], textarea, select {
+  width: 100%;
+  background: rgba(13,10,26,0.8);
+  border: 1px solid rgba(123,47,255,0.4);
   border-radius: 8px;
-  padding: 14px 16px;
-  font-size: 13px;
-  color: var(--red);
-  line-height: 1.5;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px; font-weight: 400;
+  padding: 13px 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 50px;
+  display: block;
 }
-
-/* ── Toast ── */
-.toast {
-  position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%) translateY(20px);
-  background: var(--blue);
-  color: #0a0a0f;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 10px 22px;
-  border-radius: 20px;
-  opacity: 0;
-  transition: opacity 0.25s, transform 0.25s;
-  pointer-events: none;
-  white-space: nowrap;
-  z-index: 999;
+input:focus, textarea:focus, select:focus {
+  border-color: #e91e8c;
+  box-shadow: 0 0 0 3px rgba(233,30,140,0.12), 0 0 12px rgba(233,30,140,0.15);
 }
-
-.toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
+input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.35); font-style: italic; }
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23e91e8c' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
 }
+select option { background: #1a0d30; color: #fff; }
+textarea { min-height: 90px; resize: none; line-height: 1.5; }
 
-/* ── Divider ── */
-.or-divider {
-  text-align: center;
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  margin: 12px 0;
-  position: relative;
+/* Date input text color fix for iOS */
+input[type=date]::-webkit-datetime-edit { color: #fff; }
+input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightness(0.6); }
+
+.time-row { display: grid; grid-template-columns: 2fr 1.2fr 1.2fr; gap: 8px; }
+.hint { font-size: 12px; color: rgba(255,255,255,0.75); margin-top: 7px; line-height: 1.5; }
+
+/* ── Guests ── */
+.guest-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.guest-row input { flex: 1; }
+.g-remove {
+  width: 50px; height: 50px; flex-shrink: 0;
+  background: rgba(233,30,140,0.08);
+  border: 1px solid rgba(233,30,140,0.3);
+  border-radius: 8px;
+  color: #e91e8c; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
 }
-
-.or-divider::before, .or-divider::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: 44%;
-  height: 1px;
-  background: var(--border);
+.g-remove:active { background: rgba(233,30,140,0.2); color: #e91e8c; }
+.add-g {
+  width: 100%;
+  background: rgba(123,47,255,0.07);
+  border: 1px dashed rgba(123,47,255,0.4);
+  border-radius: 8px;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 600;
+  padding: 13px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin-top: 6px; min-height: 50px;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s;
 }
+.add-g:active { border-color: #7b2fff; color: #7b2fff; background: rgba(123,47,255,0.15); }
 
-.or-divider::before { left: 0; }
-.or-divider::after { right: 0; }
+/* ── Sizes ── */
+.sizes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sz {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(123,47,255,0.25);
+  border-radius: 10px; padding: 14px 6px 10px;
+  text-align: center; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s;
+}
+.sz.on {
+  border-color: #e91e8c;
+  background: rgba(233,30,140,0.1);
+  box-shadow: 0 0 14px rgba(233,30,140,0.2);
+}
+.sz-box { margin: 0 auto 7px; background: rgba(123,47,255,0.4); border-radius: 2px; transition: all 0.2s; }
+.sz.on .sz-box { background: linear-gradient(135deg, #e91e8c, #7b2fff); }
+.sz-name { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.85); letter-spacing: 0.04em; text-transform: uppercase; }
+.sz.on .sz-name { color: #e91e8c; text-shadow: 0 0 8px rgba(233,30,140,0.5); }
+.sz-dim { font-size: 10px; color: rgba(255,255,255,0.85); margin-top: 2px; }
+
+/* ── Output ── */
+.out-card { border-radius: 12px; overflow: hidden; margin-top: 10px; border: 1px solid rgba(233,30,140,0.35); }
+.out-bar {
+  background: linear-gradient(135deg, #e91e8c, #7b2fff);
+  padding: 13px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.out-bar-title { font-size: 13px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px; }
+.copy-btn {
+  background: rgba(255,255,255,0.2); border: none; border-radius: 6px;
+  color: #fff; font-family: 'Inter', sans-serif;
+  font-size: 12px; font-weight: 700;
+  padding: 7px 13px; cursor: pointer;
+  display: flex; align-items: center; gap: 5px;
+  -webkit-tap-highlight-color: transparent;
+}
+.pbox {
+  padding: 14px; font-size: 11px;
+  font-family: 'Inter', sans-serif; font-weight: 300;
+  color: rgba(255,255,255,0.85);
+  white-space: pre-wrap; word-break: break-word;
+  line-height: 1.8; max-height: 300px; overflow-y: auto;
+  background: rgba(13,10,26,0.9);
+}
+.out-note {
+  background: rgba(13,10,26,0.9);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding: 10px 14px; font-size: 11px;
+  color: rgba(255,255,255,0.85);
+  text-align: center; line-height: 1.5;
+}
+.out-note a { color: #e91e8c; text-decoration: none; font-weight: 700; }
+.day-btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(123,47,255,0.4);
+  border-radius: 8px;
+  color: rgba(255,255,255,0.7);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px; font-weight: 600;
+  padding: 10px 0; cursor: pointer;
+  flex: 1; min-width: 42px;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s;
+}
+.day-btn.on {
+  background: linear-gradient(135deg,#e91e8c,#7b2fff);
+  border-color: #e91e8c;
+  color: #fff;
+}
 </style>
 </head>
 <body>
+<div class="app">
 
-<header class="app-header">
-  <div class="app-header-inner">
-    <div class="app-title">🎨 AI Flyer Generator</div>
-    <div class="ai-toggle">
-      <button class="ai-btn active" id="btn-dalle" onclick="setAI('dalle')">DALL·E</button>
-      <button class="ai-btn" id="btn-prompt" onclick="setAI('prompt')">Prompt Only</button>
-    </div>
-  </div>
-</header>
-
-<div class="main">
-
-  <!-- REQUIRED FIELDS -->
-  <div class="section-header">
-    <div class="section-label">Event Details</div>
-    <div class="section-line"></div>
+  <!-- Header banner - hidden on page 0 -->
+  <div class="hdr" id="hdr" style="display:none;padding:0;border-bottom:none;">
+    <img src="https://saxmanrp-cmd.github.io/rickparma-tools/images/banner.PNG"
+         alt="Gig Flyer Creator"
+         style="width:100%;display:block;">
   </div>
 
-  <div class="field">
-    <label>Event Name <span class="req">*</span></label>
-    <input type="text" id="event-name" placeholder="e.g. Rick Parma Live at The Venue">
-  </div>
+  <!-- Slides -->
+  <div class="slider-wrap">
+    <div class="slider-track" id="track">
 
-  <div class="field-row">
-    <div class="field">
-      <label>Date <span class="req">*</span></label>
-      <input type="date" id="event-date">
-    </div>
-    <div class="field">
-      <label>Time <span class="req">*</span></label>
-      <input type="time" id="event-time">
-    </div>
-  </div>
-
-  <div class="field">
-    <label>Venue Name <span class="req">*</span></label>
-    <input type="text" id="venue-name" placeholder="e.g. The Jazz Lounge">
-  </div>
-
-  <div class="field">
-    <label>Venue Address <span class="req">*</span></label>
-    <input type="text" id="venue-address" placeholder="e.g. 123 Main St, Las Vegas, NV">
-  </div>
-
-  <div class="field">
-    <label>Performer / Artist Name <span class="req">*</span></label>
-    <input type="text" id="performer" placeholder="e.g. Rick Parma">
-  </div>
-
-  <div class="field-row">
-    <div class="field">
-      <label>Website <span class="req">*</span></label>
-      <input type="text" id="website" placeholder="e.g. rickparma.com">
-    </div>
-    <div class="field">
-      <label>Social Handle <span class="req">*</span></label>
-      <input type="text" id="social" placeholder="e.g. @rickparma">
-    </div>
-  </div>
-
-  <!-- OPTIONAL FIELDS -->
-  <div class="section-header">
-    <div class="section-label">Optional Details</div>
-    <div class="section-line"></div>
-    <div class="optional-tag">Optional</div>
-  </div>
-
-  <div class="field">
-    <label>Special Guests</label>
-    <input type="text" id="guests" placeholder="e.g. Featuring DJ Smooth">
-  </div>
-
-  <div class="field">
-    <label>Event Description / Tagline</label>
-    <textarea id="description" placeholder="e.g. A night of R&B, funk & soul — dress to impress!"></textarea>
-  </div>
-
-  <div class="field-row">
-    <div class="field">
-      <label>Age Restriction</label>
-      <select id="age">
-        <option value="">None</option>
-        <option value="18+">18+</option>
-        <option value="21+">21+</option>
-        <option value="All Ages">All Ages</option>
-      </select>
-    </div>
-    <div class="field">
-      <label>Dress Code</label>
-      <select id="dresscode">
-        <option value="">None</option>
-        <option value="Casual">Casual</option>
-        <option value="Smart Casual">Smart Casual</option>
-        <option value="Business Casual">Business Casual</option>
-        <option value="Formal">Formal</option>
-        <option value="Black Tie">Black Tie</option>
-        <option value="Theme / Costume">Theme / Costume</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="field">
-    <label>Theme / Vibe</label>
-    <input type="text" id="theme" placeholder="e.g. 70s Soul, Elegant Night, Summer Rooftop">
-  </div>
-
-  <div class="field">
-    <label>Sponsors</label>
-    <input type="text" id="sponsors" placeholder="e.g. Hennessy, Local Radio Station">
-  </div>
-
-  <div class="field">
-    <label>QR Code Link</label>
-    <input type="url" id="qr-link" placeholder="e.g. https://tickets.com/event">
-  </div>
-
-  <!-- STYLE -->
-  <div class="section-header">
-    <div class="section-label">Flyer Style</div>
-    <div class="section-line"></div>
-  </div>
-
-  <div class="field">
-    <label>Visual Style</label>
-    <div class="style-chips" id="style-chips">
-      <button class="chip selected" onclick="toggleChip(this)">Bold & Colorful</button>
-      <button class="chip" onclick="toggleChip(this)">Elegant & Minimal</button>
-      <button class="chip" onclick="toggleChip(this)">Dark & Moody</button>
-      <button class="chip" onclick="toggleChip(this)">Retro / Vintage</button>
-      <button class="chip" onclick="toggleChip(this)">Neon / Club</button>
-      <button class="chip" onclick="toggleChip(this)">Urban / Street</button>
-      <button class="chip" onclick="toggleChip(this)">Luxury / Gold</button>
-      <button class="chip" onclick="toggleChip(this)">Tropical / Outdoor</button>
-    </div>
-  </div>
-
-  <div class="field" style="margin-top:14px">
-    <label>Color Palette</label>
-    <div class="style-chips" id="color-chips">
-      <button class="chip selected" onclick="toggleChip(this, 'color-chips')">Black & Gold</button>
-      <button class="chip" onclick="toggleChip(this, 'color-chips')">Purple & Silver</button>
-      <button class="chip" onclick="toggleChip(this, 'color-chips')">Red & Black</button>
-      <button class="chip" onclick="toggleChip(this, 'color-chips')">Blue & White</button>
-      <button class="chip" onclick="toggleChip(this, 'color-chips')">Green & Gold</button>
-      <button class="chip" onclick="toggleChip(this, 'color-chips')">Pink & Chrome</button>
-      <button class="chip" onclick="toggleChip(this, 'color-chips')">Custom…</button>
-    </div>
-  </div>
-
-  <!-- SIZE -->
-  <div class="section-header" style="margin-top:20px">
-    <div class="section-label">Flyer Size</div>
-    <div class="section-line"></div>
-  </div>
-
-  <div class="size-grid">
-    <div class="size-card selected" onclick="selectSize(this, '1080x1350')" data-size="1080x1350">
-      <div class="size-icon" style="width:28px;height:35px;"></div>
-      <div class="size-name">Portrait</div>
-      <div class="size-dim">4:5 Instagram</div>
-    </div>
-    <div class="size-card" onclick="selectSize(this, '1080x1080')" data-size="1080x1080">
-      <div class="size-icon" style="width:32px;height:32px;"></div>
-      <div class="size-name">Square</div>
-      <div class="size-dim">1:1 Post</div>
-    </div>
-    <div class="size-card" onclick="selectSize(this, '1920x1080')" data-size="1920x1080">
-      <div class="size-icon" style="width:40px;height:23px;"></div>
-      <div class="size-name">Landscape</div>
-      <div class="size-dim">16:9 Facebook</div>
-    </div>
-    <div class="size-card" onclick="selectSize(this, '1080x1920')" data-size="1080x1920">
-      <div class="size-icon" style="width:20px;height:36px;"></div>
-      <div class="size-name">Story</div>
-      <div class="size-dim">9:16 Story</div>
-    </div>
-    <div class="size-card" onclick="selectSize(this, '2550x3300')" data-size="2550x3300">
-      <div class="size-icon" style="width:26px;height:34px;"></div>
-      <div class="size-name">Print</div>
-      <div class="size-dim">8.5×11 Letter</div>
-    </div>
-    <div class="size-card" onclick="selectSize(this, '1200x628')" data-size="1200x628">
-      <div class="size-icon" style="width:38px;height:20px;"></div>
-      <div class="size-name">Banner</div>
-      <div class="size-dim">Facebook Event</div>
-    </div>
-  </div>
-
-  <!-- GENERATE -->
-  <div class="generate-wrap">
-    <button class="generate-btn" id="generateBtn" onclick="generate()">✨ Generate Flyer</button>
-  </div>
-
-  <!-- OUTPUT -->
-  <div class="output-section" id="outputSection">
-    <div class="output-header">
-      <div class="section-label" id="outputLabel">Generated Flyer</div>
-      <div class="output-actions">
-        <button class="action-btn" id="downloadBtn" onclick="downloadFlyer()" style="display:none">⬇ Save</button>
-        <button class="action-btn" onclick="copyPrompt()">📋 Copy Prompt</button>
+      <!-- Slide 0: Title / Intro -->
+      <div class="slide" style="display:flex;align-items:center;justify-content:center;padding:0;">
+        <img src="https://saxmanrp-cmd.github.io/rickparma-tools/images/title.PNG"
+             alt="Flyer Generator"
+             style="width:100%;height:100%;object-fit:cover;display:block;">
       </div>
+
+      <!-- Slide 1: Welcome & Instructions -->
+      <div class="slide" style="padding:24px 20px;">
+        <div class="step-title" style="margin-bottom:24px;">Instructions</div>
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(0,168,255,0.25);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:16px;">
+
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:32px;height:32px;background:#00a8ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="ti ti-confetti" style="font-size:16px;color:#fff;"></i>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Welcome to Gig Flyer Creator!</div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6;">This is version one. Right now, the app creates a prompt you can copy and paste into your preferred AI, (ChatGPT, Claude etc). Just enter the basic gig details, and the app will do the rest.</div>
+            </div>
+          </div>
+
+          <div style="height:1px;background:rgba(0,168,255,0.15);"></div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:32px;height:32px;background:#00a8ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="ti ti-palette" style="font-size:16px;color:#fff;"></i>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Flyer Style &amp; Theme</div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6;">On the next page, pick a visual style like Cinematic, Playful, or Epic to set the overall look. You can also add a theme (like Star Wars or Toga) to give your flyer a creative twist.</div>
+            </div>
+          </div>
+
+          <div style="height:1px;background:rgba(0,168,255,0.15);"></div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:32px;height:32px;background:#00a8ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="ti ti-building" style="font-size:16px;color:#fff;"></i>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Venue Website</div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6;">For best results, include the venue's website. The AI can use it to find the venue's logo, colors, style, address, phone number, and website link.</div>
+            </div>
+          </div>
+
+          <div style="height:1px;background:rgba(0,168,255,0.15);"></div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:32px;height:32px;background:#00a8ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="ti ti-forms" style="font-size:16px;color:#fff;"></i>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">No Required Fields</div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6;">There are no required fields except for date and showtime. Not every gig is the same, so fill in only what applies to your event.</div>
+            </div>
+          </div>
+
+          <div style="height:1px;background:rgba(0,168,255,0.15);"></div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:32px;height:32px;background:#00a8ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="ti ti-photo" style="font-size:16px;color:#fff;"></i>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Artist Photos</div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6;">This version does not support photo uploads yet. To add your photo, copy the prompt into your AI tool and upload your image there. If you have special guests, tell the AI which photo goes with each person.</div>
+            </div>
+          </div>
+
+          <div style="height:1px;background:rgba(0,168,255,0.15);"></div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:32px;height:32px;background:#00a8ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="ti ti-layout" style="font-size:16px;color:#fff;"></i>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Flyer Size</div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6;">Pick the layout that works best for where you plan to use it, such as Instagram, Facebook, Stories, or printing.</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Slide 2: Flyer Style -->
+      <div class="slide">
+        <div class="step-title" style="margin-bottom:16px;">Flyer Style</div>
+        <div id="style-desc" style="min-height:60px;background:rgba(123,47,255,0.08);border:1px solid rgba(123,47,255,0.3);border-radius:10px;padding:14px;margin-bottom:18px;font-size:13px;line-height:1.5;color:rgba(255,255,255,0.85);text-align:center;display:flex;align-items:center;justify-content:center;">Select a style below to see what it does.</div>
+        <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
+          <button class="theme-btn" data-theme="Cinematic" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Cinematic</button>
+          <button class="theme-btn" data-theme="Playful" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Playful</button>
+          <button class="theme-btn" data-theme="Professional" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Professional</button>
+          <button class="theme-btn" data-theme="Casual" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Casual</button>
+          <button class="theme-btn" data-theme="Epic" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:18px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Epic</button>
+          <button class="theme-btn" data-theme="Simple" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:16px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Simple</button>
+          <button class="theme-btn" data-theme="Anime" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:16px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Anime</button>
+          <button class="theme-btn" data-theme="Comic Book" onclick="pickTheme(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:16px;color:#fff;font-family:'Inter',sans-serif;font-size:17px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Comic Book</button>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <label class="lbl">Theme</label>
+          <input type="text" id="f-theme" placeholder="e.g. Star Wars, Toga, Steampunk, 80s" style="color:#fff;">
+          <div class="hint">Optional. Adds a creative theme that blends into your chosen style and venue look.</div>
+        </div>
+      </div>
+
+      <!-- Slide 3: Date & Time -->
+      <div class="slide">
+        <div class="step-title">Date &amp; Time</div>
+        <div id="e0" style="display:none;font-size:13px;color:#e91e8c;margin-bottom:14px;padding:10px 13px;background:rgba(233,30,140,0.08);border:1px solid rgba(233,30,140,0.3);border-radius:8px;font-weight:500;text-align:center;">Please enter the date and show time.</div>
+        <div class="card">
+          <label class="lbl">Date <span style="color:#e91e8c;">*</span></label>
+          <input type="date" id="f-date">
+        </div>
+        <div class="card">
+          <label class="lbl">Show time <span style="color:#e91e8c;">*</span></label>
+          <div class="time-row">
+            <select id="show-h"><option value="">Hour</option></select>
+            <select id="show-m"><option value="">Min</option><option value="00">:00</option><option value="30">:30</option></select>
+            <select id="show-ap"><option value="">AM/PM</option><option>AM</option><option>PM</option></select>
+          </div>
+        </div>
+        <div class="card">
+          <label class="lbl">Doors open</label>
+          <div class="time-row">
+            <select id="doors-h"><option value="">Hour</option></select>
+            <select id="doors-m"><option value="">Min</option><option value="00">:00</option><option value="30">:30</option></select>
+            <select id="doors-ap"><option value="">AM/PM</option><option>AM</option><option>PM</option></select>
+          </div>
+        </div>
+        <div class="card">
+          <label class="lbl">End time</label>
+          <div class="time-row">
+            <select id="end-h"><option value="">Hour</option></select>
+            <select id="end-m"><option value="">Min</option><option value="00">:00</option><option value="30">:30</option></select>
+            <select id="end-ap"><option value="">AM/PM</option><option>AM</option><option>PM</option></select>
+          </div>
+        </div>
+        <div class="card">
+          <label class="lbl">Repeats</label>
+          <select id="f-repeat" onchange="repeatChange()">
+            <option value="">One-time event</option>
+            <option value="Daily">Daily</option>
+            <option value="Weekly">Weekly</option>
+            <option value="Every weekday">Every weekday (Mon–Fri)</option>
+            <option value="Monthly">Monthly</option>
+            <option value="Specific days">Specific days of the week</option>
+            <option value="Custom dates">Multiple specific dates</option>
+          </select>
+          <div id="repeat-days" style="display:none;margin-top:12px;">
+            <label class="lbl" style="margin-bottom:10px;">Which days?</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <button type="button" class="day-btn" data-day="Sunday" onclick="toggleDay(this)">Sun</button>
+              <button type="button" class="day-btn" data-day="Monday" onclick="toggleDay(this)">Mon</button>
+              <button type="button" class="day-btn" data-day="Tuesday" onclick="toggleDay(this)">Tue</button>
+              <button type="button" class="day-btn" data-day="Wednesday" onclick="toggleDay(this)">Wed</button>
+              <button type="button" class="day-btn" data-day="Thursday" onclick="toggleDay(this)">Thu</button>
+              <button type="button" class="day-btn" data-day="Friday" onclick="toggleDay(this)">Fri</button>
+              <button type="button" class="day-btn" data-day="Saturday" onclick="toggleDay(this)">Sat</button>
+            </div>
+          </div>
+          <div id="repeat-until" style="display:none;margin-top:12px;">
+            <label class="lbl" style="margin-bottom:8px;">Repeat until (optional)</label>
+            <input type="date" id="f-repeat-until">
+          </div>
+        </div>
+        <div id="extra-dates-card" class="card" style="display:none;">
+          <label class="lbl">Additional dates</label>
+          <div id="datelist"></div>
+          <button class="add-g" id="add-date" onclick="addDate()"><i class="ti ti-plus" style="font-size:14px;"></i> Add date</button>
+        </div>
+      </div>
+
+      <!-- Slide 2: Event Name + Venue -->
+      <div class="slide">
+        <div class="step-title">Venue</div>
+        <div class="card">
+          <label class="lbl">Event name</label>
+          <input type="text" id="f-name" autocomplete="off" autocorrect="off">
+        </div>
+        <div class="card">
+          <label class="lbl">Tagline</label>
+          <textarea id="f-desc"></textarea>
+        </div>
+        <div class="card">
+          <label class="lbl">Does the venue have a website?</label>
+          <div style="display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid rgba(123,47,255,0.4);margin-top:4px;">
+            <button id="toggle-yes" onclick="venueToggle('yes')" style="flex:1;padding:13px;background:linear-gradient(135deg,#e91e8c,#7b2fff);border:none;color:#fff;font-family:'Inter',sans-serif;font-size:15px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">Yes</button>
+            <button id="toggle-no" onclick="venueToggle('no')" style="flex:1;padding:13px;background:rgba(255,255,255,0.05);border:none;color:rgba(255,255,255,0.5);font-family:'Inter',sans-serif;font-size:15px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;border-left:1px solid rgba(123,47,255,0.4);">No</button>
+          </div>
+        </div>
+
+        <div id="venue-website-section">
+          <div class="card">
+            <label class="lbl">Venue name</label>
+            <input type="text" id="f-vsite-name" autocomplete="off">
+          </div>
+          <div class="card">
+            <label class="lbl">Location / Venue website</label>
+            <input type="text" id="f-vsite" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+            <div class="hint">Your AI will pull the logo, colors, address, phone, and style from the website.</div>
+          </div>
+        </div>
+
+        <div id="venue-manual-section" style="display:none;">
+          <div class="card">
+            <label class="lbl">Venue name</label>
+            <input type="text" id="f-vname" autocomplete="off">
+          </div>
+          <div class="card">
+            <label class="lbl">Address</label>
+            <input type="text" id="f-vaddress" autocomplete="off">
+          </div>
+          <div class="card">
+            <label class="lbl">Phone number</label>
+            <input type="tel" id="f-vphone" placeholder="(___) ___-____" maxlength="14" oninput="fmtPhone(this)" autocomplete="tel" style="background:rgba(13,10,26,0.8);border:1px solid rgba(123,47,255,0.4);color:#fff;width:100%;min-height:50px;padding:13px 14px;font-size:16px;border-radius:8px;">
+          </div>
+          <div class="card">
+            <label class="lbl">Venue description / style</label>
+            <textarea id="f-vdesc" placeholder="e.g. Upscale jazz lounge with warm lighting and vintage decor"></textarea>
+          </div>
+        </div>
+        <div class="card">
+          <label class="lbl">Specific lounge / bar / room</label>
+          <input type="text" id="f-subvenue" placeholder="Venue Inside Location" oninput="subvenueChange()">
+          <div class="hint">If filled in, this becomes the primary title on the flyer — the main venue will appear as secondary context below it.</div>
+        </div>
+        <div id="subvenue-website-section" style="display:none;">
+          <div class="card">
+            <label class="lbl">Lounge / bar / room website</label>
+            <input type="text" id="f-subvenue-site" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+            <div class="hint">Optional. The AI will also pull the logo, colors, and style from this website.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 3: Performer -->
+      <div class="slide">
+        <div class="step-title">Names</div>
+        <div class="card">
+          <label class="lbl">Artist / performer name</label>
+          <input type="text" id="f-performer" autocomplete="off">
+        </div>
+        <div class="card">
+          <label class="lbl">Special guests</label>
+          <div id="glist"></div>
+          <button class="add-g" id="add-g" onclick="addGuest()"><i class="ti ti-plus" style="font-size:14px;"></i> Add guest</button>
+        </div>
+      </div>
+
+      <!-- Slide 4: Details -->
+      <div class="slide">
+        <div class="step-title">Extras</div>
+        <div class="card">
+          <label class="lbl" style="margin-bottom:10px;">Age restriction</label>
+          <select id="f-age"><option value="">None</option><option>18+</option><option>21+</option><option>All Ages</option></select>
+        </div>
+        <div class="card">
+          <label class="lbl" style="margin-bottom:10px;">Dress code</label>
+          <select id="f-dress">
+            <option value="">None</option><option>Casual</option><option>Smart Casual</option>
+            <option>Business Casual</option><option>Formal</option><option>Black Tie</option>
+            <option>Theme / Costume</option><option value="No sneakers, ball caps">No sneakers, ball caps</option>
+          </select>
+        </div>
+        <div class="card">
+          <label class="lbl">Sponsors</label>
+          <input type="text" id="f-sponsors" autocomplete="off">
+        </div>
+        <div class="card">
+          <label class="lbl">QR code link</label>
+          <input type="url" id="f-qr" autocorrect="off" autocapitalize="none" spellcheck="false">
+        </div>
+        <div class="card">
+          <label class="lbl">Cover</label>
+          <input type="text" id="f-price" autocomplete="off" placeholder="e.g. $20 · Free before 9pm · No cover">
+        </div>
+        <div class="card">
+          <label class="lbl">Tickets</label>
+          <select id="f-tickets" onchange="ticketChange()">
+            <option value="">Select ticket type</option>
+            <option value="At the door">At the door</option>
+            <option value="Online">Online</option>
+            <option value="In person">In person</option>
+          </select>
+        </div>
+        <div id="ticket-online" style="display:none;">
+          <div class="card">
+            <label class="lbl">Ticket website</label>
+            <input type="url" id="f-ticket-url" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="https://tickets.com/your-event" style="background:rgba(13,10,26,0.8);border:1px solid rgba(123,47,255,0.4);color:#fff;width:100%;min-height:50px;padding:13px 14px;font-size:16px;border-radius:8px;">
+          </div>
+        </div>
+        <div id="ticket-inperson" style="display:none;">
+          <div class="card">
+            <label class="lbl">Phone number</label>
+            <input type="tel" id="f-ticket-phone" placeholder="(___) ___-____" maxlength="14" oninput="fmtPhone(this)" autocomplete="tel" style="background:rgba(13,10,26,0.8);border:1px solid rgba(123,47,255,0.4);color:#fff;width:100%;min-height:50px;padding:13px 14px;font-size:16px;border-radius:8px;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 5: Size + Generate -->
+      <div class="slide">
+        <div class="step-title">Flyer Size</div>
+
+        <!-- Social Media -->
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#fff;margin-bottom:8px;">Social Media</div>
+        <div class="card" style="margin-bottom:14px;">
+          <div class="sizes">
+            <div class="sz" onclick="pickSz(this,'1080x1350')"><div class="sz-box" style="width:20px;height:26px;"></div><div class="sz-name">Portrait</div><div class="sz-dim">1080×1350</div><div class="sz-dim">IG Post</div></div>
+            <div class="sz" onclick="pickSz(this,'1080x1080')"><div class="sz-box" style="width:24px;height:24px;"></div><div class="sz-name">Square</div><div class="sz-dim">1080×1080</div><div class="sz-dim">IG / FB</div></div>
+            <div class="sz" onclick="pickSz(this,'1080x1920')"><div class="sz-box" style="width:14px;height:26px;"></div><div class="sz-name">Story</div><div class="sz-dim">1080×1920</div><div class="sz-dim">IG / FB</div></div>
+            <div class="sz" onclick="pickSz(this,'1080x1920')"><div class="sz-box" style="width:14px;height:26px;"></div><div class="sz-name">Reel</div><div class="sz-dim">1080×1920</div><div class="sz-dim">IG Reel</div></div>
+            <div class="sz" onclick="pickSz(this,'1200x628')"><div class="sz-box" style="width:32px;height:17px;"></div><div class="sz-name">FB Event</div><div class="sz-dim">1200×628</div><div class="sz-dim">Facebook</div></div>
+            <div class="sz" onclick="pickSz(this,'1500x500')"><div class="sz-box" style="width:34px;height:11px;"></div><div class="sz-name">X Banner</div><div class="sz-dim">1500×500</div><div class="sz-dim">Twitter/X</div></div>
+            <div class="sz" onclick="pickSz(this,'1000x1500')"><div class="sz-box" style="width:18px;height:28px;"></div><div class="sz-name">Pinterest</div><div class="sz-dim">1000×1500</div><div class="sz-dim">Pin</div></div>
+            <div class="sz" onclick="pickSz(this,'1920x1080')"><div class="sz-box" style="width:32px;height:18px;"></div><div class="sz-name">YouTube</div><div class="sz-dim">1920×1080</div><div class="sz-dim">Thumbnail</div></div>
+            <div class="sz" onclick="pickSz(this,'1080x1080')"><div class="sz-box" style="width:24px;height:24px;"></div><div class="sz-name">TikTok</div><div class="sz-dim">1080×1080</div><div class="sz-dim">Cover</div></div>
+          </div>
+        </div>
+
+        <!-- Print -->
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#fff;margin-bottom:8px;">Print</div>
+        <div class="card" style="margin-bottom:14px;">
+          <div class="sizes">
+            <div class="sz" onclick="pickSz(this,'2550x3300')"><div class="sz-box" style="width:18px;height:24px;"></div><div class="sz-name">Letter</div><div class="sz-dim">8.5×11 in</div><div class="sz-dim">US Standard</div></div>
+            <div class="sz" onclick="pickSz(this,'1275x1650')"><div class="sz-box" style="width:18px;height:24px;"></div><div class="sz-name">Half Page</div><div class="sz-dim">5.5×8.5 in</div><div class="sz-dim">Handout</div></div>
+            <div class="sz" onclick="pickSz(this,'1050x1500')"><div class="sz-box" style="width:16px;height:24px;"></div><div class="sz-name">Flyer</div><div class="sz-dim">3.5×5 in</div><div class="sz-dim">Small Flyer</div></div>
+            <div class="sz" onclick="pickSz(this,'2480x3508')"><div class="sz-box" style="width:18px;height:26px;"></div><div class="sz-name">A4</div><div class="sz-dim">210×297mm</div><div class="sz-dim">International</div></div>
+            <div class="sz" onclick="pickSz(this,'3300x5100')"><div class="sz-box" style="width:16px;height:26px;"></div><div class="sz-name">Legal</div><div class="sz-dim">8.5×14 in</div><div class="sz-dim">US Legal</div></div>
+            <div class="sz" onclick="pickSz(this,'3600x2400')"><div class="sz-box" style="width:32px;height:22px;"></div><div class="sz-name">Poster</div><div class="sz-dim">12×18 in</div><div class="sz-dim">Large Print</div></div>
+          </div>
+        </div>
+
+        <!-- Generic -->
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#fff;margin-bottom:8px;">Generic</div>
+        <div class="card" style="margin-bottom:14px;">
+          <div class="sizes">
+            <div class="sz" onclick="pickSz(this,'1920x1080')"><div class="sz-box" style="width:32px;height:18px;"></div><div class="sz-name">Landscape</div><div class="sz-dim">1920×1080</div><div class="sz-dim">16:9</div></div>
+            <div class="sz" onclick="pickSz(this,'1080x1350')"><div class="sz-box" style="width:20px;height:26px;"></div><div class="sz-name">Portrait</div><div class="sz-dim">1080×1350</div><div class="sz-dim">4:5</div></div>
+            <div class="sz" onclick="pickSz(this,'1080x1080')"><div class="sz-box" style="width:24px;height:24px;"></div><div class="sz-name">Square</div><div class="sz-dim">1080×1080</div><div class="sz-dim">1:1</div></div>
+          </div>
+        </div>
+
+        <div id="e6" style="display:none;font-size:13px;color:#e91e8c;margin-top:10px;padding:10px 13px;background:rgba(233,30,140,0.08);border:1px solid rgba(233,30,140,0.3);border-radius:8px;font-weight:500;">Please select a flyer size to continue.</div>
+      </div>
+
+      <!-- Slide 7: Flyer Size -->
+
+      <!-- Slide 8: Generate -->
+      <div class="slide" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;">
+        <div class="step-title" style="margin-bottom:40px;">Generate Prompt</div>
+
+        <div style="width:100%;display:flex;flex-direction:column;gap:16px;">
+          <div>
+            <button id="copy-prompt-btn" onclick="generate()" style="width:100%;background:linear-gradient(135deg,#e91e8c,#7b2fff);border:none;border-radius:12px;padding:18px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 20px rgba(233,30,140,0.4);-webkit-tap-highlight-color:transparent;transition:all 0.2s;">
+              <i class="ti ti-copy" style="font-size:20px;"></i> <span id="copy-btn-label">Copy Prompt to Clipboard</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="e6" style="display:none;font-size:13px;color:#e91e8c;margin-top:10px;padding:10px 13px;background:rgba(233,30,140,0.08);border:1px solid rgba(233,30,140,0.3);border-radius:8px;font-weight:500;">Please select a flyer size to continue.</div>
+        <div id="out-wrap" style="display:none;width:100%;margin-top:24px;text-align:center;">
+          <div style="background:linear-gradient(135deg,rgba(233,30,140,0.15),rgba(123,47,255,0.15));border:1px solid rgba(233,30,140,0.4);border-radius:14px;padding:28px 20px;">
+            <div style="width:56px;height:56px;background:linear-gradient(135deg,#e91e8c,#7b2fff);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 0 24px rgba(233,30,140,0.5);">
+              <i class="ti ti-check" style="font-size:28px;color:#fff;"></i>
+            </div>
+            <div style="font-size:20px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Prompt Copied!</div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.85);line-height:1.5;">Your flyer prompt is ready to paste.<br>Don't forget to upload your artist photo.</div>
+          </div>
+          <div style="margin-top:12px;background:rgba(0,168,255,0.08);border:1px solid rgba(0,168,255,0.3);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:8px;justify-content:center;">
+            <i class="ti ti-arrow-right" style="font-size:16px;color:#00a8ff;"></i>
+            <div style="font-size:12px;color:rgba(255,255,255,0.9);line-height:1.4;">Want to animate your flyer? Head to the next page.</div>
+          </div>
+          <div id="pbox" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Slide 9: Video Prompt Creator -->
+      <div class="slide">
+        <div class="step-title" style="margin-bottom:6px;">Add Animation</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.6);text-align:center;margin-bottom:20px;font-style:italic;">All AIs work differently — results may vary.</div>
+        <div style="background:rgba(0,168,255,0.08);border:1px solid rgba(0,168,255,0.3);border-radius:12px;padding:16px;margin-bottom:18px;">
+          <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.9;">1. Pick an energy level<br>2. Copy the prompt<br>3. Paste into AI video app<br>4. Upload finished flyer</div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <button class="energy-btn" data-level="subtle" onclick="pickEnergy(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:16px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Subtle</button>
+            <button class="energy-btn" data-level="lively" onclick="pickEnergy(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:16px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Lively</button>
+            <button class="energy-btn" data-level="dynamic" onclick="pickEnergy(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:16px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Dynamic</button>
+            <button class="energy-btn" data-level="intense" onclick="pickEnergy(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:16px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">Intense</button>
+          </div>
+          <div id="energy-desc" style="display:none;margin-top:14px;background:rgba(123,47,255,0.08);border:1px solid rgba(123,47,255,0.3);border-radius:10px;padding:14px;font-size:13px;line-height:1.6;color:rgba(255,255,255,0.9);"></div>
+        </div>
+
+        <button id="video-gen-btn" onclick="generateVideo()" style="width:100%;background:linear-gradient(135deg,#e91e8c,#7b2fff);border:none;border-radius:12px;padding:18px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 20px rgba(233,30,140,0.4);-webkit-tap-highlight-color:transparent;transition:all 0.2s;margin-top:6px;">
+          <i class="ti ti-copy" style="font-size:20px;"></i> <span id="video-btn-label">Generate &amp; Copy Video Prompt</span>
+        </button>
+
+        <div id="video-out" style="display:none;width:100%;margin-top:20px;text-align:center;">
+          <div style="background:linear-gradient(135deg,rgba(233,30,140,0.15),rgba(123,47,255,0.15));border:1px solid rgba(233,30,140,0.4);border-radius:14px;padding:24px 20px;">
+            <div style="width:56px;height:56px;background:linear-gradient(135deg,#e91e8c,#7b2fff);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 0 24px rgba(233,30,140,0.5);">
+              <i class="ti ti-check" style="font-size:28px;color:#fff;"></i>
+            </div>
+            <div style="font-size:20px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:0.08em;">Prompt Copied!</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 10: Add to Calendar -->
+      <div class="slide">
+        <div class="step-title" style="margin-bottom:6px;">Add to Calendar</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.6);text-align:center;margin-bottom:20px;font-style:italic;">Save this event to your phone's calendar.</div>
+
+        <div id="cal-summary" class="card" style="margin-bottom:16px;"></div>
+        <div id="cal-multi-links" class="card" style="display:none;margin-bottom:16px;"></div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <button onclick="addToGoogle()" style="width:100%;background:linear-gradient(135deg,#4285f4,#34a853);border:none;border-radius:12px;padding:18px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 20px rgba(66,133,244,0.35);-webkit-tap-highlight-color:transparent;">
+            <i class="ti ti-brand-google" style="font-size:20px;"></i> Add to Google Calendar
+          </button>
+          <button onclick="addToApple()" style="width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:18px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;-webkit-tap-highlight-color:transparent;">
+            <i class="ti ti-brand-apple" style="font-size:20px;"></i> Add to Apple Calendar
+          </button>
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.5);text-align:center;margin-top:14px;line-height:1.5;">Opens your calendar with the event pre-filled — just pick your calendar and save.</div>
+      </div>
+
     </div>
-    <div class="flyer-preview" id="flyerPreview"></div>
-    <div class="prompt-box" id="promptBox" style="display:none"></div>
+  </div>
+
+  <!-- Footer -->
+  <div class="ftr">
+    <button class="btn-back" id="btn-back" onclick="goBack()">
+      <i class="ti ti-arrow-left"></i> Back
+    </button>
+    <div class="dots">
+      <div class="dot active" id="d0"></div>
+      <div class="dot" id="d1"></div>
+      <div class="dot" id="d2"></div>
+      <div class="dot" id="d3"></div>
+      <div class="dot" id="d4"></div>
+      <div class="dot" id="d5"></div>
+      <div class="dot" id="d6"></div>
+      <div class="dot" id="d7"></div>
+      <div class="dot" id="d8"></div>
+      <div class="dot" id="d9"></div>
+      <div class="dot" id="d10"></div>
+    </div>
+    <button class="btn-next" id="btn-next" onclick="goNext()">
+      Next <i class="ti ti-arrow-right"></i>
+    </button>
   </div>
 
 </div>
-
-<div class="toast" id="toast"></div>
-
 <script>
-  var currentAI = "dalle";
-  var selectedSize = "1080x1350";
-  var lastPrompt = "";
-  var lastImageUrl = "";
+var cur = 0, selSz = "1080x1350", gN = 0, busy = false;
+var TOTAL = 11;
+var LAST = TOTAL - 1;
+var PCT = 100 / TOTAL;
 
-  var OPENAI_KEY = "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";
+// Init hours
+(function(){
+  var hrs = ["1","2","3","4","5","6","7","8","9","10","11","12"];
+  ["show-h","doors-h","end-h"].forEach(function(id){
+    var s = document.getElementById(id);
+    hrs.forEach(function(h){ var o = document.createElement("option"); o.value = h; o.textContent = h; s.appendChild(o); });
+  });
+  addGuest();
+})();
 
-  function setAI(ai) {
-    currentAI = ai;
-    document.getElementById("btn-dalle").classList.toggle("active", ai === "dalle");
-    document.getElementById("btn-prompt").classList.toggle("active", ai === "prompt");
+function addGuest(){
+  gN++;
+  var n = gN, row = document.createElement("div");
+  row.className = "guest-row";
+  var inp = document.createElement("input");
+  inp.type = "text"; inp.placeholder = "Special Guest " + n; inp.style.color = "#fff"; inp.style.setProperty("--ph-color", "rgba(255,255,255,0.35)");
+  inp.style.flex = "1";
+  inp.addEventListener("input", updateAddG);
+  var btn = document.createElement("button");
+  btn.className = "g-remove";
+  btn.innerHTML = '<i class="ti ti-x" style="font-size:14px;"></i>';
+  btn.onclick = function(){ row.remove(); updateAddG(); };
+  row.appendChild(inp); row.appendChild(btn);
+  document.getElementById("glist").appendChild(row);
+  updateAddG();
+}
+
+function updateAddG(){
+  var rows = document.querySelectorAll("#glist .guest-row");
+  var btn = document.getElementById("add-g");
+  if(!rows.length){ btn.style.display = "flex"; return; }
+  var last = rows[rows.length-1].querySelector("input");
+  btn.style.display = (last && last.value.trim()) ? "flex" : "none";
+}
+
+function getGuests(){
+  var out = [];
+  document.querySelectorAll("#glist input").forEach(function(i){ if(i.value.trim()) out.push(i.value.trim()); });
+  return out;
+}
+
+function v(id){ var el = document.getElementById(id); return el ? el.value.trim() : ""; }
+function getTime(p){ var h=v(p+"-h"),m=v(p+"-m"),ap=v(p+"-ap"); return (h&&m&&ap) ? h+":"+m+" "+ap : ""; }
+function fmtDate(d){ if(!d) return ""; try{ return new Date(d+"T00:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"}); }catch(e){ return d; } }
+function pickSz(el, s){
+  document.querySelectorAll(".sz").forEach(function(c){ c.classList.remove("on"); });
+  el.classList.add("on"); selSz = s;
+  var e6 = document.getElementById("e6");
+  if(e6) e6.style.display = "none";
+}
+
+var styleBlurbs = {
+  "Cinematic": "Deep, rich colors with vibrant graphics and dramatic, movie-poster quality visuals.",
+  "Playful": "Colorful with a soft, friendly palette. Warm, approachable, family and kid-friendly energy.",
+  "Professional": "Clean, corporate-inspired lines. Polished and refined — minimal graphics, but not boring.",
+  "Casual": "Simple, straightforward graphics. A balanced blend of playful, professional, and cinematic.",
+  "Epic": "Maximum cinematic impact with the most creative graphics possible. Full thematic immersion and bold creative liberty.",
+  "Simple": "Minimal, like a basic invitation. Clean and understated with very few graphics.",
+  "Anime": "Bold anime art style — expressive characters, dynamic energy, vibrant cel-shaded colors and dramatic flair.",
+  "Comic Book": "Comic book art style — bold ink outlines, halftone dots, action lines, and punchy pop-art colors."
+};
+
+function pickTheme(el){
+  document.querySelectorAll(".theme-btn").forEach(function(b){
+    b.style.background = "rgba(255,255,255,0.05)";
+    b.style.borderColor = "rgba(123,47,255,0.4)";
+    b.style.boxShadow = "none";
+  });
+  el.style.background = "linear-gradient(135deg,#e91e8c,#7b2fff)";
+  el.style.borderColor = "#e91e8c";
+  el.style.boxShadow = "0 4px 18px rgba(233,30,140,0.4)";
+  selectedTheme = el.getAttribute("data-theme");
+  var desc = document.getElementById("style-desc");
+  if(desc && styleBlurbs[selectedTheme]){
+    desc.innerHTML = "<strong style='color:#fff;'>" + selectedTheme + "</strong> — " + styleBlurbs[selectedTheme];
   }
+}
 
-  function toggleChip(el, groupId) {
-    // For style chips allow multi-select, for color single-select
-    if (groupId === "color-chips") {
-      document.querySelectorAll("#color-chips .chip").forEach(function(c){ c.classList.remove("selected"); });
-      el.classList.add("selected");
+function goTo(n){
+  if(busy) return;
+  busy = true;
+  var slides = document.querySelectorAll(".slide");
+  document.getElementById("track").style.transform = "translateX(-" + (n * PCT) + "%)";
+  cur = n;
+  for(var i = 0; i < TOTAL; i++){
+    document.getElementById("d"+i).className = "dot" + (i < n ? " done" : i === n ? " active" : "");
+  }
+  document.getElementById("btn-back").style.visibility = n > 0 ? "visible" : "hidden";
+  document.getElementById("btn-next").style.visibility = n === 10 ? "hidden" : "visible";
+  var nb = document.getElementById("btn-next");
+  nb.innerHTML = 'Next <i class="ti ti-arrow-right"></i>';
+  setTimeout(function(){
+    slides[n].scrollTop = 0;
+    busy = false;
+  }, 420);
+  // Show header on all pages except page 0 and 1
+  document.getElementById("hdr").style.display = n <= 1 ? "none" : "block";
+  // Reset prompt output when leaving/entering page 5
+  document.getElementById("out-wrap").style.display = "none";
+  // Rebuild video element list when arriving on the video page
+  if(n === 9){ initVideoPage(); }
+  // Rebuild calendar summary when arriving on the calendar page
+  if(n === 10){ initCalendarPage(); }
+}
+
+function goNext(){
+  var e0 = document.getElementById("e0");
+  if(e0) e0.style.display = "none";
+  if(cur === 3 && (!v("f-date") || !v("show-h") || !v("show-m") || !v("show-ap"))){
+    if(e0) e0.style.display = "block"; return;
+  }
+  if(cur === 7 && !selSz){
+    var e6 = document.getElementById("e6");
+    if(e6) e6.style.display = "block";
+    return;
+  }
+  if(cur < LAST) goTo(cur + 1);
+}
+
+function goBack(){ if(cur > 0) goTo(cur - 1); }
+
+// ── Swipe gestures for mobile/tablet ──
+(function(){
+  var startX = 0, startY = 0, startT = 0, tracking = false;
+  var wrap = document.querySelector(".slider-wrap");
+  if(!wrap) return;
+
+  wrap.addEventListener("touchstart", function(e){
+    if(e.touches.length !== 1) { tracking = false; return; }
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    startT = Date.now();
+    tracking = true;
+  }, {passive: true});
+
+  wrap.addEventListener("touchend", function(e){
+    if(!tracking) return;
+    tracking = false;
+    var endX = e.changedTouches[0].clientX;
+    var endY = e.changedTouches[0].clientY;
+    var dx = endX - startX;
+    var dy = endY - startY;
+    var dt = Date.now() - startT;
+
+    // Must be a mostly-horizontal, deliberate swipe
+    if(Math.abs(dx) < 60) return;              // too short
+    if(Math.abs(dx) < Math.abs(dy) * 1.5) return; // too vertical (allow scrolling)
+    if(dt > 800) return;                        // too slow
+
+    // Don't hijack swipes that start on interactive elements you drag
+    var tgt = e.target;
+    if(tgt && tgt.closest && tgt.closest("input[type=date], select, textarea")) return;
+
+    if(dx < 0){
+      goNext(); // swipe left → next
     } else {
-      el.classList.toggle("selected");
+      goBack(); // swipe right → back
+    }
+  }, {passive: true});
+})();
+
+function buildPrompt(){
+  var szName = document.querySelector(".sz.on .sz-name").textContent.trim();
+  var sub = v("f-subvenue"), guests = getGuests();
+
+  var themeDescriptions = {
+    "Cinematic": "CINEMATIC — Deep, rich colors with vibrant graphics and incredible, dramatic visuals. Think movie-poster quality lighting, depth, and atmosphere. If a person's photo is provided and an event theme/vibe is specified, restyle their outfit and wardrobe to reflect that theme with cinematic polish — keep the face intact, transform the clothing convincingly and with high quality.",
+    "Playful": "PLAYFUL — Colorful with a soft, friendly color palette. Family and kid-friendly feel. Warm, approachable, fun shapes and energy. If a person's photo is provided and an event theme/vibe is specified, restyle their outfit to reflect that theme in a fun, colorful, approachable way — keep the face intact, give them a clear themed costume but keep it cheerful and simple rather than hyper-detailed.",
+    "Professional": "PROFESSIONAL — Corporate-inspired with clean, straight lines. Minimal animated or decorative graphics, but not boring — polished and refined. If a person's photo is provided and an event theme/vibe is specified, keep their professional appearance but add tasteful themed wardrobe elements or accessories referencing the theme — refined and polished, not a full costume.",
+    "Casual": "CASUAL — Simple, straightforward graphics that get to the point. A balanced blend of playful, professional, and cinematic elements together. If a person's photo is provided and an event theme/vibe is specified, restyle their outfit with a clear, believable themed costume — keep the face intact, make it noticeable but not over-produced.",
+    "Epic": "EPIC — Maximum cinematic feel combined with the most creative, imaginative AI-generated graphics possible. Fully embrace the event's theme with bold creative liberty — for example, a steampunk event should be filled with steampunk machinery and texture; a toga event can include ancient Roman colosseums, marble pillars, and dramatic classical backdrops. If a person's photo is provided, fully reimagine their outfit/styling to match the theme in elaborate, highly detailed, graphically stunning fashion — full costume, props, and thematic embellishments encouraged. Full creative freedom for maximum visual impact.",
+    "Simple": "SIMPLE — Minimal, almost like a basic invitation. Even more restrained than casual — very few graphics, no heavy animation or decoration, clean and understated. If a person's photo is provided, keep their outfit largely as-is with at most a small, subtle nod to the event theme — restraint is the priority.",
+    "Anime": "ANIME — Render the entire flyer in a bold, high-quality anime art style: expressive linework, dynamic compositions, vibrant cel-shaded coloring, dramatic lighting and energy. If a person's photo is provided, reinterpret them as an anime-style character while keeping their likeness and key features recognizable, and if an event theme/vibe is specified, give them a themed anime costume to match.",
+    "Comic Book": "COMIC BOOK — Render the entire flyer in a bold comic book / pop-art style: heavy ink outlines, halftone dot shading, dynamic action lines, speech-bubble energy, and punchy saturated colors. If a person's photo is provided, reinterpret them as a comic-book character while keeping their likeness recognizable, and if an event theme/vibe is specified, give them a themed comic-style costume to match."
+  };
+
+  var p = "";
+
+  // Theme direction — applies on top of venue aesthetic, not instead of it
+  if(selectedTheme && themeDescriptions[selectedTheme]){
+    p += "OVERALL FLYER STYLE DIRECTION: " + themeDescriptions[selectedTheme] + "\n";
+    p += "Apply this style direction as the artistic approach for the flyer. If venue details are pulled from a website below, still incorporate the venue's actual branding, colors, and identity — blend the venue's real identity with this style direction rather than ignoring one for the other.\n\n";
+  }
+
+  // Venue first — scrape and confirm before generating
+  if(v("f-vsite")){
+    p += "Before generating the flyer, complete these two steps in order:\n\n";
+    p += "STEP 1 — VISIT AND SCRAPE THIS WEBSITE: " + v("f-vsite") + "\n";
+    if(v("f-vsite-name")){
+      p += "The venue name is already provided below — use \"" + v("f-vsite-name") + "\" exactly as the venue name. Do NOT pull or generate a venue name from the website, and do not display the venue name more than once.\n";
+    }
+    p += "Pull the following details from the website:\n";
+    p += "— Address\n";
+    p += "— Phone number\n";
+    p += "— Website URL\n";
+    p += "— Logo\n";
+    p += "— Brand colors\n";
+    p += "— Overall style and atmosphere\n";
+    p += "If you successfully found ALL of the above, proceed immediately to Step 2 without reporting back. If any details are missing, list only what is missing and ask the user to provide them before continuing.\n\n";
+    p += "STEP 2 — GENERATE THE FLYER\n";
+    p += "Generate a stunning, professional event flyer as a " + szName + " image (" + selSz + " pixels) using all venue details collected plus the event information below.\n\n";
+  } else {
+    p += "Generate a stunning, professional event flyer as a " + szName + " image (" + selSz + " pixels).\n\n";
+    // Manual venue info
+    var hasManual = v("f-vname") || v("f-vaddress") || v("f-vphone") || v("f-vdesc");
+    if(hasManual){
+      p += "The venue does not have a website. Use the following venue details for the flyer:\n";
+      if(v("f-vname")) p += "— Venue name: " + v("f-vname") + "\n";
+      if(v("f-vaddress")) p += "— Address: " + v("f-vaddress") + "\n";
+      if(v("f-vphone")) p += "— Phone: " + v("f-vphone") + "\n";
+      if(v("f-vdesc")) p += "— Venue style/description: " + v("f-vdesc") + "\n";
+      p += "Use this information to inform the flyer design, color palette, and overall aesthetic.\n\n";
     }
   }
 
-  function selectSize(el, size) {
-    document.querySelectorAll(".size-card").forEach(function(c){ c.classList.remove("selected"); });
-    el.classList.add("selected");
-    selectedSize = size;
+  // Event details
+  p += "The flyer must display the following information:\n";
+  if(v("f-vsite-name")){
+    p += "— Venue name: " + v("f-vsite-name") + " (display exactly once)\n";
   }
-
-  function buildPrompt() {
-    var name      = document.getElementById("event-name").value.trim();
-    var date      = document.getElementById("event-date").value;
-    var time      = document.getElementById("event-time").value;
-    var venue     = document.getElementById("venue-name").value.trim();
-    var address   = document.getElementById("venue-address").value.trim();
-    var performer = document.getElementById("performer").value.trim();
-    var website   = document.getElementById("website").value.trim();
-    var social    = document.getElementById("social").value.trim();
-    var guests    = document.getElementById("guests").value.trim();
-    var desc      = document.getElementById("description").value.trim();
-    var age       = document.getElementById("age").value;
-    var dress     = document.getElementById("dresscode").value;
-    var theme     = document.getElementById("theme").value.trim();
-    var sponsors  = document.getElementById("sponsors").value.trim();
-
-    var styles = [];
-    document.querySelectorAll("#style-chips .chip.selected").forEach(function(c){ styles.push(c.textContent.trim()); });
-    var colorChip = document.querySelector("#color-chips .chip.selected");
-    var color = colorChip ? colorChip.textContent.trim() : "Black & Gold";
-
-    var sizeParts = selectedSize.split("x");
-    var sizeLabel = document.querySelector(".size-card.selected .size-name").textContent;
-
-    var dateFormatted = date ? new Date(date + "T00:00:00").toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric", year:"numeric" }) : "";
-    var timeFormatted = time ? new Date("2000-01-01T" + time).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit" }) : "";
-
-    var prompt = "Create a professional event flyer image";
-    prompt += " in " + sizeLabel + " format (" + selectedSize + " pixels)";
-    prompt += " with a " + (styles.length ? styles.join(", ") : "bold") + " visual style";
-    prompt += " using a " + color + " color palette";
-    prompt += ".\n\n";
-    prompt += "EVENT DETAILS TO INCLUDE ON THE FLYER:\n";
-    prompt += "• Event: " + (name || "Live Music Event") + "\n";
-    if (dateFormatted) prompt += "• Date: " + dateFormatted + "\n";
-    if (timeFormatted) prompt += "• Time: " + timeFormatted + "\n";
-    prompt += "• Performer: " + (performer || "Live Artist") + "\n";
-    prompt += "• Venue: " + (venue || "The Venue") + "\n";
-    if (address) prompt += "• Address: " + address + "\n";
-    if (guests) prompt += "• Special Guests: " + guests + "\n";
-    if (age) prompt += "• Age Restriction: " + age + "\n";
-    if (dress) prompt += "• Dress Code: " + dress + "\n";
-    if (website) prompt += "• Website: " + website + "\n";
-    if (social) prompt += "• Social: " + social + "\n";
-    if (sponsors) prompt += "• Sponsors: " + sponsors + "\n";
-    if (desc) prompt += "\nTAGLINE / DESCRIPTION: " + desc + "\n";
-    if (theme) prompt += "THEME / VIBE: " + theme + "\n";
-    prompt += "\nDesign guidelines: Make it eye-catching and professional. The event name and performer should be the most prominent text. Use high contrast, crisp typography, and ensure all text is clearly legible. Include decorative elements that match the style and vibe. The flyer should look like it was designed by a professional graphic designer.";
-
-    return prompt;
-  }
-
-  function validate() {
-    var required = [
-      { id: "event-name", label: "Event Name" },
-      { id: "event-date", label: "Date" },
-      { id: "event-time", label: "Time" },
-      { id: "venue-name", label: "Venue Name" },
-      { id: "venue-address", label: "Venue Address" },
-      { id: "performer", label: "Performer Name" },
-      { id: "website", label: "Website" },
-      { id: "social", label: "Social Handle" }
-    ];
-    for (var i = 0; i < required.length; i++) {
-      var el = document.getElementById(required[i].id);
-      if (!el.value.trim()) {
-        el.focus();
-        el.style.borderColor = "var(--red)";
-        setTimeout(function(e){ return function(){ e.style.borderColor = ""; }; }(el), 2000);
-        showToast(required[i].label + " is required");
-        return false;
-      }
+  if(sub){
+    p += "— Primary title (largest venue text): " + sub + "\n";
+    if(v("f-subvenue-site")){
+      p += "— The specific lounge/bar/room has its own website: " + v("f-subvenue-site") + " — pull its logo, colors, and style using the same rules as the main venue website, and treat this as the primary branding source for the flyer.\n";
     }
-    return true;
+    if(v("f-vsite")) p += "— Secondary venue context: the parent venue from the website above\n";
+  }
+  if(v("f-name")) p += "— Event name: " + v("f-name") + "\n";
+  if(v("f-desc")) p += "— Tagline: " + v("f-desc") + "\n";
+
+  // GRAPHICAL / HIGHLIGHTED elements
+  var graphicalItems = [];
+  if(fmtDate(v("f-date"))) graphicalItems.push("Date: " + fmtDate(v("f-date")));
+  if(getTime("show")) graphicalItems.push("Show time: " + getTime("show"));
+  if(v("f-age")) graphicalItems.push("Age restriction: " + v("f-age"));
+  if(v("f-price")) graphicalItems.push("Cover: " + v("f-price"));
+  if(graphicalItems.length){
+    p += "\nGRAPHICAL / HIGHLIGHTED ELEMENTS — render each of these as bold, eye-catching, stylized graphic design elements that match the chosen flyer style and theme (NOT plain text in a box). Place the date and show time together, prominently:\n";
+    graphicalItems.forEach(function(item){ p += "— " + item + "\n"; });
   }
 
-  async function generate() {
-    if (!validate()) return;
+  // PLAIN TEXT supporting details
+  var textItems = [];
+  var d = getTime("doors"); if(d) textItems.push("Doors open: " + d);
+  var et = getTime("end"); if(et) textItems.push("End time: " + et);
+  var repeat = v("f-repeat");
+  if(repeat && repeat !== "Custom dates"){
+    var repeatLine = "Recurring: " + repeat;
+    if(repeat === "Specific days"){
+      var days = getSelectedDays();
+      if(days.length) repeatLine = "Recurring: every " + days.join(", ");
+    }
+    var until = v("f-repeat-until");
+    if(until) repeatLine += " (until " + fmtDate(until) + ")";
+    textItems.push(repeatLine);
+  }
+  if(repeat === "Custom dates"){
+    var extraDates = getExtraDates();
+    if(extraDates.length) textItems.push("Additional dates: " + extraDates.join("; "));
+  }
+  if(v("f-dress")) textItems.push("Dress code: " + v("f-dress"));
+  if(v("f-sponsors")) textItems.push("Sponsors: " + v("f-sponsors"));
+  var tickets = v("f-tickets");
+  if(tickets){
+    var tLine = "Tickets: " + tickets;
+    if(tickets === "Online" && v("f-ticket-url")) tLine += " — " + v("f-ticket-url");
+    if(tickets === "In person" && v("f-ticket-phone")) tLine += " — " + v("f-ticket-phone");
+    textItems.push(tLine);
+  }
+  if(textItems.length){
+    p += "\nSUPPORTING TEXT DETAILS — render these as clean, simple text (placed logically, e.g. doors/end time near the date and show time). These do NOT need to be graphical:\n";
+    textItems.forEach(function(item){ p += "— " + item + "\n"; });
+  }
 
-    var prompt = buildPrompt();
-    lastPrompt = prompt;
+  // Performer
+  p += "\n";
+  if(v("f-performer")) p += "— Headline performer: " + v("f-performer") + " (make this the largest, most dominant text on the entire flyer — this is the hero)\n";
+  if(guests.length){
+    p += "— Special guests: " + guests.join(", ") + " (large and bold, secondary to the headline performer)\n";
+    p += "— NOTE: If photos for any special guests are attached, use them as featured guest portraits with the same styling rules as the headline artist. If no guest photo is attached but a guest is named, before generating, ask the user whether they want to provide a photo for each named guest — or confirm the guest should appear as a text name only.\n";
+  }
+  if(v("f-qr")) p += "— QR code link: " + v("f-qr") + "\n";
+  if(v("f-theme")) p += "— Additional mood/vibe direction (blend this feeling into the design — do NOT print this phrase as literal text on the flyer): " + v("f-theme") + "\n";
 
-    var section = document.getElementById("outputSection");
-    var preview = document.getElementById("flyerPreview");
-    var promptBox = document.getElementById("promptBox");
-    var downloadBtn = document.getElementById("downloadBtn");
+  // Reference image roles — only included if a website is provided, since the user will attach images manually
+  if(v("f-vsite")){
+    p += "REFERENCE IMAGE ROLES (if images are attached to this message):\n";
+    p += "— Headline artist photo (use as the main featured performer)\n";
+    p += "— Special guest photo(s) (use as featured guest portraits, if provided)\n";
+    p += "— Venue logo (use exactly as pulled from the website)\n";
+    p += "— Venue interior / style reference (for atmosphere only)\n";
+    p += "When images are attached, the user will label which is which. Apply each to its correct role.\n\n";
+  }
 
-    section.classList.add("visible");
-    section.scrollIntoView({ behavior: "smooth", block: "start" });
-    downloadBtn.style.display = "none";
-    promptBox.style.display = "none";
-    lastImageUrl = "";
+  // Design rules
+  p += "\nASSET USAGE RULES — CRITICAL:\n";
+  p += "1. Uploaded artist photo: This image is the official headline performer photo. Keep the person's FACE and likeness recognizable and intact. Use it as the main featured performer image — never as a background texture, faded backdrop, collage filler, or atmosphere image. IMPORTANT: If an event theme/vibe direction is provided, you SHOULD restyle their clothing, wardrobe, and surrounding styling to match that theme (the face stays the same, the outfit transforms). The degree of transformation should match the selected style direction above — apply it at the intensity that style calls for.\n";
+  p += "2. Venue logo — follow this priority order: (a) If you can extract the exact logo image from the website, use it exactly as-is, once, clearly visible — do not alter or stylize it. (b) If you cannot extract the exact file but can SEE the logo on the site, recreate it as faithfully as possible, matching its colors, shapes, icon, and text. (c) If you cannot access the logo at all, design the flyer with a clean space where the logo would go and continue.\n";
+  p += "3. NEVER stop, refuse, or ask permission before generating because of the logo. ALWAYS produce the finished flyer. If the logo had to be recreated or left out, simply note that briefly to the user AFTER delivering the image so they can upload the exact logo if they want it swapped in.\n";
+  p += "4. Website venue photos may only be used for background atmosphere, color palette, lighting, and visual style. They must not replace the artist photo.\n";
+  p += "5. Human restriction: Do not generate any fake people, background figures, crowd silhouettes, or AI-created humans. The only human allowed is the uploaded artist photo, if one is provided.\n\n";
 
-    if (currentAI === "prompt") {
-      preview.innerHTML = "";
-      promptBox.style.display = "block";
-      promptBox.textContent = prompt;
-      document.getElementById("outputLabel").textContent = "Your Flyer Prompt";
+  p += "DESIGN RULES:\n";
+  p += "— High contrast, cinematic, professional graphic design quality\n";
+  p += "— Every piece of text and every graphic element appears exactly once — no duplicates\n";
+  p += "— No filler text, no placeholder text, no unnecessary decorative symbols\n";
+  p += "— DO NOT place small icons in front of text items (no calendar icon before the date, no clock icon before times, no person icon before age restriction, no shirt icon before dress code, no pin icon before address, no phone icon before phone number, etc.). Keep text clean without leading icons.\n";
+  p += "— Base the overall design on the venue/location website's aesthetic. If additional mood/vibe direction was provided above, blend that feeling into the venue's existing style — do not abandon the venue's colors, branding, or atmosphere to chase the mood direction literally.\n";
+  p += "— Treat the venue name, address, phone number, and website URL as LOCKED, EXACT TEXT. Render these character-for-character exactly as scraped or provided — do not stylize, alter, abbreviate, or reinterpret the address, phone number, or any numeric/text details. Accuracy of this text is more important than visual flourish.\n";
+  p += "— Create the image immediately. No explanations. No questions. No steps. Just the flyer.";
+
+  return p;
+}
+
+function generate(){
+  var p = buildPrompt();
+  document.getElementById("pbox").textContent = p;
+  // Always try fallback first (works on local files and GitHub Pages)
+  fallbackCopy(p);
+  // Also try modern clipboard API
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(p).catch(function(){ /* already copied via fallback */ });
+  }
+  // Flash button and show confirm regardless
+  var btn = document.getElementById("copy-prompt-btn");
+  var lbl = document.getElementById("copy-btn-label");
+  if(btn && lbl){
+    btn.style.background = "linear-gradient(135deg,#2ecc71,#27ae60)";
+    btn.style.boxShadow = "0 4px 20px rgba(46,204,113,0.5)";
+    lbl.textContent = "✓ Prompt Copied!";
+    setTimeout(function(){
+      btn.style.background = "linear-gradient(135deg,#e91e8c,#7b2fff)";
+      btn.style.boxShadow = "0 4px 20px rgba(233,30,140,0.4)";
+      lbl.textContent = "Copy Prompt to Clipboard";
+    }, 3000);
+  }
+  document.getElementById("out-wrap").style.display = "block";
+  setTimeout(function(){ document.getElementById("out-wrap").scrollIntoView({ behavior:"smooth", block:"start" }); }, 100);
+}
+
+function fallbackCopy(text){
+  var ta = document.createElement("textarea");
+  ta.value = text; ta.style.cssText = "position:fixed;top:-9999px;opacity:0;";
+  document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+}
+
+function copyP(){
+  var text = document.getElementById("pbox").textContent;
+  var lbl = document.getElementById("clbl");
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){ flash(lbl); });
+  } else {
+    var ta = document.createElement("textarea");
+    ta.value = text; ta.style.cssText = "position:fixed;top:-9999px;opacity:0;";
+    document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+    flash(lbl);
+  }
+}
+
+
+
+
+var dateCount = 0;
+
+function repeatChange(){
+  var val = document.getElementById("f-repeat").value;
+  document.getElementById("repeat-days").style.display = (val === "Specific days") ? "block" : "none";
+  document.getElementById("repeat-until").style.display = (val === "Daily" || val === "Weekly" || val === "Every weekday" || val === "Monthly" || val === "Specific days") ? "block" : "none";
+  document.getElementById("extra-dates-card").style.display = (val === "Custom dates") ? "block" : "none";
+  if(val === "Custom dates" && document.querySelectorAll("#datelist .date-row").length === 0){
+    addDate();
+  }
+}
+
+function toggleDay(el){
+  el.classList.toggle("on");
+}
+
+function getSelectedDays(){
+  var days = [];
+  document.querySelectorAll("#repeat-days .day-btn.on").forEach(function(b){
+    days.push(b.getAttribute("data-day"));
+  });
+  return days;
+}
+
+function addDate(){
+  dateCount++;
+  var row = document.createElement("div");
+  row.className = "date-row";
+  row.style.cssText = "display:flex;gap:8px;align-items:center;margin-bottom:8px;";
+  var inp = document.createElement("input");
+  inp.type = "date"; inp.style.flex = "1";
+  var btn = document.createElement("button");
+  btn.className = "g-remove";
+  btn.innerHTML = '<i class="ti ti-x" style="font-size:14px;"></i>';
+  btn.onclick = function(){ row.remove(); };
+  row.appendChild(inp); row.appendChild(btn);
+  document.getElementById("datelist").appendChild(row);
+}
+
+function getExtraDates(){
+  var dates = [];
+  document.querySelectorAll("#datelist input").forEach(function(i){
+    if(i.value) dates.push(fmtDate(i.value));
+  });
+  return dates;
+}
+
+function subvenueChange(){
+  var val = document.getElementById("f-subvenue").value.trim();
+  document.getElementById("subvenue-website-section").style.display = val ? "block" : "none";
+}
+
+function venueToggle(choice){
+  var yesBtn = document.getElementById("toggle-yes");
+  var noBtn = document.getElementById("toggle-no");
+  var websiteSection = document.getElementById("venue-website-section");
+  var manualSection = document.getElementById("venue-manual-section");
+  if(choice === "yes"){
+    yesBtn.style.background = "linear-gradient(135deg,#e91e8c,#7b2fff)";
+    yesBtn.style.color = "#fff";
+    noBtn.style.background = "rgba(255,255,255,0.05)";
+    noBtn.style.color = "rgba(255,255,255,0.5)";
+    websiteSection.style.display = "block";
+    manualSection.style.display = "none";
+  } else {
+    noBtn.style.background = "linear-gradient(135deg,#e91e8c,#7b2fff)";
+    noBtn.style.color = "#fff";
+    yesBtn.style.background = "rgba(255,255,255,0.05)";
+    yesBtn.style.color = "rgba(255,255,255,0.5)";
+    websiteSection.style.display = "none";
+    manualSection.style.display = "block";
+  }
+}
+
+function fmtPhone(el){
+  var raw = el.value.replace(/\D/g, "").substring(0, 10);
+  var out = "";
+  if(raw.length > 0) out = "(" + raw.substring(0, 3);
+  if(raw.length >= 4) out += ") " + raw.substring(3, 6);
+  if(raw.length >= 7) out += "-" + raw.substring(6, 10);
+  el.value = out;
+}
+
+function ticketChange(){
+  var val = document.getElementById("f-tickets").value;
+  document.getElementById("ticket-online").style.display = val === "Online" ? "block" : "none";
+  document.getElementById("ticket-inperson").style.display = val === "In person" ? "block" : "none";
+}
+
+function flash(lbl){ lbl.textContent = "Copied!"; setTimeout(function(){ lbl.textContent = "Copy"; }, 2000); }
+
+// ══════════ VIDEO PROMPT GENERATOR ══════════
+var selectedEnergy = "";
+
+var energyDescriptions = {
+  subtle: "Gentle, understated motion. The whole flyer softly pulses like it's breathing, the background has soft ambient movement, the artist's name gives a light shimmer, and the artist's photo has a barely-there sway.",
+  lively: "Noticeable, energetic motion. The whole flyer gently sways and floats, the background moves with clear atmospheric life, the artist's name shines and pulses, and the artist's photo has a confident sway.",
+  dynamic: "Bold, high-energy motion. The whole flyer bounces and pulses to a rhythm, the background is full of movement and depth, the artist's name pulses with dramatic light, and the artist's photo moves with strong presence.",
+  intense: "Powerful, dramatic motion. The whole flyer shakes and vibrates like a bass drop, the background surges with energy and light, the artist's name commands attention with bold pulsing glow, and the artist's photo moves with striking cinematic force — always staying fully in frame."
+};
+
+var energyPromptText = {
+  subtle: "Add gentle, understated motion to the whole flyer. The entire flyer has a soft, slow pulse as if breathing. The background comes alive with soft ambient movement, the artist's name has a light shimmer, and the artist's photo holds with a barely-there sway.",
+  lively: "Add noticeable, energetic motion to the whole flyer. The entire flyer gently sways and pulses with a subtle floating drift. The background moves with clear atmospheric life, the artist's name shines and pulses with light, and the artist's photo has a confident sway.",
+  dynamic: "Add bold, high-energy motion to the whole flyer. The entire flyer bounces and pulses with rhythmic energy, like it's moving to a beat. The background is full of movement and depth, the artist's name pulses with dramatic light and shine, and the artist's photo moves with strong presence.",
+  intense: "Add powerful, dramatic motion to the whole flyer. The entire flyer shakes, pulses, and vibrates with high energy, like a bass drop. The background surges with dynamic energy and light, the artist's name commands attention with bold pulsing shine and glow, and the artist's photo moves with striking cinematic force."
+};
+
+function pickEnergy(el){
+  document.querySelectorAll(".energy-btn").forEach(function(b){
+    b.style.background = "rgba(255,255,255,0.05)";
+    b.style.borderColor = "rgba(123,47,255,0.4)";
+    b.style.boxShadow = "none";
+  });
+  el.style.background = "linear-gradient(135deg,#e91e8c,#7b2fff)";
+  el.style.borderColor = "#e91e8c";
+  el.style.boxShadow = "0 4px 18px rgba(233,30,140,0.4)";
+  selectedEnergy = el.getAttribute("data-level");
+  var desc = document.getElementById("energy-desc");
+  if(desc && energyDescriptions[selectedEnergy]){
+    desc.style.display = "block";
+    desc.textContent = energyDescriptions[selectedEnergy];
+  }
+}
+
+function initVideoPage(){
+  // nothing to rebuild — energy cards are static
+}
+
+function buildVideoPrompt(){
+  var lines = [];
+  lines.push("Animate this event flyer image into a looping promo video.");
+  if(selectedEnergy && energyPromptText[selectedEnergy]){
+    lines.push(energyPromptText[selectedEnergy]);
+  } else {
+    lines.push("Add gentle, understated motion to the whole flyer — a soft pulse, with the background, artist name, and artist photo coming subtly alive.");
+  }
+  lines.push("Only the background, the artist's name, and the artist's photo should move — leave all other text and elements still.");
+  lines.push("The full flyer must always stay completely within frame — never crop, cut off, zoom past, or lose any part of the flyer or its text at any point.");
+  lines.push("Keep all text, logos, typography, faces, and the layout completely sharp, legible, and undistorted — do not warp, melt, blur, or regenerate any letters, faces, or graphics. Do not add new text.");
+  return lines.join(" ");
+}
+
+function generateVideo(){
+  var text = buildVideoPrompt();
+  fallbackCopy(text);
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).catch(function(){});
+  }
+  var btn = document.getElementById("video-gen-btn");
+  var lbl = document.getElementById("video-btn-label");
+  btn.style.background = "linear-gradient(135deg,#2ecc71,#27ae60)";
+  btn.style.boxShadow = "0 4px 20px rgba(46,204,113,0.5)";
+  lbl.textContent = "✓ Prompt Copied!";
+  setTimeout(function(){
+    btn.style.background = "linear-gradient(135deg,#e91e8c,#7b2fff)";
+    btn.style.boxShadow = "0 4px 20px rgba(233,30,140,0.4)";
+    lbl.textContent = "Generate & Copy Video Prompt";
+  }, 3000);
+  document.getElementById("video-out").style.display = "block";
+  setTimeout(function(){ document.getElementById("video-out").scrollIntoView({ behavior:"smooth", block:"start" }); }, 100);
+}
+
+initVideoPage();
+
+// ══════════ CALENDAR EVENT ══════════
+function getCalTitle(){
+  // Venue name is the calendar event title
+  var sub = v("f-subvenue");
+  if(sub) return sub;
+  if(v("f-vsite-name")) return v("f-vsite-name");
+  if(v("f-vname")) return v("f-vname");
+  return "Live Event";
+}
+
+function getCalLocation(){
+  if(v("f-vaddress")) return v("f-vaddress");
+  if(v("f-vsite-name")) return v("f-vsite-name");
+  if(v("f-vname")) return v("f-vname");
+  if(v("f-vsite")) return v("f-vsite");
+  return "";
+}
+
+function parseTime12(str){
+  // "8:00 PM" -> {h:20, m:0}
+  if(!str) return null;
+  var m = str.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if(!m) return null;
+  var h = parseInt(m[1]), min = parseInt(m[2]);
+  var ap = m[3].toUpperCase();
+  if(ap === "PM" && h !== 12) h += 12;
+  if(ap === "AM" && h === 12) h = 0;
+  return {h:h, m:min};
+}
+
+function getCalDateTimes(){
+  var dateStr = v("f-date"); // yyyy-mm-dd
+  if(!dateStr) return null;
+  var showT = parseTime12(getTime("show"));
+  var endT = parseTime12(getTime("end"));
+  var parts = dateStr.split("-");
+  var y = parseInt(parts[0]), mo = parseInt(parts[1])-1, d = parseInt(parts[2]);
+  var start = new Date(y, mo, d, showT ? showT.h : 20, showT ? showT.m : 0);
+  var end;
+  if(endT){
+    end = new Date(y, mo, d, endT.h, endT.m);
+    if(end <= start) end.setDate(end.getDate()+1); // crosses midnight
+  } else {
+    end = new Date(start.getTime() + 2*60*60*1000); // default 2 hours
+  }
+  return {start:start, end:end};
+}
+
+function fmtICS(dt){
+  function pad(n){ return (n<10?"0":"")+n; }
+  return dt.getFullYear() + pad(dt.getMonth()+1) + pad(dt.getDate()) + "T" +
+    pad(dt.getHours()) + pad(dt.getMinutes()) + "00";
+}
+function fmtGoogle(dt){ return fmtICS(dt); }
+
+function getCalDescription(){
+  var d = [];
+  if(v("f-name")) d.push("Event: " + v("f-name"));
+  if(v("f-performer")) d.push("Performer: " + v("f-performer"));
+  var guests = getGuests();
+  if(guests.length) d.push("Special guests: " + guests.join(", "));
+  if(v("f-desc")) d.push(v("f-desc"));
+  if(v("f-price")) d.push("Cover: " + v("f-price"));
+  if(v("f-age")) d.push("Age: " + v("f-age"));
+  if(v("f-dress")) d.push("Dress code: " + v("f-dress"));
+  if(getTime("doors")) d.push("Doors: " + getTime("doors"));
+  if(v("f-vphone")) d.push("Phone: " + v("f-vphone"));
+  if(v("f-vsite")) d.push(v("f-vsite"));
+  return d.join("\n");
+}
+
+// Build an RRULE string for recurring events (or "" if none)
+function getRecurrenceRule(){
+  var repeat = v("f-repeat");
+  if(!repeat || repeat === "Custom dates") return "";
+  var rule = "";
+  var dayMap = {Sunday:"SU",Monday:"MO",Tuesday:"TU",Wednesday:"WE",Thursday:"TH",Friday:"FR",Saturday:"SA"};
+  if(repeat === "Daily") rule = "FREQ=DAILY";
+  else if(repeat === "Weekly") rule = "FREQ=WEEKLY";
+  else if(repeat === "Monthly") rule = "FREQ=MONTHLY";
+  else if(repeat === "Every weekday") rule = "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR";
+  else if(repeat === "Specific days"){
+    var days = getSelectedDays().map(function(d){ return dayMap[d]; }).filter(Boolean);
+    if(days.length) rule = "FREQ=WEEKLY;BYDAY=" + days.join(",");
+    else rule = "FREQ=WEEKLY";
+  }
+  if(!rule) return "";
+  var until = v("f-repeat-until");
+  if(until){
+    var parts = until.split("-");
+    rule += ";UNTIL=" + parts[0] + parts[1] + parts[2] + "T235959Z";
+  }
+  return rule;
+}
+
+// Human-readable recurrence for the summary card
+function getRecurrenceLabel(){
+  var repeat = v("f-repeat");
+  if(!repeat) return "";
+  if(repeat === "Custom dates") return "Multiple dates";
+  var label = repeat;
+  if(repeat === "Specific days"){
+    var days = getSelectedDays();
+    if(days.length) label = "Every " + days.join(", ");
+  }
+  var until = v("f-repeat-until");
+  if(until) label += " until " + fmtDate(until);
+  return label;
+}
+
+// Get all custom dates as Date objects with show/end times applied
+function getCustomDateTimes(){
+  var results = [];
+  var showT = parseTime12(getTime("show"));
+  var endT = parseTime12(getTime("end"));
+  function makeEntry(val){
+    if(!val) return null;
+    var parts = val.split("-");
+    var y = parseInt(parts[0]), mo = parseInt(parts[1])-1, d = parseInt(parts[2]);
+    var start = new Date(y, mo, d, showT ? showT.h : 20, showT ? showT.m : 0);
+    var end;
+    if(endT){
+      end = new Date(y, mo, d, endT.h, endT.m);
+      if(end <= start) end.setDate(end.getDate()+1);
+    } else {
+      end = new Date(start.getTime() + 2*60*60*1000);
+    }
+    return {start:start, end:end, key:val};
+  }
+  var seen = {};
+  // Include the main date first
+  var mainEntry = makeEntry(v("f-date"));
+  if(mainEntry){ results.push(mainEntry); seen[mainEntry.key] = true; }
+  // Then the additional custom dates
+  document.querySelectorAll("#datelist input").forEach(function(inp){
+    var entry = makeEntry(inp.value);
+    if(entry && !seen[entry.key]){ results.push(entry); seen[entry.key] = true; }
+  });
+  // Sort chronologically
+  results.sort(function(a,b){ return a.start - b.start; });
+  return results;
+}
+
+function initCalendarPage(){
+  var box = document.getElementById("cal-summary");
+  var mlinks = document.getElementById("cal-multi-links");
+  if(mlinks){ mlinks.style.display = "none"; mlinks.innerHTML = ""; }
+  var repeat = v("f-repeat");
+  var title = getCalTitle();
+  var loc = getCalLocation();
+  var dateOpts = {weekday:"long", month:"long", day:"numeric", year:"numeric"};
+
+  // Multiple custom dates
+  if(repeat === "Custom dates"){
+    var customs = getCustomDateTimes();
+    if(!customs.length){
+      box.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,0.7);text-align:center;line-height:1.6;">Add your dates on the Date &amp; Time page to create calendar events.</div>';
       return;
     }
-
-    // DALL-E generation
-    document.getElementById("outputLabel").textContent = "Generating Flyer…";
-    preview.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">Creating your flyer with DALL·E…</div></div>';
-
-    try {
-      var sizeParts = selectedSize.split("x");
-      var w = parseInt(sizeParts[0]);
-      var h = parseInt(sizeParts[1]);
-      var ratio = w / h;
-      var dalleSize = "1024x1024";
-      if (ratio > 1.2) dalleSize = "1792x1024";
-      else if (ratio < 0.85) dalleSize = "1024x1792";
-
-      var res = await fetch("https://api.openai.com/v1/images/generations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + OPENAI_KEY
-        },
-        body: JSON.stringify({
-          model: "dall-e-3",
-          prompt: prompt,
-          n: 1,
-          size: dalleSize,
-          quality: "hd",
-          style: "vivid"
-        })
-      });
-
-      var data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error ? data.error.message : "Generation failed");
-      }
-
-      var imageUrl = data.data[0].url;
-      lastImageUrl = imageUrl;
-
-      preview.innerHTML = '<img src="' + imageUrl + '" alt="Generated flyer">';
-      document.getElementById("outputLabel").textContent = "Your Flyer ✓";
-      downloadBtn.style.display = "inline-block";
-      promptBox.style.display = "block";
-      promptBox.textContent = "PROMPT USED:\n" + prompt;
-
-    } catch(e) {
-      preview.innerHTML = '<div style="padding:20px;width:100%"><div class="error-box">⚠️ ' + (e.message || "Something went wrong. Check your API key and try again.") + '</div></div>';
-      document.getElementById("outputLabel").textContent = "Generation Failed";
-      promptBox.style.display = "block";
-      promptBox.textContent = "You can copy this prompt and paste it into ChatGPT or another AI tool:\n\n" + prompt;
-    }
+    var h = '<div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px;">' + title + '</div>';
+    h += '<div style="font-size:13px;color:rgba(255,255,255,0.8);line-height:1.7;">';
+    customs.forEach(function(c){
+      h += c.start.toLocaleDateString("en-US", dateOpts) + ' · ' + c.start.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}) + '<br>';
+    });
+    if(loc) h += loc;
+    h += '</div>';
+    box.innerHTML = h;
+    return;
   }
 
-  function downloadFlyer() {
-    if (!lastImageUrl) return;
-    var a = document.createElement("a");
-    a.href = lastImageUrl;
-    a.download = "flyer.png";
-    a.target = "_blank";
-    a.click();
-    showToast("Opening image — long press to save!");
+  // Single or recurring
+  var dt = getCalDateTimes();
+  if(!dt){
+    box.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,0.7);text-align:center;line-height:1.6;">Add a date and show time on the Date &amp; Time page to create a calendar event.</div>';
+    return;
+  }
+  var timeStr = dt.start.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}) + " – " + dt.end.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+  var html = '<div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px;">' + title + '</div>';
+  html += '<div style="font-size:13px;color:rgba(255,255,255,0.8);line-height:1.7;">';
+  html += dt.start.toLocaleDateString("en-US", dateOpts) + '<br>' + timeStr;
+  var recLabel = getRecurrenceLabel();
+  if(recLabel) html += '<br><span style="color:#e91e8c;font-weight:600;">Repeats: ' + recLabel + '</span>';
+  if(loc) html += '<br>' + loc;
+  html += '</div>';
+  box.innerHTML = html;
+}
+
+function addToGoogle(){
+  var repeat = v("f-repeat");
+  // Multiple custom dates - show tappable links (browsers block multiple window.open in a loop)
+  if(repeat === "Custom dates"){
+    var customs = getCustomDateTimes();
+    if(!customs.length){ alert("Please add your dates first."); return; }
+    var listBox = document.getElementById("cal-multi-links");
+    var dateOpts = {weekday:"short", month:"short", day:"numeric"};
+    var h = '<div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em;">Tap each date to add it to Google Calendar:</div>';
+    customs.forEach(function(c){
+      var url = "https://calendar.google.com/calendar/render?action=TEMPLATE" +
+        "&text=" + encodeURIComponent(getCalTitle()) +
+        "&dates=" + fmtGoogle(c.start) + "/" + fmtGoogle(c.end) +
+        "&details=" + encodeURIComponent(getCalDescription()) +
+        "&location=" + encodeURIComponent(getCalLocation());
+      h += '<a href="' + url + '" target="_blank" style="display:flex;align-items:center;gap:8px;background:rgba(66,133,244,0.12);border:1px solid rgba(66,133,244,0.35);border-radius:8px;padding:12px 14px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;margin-bottom:8px;-webkit-tap-highlight-color:transparent;"><i class="ti ti-calendar-plus" style="color:#4285f4;"></i> ' + c.start.toLocaleDateString("en-US", dateOpts) + '</a>';
+    });
+    listBox.innerHTML = h;
+    listBox.style.display = "block";
+    return;
+  }
+  document.getElementById("cal-multi-links").style.display = "none";
+  var dt = getCalDateTimes();
+  if(!dt){ alert("Please add a date and show time first."); return; }
+  var url = "https://calendar.google.com/calendar/render?action=TEMPLATE" +
+    "&text=" + encodeURIComponent(getCalTitle()) +
+    "&dates=" + fmtGoogle(dt.start) + "/" + fmtGoogle(dt.end) +
+    "&details=" + encodeURIComponent(getCalDescription()) +
+    "&location=" + encodeURIComponent(getCalLocation());
+  var rrule = getRecurrenceRule();
+  if(rrule) url += "&recur=" + encodeURIComponent("RRULE:" + rrule);
+  window.open(url, "_blank");
+}
+
+function icsEvent(start, end, rrule){
+  var e = "BEGIN:VEVENT\n";
+  e += "UID:" + Date.now() + Math.random().toString(36).slice(2) + "@gigflyer\n";
+  e += "DTSTART:" + fmtICS(start) + "\n";
+  e += "DTEND:" + fmtICS(end) + "\n";
+  if(rrule) e += "RRULE:" + rrule + "\n";
+  e += "SUMMARY:" + getCalTitle().replace(/,/g,"\\,") + "\n";
+  var desc = getCalDescription().replace(/\n/g,"\\n").replace(/,/g,"\\,");
+  if(desc) e += "DESCRIPTION:" + desc + "\n";
+  var loc = getCalLocation().replace(/,/g,"\\,");
+  if(loc) e += "LOCATION:" + loc + "\n";
+  e += "END:VEVENT\n";
+  return e;
+}
+
+function addToApple(){
+  var repeat = v("f-repeat");
+  var ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//GigFlyer//EN\n";
+
+  if(repeat === "Custom dates"){
+    var customs = getCustomDateTimes();
+    if(!customs.length){ alert("Please add your dates first."); return; }
+    customs.forEach(function(c){ ics += icsEvent(c.start, c.end, ""); });
+  } else {
+    var dt = getCalDateTimes();
+    if(!dt){ alert("Please add a date and show time first."); return; }
+    ics += icsEvent(dt.start, dt.end, getRecurrenceRule());
   }
 
-  function copyPrompt() {
-    var text = lastPrompt || buildPrompt();
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function(){ showToast("Prompt copied!"); });
-    } else {
-      var ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.cssText = "position:fixed;top:-9999px;opacity:0;";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-      showToast("Prompt copied!");
-    }
-  }
-
-  function showToast(msg) {
-    var t = document.getElementById("toast");
-    t.textContent = msg;
-    t.classList.add("show");
-    setTimeout(function(){ t.classList.remove("show"); }, 2500);
-  }
+  ics += "END:VCALENDAR";
+  var blob = new Blob([ics], {type:"text/calendar;charset=utf-8"});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = "event.ics";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
 </script>
 </body>
 </html>
