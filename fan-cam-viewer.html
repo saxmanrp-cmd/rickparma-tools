@@ -383,10 +383,11 @@ async function performDelete(idx){
   try{
     const fresh = await fetchLatest();
     const updated = fresh.filter(e => e.mediaUrl !== entry.mediaUrl);
+    const payload = updated.length > 0 ? updated : { seed: true };
     const putRes = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.jsonbinId}`, {
       method:'PUT',
       headers:{ 'Content-Type':'application/json', 'X-Master-Key': CONFIG.jsonbinKey },
-      body: JSON.stringify(updated)
+      body: JSON.stringify(payload)
     });
     if(!putRes.ok){
       const errText = await putRes.text().catch(()=> '');
