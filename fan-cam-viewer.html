@@ -249,8 +249,9 @@ function showToast(msg){
 }
 
 async function fetchLatest(){
-  const res = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.jsonbinId}/latest`, {
-    headers:{ 'X-Master-Key': CONFIG.jsonbinKey }
+  const res = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.jsonbinId}/latest?t=${Date.now()}`, {
+    headers:{ 'X-Master-Key': CONFIG.jsonbinKey },
+    cache: 'no-store'
   });
   const data = await res.json();
   return Array.isArray(data.record) ? data.record : [];
