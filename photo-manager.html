@@ -118,7 +118,6 @@
       <span id="syncLabel">Loading…</span>
     </div>
   </div>
-  <div id="binIdDisplay" style="font-size:9px;color:rgba(255,255,255,0.25);font-family:monospace;margin-bottom:8px;word-break:break-all;user-select:all;"></div>
 
   <!-- Add panel -->
   <div class="add-panel">
@@ -147,7 +146,7 @@
 <script>
   var BIN_API_KEY = "$2a$10$AE8jTzF3OJJNfqTgYPcPK.SzVAdv0Mqi/obwqWTuQjpE0dOkYkCE.";
   var BIN_BASE    = "https://api.jsonbin.io/v3";
-  var BIN_ID      = localStorage.getItem("rp_photos_bin_id") || "";
+  var BIN_ID      = "6a29c91cda38895dfea92f08";
 
   var DEFAULT_PHOTOS = [
     { src: "https://lh3.googleusercontent.com/pw/AP1GczO7q7dLOV28_wXU0ZWRvk6D8VaZFvYcZ9UpuTkudqZz_yAi5omxK9tJwxaQP3us0qhWgDu9i8rT_i7i8_rEbaKTUO91OTJfr2A1Rw5Ltw4FRoMdTGw", name: "" },
@@ -166,33 +165,17 @@
     document.getElementById("syncLabel").textContent = label;
   }
 
-  async function createBin(initial) {
-    var res = await fetch(BIN_BASE + "/b", {
-      method: "POST",
-      headers: { "Content-Type":"application/json", "X-Master-Key":BIN_API_KEY, "X-Bin-Name":"rp-photos", "X-Bin-Private":"true" },
-      body: JSON.stringify({ photos: initial })
-    });
-    if (!res.ok) throw new Error("Could not create bin");
-    var data = await res.json();
-    BIN_ID = data.metadata.id;
-    localStorage.setItem("rp_photos_bin_id", BIN_ID);
-    photos = initial;
-    setSyncStatus("synced", "Ready ✓");
-  }
-
   async function load() {
     try {
-      if (BIN_ID) {
-        var res = await fetch(BIN_BASE + "/b/" + BIN_ID + "/latest", { headers: { "X-Master-Key": BIN_API_KEY } });
-        if (res.ok) {
-          var data = await res.json();
-          photos = data.record.photos || [];
-          if (photos.length === 0) { photos = DEFAULT_PHOTOS.slice(); await save(); }
-          setSyncStatus("synced", "Synced ✓");
-          return;
-        }
+      var res = await fetch(BIN_BASE + "/b/" + BIN_ID + "/latest", { headers: { "X-Master-Key": BIN_API_KEY } });
+      if (res.ok) {
+        var data = await res.json();
+        photos = data.record.photos || [];
+        if (photos.length === 0) { photos = DEFAULT_PHOTOS.slice(); await save(); }
+        setSyncStatus("synced", "Synced ✓");
+      } else {
+        throw new Error("Load failed");
       }
-      await createBin(DEFAULT_PHOTOS);
     } catch(e) {
       photos = DEFAULT_PHOTOS.slice();
       setSyncStatus("error", "Load failed");
@@ -458,8 +441,6 @@
   load().then(function() {
     document.getElementById("loadingScreen").style.display = "none";
     document.getElementById("appWrap").style.display = "block";
-    var binDisplay = document.getElementById("binIdDisplay");
-    if (binDisplay) binDisplay.textContent = "BIN: " + (BIN_ID || "none");
     render();
   });
 </script>
