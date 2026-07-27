@@ -392,7 +392,7 @@ async function uploadToCloudinary(blob, kind){
 async function logToJsonbin(entry){
   const base = `https://api.jsonbin.io/v3/b/${CONFIG.jsonbinId}`;
   const headers = { 'Content-Type': 'application/json', 'X-Master-Key': CONFIG.jsonbinKey };
-  const current = await fetch(base + '/latest', { headers }).then(r=>r.json());
+  const current = await fetch(`${base}/latest?t=${Date.now()}`, { headers, cache: 'no-store' }).then(r=>r.json());
   const list = Array.isArray(current.record) ? current.record : [];
   list.unshift(entry);
   await fetch(base, { method:'PUT', headers, body: JSON.stringify(list) });
