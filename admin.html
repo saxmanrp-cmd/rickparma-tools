@@ -443,16 +443,6 @@
     <!-- SUBSCRIBERS TAB -->
     <div class="tab-panel" id="tab-subscribers">
       <div class="card">
-        <h2>Import from iPhone Contacts</h2>
-        <p class="subtitle" style="margin-bottom:10px;">
-          In the Contacts app: select the contacts you want (or Select All), tap Share, choose "Share Contact" → Mail/AirDrop/Files as a vCard (.vcf), then upload that file here.
-        </p>
-        <input type="file" id="vcfFile" accept=".vcf" style="margin-bottom: 12px; color: var(--text-dim);">
-        <button class="btn btn-secondary" id="vcfImportBtn">Import vCard</button>
-        <div class="message-status" id="vcfStatus"></div>
-      </div>
-
-      <div class="card">
         <h2>Add Subscriber</h2>
         <div class="add-row">
           <input type="tel" id="newPhone" placeholder="(702) 555-0123">
@@ -815,70 +805,6 @@
   }
 
   refreshBtn.addEventListener('click', loadSubscribers);
-
-  // ---- vCard import (from iPhone Contacts export) ----
-  const vcfFile = document.getElementById('vcfFile');
-  const vcfImportBtn = document.getElementById('vcfImportBtn');
-  const vcfStatus = document.getElementById('vcfStatus');
-
-  function parseVCard(text) {
-    const cards = text.split(/BEGIN:VCARD/i).slice(1);
-    const contacts = [];
-    for (const card of cards) {
-      const lines = card.split(/\r?\n/);
-      let name = '';
-      let phone = '';
-      for (const line of lines) {
-        if (/^FN[:;]/i.test(line)) {
-          name = line.split(':').slice(1).join(':').trim();
-        } else if (/^TEL/i.test(line) && !phone) {
-          phone = line.split(':').slice(1).join(':').trim();
-        }
-      }
-      if (phone) contacts.push({ phone, name, tags: ['iPhone Import'] });
-    }
-    return contacts;
-  }
-
-  vcfImportBtn.addEventListener('click', async () => {
-    const file = vcfFile.files[0];
-    if (!file) {
-      vcfStatus.className = 'message-status error';
-      vcfStatus.textContent = 'Choose a .vcf file first.';
-      return;
-    }
-    vcfStatus.className = 'message-status';
-    vcfStatus.textContent = 'Reading file...';
-
-    const text = await file.text();
-    const contacts = parseVCard(text);
-    if (contacts.length === 0) {
-      vcfStatus.className = 'message-status error';
-      vcfStatus.textContent = 'No contacts with phone numbers found in that file.';
-      return;
-    }
-
-    vcfStatus.textContent = `Importing ${contacts.length} contact(s)...`;
-    try {
-      const res = await apiFetch('/api/subscribers/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contacts }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        vcfStatus.className = 'message-status success';
-        vcfStatus.textContent = `Added ${data.added}, skipped ${data.skipped} (duplicates/invalid). Total: ${data.total}.`;
-        await loadSubscribers();
-      } else {
-        vcfStatus.className = 'message-status error';
-        vcfStatus.textContent = data.error || 'Import failed.';
-      }
-    } catch (e) {
-      vcfStatus.className = 'message-status error';
-      vcfStatus.textContent = 'Connection error during import.';
-    }
-  });
 
   // ================= BLAST =================
 
