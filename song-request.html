@@ -183,6 +183,7 @@
   .spin-result-free{color:var(--general); border-color:var(--general);}
   .spin-result-general{color:var(--accent); border-color:var(--accent);}
   .spin-result-bogo{color:#E86BD5; border-color:#E86BD5;}
+  .sms-disclaimer{font-size:11px; color:var(--dim); text-align:center; margin-top:6px; opacity:0.85;}
   .bogo-sort-select{width:100%; margin-top:8px; padding:11px 14px; font-size:16px; border-radius:10px; border:1px solid var(--line); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif;}
   .bogo-results{max-height:200px; overflow-y:auto; border:1px solid var(--line); border-radius:10px; margin-top:8px;}
   .bogo-result-item{padding:12px 14px; font-size:14px; color:var(--white); border-bottom:1px solid var(--line); cursor:pointer;}
@@ -698,6 +699,7 @@ function revealSpinResult(outcome, songId, price){
       <div class="spin-result spin-result-free">🎉 You spun FREE! This one's on the house.</div>
       <div class="section-label">Step 3 — Send the request</div>
       <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}', 'FREE')">📱 Text This Request</a>
+      <div class="sms-disclaimer">Msg&amp;data rates may apply.</div>
     `;
     launchFireworks('FREE');
   } else if(outcome === 'BOGO'){
@@ -727,6 +729,7 @@ function revealSpinResult(outcome, songId, price){
       <div class="spin-result spin-result-general">You spun $${price} — text your request, then send the tip.</div>
       <div class="section-label">Step 3 — Send the request</div>
       <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}', 'PAID')">📱 Text This Request</a>
+      <div class="sms-disclaimer">Msg&amp;data rates may apply.</div>
 
       <div class="section-label">Step 4 — Send the tip ($${price})</div>
       <a class="btn btn-venmo" href="${venmoAppLink}" target="_top">Pay $${price} with Venmo</a>
@@ -833,6 +836,7 @@ function renderBogoNextSteps(songAId, songBId, price){
   nextSteps.innerHTML = `
     <div class="section-label">Step 4 — Send the request</div>
     <a class="btn btn-text" href="#" target="_top" onclick="return prepareSendBogo(this, '${songAId}', '${songBId}')">📱 Text This Request</a>
+    <div class="sms-disclaimer">Msg&amp;data rates may apply.</div>
 
     <div class="section-label">Step 5 — Send the tip ($${price} for both songs!)</div>
     <a class="btn btn-venmo" href="${venmoAppLink}" target="_top">Pay $${price} with Venmo</a>
