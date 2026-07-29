@@ -1371,7 +1371,7 @@ if (signId) {
   document.getElementById('view-print').classList.add('showing');
   initReceiptView(receiptId);
 } else {
-  loadInvoices();
+  loadInvoices(); ensureBin().then(function(id) { var p = document.createElement('p'); p.id = 'bin-id-display'; p.style.cssText = 'font-size:10px;color:var(--text-dim);margin-top:2px'; p.textContent = 'Bin ID: ' + id; var header = document.querySelector('.header-row > div'); if (header) header.appendChild(p); });
   clearForm();
   showView('history');
 
