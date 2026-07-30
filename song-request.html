@@ -21,6 +21,7 @@
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--white);font-family:'Lato',sans-serif;}
+  html,body{overflow-x:hidden;}
   body{
     background-image:
       radial-gradient(ellipse at top, rgba(141,178,229,0.06), transparent 60%),
@@ -106,7 +107,7 @@
   .empty-state{text-align:center; padding:60px 20px; color:var(--dim); font-size:14px; line-height:1.6;}
 
   #overlay{display:none !important;}
-  #sheet{position:fixed; inset:0; background:#160303; display:none; flex-direction:column; padding:16px 20px calc(20px + env(safe-area-inset-bottom)); z-index:101; overflow-y:auto;}
+  #sheet{position:fixed; inset:0; background:#160303; display:none; flex-direction:column; padding:16px 20px calc(20px + env(safe-area-inset-bottom)); z-index:101; overflow-y:auto; overflow-x:hidden;}
   #sheet.show{display:flex;}
   .sheet-back-btn{align-self:flex-start; background:var(--card-solid); border:1px solid var(--line); color:var(--white); padding:9px 14px; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Lato',sans-serif; margin-bottom:10px;}
   #sheet h2{font-size:20px; color:var(--white);}
@@ -121,11 +122,12 @@
   .btn-text{background:var(--accent); color:#0c1420; font-size:16px; padding:16px;}
 
   .pay-note{font-size:12.5px; color:var(--dim); line-height:1.5; margin-top:14px; padding:12px; background:rgba(245,243,240,0.04); border-radius:10px; border:1px solid var(--line);}
-  .section-label{font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); font-weight:700; margin-top:20px; margin-bottom:2px;}
+  .section-label{font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); font-weight:700; margin-top:12px; margin-bottom:2px;}
   .name-input{width:100%; padding:14px; font-size:16px; border-radius:12px; border:1px solid var(--accent); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif; margin-top:8px;}
   .name-input::placeholder{color:#8a8078;}
 
-  .wheel-wrap{position:relative; width:280px; height:280px; margin:20px auto 10px;}
+  .wheel-wrap{position:relative; margin:10px auto 6px; overflow:hidden;}
+  .wheel-scale-inner{position:relative; width:280px; height:280px; transform-origin:top left;}
   .wheel-pointer{position:absolute; top:-12px; left:50%; transform:translateX(-50%); font-size:32px; color:#fff; z-index:4; text-shadow:0 2px 8px rgba(0,0,0,0.7); filter:drop-shadow(0 0 8px rgba(255,255,255,0.7));}
   .wheel-glow{position:absolute; inset:-14px; border-radius:50%; background:radial-gradient(circle, rgba(255,215,100,0.4), rgba(141,178,229,0.22) 60%, transparent 75%); animation:wheelPulse 2.2s ease-in-out infinite; z-index:0;}
   @keyframes wheelPulse{
@@ -479,14 +481,18 @@ function openSheet(id){
   const price = prices.general;
   const tierLineHtml = `<span class="badge general">🎵 Song Request</span> <span class="price-tag">$${price}</span>`;
 
+    const wheelWrapPx = Math.round(Math.max(175, Math.min(280, window.innerWidth * 0.62, window.innerHeight * 0.32)));
+  const wheelScale = (wheelWrapPx / 280).toFixed(4);
   const bodyHtml = `
     ${nameFieldHtml}
     <div class="section-label">Step 2 — Spin to Win a Free Song!</div>
-    <div class="wheel-wrap">
-      <div class="wheel-pointer">▼</div>
-      <div class="wheel-glow"></div>
-      <div class="wheel" id="spinWheel">${buildWheelLabels(price)}${buildWheelSparkles()}${buildWheelRivets()}</div>
-      <div class="wheel-center-dot"></div>
+    <div class="wheel-wrap" style="width:${wheelWrapPx}px;height:${wheelWrapPx}px;">
+      <div class="wheel-scale-inner" style="transform:scale(${wheelScale});">
+        <div class="wheel-pointer">▼</div>
+        <div class="wheel-glow"></div>
+        <div class="wheel" id="spinWheel">${buildWheelLabels(price)}${buildWheelSparkles()}${buildWheelRivets()}</div>
+        <div class="wheel-center-dot"></div>
+      </div>
     </div>
     <button class="btn btn-text" id="spinBtn" onclick="spinWheel('${s.id}', ${price})">🎡 Spin to Win!</button>
     <div id="spinResultArea"></div>
