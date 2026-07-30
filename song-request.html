@@ -466,6 +466,30 @@ const WHEEL_SLICES = ['GENERAL','FREE','GENERAL','FREE','GENERAL','FREE','GENERA
 let wheelSpinning = false;
 let wheelRotationTotal = 0;
 
+function fitWheelToViewport(){
+  const sheetEl = document.getElementById('sheet');
+  const wrap = document.querySelector('.wheel-wrap');
+  const inner = document.querySelector('.wheel-scale-inner');
+  if(!sheetEl || !wrap || !inner) return;
+  let guard = 0;
+  while (sheetEl.scrollHeight > sheetEl.clientHeight && guard < 25){
+    const curOuter = parseFloat(wrap.style.width) || 280;
+    const nextOuter = Math.max(150, curOuter - 8);
+    if (nextOuter === curOuter) break;
+    const curPad = parseFloat(inner.style.left) || 0;
+    const nextWheelPx = Math.max(130, nextOuter - curPad*2);
+    const nextScale = (nextWheelPx/280).toFixed(4);
+    const nextPad = Math.round(14*nextScale);
+    const finalOuter = nextWheelPx + nextPad*2;
+    wrap.style.width = finalOuter + 'px';
+    wrap.style.height = finalOuter + 'px';
+    inner.style.transform = 'scale(' + nextScale + ')';
+    inner.style.top = nextPad + 'px';
+    inner.style.left = nextPad + 'px';
+    guard++;
+  }
+}
+
 function openSheet(id){
   const s = songs.find(x => x.id === id);
   if(!s) return;
@@ -512,6 +536,7 @@ function openSheet(id){
   document.getElementById('overlay').classList.add('show');
   document.getElementById('sheet').classList.add('show');
   document.body.style.overflow = 'hidden';
+  fitWheelToViewport();
 }
 
 function stackedLetters(word, outerRadius){
