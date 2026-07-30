@@ -485,7 +485,7 @@ function openSheet(id){
   const wheelScale = (wheelWrapPx / 280).toFixed(4);
   const bodyHtml = `
     ${nameFieldHtml}
-    <div class="section-label">Step 2 — Spin to Win a Free Song!</div>
+    <div class="section-label" id="step2Label">Step 2 — Spin to Win a Free Song!</div>
     <div class="wheel-wrap" style="width:${wheelWrapPx}px;height:${wheelWrapPx}px;">
       <div class="wheel-scale-inner" style="transform:scale(${wheelScale});">
         <div class="wheel-pointer">▼</div>
@@ -698,6 +698,15 @@ function revealSpinResult(outcome, songId, price){
   const area = document.getElementById('spinResultArea');
   const s = songs.find(x => x.id === songId);
   if(!s || !area) return;
+  // The wheel already did its job — hide it once spun so the result/
+  // payment step below has room to breathe without needing to scroll.
+  var wheelWrapEl = document.querySelector('.wheel-wrap');
+  if (wheelWrapEl) wheelWrapEl.style.display = 'none';
+  var spinBtnEl = document.getElementById('spinBtn');
+  if (spinBtnEl) spinBtnEl.style.display = 'none';
+  var step2LabelEl = document.getElementById('step2Label');
+  if (step2LabelEl) step2LabelEl.style.display = 'none';
+
 
   if(outcome === 'FREE'){
     area.innerHTML = `
