@@ -126,8 +126,8 @@
   .name-input{width:100%; padding:14px; font-size:16px; border-radius:12px; border:1px solid var(--accent); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif; margin-top:8px;}
   .name-input::placeholder{color:#8a8078;}
 
-  .wheel-wrap{position:relative; margin:10px auto 6px; overflow:hidden;}
-  .wheel-scale-inner{position:relative; width:280px; height:280px; transform-origin:top left;}
+  .wheel-wrap{position:relative; margin:14px auto 24px; overflow:hidden;}
+  .wheel-scale-inner{position:absolute; width:280px; height:280px; transform-origin:top left;}
   .wheel-pointer{position:absolute; top:-12px; left:50%; transform:translateX(-50%); font-size:32px; color:#fff; z-index:4; text-shadow:0 2px 8px rgba(0,0,0,0.7); filter:drop-shadow(0 0 8px rgba(255,255,255,0.7));}
   .wheel-glow{position:absolute; inset:-14px; border-radius:50%; background:radial-gradient(circle, rgba(255,215,100,0.4), rgba(141,178,229,0.22) 60%, transparent 75%); animation:wheelPulse 2.2s ease-in-out infinite; z-index:0;}
   @keyframes wheelPulse{
@@ -174,7 +174,7 @@
     0%,100%{ opacity:0; transform:scale(0.4) rotate(0deg); }
     50%{ opacity:1; transform:scale(1.15) rotate(20deg); }
   }
-  #spinBtn{margin-top:6px; animation:spinBtnGlow 1.8s ease-in-out infinite;}
+  #spinBtn{margin-top:18px; animation:spinBtnGlow 1.8s ease-in-out infinite;}
   @keyframes spinBtnGlow{
     0%,100%{ box-shadow:0 0 0 rgba(141,178,229,0); }
     50%{ box-shadow:0 0 18px rgba(141,178,229,0.65); }
@@ -481,13 +481,15 @@ function openSheet(id){
   const price = prices.general;
   const tierLineHtml = `<span class="badge general">🎵 Song Request</span> <span class="price-tag">$${price}</span>`;
 
-    const wheelWrapPx = Math.round(Math.max(175, Math.min(280, window.innerWidth * 0.62, window.innerHeight * 0.32)));
+    const wheelWrapPx = Math.round(Math.max(210, Math.min(320, window.innerWidth * 0.72, window.innerHeight * 0.40)));
   const wheelScale = (wheelWrapPx / 280).toFixed(4);
+  const wheelGlowPad = Math.round(14 * wheelScale);
+  const wheelOuterPx = wheelWrapPx + wheelGlowPad * 2;
   const bodyHtml = `
     ${nameFieldHtml}
     <div class="section-label" id="step2Label">Step 2 — Spin to Win a Free Song!</div>
-    <div class="wheel-wrap" style="width:${wheelWrapPx}px;height:${wheelWrapPx}px;">
-      <div class="wheel-scale-inner" style="transform:scale(${wheelScale});">
+    <div class="wheel-wrap" style="width:${wheelOuterPx}px;height:${wheelOuterPx}px;">
+      <div class="wheel-scale-inner" style="transform:scale(${wheelScale});top:${wheelGlowPad}px;left:${wheelGlowPad}px;">
         <div class="wheel-pointer">▼</div>
         <div class="wheel-glow"></div>
         <div class="wheel" id="spinWheel">${buildWheelLabels(price)}${buildWheelSparkles()}${buildWheelRivets()}</div>
@@ -698,6 +700,10 @@ function revealSpinResult(outcome, songId, price){
   const area = document.getElementById('spinResultArea');
   const s = songs.find(x => x.id === songId);
   if(!s || !area) return;
+
+  if(outcome === 'FREE' || outcome === 'BOGO'){ launchFireworks(outcome); }
+
+  function finishReveal(){
   // The wheel already did its job — hide it once spun so the result/
   // payment step below has room to breathe without needing to scroll.
   var wheelWrapEl = document.querySelector('.wheel-wrap');
@@ -715,7 +721,7 @@ function revealSpinResult(outcome, songId, price){
       <a class="btn btn-text" href="#" target="_top" onclick="return prepareSend(this, '${s.id}', 'FREE')">📱 Text This Request</a>
       <div class="sms-disclaimer">Msg&amp;data rates may apply.</div>
     `;
-    launchFireworks('FREE');
+    
   } else if(outcome === 'BOGO'){
     area.innerHTML = `
       <div class="spin-result spin-result-bogo">🎉 You spun BOGO! Pick a second song — it's free.</div>
@@ -733,7 +739,7 @@ function revealSpinResult(outcome, songId, price){
       <div id="bogoNextSteps"></div>
     `;
     setupBogoPicker(songId, price);
-    launchFireworks('BOGO');
+    
   } else {
     const venmoNote = encodeURIComponent(`${s.t} request`);
     const venmoAppLink = `venmo://paycharge?txn=pay&recipients=RickParma&amount=${price}&note=${venmoNote}`;
@@ -750,6 +756,13 @@ function revealSpinResult(outcome, songId, price){
       <a class="btn btn-cashapp" href="${cashAppLink}" target="_blank">Pay $${price} with Cash App</a>
       <a class="btn btn-paypal" href="${paypalLink}" target="_blank">Pay $${price} with PayPal</a>
     `;
+  }
+  }
+
+  if(outcome === 'FREE' || outcome === 'BOGO'){
+    setTimeout(finishReveal, 3400);
+  } else {
+    finishReveal();
   }
 }
 
