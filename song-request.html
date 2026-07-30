@@ -25,8 +25,6 @@
     background-image:
       radial-gradient(ellipse at top, rgba(141,178,229,0.06), transparent 60%),
       linear-gradient(180deg, #130101 0%, #0c0000 100%);
-    min-height:100vh;
-    padding-bottom:60px;
   }
   h1,h2,h3{font-family:'Josefin Sans',sans-serif; margin:0;}
   .page-title{font-family:'Josefin Sans',sans-serif; font-weight:700; font-size:1.8rem; letter-spacing:.04em; text-align:center; color:var(--white); padding:20px 16px 6px;}
@@ -94,7 +92,7 @@
 
   .count-row{padding:10px 20px 0; font-size:12px; color:var(--dim); letter-spacing:0.5px;}
 
-  #list{padding:6px 16px 20px;}
+  #list{padding:6px 16px 60px;}
   .song-row{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 4px; border-bottom:1px solid var(--line); cursor:pointer;}
   .song-row:active{background:rgba(141,178,229,0.06);}
   .song-info{min-width:0; flex:1;}
@@ -127,7 +125,7 @@
   .name-input{width:100%; padding:14px; font-size:16px; border-radius:12px; border:1px solid var(--accent); background:var(--card-solid); color:var(--white); font-family:'Lato',sans-serif; margin-top:8px;}
   .name-input::placeholder{color:#8a8078;}
 
-  .wheel-wrap{position:relative; width:min(280px, 55vw, 38vh); height:min(280px, 55vw, 38vh); margin:14px auto 8px;}
+  .wheel-wrap{position:relative; width:280px; height:280px; margin:20px auto 10px;}
   .wheel-pointer{position:absolute; top:-12px; left:50%; transform:translateX(-50%); font-size:32px; color:#fff; z-index:4; text-shadow:0 2px 8px rgba(0,0,0,0.7); filter:drop-shadow(0 0 8px rgba(255,255,255,0.7));}
   .wheel-glow{position:absolute; inset:-14px; border-radius:50%; background:radial-gradient(circle, rgba(255,215,100,0.4), rgba(141,178,229,0.22) 60%, transparent 75%); animation:wheelPulse 2.2s ease-in-out infinite; z-index:0;}
   @keyframes wheelPulse{
