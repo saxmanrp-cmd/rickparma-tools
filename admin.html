@@ -759,18 +759,26 @@
   const refreshBtn = document.getElementById('refreshBtn');
 
   async function loadBalance() {
+    const wrap = document.getElementById('balanceWrap');
+    const val = document.getElementById('balanceValue');
     try {
       const res = await apiFetch('/api/balance');
-      if (!res.ok) return;
-      const data = await res.json();
-      const wrap = document.getElementById('balanceWrap');
-      const val = document.getElementById('balanceValue');
-      if (data.balance) {
-        val.textContent = `${Math.abs(parseFloat(data.balance)).toFixed(2)} ${(data.currency || 'usd').toUpperCase()}`;
+      const bodyText = await res.text();
+      if (!res.ok) {
+        val.textContent = `error ${res.status}: ${bodyText.slice(0, 120)}`;
         wrap.classList.remove('hidden');
+        return;
       }
+      const data = JSON.parse(bodyText);
+      if (data.balance !== undefined) {
+        val.textContent = `${Math.abs(parseFloat(data.balance)).toFixed(2)} ${(data.currency || 'usd').toUpperCase()}`;
+      } else {
+        val.textContent = 'unexpected response: ' + bodyText.slice(0, 120);
+      }
+      wrap.classList.remove('hidden');
     } catch (e) {
-      // fail silently, balance is a nice-to-have
+      val.textContent = 'JS error: ' + e.message;
+      wrap.classList.remove('hidden');
     }
   }
 
