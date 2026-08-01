@@ -320,6 +320,46 @@
     line-height: 1;
     padding: 0;
   }
+
+  .phone-mock {
+    max-width: 320px;
+    margin: 0 auto;
+    background: #050d14;
+    border: 6px solid #1a1a1a;
+    border-radius: 32px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .phone-mock-header {
+    background: #111;
+    color: var(--text-dim);
+    text-align: center;
+    font-size: 0.78rem;
+    font-family: 'Lato', sans-serif;
+    padding: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .phone-mock-body {
+    padding: 16px 12px;
+    min-height: 160px;
+  }
+  .phone-mock-bubble {
+    max-width: 78%;
+    margin-left: auto;
+    background: #1f7bff;
+    color: #fff;
+    padding: 9px 13px;
+    border-radius: 18px;
+    font-size: 0.92rem;
+    line-height: 1.35;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  .phone-mock-bubble img {
+    max-width: 100%;
+    border-radius: 12px;
+    display: block;
+    margin-bottom: 6px;
+  }
 </style>
 </head>
 <body>
@@ -356,6 +396,7 @@
       <button class="tab-btn" data-tab="subscribers">Subscribers</button>
       <button class="tab-btn" data-tab="templates">Templates</button>
       <button class="tab-btn" data-tab="autorules">Auto-Reply</button>
+      <button class="tab-btn" data-tab="history">History</button>
     </div>
 
     <!-- BLAST TAB -->
@@ -404,8 +445,23 @@
         </div>
         <div class="message-status" id="blastPhotoStatus"></div>
 
-        <button class="btn" id="sendBtn">Send Now</button>
+        <button class="btn" id="previewBtn">Preview</button>
         <div class="message-status" id="sendStatus"></div>
+      </div>
+
+      <div class="card hidden" id="previewCard">
+        <h2>Preview <span class="count-pill" id="previewRecipientCount">0 recipients</span></h2>
+        <p class="subtitle" style="margin-bottom:12px;">This shows how it'll look for a recipient named "<span id="previewSampleName"></span>" — {{first_name}} will be swapped in per person when it actually sends.</p>
+        <div class="phone-mock">
+          <div class="phone-mock-header" id="previewHeader">Rick Parma</div>
+          <div class="phone-mock-body">
+            <div class="phone-mock-bubble" id="previewBubble"></div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:16px;">
+          <button class="btn btn-secondary" id="editBlastBtn">← Edit Message</button>
+          <button class="btn" id="confirmSendBtn">Send Now</button>
+        </div>
       </div>
     </div>
 
@@ -514,6 +570,19 @@
         <p class="subtitle" style="margin-bottom:8px;">JOIN/START/YES, STOP variants, and HELP are always built-in and can't be edited here.</p>
         <div class="list-scroll" id="ruleList">
           <p class="subtitle">Loading...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY TAB -->
+    <div class="tab-panel" id="tab-history">
+      <div class="card">
+        <h2>Blast History <span class="count-pill" id="historyCount">0</span></h2>
+        <div class="list-scroll" id="historyList">
+          <p class="subtitle">Loading...</p>
+        </div>
+        <div class="row" style="margin-top: 14px;">
+          <button class="btn btn-secondary" id="refreshHistoryBtn">Refresh</button>
         </div>
       </div>
     </div>
@@ -658,6 +727,7 @@
       loadTemplates();
       loadAutoRules();
       loadConversations();
+      loadBlastHistory();
       if (!localStorage.getItem(FACEID_CRED_KEY) && await faceIdAvailable()) {
         faceIdEnableWrap.classList.remove('hidden');
       }
@@ -926,7 +996,7 @@
 
   const blastMessage = document.getElementById('blastMessage');
   const statsLine = document.getElementById('statsLine');
-  const sendBtn = document.getElementById('sendBtn');
+  const previewBtn = document.getElementById('previewBtn');
   const sendStatus = document.getElementById('sendStatus');
   const insertNameTagBtn = document.getElementById('insertNameTagBtn');
   const templateSelect = document.getElementById('templateSelect');
@@ -935,6 +1005,13 @@
   const recipientPicker = document.getElementById('recipientPicker');
   const allActiveCheck = document.getElementById('allActiveCheck');
   const tagCheckList = document.getElementById('tagCheckList');
+  const previewCard = document.getElementById('previewCard');
+  const previewBubble = document.getElementById('previewBubble');
+  const previewHeader = document.getElementById('previewHeader');
+  const previewSampleName = document.getElementById('previewSampleName');
+  const previewRecipientCount = document.getElementById('previewRecipientCount');
+  const editBlastBtn = document.getElementById('editBlastBtn');
+  const confirmSendBtn = document.getElementById('confirmSendBtn');
 
   let selectedTags = [];
   let manualNumbers = []; // ad-hoc numbers for this blast only, not saved as subscribers
@@ -1064,17 +1141,58 @@
     }
   });
 
-  sendBtn.addEventListener('click', async () => {
+  function applyMergeTagsClient(message, name) {
+    const firstName = (name || '').trim().split(/\s+/)[0] || 'there';
+    return message
+      .replace(/\{\{\s*first_name\s*\}\}/gi, firstName)
+      .replace(/\{\{\s*name\s*\}\}/gi, name || 'there');
+  }
+
+  previewBtn.addEventListener('click', () => {
     const message = blastMessage.value.trim();
     if (!message && !blastMediaUrl) return;
     const recipients = currentRecipients();
-    if (!confirm(`Send this ${blastMediaUrl ? 'MMS' : 'message'} to ${recipients.length} recipient(s)?`)) return;
+    if (recipients.length === 0) {
+      sendStatus.className = 'message-status error';
+      sendStatus.textContent = 'No recipients match the current selection.';
+      return;
+    }
 
-    sendBtn.disabled = true;
+    const sampleRecipient = recipients.find(r => r.name) || recipients[0];
+    const sampleName = sampleRecipient.name || 'there';
+    previewSampleName.textContent = sampleName;
+    previewRecipientCount.textContent = `${recipients.length} recipients`;
+    previewHeader.textContent = 'Rick Parma';
+
+    const previewText = applyMergeTagsClient(message, sampleRecipient.name);
+    previewBubble.innerHTML =
+      (blastMediaUrl ? `<img src="${blastPhotoPreview.src}">` : '') +
+      (previewText ? previewText.replace(/\n/g, '<br>') : '');
+
+    document.querySelectorAll('#tab-blast .card').forEach(c => {
+      if (c.id !== 'previewCard') c.classList.add('hidden');
+    });
+    previewCard.classList.remove('hidden');
+    previewCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  editBlastBtn.addEventListener('click', () => {
+    previewCard.classList.add('hidden');
+    document.querySelectorAll('#tab-blast .card').forEach(c => c.classList.remove('hidden'));
+  });
+
+  confirmSendBtn.addEventListener('click', async () => {
+    const message = blastMessage.value.trim();
+    const recipients = currentRecipients();
+
+    confirmSendBtn.disabled = true;
+    editBlastBtn.disabled = true;
     sendStatus.className = 'message-status';
 
     const requestTags = (allActiveCheck.checked || selectedTags.length === 0) ? [] : selectedTags;
     const requestExtras = manualNumbers;
+    const blastId = crypto.randomUUID();
+    const segmentLabel = toSummaryBtn.textContent.replace(/\s*▾\s*$/, '');
 
     let offset = 0;
     let totalSent = 0;
@@ -1094,13 +1212,16 @@
             extraNumbers: requestExtras,
             mediaUrl: blastMediaUrl,
             offset,
+            blastId,
+            segmentLabel,
           }),
         });
         const data = await res.json();
         if (!res.ok) {
           sendStatus.className = 'message-status error';
           sendStatus.textContent = data.error || 'Failed to send.';
-          sendBtn.disabled = false;
+          confirmSendBtn.disabled = false;
+          editBlastBtn.disabled = false;
           return;
         }
         totalSent += data.sent;
@@ -1121,11 +1242,15 @@
       blastPhotoStatus.textContent = '';
       updateStatsLine();
       updateRecipientSummary();
+      previewCard.classList.add('hidden');
+      document.querySelectorAll('#tab-blast .card').forEach(c => c.classList.remove('hidden'));
+      loadBlastHistory();
     } catch (e) {
       sendStatus.className = 'message-status error';
       sendStatus.textContent = 'Connection error.';
     }
-    sendBtn.disabled = false;
+    confirmSendBtn.disabled = false;
+    editBlastBtn.disabled = false;
   });
 
   // ================= MESSAGES / INBOX =================
@@ -1543,6 +1668,55 @@
       ruleStatus.textContent = 'Connection error.';
     }
   });
+
+  // ================= BLAST HISTORY =================
+
+  const historyList = document.getElementById('historyList');
+  const historyCount = document.getElementById('historyCount');
+  const refreshHistoryBtn = document.getElementById('refreshHistoryBtn');
+
+  async function loadBlastHistory() {
+    try {
+      const res = await apiFetch('/api/blastlog');
+      if (!res.ok) return;
+      const data = await res.json();
+      renderHistory(data.log || []);
+    } catch (e) {}
+  }
+
+  function renderHistory(log) {
+    historyCount.textContent = log.length;
+    if (log.length === 0) {
+      historyList.innerHTML = '<p class="subtitle">No blasts sent yet.</p>';
+      return;
+    }
+    historyList.innerHTML = log.map(entry => {
+      const attempted = entry.sent + entry.failed;
+      const successRate = attempted > 0 ? Math.round((entry.sent / attempted) * 100) : 0;
+      const phones = entry.recipientPhones || [];
+      const unsubscribedSince = phones.filter(p => {
+        const s = subscribers.find(sub => sub.phone === p);
+        return s && s.status !== 'active';
+      }).length;
+      const when = new Date(entry.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      return `
+        <div class="list-item" style="flex-direction:column; align-items:stretch; gap:6px;">
+          <div style="display:flex; justify-content:space-between;">
+            <strong>${entry.segmentLabel || 'All active subscribers'}</strong>
+            <span class="subtitle" style="font-size:0.78rem;">${when}</span>
+          </div>
+          ${entry.mediaUrl ? `<img src="${entry.mediaUrl}" style="max-width:160px; border-radius:8px;">` : ''}
+          <div class="subtitle" style="font-size:0.85rem;">${(entry.message || '(photo only)').slice(0, 200)}</div>
+          <div style="font-size:0.82rem; color:var(--steel);">
+            Sent: ${entry.sent} · Failed: ${entry.failed} · Success rate: ${successRate}%
+            ${unsubscribedSince > 0 ? ` · <span style="color:var(--danger);">${unsubscribedSince} unsubscribed since</span>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  refreshHistoryBtn.addEventListener('click', loadBlastHistory);
 </script>
 
 </body>
