@@ -1072,36 +1072,55 @@
 
     sendBtn.disabled = true;
     sendStatus.className = 'message-status';
-    sendStatus.textContent = 'Sending...';
+
+    const requestTags = (allActiveCheck.checked || selectedTags.length === 0) ? [] : selectedTags;
+    const requestExtras = manualNumbers;
+
+    let offset = 0;
+    let totalSent = 0;
+    let totalFailed = 0;
+    let totalRecipients = recipients.length;
+    let done = false;
 
     try {
-      const res = await apiFetch('/api/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message,
-          tags: (allActiveCheck.checked || selectedTags.length === 0) ? [] : selectedTags,
-          extraNumbers: manualNumbers,
-          mediaUrl: blastMediaUrl,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        sendStatus.className = 'message-status success';
-        sendStatus.textContent = `Sent to ${data.sent} recipient(s)${data.failed ? `, ${data.failed} failed` : ''}.`;
-        blastMessage.value = '';
-        manualNumbers = [];
-        renderManualNumbers();
-        blastMediaUrl = null;
-        blastPhoto.value = '';
-        blastPhotoPreviewWrap.classList.add('hidden');
-        blastPhotoStatus.textContent = '';
-        updateStatsLine();
-        updateRecipientSummary();
-      } else {
-        sendStatus.className = 'message-status error';
-        sendStatus.textContent = data.error || 'Failed to send.';
+      while (!done) {
+        sendStatus.textContent = `Sending... ${offset} of ${totalRecipients}`;
+        const res = await apiFetch('/api/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message,
+            tags: requestTags,
+            extraNumbers: requestExtras,
+            mediaUrl: blastMediaUrl,
+            offset,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          sendStatus.className = 'message-status error';
+          sendStatus.textContent = data.error || 'Failed to send.';
+          sendBtn.disabled = false;
+          return;
+        }
+        totalSent += data.sent;
+        totalFailed += data.failed;
+        totalRecipients = data.total;
+        offset = data.nextOffset;
+        done = data.done;
       }
+
+      sendStatus.className = 'message-status success';
+      sendStatus.textContent = `Sent to ${totalSent} recipient(s)${totalFailed ? `, ${totalFailed} failed` : ''}.`;
+      blastMessage.value = '';
+      manualNumbers = [];
+      renderManualNumbers();
+      blastMediaUrl = null;
+      blastPhoto.value = '';
+      blastPhotoPreviewWrap.classList.add('hidden');
+      blastPhotoStatus.textContent = '';
+      updateStatsLine();
+      updateRecipientSummary();
     } catch (e) {
       sendStatus.className = 'message-status error';
       sendStatus.textContent = 'Connection error.';
