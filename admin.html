@@ -1117,7 +1117,7 @@
   function updateStatsLine() {
     const len = blastMessage.value.length;
     const parts = len === 0 ? 0 : (len <= 160 ? 1 : Math.ceil(len / 153));
-    const costPerRecipient = parts * 0.0079;
+    const costPerRecipient = parts * 0.0083;
     const recipients = currentRecipients().length;
     const total = costPerRecipient * recipients;
     statsLine.textContent = `Characters: ${len} · Parts: ${parts} · Est. cost: $${costPerRecipient.toFixed(4)}/recipient (~$${total.toFixed(2)} total)`;
