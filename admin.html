@@ -321,11 +321,6 @@
     padding: 0;
   }
 </style>
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-<link rel="manifest" href="site.webmanifest">
-<meta name="theme-color" content="#000000">
 </head>
 <body>
 
@@ -418,6 +413,10 @@
     <div class="tab-panel" id="tab-messages">
       <div class="card" id="conversationListCard">
         <h2>Messages <span class="count-pill" id="convoCount">0</span></h2>
+        <div class="row" style="margin-bottom:10px;">
+          <button class="btn btn-secondary btn-small" id="selectAllConvosBtn" style="width:auto;">Select all</button>
+          <button class="btn btn-danger btn-small hidden" id="deleteSelectedConvosBtn" style="width:auto;">Delete selected (<span id="selectedConvoCount">0</span>)</button>
+        </div>
         <div class="list-scroll" id="conversationList">
           <p class="subtitle">Loading...</p>
         </div>
@@ -430,6 +429,10 @@
         <button class="back-link" id="backToConvosBtn">← Back to Messages</button>
         <h2 id="threadName">Conversation</h2>
         <div class="thread-scroll" id="threadScroll"></div>
+        <label for="replyTemplateSelect">Insert a template (optional)</label>
+        <select id="replyTemplateSelect">
+          <option value="">— None —</option>
+        </select>
         <textarea id="replyMessage" placeholder="Type a reply..." style="min-height:70px;"></textarea>
         <label for="replyPhoto">Attach a photo (optional — sends as MMS)</label>
         <input type="file" id="replyPhoto" accept="image/*">
@@ -442,6 +445,7 @@
         <div class="message-status" id="replyPhotoStatus"></div>
         <button class="btn" id="replySendBtn">Send Reply</button>
         <div class="message-status" id="replyStatus"></div>
+        <button class="btn btn-danger" id="deleteThreadBtn" style="margin-top:10px;">Delete this conversation</button>
       </div>
     </div>
 
@@ -1118,6 +1122,14 @@
   const replySendBtn = document.getElementById('replySendBtn');
   const replyStatus = document.getElementById('replyStatus');
   const backToConvosBtn = document.getElementById('backToConvosBtn');
+  const replyTemplateSelect = document.getElementById('replyTemplateSelect');
+  const deleteThreadBtn = document.getElementById('deleteThreadBtn');
+  const selectAllConvosBtn = document.getElementById('selectAllConvosBtn');
+  const deleteSelectedConvosBtn = document.getElementById('deleteSelectedConvosBtn');
+  const selectedConvoCount = document.getElementById('selectedConvoCount');
+
+  let selectedConvoPhones = new Set();
+  let lastLoadedConvos = [];
 
   let replyMediaUrl = null;
   const replyPhoto = document.getElementById('replyPhoto');
@@ -1146,12 +1158,24 @@
     replyPhotoStatus.textContent = '';
   });
 
+  function isActiveSubscriber(phone) {
+    return subscribers.some(s => s.phone === phone && s.status === 'active');
+  }
+
+  function updateDeleteSelectedUI() {
+    selectedConvoCount.textContent = selectedConvoPhones.size;
+    deleteSelectedConvosBtn.classList.toggle('hidden', selectedConvoPhones.size === 0);
+  }
+
   async function loadConversations() {
     try {
       const res = await apiFetch('/api/conversations');
       if (!res.ok) return;
       const data = await res.json();
       const convos = data.conversations || [];
+      lastLoadedConvos = convos;
+      selectedConvoPhones = new Set();
+      updateDeleteSelectedUI();
       convoCount.textContent = convos.length;
       if (convos.length === 0) {
         conversationList.innerHTML = '<p class="subtitle">No messages yet.</p>';
@@ -1159,18 +1183,64 @@
       }
       conversationList.innerHTML = convos.map(c => `
         <div class="convo-item" data-phone="${c.phone}">
-          <span>
+          <input type="checkbox" class="convo-check" data-phone="${c.phone}" style="width:auto; margin:2px 10px 0 0; flex-shrink:0;">
+          <span style="flex:1; min-width:0;">
             <strong>${c.name || c.phone}</strong>
+            ${isActiveSubscriber(c.phone) ? '<span title="Active subscriber" style="color:#8de5a8; margin-left:6px;">✓</span>' : ''}
             ${c.name ? `<br><span class="subtitle" style="font-size:0.75rem;">${c.phone}</span>` : ''}
             <div class="snippet">${c.lastDirection === 'out' ? 'You: ' : ''}${(c.lastMessage || '').slice(0, 60)}</div>
           </span>
+          <button class="remove-link" data-phone="${c.phone}" data-action="delete-one">delete</button>
         </div>
       `).join('');
+
+      conversationList.querySelectorAll('.convo-check').forEach(cb => {
+        cb.addEventListener('click', (e) => e.stopPropagation());
+        cb.addEventListener('change', () => {
+          if (cb.checked) selectedConvoPhones.add(cb.dataset.phone);
+          else selectedConvoPhones.delete(cb.dataset.phone);
+          updateDeleteSelectedUI();
+        });
+      });
+
+      conversationList.querySelectorAll('[data-action="delete-one"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteConversations([btn.dataset.phone]);
+        });
+      });
+
       conversationList.querySelectorAll('.convo-item').forEach(el => {
         el.addEventListener('click', () => openThread(el.dataset.phone));
       });
     } catch (e) {}
   }
+
+  async function deleteConversations(phones) {
+    if (phones.length === 0) return;
+    if (!confirm(`Delete ${phones.length} conversation${phones.length > 1 ? 's' : ''}? This can't be undone.`)) return;
+    try {
+      const res = await apiFetch('/api/conversations/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phones }),
+      });
+      if (res.ok) await loadConversations();
+    } catch (e) {}
+  }
+
+  selectAllConvosBtn.addEventListener('click', () => {
+    const allSelected = selectedConvoPhones.size === lastLoadedConvos.length && lastLoadedConvos.length > 0;
+    selectedConvoPhones = allSelected ? new Set() : new Set(lastLoadedConvos.map(c => c.phone));
+    conversationList.querySelectorAll('.convo-check').forEach(cb => {
+      cb.checked = selectedConvoPhones.has(cb.dataset.phone);
+    });
+    updateDeleteSelectedUI();
+  });
+
+  deleteSelectedConvosBtn.addEventListener('click', () => {
+    deleteConversations(Array.from(selectedConvoPhones));
+  });
 
   async function openThread(phone) {
     currentThreadPhone = phone;
@@ -1205,6 +1275,18 @@
     loadConversations();
   });
 
+  deleteThreadBtn.addEventListener('click', async () => {
+    if (!currentThreadPhone) return;
+    await deleteConversations([currentThreadPhone]);
+    threadCard.classList.add('hidden');
+    conversationListCard.classList.remove('hidden');
+  });
+
+  replyTemplateSelect.addEventListener('change', () => {
+    const t = templates.find(t => t.id === replyTemplateSelect.value);
+    if (t) replyMessage.value = t.body;
+  });
+
   replySendBtn.addEventListener('click', async () => {
     const message = replyMessage.value.trim();
     if ((!message && !replyMediaUrl) || !currentThreadPhone) return;
@@ -1220,6 +1302,7 @@
       const data = await res.json();
       if (res.ok) {
         replyMessage.value = '';
+        replyTemplateSelect.value = '';
         replyMediaUrl = null;
         replyPhoto.value = '';
         replyPhotoPreviewWrap.classList.add('hidden');
@@ -1261,8 +1344,10 @@
   }
 
   function renderTemplateSelect() {
-    templateSelect.innerHTML = '<option value="">— None —</option>' +
+    const options = '<option value="">— None —</option>' +
       templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    templateSelect.innerHTML = options;
+    replyTemplateSelect.innerHTML = options;
   }
 
   function renderTemplates() {
