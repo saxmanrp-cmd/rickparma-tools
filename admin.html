@@ -370,6 +370,7 @@
   <div id="lockScreen">
     <p class="brand">Rick Parma</p>
     <p class="subtitle">Text Blast Admin</p>
+    <div id="balanceWrap" class="hidden" style="text-align:center;margin-bottom:14px;font-size:.85rem;color:var(--muted,#999);">Twilio Balance: <strong id="balanceValue">—</strong></div>
     <div class="card">
       <h2>Enter Admin Password</h2>
       <input type="password" id="adminPassword" placeholder="Password">
@@ -724,6 +725,7 @@
     if (ok) {
       lockScreen.classList.add('hidden');
       app.classList.remove('hidden');
+      loadBalance();
       loadTemplates();
       loadAutoRules();
       loadConversations();
@@ -755,6 +757,22 @@
   const subscriberList = document.getElementById('subscriberList');
   const totalCount = document.getElementById('totalCount');
   const refreshBtn = document.getElementById('refreshBtn');
+
+  async function loadBalance() {
+    try {
+      const res = await apiFetch('/api/balance');
+      if (!res.ok) return;
+      const data = await res.json();
+      const wrap = document.getElementById('balanceWrap');
+      const val = document.getElementById('balanceValue');
+      if (data.balance) {
+        val.textContent = `${Math.abs(parseFloat(data.balance)).toFixed(2)} ${(data.currency || 'usd').toUpperCase()}`;
+        wrap.classList.remove('hidden');
+      }
+    } catch (e) {
+      // fail silently, balance is a nice-to-have
+    }
+  }
 
   async function loadSubscribers() {
     try {
