@@ -405,12 +405,9 @@
         <h2>Send a Blast <span class="count-pill" id="recipientCountPill">0 recipients</span></h2>
 
         <label>To</label>
-        <button class="btn btn-secondary" id="toSummaryBtn" style="text-align:left;">All active subscribers ▾</button>
+        <button class="btn btn-secondary" id="toSummaryBtn" style="text-align:left;">Select recipients ▾</button>
         <div id="recipientPicker" class="hidden" style="margin-top:10px; margin-bottom:6px; border:1px solid var(--border); border-radius:8px; padding:12px;">
-          <label style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-            <input type="checkbox" id="allActiveCheck" checked style="width:auto; margin:0;">
-            All active subscribers
-          </label>
+          <label style="display:block; margin-bottom:8px;">Categories</label>
           <div id="tagCheckList" style="max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
 
           <div style="margin-top:12px; border-top:1px solid var(--border); padding-top:12px;">
@@ -1004,7 +1001,6 @@
   const recipientCountPill = document.getElementById('recipientCountPill');
   const toSummaryBtn = document.getElementById('toSummaryBtn');
   const recipientPicker = document.getElementById('recipientPicker');
-  const allActiveCheck = document.getElementById('allActiveCheck');
   const tagCheckList = document.getElementById('tagCheckList');
   const previewCard = document.getElementById('previewCard');
   const previewBubble = document.getElementById('previewBubble');
@@ -1073,17 +1069,17 @@
     tagCheckList.querySelectorAll('.tag-check').forEach(cb => {
       cb.addEventListener('change', () => {
         selectedTags = Array.from(tagCheckList.querySelectorAll('.tag-check:checked')).map(c => c.value);
-        if (selectedTags.length > 0) allActiveCheck.checked = false;
         updateRecipientSummary();
+        updateStatsLine();
       });
     });
   }
 
   function currentRecipients() {
     const active = subscribers.filter(s => s.status === 'active');
-    let base;
-    if (allActiveCheck.checked || selectedTags.length === 0) base = active;
-    else base = active.filter(s => (s.tags || []).some(t => selectedTags.includes(t)));
+    const base = selectedTags.length > 0
+      ? active.filter(s => (s.tags || []).some(t => selectedTags.includes(t)))
+      : [];
     const basePhones = new Set(base.map(s => s.phone));
     const extras = manualNumbers.filter(n => !basePhones.has(n)).map(n => ({ phone: n, name: '', tags: [] }));
     return base.concat(extras);
@@ -1093,22 +1089,14 @@
     const recipients = currentRecipients();
     recipientCountPill.textContent = `${recipients.length} recipients`;
     let label;
-    if (allActiveCheck.checked || selectedTags.length === 0) {
-      label = `All active subscribers`;
+    if (selectedTags.length === 0) {
+      label = manualNumbers.length > 0 ? 'Manual numbers only' : 'Select recipients';
     } else {
-      label = `${selectedTags.join(', ')}`;
+      label = selectedTags.join(', ');
+      if (manualNumbers.length > 0) label += ` + ${manualNumbers.length} manual`;
     }
-    if (manualNumbers.length > 0) label += ` + ${manualNumbers.length} manual`;
     toSummaryBtn.textContent = `${label} ▾`;
   }
-
-  allActiveCheck.addEventListener('change', () => {
-    if (allActiveCheck.checked) {
-      selectedTags = [];
-      tagCheckList.querySelectorAll('.tag-check').forEach(cb => cb.checked = false);
-    }
-    updateRecipientSummary();
-  });
 
   toSummaryBtn.addEventListener('click', () => {
     recipientPicker.classList.toggle('hidden');
@@ -1190,7 +1178,7 @@
     editBlastBtn.disabled = true;
     sendStatus.className = 'message-status';
 
-    const requestTags = (allActiveCheck.checked || selectedTags.length === 0) ? [] : selectedTags;
+    const requestTags = selectedTags;
     const requestExtras = manualNumbers;
     const blastId = crypto.randomUUID();
     const segmentLabel = toSummaryBtn.textContent.replace(/\s*▾\s*$/, '');
