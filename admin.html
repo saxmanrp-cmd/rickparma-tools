@@ -389,6 +389,7 @@
     </div>
     <p class="brand">Rick Parma</p>
     <p class="subtitle">Text Blast Admin</p>
+    <div id="balanceWrap" class="hidden" style="text-align:center;margin-bottom:14px;font-size:.85rem;color:var(--muted,#999);">Twilio Balance: <strong id="balanceValue">-</strong></div>
 
     <div class="tabs">
       <button class="tab-btn active" data-tab="blast">Blast</button>
@@ -722,6 +723,7 @@
     if (ok) {
       lockScreen.classList.add('hidden');
       app.classList.remove('hidden');
+      loadBalance();
       loadTemplates();
       loadAutoRules();
       loadConversations();
@@ -754,7 +756,10 @@
   const totalCount = document.getElementById('totalCount');
   const refreshBtn = document.getElementById('refreshBtn');
 
+async function loadBalance() { const wrap = document.getElementById('balanceWrap'); const val = document.getElementById('balanceValue'); try { const res = await apiFetch('/api/balance'); const bodyText = await res.text(); if (!res.ok) { val.textContent = `error ${res.status}: ${bodyText.slice(0, 120)}`; wrap.classList.remove('hidden'); return; } const data = JSON.parse(bodyText); if (data.balance !== undefined) { val.textContent = `${Math.abs(parseFloat(data.balance)).toFixed(2)} ${(data.currency || 'usd').toUpperCase()}`; } else { val.textContent = 'unexpected response: ' + bodyText.slice(0, 120); } wrap.classList.remove('hidden'); } catch (e) { val.textContent = 'JS error: ' + e.message; wrap.classList.remove('hidden'); } }  
+  
   async function loadSubscribers() {
+
     try {
       const res = await apiFetch('/api/subscribers');
       if (!res.ok) {
