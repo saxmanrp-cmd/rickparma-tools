@@ -281,11 +281,6 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
   color: #fff;
 }
 </style>
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-<link rel="manifest" href="site.webmanifest">
-<meta name="theme-color" content="#000000">
 </head>
 <body>
 <div class="app">
@@ -355,7 +350,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
             </div>
             <div>
               <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">No Required Fields</div>
-              <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6;">There are no required fields except for date and showtime. Not every gig is the same, so fill in only what applies to your event.</div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6;">There are no required fields. Not every gig is the same, so fill in only what applies to your event.</div>
             </div>
           </div>
 
@@ -412,11 +407,11 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
         <div class="step-title">Date &amp; Time</div>
         <div id="e0" style="display:none;font-size:13px;color:#e91e8c;margin-bottom:14px;padding:10px 13px;background:rgba(233,30,140,0.08);border:1px solid rgba(233,30,140,0.3);border-radius:8px;font-weight:500;text-align:center;">Please enter the date and show time.</div>
         <div class="card">
-          <label class="lbl">Date <span style="color:#e91e8c;">*</span></label>
+          <label class="lbl">Date</label>
           <input type="date" id="f-date">
         </div>
         <div class="card">
-          <label class="lbl">Show time <span style="color:#e91e8c;">*</span></label>
+          <label class="lbl">Show time</label>
           <div class="time-row">
             <select id="show-h"><option value="">Hour</option></select>
             <select id="show-m"><option value="">Min</option><option value="00">:00</option><option value="30">:30</option></select>
@@ -495,13 +490,9 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
 
         <div id="venue-website-section">
           <div class="card">
-            <label class="lbl">Venue name</label>
-            <input type="text" id="f-vsite-name" autocomplete="off">
-          </div>
-          <div class="card">
             <label class="lbl">Location / Venue website</label>
             <input type="text" id="f-vsite" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
-            <div class="hint">Your AI will pull the logo, colors, address, phone, and style from the website.</div>
+            <div class="hint">Your AI will pull the venue name, logo, colors, address, phone, and style from the website.</div>
           </div>
         </div>
 
@@ -868,16 +859,6 @@ function goTo(n){
 }
 
 function goNext(){
-  var e0 = document.getElementById("e0");
-  if(e0) e0.style.display = "none";
-  if(cur === 3 && (!v("f-date") || !v("show-h") || !v("show-m") || !v("show-ap"))){
-    if(e0) e0.style.display = "block"; return;
-  }
-  if(cur === 7 && !selSz){
-    var e6 = document.getElementById("e6");
-    if(e6) e6.style.display = "block";
-    return;
-  }
   if(cur < LAST) goTo(cur + 1);
 }
 
@@ -950,10 +931,8 @@ function buildPrompt(){
   if(v("f-vsite")){
     p += "Before generating the flyer, complete these two steps in order:\n\n";
     p += "STEP 1 — VISIT AND SCRAPE THIS WEBSITE: " + v("f-vsite") + "\n";
-    if(v("f-vsite-name")){
-      p += "The venue name is already provided below — use \"" + v("f-vsite-name") + "\" exactly as the venue name. Do NOT pull or generate a venue name from the website, and do not display the venue name more than once.\n";
-    }
     p += "Pull the following details from the website:\n";
+    p += "— Venue name\n";
     p += "— Address\n";
     p += "— Phone number\n";
     p += "— Website URL\n";
@@ -979,9 +958,6 @@ function buildPrompt(){
 
   // Event details
   p += "The flyer must display the following information:\n";
-  if(v("f-vsite-name")){
-    p += "— Venue name: " + v("f-vsite-name") + " (display exactly once)\n";
-  }
   if(sub){
     p += "— Primary title (largest venue text): " + sub + "\n";
     if(v("f-subvenue-site")){
@@ -1291,17 +1267,16 @@ initVideoPage();
 
 // ══════════ CALENDAR EVENT ══════════
 function getCalTitle(){
-  // Venue name is the calendar event title
+  // Venue name comes from the website now, so use what we have on hand
   var sub = v("f-subvenue");
   if(sub) return sub;
-  if(v("f-vsite-name")) return v("f-vsite-name");
   if(v("f-vname")) return v("f-vname");
+  if(v("f-name")) return v("f-name");
   return "Live Event";
 }
 
 function getCalLocation(){
   if(v("f-vaddress")) return v("f-vaddress");
-  if(v("f-vsite-name")) return v("f-vsite-name");
   if(v("f-vname")) return v("f-vname");
   if(v("f-vsite")) return v("f-vsite");
   return "";
