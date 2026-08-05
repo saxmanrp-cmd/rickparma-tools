@@ -930,7 +930,8 @@ function buildPrompt(){
   // Venue first — scrape and confirm before generating
   if(v("f-vsite")){
     p += "Before generating the flyer, complete these two steps in order:\n\n";
-    p += "STEP 1 — VISIT AND SCRAPE THIS WEBSITE: " + v("f-vsite") + "\n";
+    p += "STEP 1 — USE YOUR WEB BROWSING TOOL TO OPEN AND SCRAPE THIS WEBSITE: " + v("f-vsite") + "\n";
+    p += "IMPORTANT: You have web browsing available. Actually open and read the page — do NOT assume the site is inaccessible or skip this step. If the first attempt fails, try again before giving up.\n";
     p += "Pull the following details from the website:\n";
     p += "— Venue name\n";
     p += "— Address\n";
@@ -939,9 +940,9 @@ function buildPrompt(){
     p += "— Logo\n";
     p += "— Brand colors\n";
     p += "— Overall style and atmosphere\n";
-    p += "If you successfully found ALL of the above, proceed immediately to Step 2 without reporting back. If any details are missing, list only what is missing and ask the user to provide them before continuing.\n\n";
     p += "STEP 2 — GENERATE THE FLYER\n";
-    p += "Generate a stunning, professional event flyer as a " + szName + " image (" + selSz + " pixels) using all venue details collected plus the event information below.\n\n";
+    p += "Generate a stunning, professional event flyer as a " + szName + " image (" + selSz + " pixels) using all venue details collected plus the event information below.\n";
+    p += "ALWAYS complete and deliver the finished flyer, even if some details (like the exact logo) could not be extracted — never stop, refuse, or leave the flyer unfinished. If anything was missing, note it briefly to the user AFTER delivering the image.\n\n";
   } else {
     p += "Generate a stunning, professional event flyer as a " + szName + " image (" + selSz + " pixels).\n\n";
     // Manual venue info
