@@ -789,7 +789,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
 
         <!-- Real image generation: result -->
         <div id="gen-result" style="display:none;width:100%;margin-top:24px;text-align:center;">
-          <img id="gen-image" src="" style="width:100%;border-radius:14px;border:1px solid rgba(233,30,140,0.4);box-shadow:0 4px 24px rgba(233,30,140,0.3);">
+          <img id="gen-image" src="" style="width:100%;border-radius:14px;border:1px solid rgba(233,30,140,0.4);box-shadow:0 4px 24px rgba(233,30,140,0.3);"><div style="text-align:left;margin-top:14px;"><label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Caption for Instagram / Facebook / TikTok</label><textarea id="gen-caption" rows="4" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(233,30,140,0.3);border-radius:10px;padding:12px;color:#fff;font-family:'Inter',sans-serif;font-size:13px;line-height:1.5;resize:vertical;"></textarea></div>
           <div style="display:flex;gap:10px;margin-top:14px;">
             <button type="button" id="gen-download-btn" onclick="shareOrDownloadFlyer()" style="flex:1;background:linear-gradient(135deg,#2ecc71,#27ae60);border:none;border-radius:10px;padding:14px;color:#fff;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;-webkit-tap-highlight-color:transparent;">
               <i class="ti ti-share" style="font-size:18px;"></i> Share / Save
@@ -1333,7 +1333,9 @@ var lastGeneratedImageDataUrl = "";
 // Plain <a download> data-URL links don't reliably trigger the OS share sheet
 // on mobile (especially iOS Safari), so use the Web Share API with a real
 // File when available, and fall back to a manual download link otherwise.
-function dataUrlToFile(dataUrl, filename){
+function buildSocialCaption(){ var lines = []; var nameEl = document.getElementById("f-name"); var title = nameEl ? nameEl.value.trim() : ""; if(!title) title = "Live Music Night"; lines.push(title); if(confirmedVenueName) lines.push("At " + confirmedVenueName); if(lastEventDetailsText){ var parts = lastEventDetailsText.split("
+"); for(var i = 0; i < parts.length; i++){ if(parts[i].indexOf("Date:") === 0) lines.push(parts[i]); } for(var j = 0; j < parts.length; j++){ if(parts[j].indexOf("Show time:") === 0 || parts[j].indexOf("Doors open:") === 0) lines.push(parts[j]); } } lines.push(""); lines.push("Come out and join us!"); lines.push(""); var tag = confirmedVenueName ? confirmedVenueName.toLowerCase().replace(/[^a-z0-9]+/g, "") : ""; lines.push("#livemusic #saxophone #rickparma" + (tag ? " #" + tag : "")); return lines.join("
+"); } function dataUrlToFile(dataUrl, filename){
   var parts = dataUrl.split(",");
   var meta = parts[0].match(/data:(.*?);base64/);
   var mimeType = meta ? meta[1] : "image/png";
@@ -1345,10 +1347,10 @@ function dataUrlToFile(dataUrl, filename){
 
 function shareOrDownloadFlyer(){
   if(!lastGeneratedImageDataUrl) return;
-  var file = dataUrlToFile(lastGeneratedImageDataUrl, "flyer.png");
+  var file = dataUrlToFile(lastGeneratedImageDataUrl, "flyer.png"); var captionEl = document.getElementById("gen-caption"); var caption = captionEl ? captionEl.value : "";
 
   if(navigator.canShare && navigator.canShare({ files: [file] })){
-    navigator.share({ files: [file], title: "Flyer" }).catch(function(){ /* user cancelled or share failed — no-op */ });
+    navigator.share({ files: [file], title: "Flyer", text: caption }).catch(function(){ /* user cancelled or share failed — no-op */ });
     return;
   }
 
@@ -1698,7 +1700,7 @@ function doGenerateFlyerImage(){
       .then(function(finalImg){
         loading.style.display = "none";
         if(btn) btn.disabled = false;
-        document.getElementById("gen-image").src = finalImg;
+        document.getElementById("gen-image").src = finalImg; var captionBox = document.getElementById("gen-caption"); if(captionBox) captionBox.value = buildSocialCaption();
         lastGeneratedImageDataUrl = finalImg;
         resultBox.style.display = "block";
         setTimeout(function(){ resultBox.scrollIntoView({ behavior:"smooth", block:"start" }); }, 100);
