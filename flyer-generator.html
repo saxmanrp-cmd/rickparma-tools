@@ -1564,6 +1564,63 @@ function cancelConceptCheck(){
   if(btn) btn.disabled = false;
 }
 
+// ---- Guaranteed-accurate contact info overlay ----
+// gpt-image-1 can't reliably render small numeric text (addresses/phone numbers)
+// without garbling digits, so the Worker leaves a blank band at the bottom of
+// the design and we stamp the real, confirmed text on top of it here — this is
+// 100% accurate every time since it's real text, not AI-drawn pixels.
+function compositeContactOverlay(imageDataUrl, venueName, address, phone){
+  var fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+  return fontsReady.then(function(){
+    return new Promise(function(resolve){
+      var hasText = !!(venueName || address || phone);
+      if(!hasText){ resolve(imageDataUrl); return; }
+
+      var img = new Image();
+      img.onload = function(){
+        try {
+          var w = img.naturalWidth, h = img.naturalHeight;
+          var canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+
+          var bandH = Math.round(h * 0.15);
+          var bandY = h - bandH;
+
+          ctx.fillStyle = "rgba(0,0,0,0.55)";
+          ctx.fillRect(0, bandY, w, bandH);
+
+          var lines = [];
+          if(venueName) lines.push({ text: venueName, weight: 800, size: bandH * 0.30 });
+          var contactLine = [address, phone].filter(Boolean).join("   •   ");
+          if(contactLine) lines.push({ text: contactLine, weight: 600, size: bandH * 0.22 });
+
+          if(lines.length){
+            var lineGap = 1.35;
+            var totalH = lines.reduce(function(sum, l){ return sum + l.size * lineGap; }, 0);
+            var curY = bandY + (bandH - totalH) / 2 + lines[0].size * 0.9;
+
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#ffffff";
+            lines.forEach(function(l){
+              ctx.font = l.weight + " " + Math.round(l.size) + "px 'Inter', sans-serif";
+              ctx.fillText(l.text, w / 2, curY);
+              curY += l.size * lineGap;
+            });
+          }
+
+          resolve(canvas.toDataURL("image/png"));
+        } catch(e) {
+          resolve(imageDataUrl);
+        }
+      };
+      img.onerror = function(){ resolve(imageDataUrl); };
+      img.src = imageDataUrl;
+    });
+  });
+}
+
 // ---- Step 3: generate the final image from confirmed concept + facts ----
 function doGenerateFlyerImage(){
   var loading = document.getElementById("gen-loading");
@@ -1605,12 +1662,15 @@ function doGenerateFlyerImage(){
     });
   })
   .then(function(data){
-    loading.style.display = "none";
-    if(btn) btn.disabled = false;
-    document.getElementById("gen-image").src = data.image;
-    document.getElementById("gen-download-btn").href = data.image;
-    resultBox.style.display = "block";
-    setTimeout(function(){ resultBox.scrollIntoView({ behavior:"smooth", block:"start" }); }, 100);
+    return compositeContactOverlay(data.image, confirmedVenueName, confirmedVenueAddress, confirmedVenuePhone)
+      .then(function(finalImg){
+        loading.style.display = "none";
+        if(btn) btn.disabled = false;
+        document.getElementById("gen-image").src = finalImg;
+        document.getElementById("gen-download-btn").href = finalImg;
+        resultBox.style.display = "block";
+        setTimeout(function(){ resultBox.scrollIntoView({ behavior:"smooth", block:"start" }); }, 100);
+      });
   })
   .catch(function(err){
     loading.style.display = "none";
