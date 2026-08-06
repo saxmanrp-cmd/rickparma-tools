@@ -697,6 +697,13 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
             <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;">Step 1 of 2: Review venue research</div>
             <div id="venue-check-note" style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:14px;line-height:1.5;"></div>
 
+            <div id="venue-check-photo-row" style="display:none;align-items:center;gap:12px;margin-bottom:16px;">
+              <img id="venue-check-photo" src="" style="width:56px;height:56px;object-fit:cover;background:#fff;border-radius:8px;border:1px solid rgba(0,168,255,0.4);">
+              <label style="flex:1;font-size:13px;color:rgba(255,255,255,0.85);display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="venue-check-photo-keep" checked style="width:16px;height:16px;"> Use this real venue photo as the flyer background reference
+              </label>
+            </div>
+
             <div id="venue-check-logo-row" style="display:none;align-items:center;gap:12px;margin-bottom:16px;">
               <img id="venue-check-logo" src="" style="width:56px;height:56px;object-fit:contain;background:#fff;border-radius:8px;border:1px solid rgba(0,168,255,0.4);">
               <label style="flex:1;font-size:13px;color:rgba(255,255,255,0.85);display:flex;align-items:center;gap:8px;cursor:pointer;">
@@ -1314,6 +1321,7 @@ function mapToApiSize(dims){
 var venueResearchDone = false;
 var conceptDraftDone = false;
 var venueCheckLogoDataUrl = null;
+var venueCheckVenuePhotoDataUrl = null;
 var confirmedVenueName = "", confirmedVenueAddress = "", confirmedVenuePhone = "";
 var confirmedVenueColors = "", confirmedVenueStyle = "", confirmedLogoDescription = "";
 var confirmedConcept = "";
@@ -1324,6 +1332,7 @@ function resetVenueCheck(){
   venueResearchDone = false;
   conceptDraftDone = false;
   venueCheckLogoDataUrl = null;
+  venueCheckVenuePhotoDataUrl = null;
   confirmedVenueName = ""; confirmedVenueAddress = ""; confirmedVenuePhone = "";
   confirmedVenueColors = ""; confirmedVenueStyle = ""; confirmedLogoDescription = "";
   confirmedConcept = "";
@@ -1418,8 +1427,19 @@ function runVenueResearch(vsiteUrl){
       logoRow.style.display = "none";
     }
 
+    var photoRow = document.getElementById("venue-check-photo-row");
+    if(data.venuePhotoDataUrl){
+      venueCheckVenuePhotoDataUrl = data.venuePhotoDataUrl;
+      document.getElementById("venue-check-photo").src = data.venuePhotoDataUrl;
+      document.getElementById("venue-check-photo-keep").checked = true;
+      photoRow.style.display = "flex";
+    } else {
+      venueCheckVenuePhotoDataUrl = null;
+      photoRow.style.display = "none";
+    }
+
     var note = document.getElementById("venue-check-note");
-    if(data.name || data.address || data.phone || data.colors || data.style || data.logoDescription || data.logoDataUrl){
+    if(data.name || data.address || data.phone || data.colors || data.style || data.logoDescription || data.logoDataUrl || data.venuePhotoDataUrl){
       note.textContent = "Here's what the research found. Double-check it — the model can still get things wrong. Fix anything wrong before continuing.";
     } else {
       note.textContent = "Nothing could be found for this venue. Enter details below if you'd like them on the flyer, or leave blank to generate without them.";
@@ -1442,6 +1462,7 @@ function skipVenueCheck(){
   confirmedVenueName = ""; confirmedVenueAddress = ""; confirmedVenuePhone = "";
   confirmedVenueColors = ""; confirmedVenueStyle = ""; confirmedLogoDescription = "";
   venueCheckLogoDataUrl = null;
+  venueCheckVenuePhotoDataUrl = null;
   venueResearchDone = true;
   document.getElementById("venue-check").style.display = "none";
   generateFlyerImage();
@@ -1456,6 +1477,8 @@ function confirmVenueCheck(){
   confirmedLogoDescription = document.getElementById("venue-check-logodesc").value.trim();
   var keepLogo = document.getElementById("venue-check-logo-keep").checked;
   if(!keepLogo) venueCheckLogoDataUrl = null;
+  var keepPhotoEl = document.getElementById("venue-check-photo-keep");
+  if(keepPhotoEl && !keepPhotoEl.checked) venueCheckVenuePhotoDataUrl = null;
 
   venueResearchDone = true;
   document.getElementById("venue-check").style.display = "none";
@@ -1566,6 +1589,7 @@ function doGenerateFlyerImage(){
   };
   if(uploadedPhotoDataUrl) payload.photo = uploadedPhotoDataUrl;
   if(venueCheckLogoDataUrl) payload.confirmedLogoDataUrl = venueCheckLogoDataUrl;
+  if(venueCheckVenuePhotoDataUrl) payload.confirmedVenuePhotoDataUrl = venueCheckVenuePhotoDataUrl;
 
   fetch(FLYER_API_URL, {
     method: "POST",
