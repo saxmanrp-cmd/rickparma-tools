@@ -815,6 +815,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
 <script>
 var cur = 0, selSz = "1080x1350", gN = 0, busy = false;
 var uploadedPhotoDataUrl = null;
+var selectedTheme = null;
 var FLYER_API_URL = "https://rickparma-flyer-image.saxmanrp.workers.dev/";
 var TOTAL = 11;
 var LAST = TOTAL - 1;
@@ -1178,8 +1179,17 @@ function generateFlyerImage(){
   if(btn) btn.disabled = true;
   setTimeout(function(){ loading.scrollIntoView({ behavior:"smooth", block:"start" }); }, 100);
 
-  var prompt = buildPrompt(true);
-  var apiSize = mapToApiSize(selSz);
+  var prompt, apiSize;
+  try {
+    prompt = buildPrompt(true);
+    apiSize = mapToApiSize(selSz);
+  } catch(buildErr){
+    loading.style.display = "none";
+    if(btn) btn.disabled = false;
+    document.getElementById("gen-error-msg").textContent = buildErr.message || "Please try again.";
+    errorBox.style.display = "block";
+    return;
+  }
 
   var payload = { prompt: prompt, size: apiSize };
   if(uploadedPhotoDataUrl) payload.photo = uploadedPhotoDataUrl;
