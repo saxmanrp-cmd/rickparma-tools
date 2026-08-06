@@ -491,7 +491,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
         <div id="venue-website-section">
           <div class="card">
             <label class="lbl">Location / Venue website</label>
-            <input type="text" id="f-vsite" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+            <input type="text" id="f-vsite" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" oninput="resetVenueCheck()">
             <div class="hint">Your AI will pull the venue name, logo, colors, address, phone, and style from the website.</div>
           </div>
         </div>
@@ -685,6 +685,39 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
         </div>
 
         <div id="e6" style="display:none;font-size:13px;color:#e91e8c;margin-top:10px;padding:10px 13px;background:rgba(233,30,140,0.08);border:1px solid rgba(233,30,140,0.3);border-radius:8px;font-weight:500;">Please select a flyer size to continue.</div>
+
+        <!-- Venue info check: review/confirm before generating -->
+        <div id="venue-check" style="display:none;width:100%;margin-top:20px;">
+          <div id="venue-check-loading" style="display:none;text-align:center;background:rgba(123,47,255,0.1);border:1px solid rgba(123,47,255,0.4);border-radius:14px;padding:24px 20px;">
+            <div class="gen-spinner" style="width:36px;height:36px;border-radius:50%;border:4px solid rgba(255,255,255,0.15);border-top-color:#00a8ff;margin:0 auto 14px;animation:gen-spin 0.9s linear infinite;"></div>
+            <div style="font-size:14px;font-weight:700;color:#fff;">Checking the venue website for a logo, address, and phone number...</div>
+          </div>
+          <div id="venue-check-result" style="display:none;background:rgba(255,255,255,0.04);border:1px solid rgba(0,168,255,0.4);border-radius:14px;padding:18px 16px;">
+            <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;">Review venue info</div>
+            <div id="venue-check-note" style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:14px;line-height:1.5;"></div>
+
+            <div id="venue-check-logo-row" style="display:none;align-items:center;gap:12px;margin-bottom:16px;">
+              <img id="venue-check-logo" src="" style="width:56px;height:56px;object-fit:contain;background:#fff;border-radius:8px;border:1px solid rgba(0,168,255,0.4);">
+              <label style="flex:1;font-size:13px;color:rgba(255,255,255,0.85);display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="venue-check-logo-keep" checked style="width:16px;height:16px;"> Use this logo in the flyer
+              </label>
+            </div>
+
+            <label class="lbl">Venue name</label>
+            <input type="text" id="venue-check-name" autocomplete="off" style="width:100%;min-height:44px;padding:10px 12px;margin-bottom:10px;background:rgba(13,10,26,0.8);border:1px solid rgba(123,47,255,0.4);color:#fff;border-radius:8px;font-size:14px;font-family:'Inter',sans-serif;">
+
+            <label class="lbl">Address</label>
+            <input type="text" id="venue-check-address" autocomplete="off" style="width:100%;min-height:44px;padding:10px 12px;margin-bottom:10px;background:rgba(13,10,26,0.8);border:1px solid rgba(123,47,255,0.4);color:#fff;border-radius:8px;font-size:14px;font-family:'Inter',sans-serif;">
+
+            <label class="lbl">Phone number</label>
+            <input type="tel" id="venue-check-phone" autocomplete="off" style="width:100%;min-height:44px;padding:10px 12px;margin-bottom:16px;background:rgba(13,10,26,0.8);border:1px solid rgba(123,47,255,0.4);color:#fff;border-radius:8px;font-size:14px;font-family:'Inter',sans-serif;">
+
+            <div style="display:flex;gap:10px;">
+              <button type="button" onclick="confirmVenueCheck()" style="flex:1;background:linear-gradient(135deg,#e91e8c,#7b2fff);border:none;border-radius:10px;padding:14px;color:#fff;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;">Looks Good — Generate Flyer</button>
+              <button type="button" onclick="cancelVenueCheck()" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);border-radius:10px;padding:14px 18px;color:#fff;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;">Cancel</button>
+            </div>
+          </div>
+        </div>
 
         <!-- Real image generation: loading -->
         <div id="gen-loading" style="display:none;width:100%;margin-top:24px;text-align:center;">
@@ -922,6 +955,7 @@ function goTo(n){
   document.getElementById("out-wrap").style.display = "none";
   var _gl = document.getElementById("gen-loading"); if(_gl) _gl.style.display = "none";
   var _ge = document.getElementById("gen-error"); if(_ge) _ge.style.display = "none";
+  var _vc = document.getElementById("venue-check"); if(_vc) _vc.style.display = "none";
   // Rebuild video element list when arriving on the video page
   if(n === 9){ initVideoPage(); }
   // Rebuild calendar summary when arriving on the calendar page
@@ -1159,6 +1193,18 @@ function mapToApiSize(dims){
   return w > h ? "1536x1024" : "1024x1536";
 }
 
+var venueCheckConfirmed = false;
+var venueCheckLogoDataUrl = null;
+var confirmedVenueName = "", confirmedVenueAddress = "", confirmedVenuePhone = "";
+
+function resetVenueCheck(){
+  venueCheckConfirmed = false;
+  venueCheckLogoDataUrl = null;
+  confirmedVenueName = ""; confirmedVenueAddress = ""; confirmedVenuePhone = "";
+  var box = document.getElementById("venue-check");
+  if(box) box.style.display = "none";
+}
+
 function generateFlyerImage(){
   if(busy) return;
   var szEl = document.querySelector(".sz.on");
@@ -1168,6 +1214,92 @@ function generateFlyerImage(){
     return;
   }
 
+  var vsiteUrl = v("f-vsite");
+  var hasManualVenue = !!(v("f-vname") || v("f-vaddress") || v("f-vphone"));
+
+  if(vsiteUrl && !hasManualVenue && !venueCheckConfirmed){
+    runVenueCheck(vsiteUrl);
+    return;
+  }
+
+  doGenerateFlyerImage();
+}
+
+function runVenueCheck(vsiteUrl){
+  var btn = document.getElementById("gen-image-btn");
+  if(btn) btn.disabled = true;
+
+  var box = document.getElementById("venue-check");
+  var loading = document.getElementById("venue-check-loading");
+  var result = document.getElementById("venue-check-result");
+  box.style.display = "block";
+  loading.style.display = "block";
+  result.style.display = "none";
+  setTimeout(function(){ box.scrollIntoView({ behavior:"smooth", block:"start" }); }, 100);
+
+  fetch(FLYER_API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "checkVenue", venueUrl: vsiteUrl })
+  })
+  .then(function(res){ return res.json(); })
+  .then(function(data){
+    loading.style.display = "none";
+    result.style.display = "block";
+    if(btn) btn.disabled = false;
+
+    document.getElementById("venue-check-name").value = data.name || "";
+    document.getElementById("venue-check-address").value = data.address || "";
+    document.getElementById("venue-check-phone").value = data.phone || "";
+
+    var logoRow = document.getElementById("venue-check-logo-row");
+    if(data.logoDataUrl){
+      venueCheckLogoDataUrl = data.logoDataUrl;
+      document.getElementById("venue-check-logo").src = data.logoDataUrl;
+      document.getElementById("venue-check-logo-keep").checked = true;
+      logoRow.style.display = "flex";
+    } else {
+      venueCheckLogoDataUrl = null;
+      logoRow.style.display = "none";
+    }
+
+    var note = document.getElementById("venue-check-note");
+    if(data.name || data.address || data.phone || data.logoDataUrl){
+      note.textContent = "Here's what we found automatically on the venue's website. Double-check it — sites change and this isn't guaranteed accurate. Fix anything wrong before generating.";
+    } else {
+      note.textContent = "We couldn't find a logo, address, or phone number on this site automatically. Enter them below if you'd like them on the flyer, or leave blank to generate without them.";
+    }
+  })
+  .catch(function(){
+    // If the check itself fails (network error, etc.), don't block the user —
+    // just skip straight to generating without scraped info.
+    loading.style.display = "none";
+    box.style.display = "none";
+    if(btn) btn.disabled = false;
+    venueCheckConfirmed = true;
+    doGenerateFlyerImage();
+  });
+}
+
+function confirmVenueCheck(){
+  confirmedVenueName = document.getElementById("venue-check-name").value.trim();
+  confirmedVenueAddress = document.getElementById("venue-check-address").value.trim();
+  confirmedVenuePhone = document.getElementById("venue-check-phone").value.trim();
+  var keepLogo = document.getElementById("venue-check-logo-keep").checked;
+  if(!keepLogo) venueCheckLogoDataUrl = null;
+
+  venueCheckConfirmed = true;
+  document.getElementById("venue-check").style.display = "none";
+  doGenerateFlyerImage();
+}
+
+function cancelVenueCheck(){
+  document.getElementById("venue-check").style.display = "none";
+  var btn = document.getElementById("gen-image-btn");
+  if(btn) btn.disabled = false;
+}
+
+function doGenerateFlyerImage(){
   var loading = document.getElementById("gen-loading");
   var errorBox = document.getElementById("gen-error");
   var resultBox = document.getElementById("gen-result");
@@ -1193,9 +1325,16 @@ function generateFlyerImage(){
 
   var payload = { prompt: prompt, size: apiSize };
   if(uploadedPhotoDataUrl) payload.photo = uploadedPhotoDataUrl;
-  var vsiteUrl = v("f-vsite");
-  if(vsiteUrl) payload.venueUrl = vsiteUrl;
-  payload.manualVenueProvided = !!(v("f-vname") || v("f-vaddress") || v("f-vphone"));
+
+  var hasManualVenue = !!(v("f-vname") || v("f-vaddress") || v("f-vphone"));
+  payload.manualVenueProvided = hasManualVenue;
+
+  if(v("f-vsite") && !hasManualVenue){
+    payload.confirmedVenueName = confirmedVenueName;
+    payload.confirmedVenueAddress = confirmedVenueAddress;
+    payload.confirmedVenuePhone = confirmedVenuePhone;
+    if(venueCheckLogoDataUrl) payload.confirmedLogoDataUrl = venueCheckLogoDataUrl;
+  }
 
   fetch(FLYER_API_URL, {
     method: "POST",
