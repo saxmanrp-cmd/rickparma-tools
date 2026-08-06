@@ -1193,6 +1193,8 @@ function generateFlyerImage(){
 
   var payload = { prompt: prompt, size: apiSize };
   if(uploadedPhotoDataUrl) payload.photo = uploadedPhotoDataUrl;
+  var vsiteUrl = v("f-vsite");
+  if(vsiteUrl) payload.venueUrl = vsiteUrl;
 
   fetch(FLYER_API_URL, {
     method: "POST",
