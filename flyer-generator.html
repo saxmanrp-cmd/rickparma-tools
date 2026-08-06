@@ -1195,6 +1195,7 @@ function generateFlyerImage(){
   if(uploadedPhotoDataUrl) payload.photo = uploadedPhotoDataUrl;
   var vsiteUrl = v("f-vsite");
   if(vsiteUrl) payload.venueUrl = vsiteUrl;
+  payload.manualVenueProvided = !!(v("f-vname") || v("f-vaddress") || v("f-vphone"));
 
   fetch(FLYER_API_URL, {
     method: "POST",
