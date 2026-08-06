@@ -791,9 +791,9 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
         <div id="gen-result" style="display:none;width:100%;margin-top:24px;text-align:center;">
           <img id="gen-image" src="" style="width:100%;border-radius:14px;border:1px solid rgba(233,30,140,0.4);box-shadow:0 4px 24px rgba(233,30,140,0.3);">
           <div style="display:flex;gap:10px;margin-top:14px;">
-            <a id="gen-download-btn" href="#" download="flyer.png" style="flex:1;background:linear-gradient(135deg,#2ecc71,#27ae60);border-radius:10px;padding:14px;color:#fff;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;">
-              <i class="ti ti-download" style="font-size:18px;"></i> Download
-            </a>
+            <button type="button" id="gen-download-btn" onclick="shareOrDownloadFlyer()" style="flex:1;background:linear-gradient(135deg,#2ecc71,#27ae60);border:none;border-radius:10px;padding:14px;color:#fff;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;-webkit-tap-highlight-color:transparent;">
+              <i class="ti ti-share" style="font-size:18px;"></i> Share / Save
+            </button>
             <button type="button" onclick="generateFlyerImage()" style="flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(123,47,255,0.4);border-radius:10px;padding:14px;color:#fff;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
               <i class="ti ti-refresh" style="font-size:18px;"></i> Regenerate
             </button>
@@ -1327,6 +1327,38 @@ var confirmedVenueColors = "", confirmedVenueStyle = "", confirmedLogoDescriptio
 var confirmedConcept = "";
 var lastVenueUrl = "";
 var lastEventDetailsText = "";
+var lastGeneratedImageDataUrl = "";
+
+// ---- Share/save the generated flyer ----
+// Plain <a download> data-URL links don't reliably trigger the OS share sheet
+// on mobile (especially iOS Safari), so use the Web Share API with a real
+// File when available, and fall back to a manual download link otherwise.
+function dataUrlToFile(dataUrl, filename){
+  var parts = dataUrl.split(",");
+  var meta = parts[0].match(/data:(.*?);base64/);
+  var mimeType = meta ? meta[1] : "image/png";
+  var binary = atob(parts[1]);
+  var bytes = new Uint8Array(binary.length);
+  for(var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new File([bytes], filename, { type: mimeType });
+}
+
+function shareOrDownloadFlyer(){
+  if(!lastGeneratedImageDataUrl) return;
+  var file = dataUrlToFile(lastGeneratedImageDataUrl, "flyer.png");
+
+  if(navigator.canShare && navigator.canShare({ files: [file] })){
+    navigator.share({ files: [file], title: "Flyer" }).catch(function(){ /* user cancelled or share failed — no-op */ });
+    return;
+  }
+
+  var a = document.createElement("a");
+  a.href = lastGeneratedImageDataUrl;
+  a.download = "flyer.png";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
 
 function resetVenueCheck(){
   venueResearchDone = false;
@@ -1667,7 +1699,7 @@ function doGenerateFlyerImage(){
         loading.style.display = "none";
         if(btn) btn.disabled = false;
         document.getElementById("gen-image").src = finalImg;
-        document.getElementById("gen-download-btn").href = finalImg;
+        lastGeneratedImageDataUrl = finalImg;
         resultBox.style.display = "block";
         setTimeout(function(){ resultBox.scrollIntoView({ behavior:"smooth", block:"start" }); }, 100);
       });
