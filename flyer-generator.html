@@ -362,7 +362,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
             </div>
             <div>
               <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Artist Photos</div>
-              <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6;">This version does not support photo uploads yet. To add your photo, copy the prompt into your AI tool and upload your image there. If you have special guests, tell the AI which photo goes with each person.</div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6;">Upload your photo right in the app on the Generate page to create a real flyer image instantly. Or, copy the prompt into ChatGPT/Claude and attach your photo there for advanced results like live venue website scraping. If you have special guests, tell the AI which photo goes with each person when using the copy-prompt method.</div>
             </div>
           </div>
 
@@ -642,17 +642,82 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
 
       <!-- Slide 8: Generate -->
       <div class="slide" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;">
-        <div class="step-title" style="margin-bottom:40px;">Generate Prompt</div>
+        <div class="step-title" style="margin-bottom:24px;">Generate</div>
 
-        <div style="width:100%;display:flex;flex-direction:column;gap:16px;">
-          <div>
-            <button id="copy-prompt-btn" onclick="generate()" style="width:100%;background:linear-gradient(135deg,#e91e8c,#7b2fff);border:none;border-radius:12px;padding:18px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 20px rgba(233,30,140,0.4);-webkit-tap-highlight-color:transparent;transition:all 0.2s;">
-              <i class="ti ti-copy" style="font-size:20px;"></i> <span id="copy-btn-label">Copy Prompt to Clipboard</span>
+        <!-- Photo upload -->
+        <div class="card" style="width:100%;margin-bottom:20px;">
+          <label class="lbl">Artist Photo (optional)</label>
+          <div class="hint" style="margin-bottom:10px;">Upload a photo to feature in your generated flyer. Used only for the "Generate My Flyer" button below.</div>
+          <input type="file" id="photo-input" accept="image/*" style="display:none;" onchange="handlePhotoUpload(this)">
+          <div id="photo-empty-state">
+            <button type="button" onclick="document.getElementById('photo-input').click()" style="width:100%;background:rgba(255,255,255,0.05);border:1px dashed rgba(0,168,255,0.5);border-radius:10px;padding:16px;color:#fff;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;-webkit-tap-highlight-color:transparent;">
+              <i class="ti ti-upload" style="font-size:18px;color:#00a8ff;"></i> Upload Photo
+            </button>
+          </div>
+          <div id="photo-preview-state" style="display:none;align-items:center;gap:12px;">
+            <img id="photo-preview-img" src="" style="width:64px;height:64px;border-radius:10px;object-fit:cover;border:1px solid rgba(0,168,255,0.4);">
+            <div style="flex:1;font-size:13px;color:rgba(255,255,255,0.85);">Photo attached</div>
+            <button type="button" onclick="removePhoto()" style="background:rgba(233,30,140,0.15);border:1px solid rgba(233,30,140,0.4);border-radius:8px;width:36px;height:36px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;">
+              <i class="ti ti-x" style="font-size:16px;"></i>
             </button>
           </div>
         </div>
 
+        <div style="width:100%;display:flex;flex-direction:column;gap:12px;">
+          <div>
+            <button id="gen-image-btn" onclick="generateFlyerImage()" style="width:100%;background:linear-gradient(135deg,#e91e8c,#7b2fff);border:none;border-radius:12px;padding:18px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 20px rgba(233,30,140,0.4);-webkit-tap-highlight-color:transparent;transition:all 0.2s;">
+              <i class="ti ti-sparkles" style="font-size:20px;"></i> <span id="gen-image-btn-label">Generate My Flyer</span>
+            </button>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;margin:4px 0;">
+            <div style="flex:1;height:1px;background:rgba(255,255,255,0.15);"></div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.08em;">or</div>
+            <div style="flex:1;height:1px;background:rgba(255,255,255,0.15);"></div>
+          </div>
+
+          <div>
+            <button id="copy-prompt-btn" onclick="generate()" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(123,47,255,0.4);border-radius:12px;padding:16px 20px;color:#fff;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;-webkit-tap-highlight-color:transparent;transition:all 0.2s;">
+              <i class="ti ti-copy" style="font-size:18px;"></i> <span id="copy-btn-label">Advanced: Copy Prompt for ChatGPT/Claude</span>
+            </button>
+            <div class="hint" style="text-align:center;margin-top:6px;">Supports live venue website lookup for logo &amp; branding.</div>
+          </div>
+        </div>
+
         <div id="e6" style="display:none;font-size:13px;color:#e91e8c;margin-top:10px;padding:10px 13px;background:rgba(233,30,140,0.08);border:1px solid rgba(233,30,140,0.3);border-radius:8px;font-weight:500;">Please select a flyer size to continue.</div>
+
+        <!-- Real image generation: loading -->
+        <div id="gen-loading" style="display:none;width:100%;margin-top:24px;text-align:center;">
+          <div style="background:rgba(123,47,255,0.1);border:1px solid rgba(123,47,255,0.4);border-radius:14px;padding:28px 20px;">
+            <div class="gen-spinner" style="width:44px;height:44px;border-radius:50%;border:4px solid rgba(255,255,255,0.15);border-top-color:#e91e8c;margin:0 auto 16px;animation:gen-spin 0.9s linear infinite;"></div>
+            <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:6px;">Generating your flyer...</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.7);">This can take up to 30 seconds. Please don't close this page.</div>
+          </div>
+        </div>
+        <style>@keyframes gen-spin { to { transform: rotate(360deg); } }</style>
+
+        <!-- Real image generation: error -->
+        <div id="gen-error" style="display:none;width:100%;margin-top:20px;text-align:center;">
+          <div style="background:rgba(233,30,140,0.1);border:1px solid rgba(233,30,140,0.4);border-radius:12px;padding:18px 16px;">
+            <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:6px;">Something went wrong</div>
+            <div id="gen-error-msg" style="font-size:12px;color:rgba(255,255,255,0.8);margin-bottom:14px;"></div>
+            <button type="button" onclick="generateFlyerImage()" style="background:linear-gradient(135deg,#e91e8c,#7b2fff);border:none;border-radius:10px;padding:10px 18px;color:#fff;font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Try Again</button>
+          </div>
+        </div>
+
+        <!-- Real image generation: result -->
+        <div id="gen-result" style="display:none;width:100%;margin-top:24px;text-align:center;">
+          <img id="gen-image" src="" style="width:100%;border-radius:14px;border:1px solid rgba(233,30,140,0.4);box-shadow:0 4px 24px rgba(233,30,140,0.3);">
+          <div style="display:flex;gap:10px;margin-top:14px;">
+            <a id="gen-download-btn" href="#" download="flyer.png" style="flex:1;background:linear-gradient(135deg,#2ecc71,#27ae60);border-radius:10px;padding:14px;color:#fff;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;">
+              <i class="ti ti-download" style="font-size:18px;"></i> Download
+            </a>
+            <button type="button" onclick="generateFlyerImage()" style="flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(123,47,255,0.4);border-radius:10px;padding:14px;color:#fff;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+              <i class="ti ti-refresh" style="font-size:18px;"></i> Regenerate
+            </button>
+          </div>
+        </div>
+
         <div id="out-wrap" style="display:none;width:100%;margin-top:24px;text-align:center;">
           <div style="background:linear-gradient(135deg,rgba(233,30,140,0.15),rgba(123,47,255,0.15));border:1px solid rgba(233,30,140,0.4);border-radius:14px;padding:28px 20px;">
             <div style="width:56px;height:56px;background:linear-gradient(135deg,#e91e8c,#7b2fff);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 0 24px rgba(233,30,140,0.5);">
@@ -749,6 +814,8 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) brightne
 </div>
 <script>
 var cur = 0, selSz = "1080x1350", gN = 0, busy = false;
+var uploadedPhotoDataUrl = null;
+var FLYER_API_URL = "https://rickparma-flyer-image.saxmanrp.workers.dev/";
 var TOTAL = 11;
 var LAST = TOTAL - 1;
 var PCT = 100 / TOTAL;
@@ -852,6 +919,8 @@ function goTo(n){
   document.getElementById("hdr").style.display = n <= 1 ? "none" : "block";
   // Reset prompt output when leaving/entering page 5
   document.getElementById("out-wrap").style.display = "none";
+  var _gl = document.getElementById("gen-loading"); if(_gl) _gl.style.display = "none";
+  var _ge = document.getElementById("gen-error"); if(_ge) _ge.style.display = "none";
   // Rebuild video element list when arriving on the video page
   if(n === 9){ initVideoPage(); }
   // Rebuild calendar summary when arriving on the calendar page
@@ -904,7 +973,7 @@ function goBack(){ if(cur > 0) goTo(cur - 1); }
   }, {passive: true});
 })();
 
-function buildPrompt(){
+function buildPrompt(directApi){
   var szName = document.querySelector(".sz.on .sz-name").textContent.trim();
   var sub = v("f-subvenue"), guests = getGuests();
 
@@ -927,8 +996,8 @@ function buildPrompt(){
     p += "Apply this style direction as the artistic approach for the flyer. If venue details are pulled from a website below, still incorporate the venue's actual branding, colors, and identity — blend the venue's real identity with this style direction rather than ignoring one for the other.\n\n";
   }
 
-  // Venue first — scrape and confirm before generating
-  if(v("f-vsite")){
+  // Venue first — scrape and confirm before generating (only for AI agents with web browsing, e.g. ChatGPT/Claude)
+  if(v("f-vsite") && !directApi){
     p += "Before generating the flyer, complete these two steps in order:\n\n";
     p += "STEP 1 — USE YOUR WEB BROWSING TOOL TO OPEN AND SCRAPE THIS WEBSITE: " + v("f-vsite") + "\n";
     p += "IMPORTANT: You have web browsing available. Actually open and read the page — do NOT assume the site is inaccessible or skip this step. If the first attempt fails, try again before giving up.\n";
@@ -945,10 +1014,13 @@ function buildPrompt(){
     p += "ALWAYS complete and deliver the finished flyer, even if some details (like the exact logo) could not be extracted — never stop, refuse, or leave the flyer unfinished. If anything was missing, note it briefly to the user AFTER delivering the image.\n\n";
   } else {
     p += "Generate a stunning, professional event flyer as a " + szName + " image (" + selSz + " pixels).\n\n";
+    if(v("f-vsite") && directApi){
+      p += "Venue website (for reference/context only — cannot be browsed by this tool): " + v("f-vsite") + "\n\n";
+    }
     // Manual venue info
     var hasManual = v("f-vname") || v("f-vaddress") || v("f-vphone") || v("f-vdesc");
     if(hasManual){
-      p += "The venue does not have a website. Use the following venue details for the flyer:\n";
+      p += "Use the following venue details for the flyer:\n";
       if(v("f-vname")) p += "— Venue name: " + v("f-vname") + "\n";
       if(v("f-vaddress")) p += "— Address: " + v("f-vaddress") + "\n";
       if(v("f-vphone")) p += "— Phone: " + v("f-vphone") + "\n";
@@ -1024,13 +1096,16 @@ function buildPrompt(){
   if(v("f-theme")) p += "— Additional mood/vibe direction (blend this feeling into the design — do NOT print this phrase as literal text on the flyer): " + v("f-theme") + "\n";
 
   // Reference image roles — only included if a website is provided, since the user will attach images manually
-  if(v("f-vsite")){
+  if(v("f-vsite") && !directApi){
     p += "REFERENCE IMAGE ROLES (if images are attached to this message):\n";
     p += "— Headline artist photo (use as the main featured performer)\n";
     p += "— Special guest photo(s) (use as featured guest portraits, if provided)\n";
     p += "— Venue logo (use exactly as pulled from the website)\n";
     p += "— Venue interior / style reference (for atmosphere only)\n";
     p += "When images are attached, the user will label which is which. Apply each to its correct role.\n\n";
+  }
+  if(directApi && uploadedPhotoDataUrl){
+    p += "An artist photo is attached as a reference image — this is the headline performer's official photo. Keep the face and likeness intact.\n\n";
   }
 
   // Design rules
@@ -1051,6 +1126,91 @@ function buildPrompt(){
   p += "— Create the image immediately. No explanations. No questions. No steps. Just the flyer.";
 
   return p;
+}
+
+function handlePhotoUpload(input){
+  var file = input.files && input.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    uploadedPhotoDataUrl = e.target.result;
+    document.getElementById("photo-preview-img").src = uploadedPhotoDataUrl;
+    document.getElementById("photo-empty-state").style.display = "none";
+    var pv = document.getElementById("photo-preview-state");
+    pv.style.display = "flex";
+  };
+  reader.readAsDataURL(file);
+}
+
+function removePhoto(){
+  uploadedPhotoDataUrl = null;
+  document.getElementById("photo-input").value = "";
+  document.getElementById("photo-preview-state").style.display = "none";
+  document.getElementById("photo-empty-state").style.display = "block";
+}
+
+function mapToApiSize(dims){
+  // gpt-image-1 only accepts these exact sizes — map our custom pixel dims to the closest aspect ratio
+  var parts = (dims || "1024x1024").split("x");
+  var w = parseInt(parts[0], 10) || 1024;
+  var h = parseInt(parts[1], 10) || 1024;
+  if(w === h) return "1024x1024";
+  return w > h ? "1536x1024" : "1024x1536";
+}
+
+function generateFlyerImage(){
+  if(busy) return;
+  var szEl = document.querySelector(".sz.on");
+  if(!szEl){
+    var e6 = document.getElementById("e6");
+    if(e6) e6.style.display = "block";
+    return;
+  }
+
+  var loading = document.getElementById("gen-loading");
+  var errorBox = document.getElementById("gen-error");
+  var resultBox = document.getElementById("gen-result");
+  var btn = document.getElementById("gen-image-btn");
+
+  loading.style.display = "block";
+  errorBox.style.display = "none";
+  resultBox.style.display = "none";
+  if(btn) btn.disabled = true;
+  setTimeout(function(){ loading.scrollIntoView({ behavior:"smooth", block:"start" }); }, 100);
+
+  var prompt = buildPrompt(true);
+  var apiSize = mapToApiSize(selSz);
+
+  var payload = { prompt: prompt, size: apiSize };
+  if(uploadedPhotoDataUrl) payload.photo = uploadedPhotoDataUrl;
+
+  fetch(FLYER_API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+  .then(function(res){
+    return res.json().then(function(data){
+      if(!res.ok || data.error){
+        throw new Error(data.error || "Image generation failed.");
+      }
+      return data;
+    });
+  })
+  .then(function(data){
+    loading.style.display = "none";
+    if(btn) btn.disabled = false;
+    document.getElementById("gen-image").src = data.image;
+    document.getElementById("gen-download-btn").href = data.image;
+    resultBox.style.display = "block";
+    setTimeout(function(){ resultBox.scrollIntoView({ behavior:"smooth", block:"start" }); }, 100);
+  })
+  .catch(function(err){
+    loading.style.display = "none";
+    if(btn) btn.disabled = false;
+    document.getElementById("gen-error-msg").textContent = err.message || "Please try again.";
+    errorBox.style.display = "block";
+  });
 }
 
 function generate(){
