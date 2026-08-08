@@ -381,39 +381,19 @@ function nextInvoiceNumber() {
   return (nums.length ? Math.max(...nums) : 1000) + 1;
 }
 
-const JSONBIN_KEY = "$2a$10$R94RuRqthE5DDtsO9.kzqOwjRLyF1eaqAAPX.3Qah3rJ7cXwsR1lK";
-const BIN_ID_KEY = "rp-invoice-bin-id";
+const PROXY_BASE = "https://rickparma-jsonbin-proxy.saxmanrp.workers.dev";
 const CACHE_KEY = "rp-invoices-cache";
 
 const urlParams = new URLSearchParams(location.search);
 const signId = urlParams.get('sign');
 const payId = urlParams.get('pay');
 const receiptId = urlParams.get('receipt');
-const urlBinId = urlParams.get('bin');
 
 function setSyncStatus(text) {
   const el = document.getElementById('sync-status');
   if (el) el.textContent = text;
 }
 
-async function ensureBin() {
-  if (urlBinId) return urlBinId;
-  let binId = localStorage.getItem(BIN_ID_KEY);
-  if (binId) return binId;
-  const res = await fetch('https://api.jsonbin.io/v3/b', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Master-Key': JSONBIN_KEY,
-      'X-Bin-Name': 'rickparma-invoices'
-    },
-    body: JSON.stringify({ invoices: [] })
-  });
-  const data = await res.json();
-  binId = data.metadata.id;
-  localStorage.setItem(BIN_ID_KEY, binId);
-  return binId;
-}
 
 async function loadInvoices() {
   setSyncStatus('Loading…');
@@ -421,9 +401,7 @@ async function loadInvoices() {
   invoices = cached ? JSON.parse(cached) : [];
   renderHistory();
   try {
-    const binId = await ensureBin();
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, {
-      headers: { 'X-Master-Key': JSONBIN_KEY },
+    const res = await fetch(`${PROXY_BASE}/invoices?t=${Date.now()}`, {
       cache: 'no-store'
     });
     const data = await res.json();
@@ -439,9 +417,7 @@ async function loadInvoices() {
 async function manualSync() {
   setSyncStatus('Syncing…');
   try {
-    const binId = await ensureBin();
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, {
-      headers: { 'X-Master-Key': JSONBIN_KEY },
+    const res = await fetch(`${PROXY_BASE}/invoices?t=${Date.now()}`, {
       cache: 'no-store'
     });
     const data = await res.json();
@@ -458,13 +434,9 @@ async function persistInvoices() {
   localStorage.setItem(CACHE_KEY, JSON.stringify(invoices));
   setSyncStatus('Saving…');
   try {
-    const binId = await ensureBin();
-    await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+    await fetch(`${PROXY_BASE}/invoices`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Master-Key': JSONBIN_KEY
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ invoices })
     });
     setSyncStatus('Synced');
@@ -817,22 +789,19 @@ function addToAppleCalendar() {
 
 async function shareForSignature() {
   await saveInvoiceCore();
-  const binId = await ensureBin();
-  const url = `${location.origin}${location.pathname}?sign=${encodeURIComponent(currentId)}&bin=${encodeURIComponent(binId)}`;
+  const url = `${location.origin}${location.pathname}?sign=${encodeURIComponent(currentId)}`;
   await shareLink(url, 'Invoice from Richard Parma', 'Please review and sign your invoice.');
 }
 
 async function sharePaymentLink() {
   await saveInvoiceCore();
-  const binId = await ensureBin();
-  const url = `${location.origin}${location.pathname}?pay=${encodeURIComponent(currentId)}&bin=${encodeURIComponent(binId)}`;
+  const url = `${location.origin}${location.pathname}?pay=${encodeURIComponent(currentId)}`;
   await shareLink(url, 'Make a Payment - Richard Parma', 'Tap to make a payment on your invoice from Richard Parma.');
 }
 
 async function shareReceiptLink() {
   await saveInvoiceCore();
-  const binId = await ensureBin();
-  const url = `${location.origin}${location.pathname}?receipt=${encodeURIComponent(currentId)}&bin=${encodeURIComponent(binId)}`;
+  const url = `${location.origin}${location.pathname}?receipt=${encodeURIComponent(currentId)}`;
   await shareLink(url, 'Your Receipt - Richard Parma', 'Here is your invoice receipt from Richard Parma.');
 }
 
@@ -965,8 +934,7 @@ async function drawCursive(name) {
 async function initClientView(invId) {
   document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center;color:#8DB2E5">Loading invoice…</p>';
   try {
-    const binId = await ensureBin();
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_KEY }, cache: 'no-store' });
+    const res = await fetch(`${PROXY_BASE}/invoices?t=${Date.now()}`, { cache: 'no-store' });
     const data = await res.json();
     const list = (data.record && data.record.invoices) || [];
     const inv = list.find(i => i.id === invId);
@@ -1089,8 +1057,7 @@ async function recordClientPayment(invId) {
   const type = document.getElementById('client-pay-type').value;
   const wrap = document.getElementById('client-pay-btn-wrap');
   try {
-    const binId = await ensureBin();
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_KEY }, cache: 'no-store' });
+    const res = await fetch(`${PROXY_BASE}/invoices?t=${Date.now()}`, { cache: 'no-store' });
     const data = await res.json();
     const list = (data.record && data.record.invoices) || [];
     const idx = list.findIndex(i => i.id === invId);
@@ -1100,9 +1067,9 @@ async function recordClientPayment(invId) {
     if (amount <= 0) return;
     list[idx].payments = list[idx].payments || [];
     list[idx].payments.push({ date: todayLocal(), amount, method, source: 'client', type });
-    await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+    await fetch(`${PROXY_BASE}/invoices`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ invoices: list })
     });
     wrap.innerHTML = '<p style="color:#8DB2E5;font-size:13px;margin-top:6px">✓ Payment recorded — thank you!</p>';
@@ -1126,8 +1093,7 @@ async function submitClientSignature(invId) {
   btn.textContent = 'Sending…';
   try {
     const sigDataUrl = canvas.toDataURL('image/png');
-    const binId = await ensureBin();
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_KEY }, cache: 'no-store' });
+    const res = await fetch(`${PROXY_BASE}/invoices?t=${Date.now()}`, { cache: 'no-store' });
     const data = await res.json();
     const list = (data.record && data.record.invoices) || [];
     const idx = list.findIndex(i => i.id === invId);
@@ -1136,9 +1102,9 @@ async function submitClientSignature(invId) {
     list[idx].clientSignatureImg = sigDataUrl;
     list[idx].clientSignDate = dateInput.value || todayLocal();
     list[idx].clientSignedName = nameInput.value.trim();
-    await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+    await fetch(`${PROXY_BASE}/invoices`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ invoices: list })
     });
     renderClientInvoice(list[idx]);
@@ -1152,8 +1118,7 @@ async function submitClientSignature(invId) {
 async function initPaymentView(invId) {
   document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center;color:#8DB2E5">Loading invoice…</p>';
   try {
-    const binId = await ensureBin();
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_KEY }, cache: 'no-store' });
+    const res = await fetch(`${PROXY_BASE}/invoices?t=${Date.now()}`, { cache: 'no-store' });
     const data = await res.json();
     const list = (data.record && data.record.invoices) || [];
     const inv = list.find(i => i.id === invId);
@@ -1248,8 +1213,7 @@ async function recordPmtPayment(invId) {
   const type = document.getElementById('pmt-type').value;
   const wrap = document.getElementById('pmt-btn-wrap');
   try {
-    const binId = await ensureBin();
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_KEY }, cache: 'no-store' });
+    const res = await fetch(`${PROXY_BASE}/invoices?t=${Date.now()}`, { cache: 'no-store' });
     const data = await res.json();
     const list = (data.record && data.record.invoices) || [];
     const idx = list.findIndex(i => i.id === invId);
@@ -1263,9 +1227,9 @@ async function recordPmtPayment(invId) {
 
     list[idx].payments = list[idx].payments || [];
     list[idx].payments.push({ date: todayLocal(), amount, method, source: 'client', type });
-    await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+    await fetch(`${PROXY_BASE}/invoices`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ invoices: list })
     });
     renderPaymentView(list[idx]);
@@ -1277,8 +1241,7 @@ async function recordPmtPayment(invId) {
 async function initReceiptView(invId) {
   document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center;color:#8DB2E5">Loading receipt…</p>';
   try {
-    const binId = await ensureBin();
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_KEY }, cache: 'no-store' });
+    const res = await fetch(`${PROXY_BASE}/invoices?t=${Date.now()}`, { cache: 'no-store' });
     const data = await res.json();
     const list = (data.record && data.record.invoices) || [];
     const inv = list.find(i => i.id === invId);
@@ -1376,7 +1339,7 @@ if (signId) {
   document.getElementById('view-print').classList.add('showing');
   initReceiptView(receiptId);
 } else {
-  loadInvoices(); ensureBin().then(function(id) { var p = document.createElement('p'); p.id = 'bin-id-display'; p.style.cssText = 'font-size:10px;color:var(--text-dim);margin-top:2px'; p.textContent = 'Bin ID: ' + id; var header = document.querySelector('.header-row > div'); if (header) header.appendChild(p); });
+  loadInvoices();
   clearForm();
   showView('history');
 
