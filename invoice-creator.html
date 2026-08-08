@@ -98,6 +98,13 @@
   .status-badge.paid { border-style: solid; }
   .status-badge.deposit { border-style: dashed; }
   .status-badge.unpaid { border-style: solid; border-color: var(--border); color: var(--text-dim); }
+  .hist-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .hist-tab {
+    flex: 1; text-align: center; padding: 9px 0; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--panel); color: var(--text-dim);
+    font-size: 13px; font-weight: 700; letter-spacing: 0.3px; cursor: pointer;
+  }
+  .hist-tab.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
   .hist-card {
     background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
     padding: 12px 14px; margin-bottom: 10px;
@@ -193,11 +200,12 @@
 <main>
 
   <div id="view-history">
-    <div id="history-list"></div>
-    <div id="past-section" style="display:none">
-      <div style="margin-top:22px;margin-bottom:8px;font-size:12px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.6px;border-top:1px solid var(--border);padding-top:14px">Past Invoices</div>
-      <div id="history-list-past"></div>
+    <div class="hist-tabs">
+      <div class="hist-tab active" data-tab="current" onclick="switchHistoryTab('current')">Current</div>
+      <div class="hist-tab" data-tab="past" onclick="switchHistoryTab('past')">Past</div>
     </div>
+    <div id="history-list"></div>
+    <div id="history-list-past" style="display:none"></div>
   </div>
 
   <div id="view-form" style="display:none">
@@ -463,10 +471,9 @@ function startNewInvoice() {
 function renderHistory() {
   const list = document.getElementById('history-list');
   const pastList = document.getElementById('history-list-past');
-  const pastSection = document.getElementById('past-section');
   if (!invoices.length) {
     list.innerHTML = '<div class="empty">No invoices yet. Tap "New / Edit" to create one.</div>';
-    pastSection.style.display = 'none';
+    pastList.innerHTML = '<div class="empty">No past invoices.</div>';
     return;
   }
   const todayISO = new Date().toISOString().slice(0,10);
@@ -488,15 +495,15 @@ function renderHistory() {
   const sorted = [...invoices].sort((a,b) => (b.eventDate||'').localeCompare(a.eventDate||''));
   const upcoming = sorted.filter(inv => !inv.eventDate || inv.eventDate >= todayISO);
   const past = sorted.filter(inv => inv.eventDate && inv.eventDate < todayISO);
-  list.innerHTML = upcoming.length ? upcoming.map(buildCard).join('') : '<div class="empty">No upcoming invoices.</div>';
-  if (past.length) {
-    pastSection.style.display = '';
-    pastList.innerHTML = past.map(buildCard).join('');
-  } else {
-    pastSection.style.display = 'none';
-  }
+  list.innerHTML = upcoming.length ? upcoming.map(buildCard).join('') : '<div class="empty">No current invoices.</div>';
+  pastList.innerHTML = past.length ? past.map(buildCard).join('') : '<div class="empty">No past invoices.</div>';
 }
 
+function switchHistoryTab(tab) {
+  document.querySelectorAll('.hist-tab').forEach(function(b){ b.classList.toggle('active', b.dataset.tab === tab); });
+  document.getElementById('history-list').style.display = tab === 'current' ? '' : 'none';
+  document.getElementById('history-list-past').style.display = tab === 'past' ? '' : 'none';
+}
 function statusFor(total, paid) {
   if (paid <= 0) return {cls:'unpaid', label:'UNPAID'};
   if (paid >= total) return {cls:'paid', label:'PAID IN FULL ✓'};
