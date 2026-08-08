@@ -194,6 +194,10 @@
 
   <div id="view-history">
     <div id="history-list"></div>
+    <div id="past-section" style="display:none">
+      <div style="margin-top:22px;margin-bottom:8px;font-size:12px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.6px;border-top:1px solid var(--border);padding-top:14px">Past Invoices</div>
+      <div id="history-list-past"></div>
+    </div>
   </div>
 
   <div id="view-form" style="display:none">
@@ -458,12 +462,15 @@ function startNewInvoice() {
 
 function renderHistory() {
   const list = document.getElementById('history-list');
+  const pastList = document.getElementById('history-list-past');
+  const pastSection = document.getElementById('past-section');
   if (!invoices.length) {
     list.innerHTML = '<div class="empty">No invoices yet. Tap "New / Edit" to create one.</div>';
+    pastSection.style.display = 'none';
     return;
   }
-  const sorted = [...invoices].sort((a,b) => (b.eventDate||'').localeCompare(a.eventDate||''));
-  list.innerHTML = sorted.map(inv => {
+  const todayISO = new Date().toISOString().slice(0,10);
+  const buildCard = (inv) => {
     const total = lineItemsTotal(inv.lineItems);
     const paid = paymentsTotal(inv.payments);
     const bal = total - paid;
@@ -471,13 +478,23 @@ function renderHistory() {
     const signedBadge = inv.clientSignatureImg ? '<div class="status-badge paid">✓ CLIENT SIGNED</div>' : '';
     return `<div class="hist-card" onclick="editInvoice('${inv.id}')">
       <div class="top"><span class="name">${esc(inv.clientName||'Untitled')}</span><span class="amt">$${total.toFixed(2)}</span></div>
-      <div class="meta">${esc(inv.eventType||'')} — ${inv.eventDate||'no date'}</div>
+      <div class="meta">${esc(inv.eventType||'')} — ${esc(inv.eventDate||'no date')}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <div class="status-badge ${status.cls}">${status.label}${bal>0 && paid>0 ? ' ($'+bal.toFixed(2)+' due)' : ''}</div>
         ${signedBadge}
       </div>
     </div>`;
-  }).join('');
+  };
+  const sorted = [...invoices].sort((a,b) => (b.eventDate||'').localeCompare(a.eventDate||''));
+  const upcoming = sorted.filter(inv => !inv.eventDate || inv.eventDate >= todayISO);
+  const past = sorted.filter(inv => inv.eventDate && inv.eventDate < todayISO);
+  list.innerHTML = upcoming.length ? upcoming.map(buildCard).join('') : '<div class="empty">No upcoming invoices.</div>';
+  if (past.length) {
+    pastSection.style.display = '';
+    pastList.innerHTML = past.map(buildCard).join('');
+  } else {
+    pastSection.style.display = 'none';
+  }
 }
 
 function statusFor(total, paid) {
