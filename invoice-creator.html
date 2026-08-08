@@ -1173,30 +1173,13 @@ function renderPaymentView(inv) {
     `;
   } else {
     paySection = `
-      <div class="sign-card no-print">
-        <h2>Balance Due: $${balance.toFixed(2)}</h2>
-        <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:4px">Payment Type</label>
-        <select id="pmt-type" onchange="togglePmtAmount(); revealPmtMethod(); updatePmtButton('${inv.id}', ${balance})">
-          <option value="">Select...</option>
-          <option value="full">Pay Full Balance ($${balance.toFixed(2)})</option>
-          <option value="partial">Partial Payment</option>
-        </select>
-        <div id="pmt-amount-wrap" style="display:none">
-          <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Amount</label>
-          <input id="pmt-amount" type="number" step="0.01" oninput="updatePmtButton('${inv.id}', ${balance})">
-        </div>
-        <div id="pmt-method-wrap" style="display:none">
-          <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Payment Method</label>
-          <select id="pmt-method" onchange="updatePmtButton('${inv.id}', ${balance})">
-            <option value="">Select...</option>
-            <option>Zelle</option><option>Venmo</option><option>CashApp</option>
-            <option>PayPal</option>
-            <option value="PaymentHub">Card / Apple Pay / PayPal (Instant)</option>
-          </select>
-        </div>
-        <div id="pmt-btn-wrap" style="display:none;margin-top:14px"></div>
-      </div>
-    `;
+            <div class="sign-card no-print">
+                      <h2>Balance Due: $${balance.toFixed(2)}</h2>
+                                <div id="pmt-btn-wrap" style="margin-top:10px">
+                                            <button class="btn solid" onclick="payWithHub('${inv.id}', ${balance})">Pay $${balance.toFixed(2)} Now</button>
+                                                      </div>
+                                                              </div>
+                                                                    `;
   }
 
   document.getElementById('print-content').innerHTML = actions + body + paySection;
