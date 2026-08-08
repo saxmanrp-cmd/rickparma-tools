@@ -241,10 +241,9 @@
 <script>
 /* ============ CONFIG ============ */
 // Paste the same Bin ID here that's used in the public request page.
-const BIN_ID = "6a52d2c6f5f4af5e2982691a";
-const MASTER_KEY = "$2a$10$R94RuRqthE5DDtsO9.kzqOwjRLyF1eaqAAPX.3Qah3rJ7cXwsR1lK";
-const JSONBIN_BASE = "https://api.jsonbin.io/v3/b";
-const POLL_BIN_ID = "6a65070cda38895dfe8f39bf"; // paste your Poll Bin ID here after setup
+const PROXY_BASE = "https://rickparma-jsonbin-proxy.saxmanrp.workers.dev";
+const BIN_ID = "6a52d2c6f5f4af5e2982691a"; // kept only as a truthy "is configured" flag
+const POLL_BIN_ID = "6a65070cda38895dfe8f39bf"; // kept only as a truthy "is configured" flag
 const REQUEST_PAGE_URL = "https://rickparma.com/song-request";
 
 let DEFAULT_PRICES = { general: 5 };
@@ -281,7 +280,7 @@ async function init(){
 
 async function loadFromCloud(){
   try{
-    const res = await fetch(`${JSONBIN_BASE}/${BIN_ID}/latest`, { headers: { "X-Master-Key": MASTER_KEY } });
+    const res = await fetch(`${PROXY_BASE}/songs`);
     const data = await res.json();
     const record = data.record || {};
     songs = record.songs || [];
@@ -301,9 +300,9 @@ async function loadFromCloud(){
 
 async function saveToCloud(){
   try{
-    const res = await fetch(`${JSONBIN_BASE}/${BIN_ID}`, {
+    const res = await fetch(`${PROXY_BASE}/songs`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ songs, prices, songRequestLive, fanCamLive })
     });
     if(!res.ok) throw new Error("save failed");
@@ -317,11 +316,8 @@ async function saveToCloud(){
 async function createCloudBin(seedWithExisting){
   try{
     const initialSongs = seedWithExisting ? SEED_SONGS : [];
-    const res = await fetch(JSONBIN_BASE, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY, "X-Bin-Name": "rickparma-song-requests" },
-      body: JSON.stringify({ songs: initialSongs, prices: DEFAULT_PRICES })
-    });
+    alert('Cloud storage is already connected via the proxy Worker — nothing to set up.'); return;
+    const res = null;
     const data = await res.json();
     const newId = data.metadata.id;
     alert(`Cloud storage created!\n\nCopy this Bin ID and paste it into the BIN_ID constant in BOTH this file and the public request page, then re-upload both:\n\n${newId}`);
@@ -646,7 +642,7 @@ async function deleteSong(){
 /* ============ LIVE POLLS ============ */
 async function loadPolls(){
   try{
-    const res = await fetch(`${JSONBIN_BASE}/${POLL_BIN_ID}/latest`, { headers: { "X-Master-Key": MASTER_KEY } });
+    const res = await fetch(`${PROXY_BASE}/polls`);
     const data = await res.json();
     const record = data.record || {};
     polls = record.polls || [];
@@ -661,9 +657,9 @@ async function loadPolls(){
 
 async function savePollsToCloud(){
   try{
-    const res = await fetch(`${JSONBIN_BASE}/${POLL_BIN_ID}`, {
+    const res = await fetch(`${PROXY_BASE}/polls`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ polls, activePollId })
     });
     if(!res.ok) throw new Error('save failed');
@@ -676,11 +672,8 @@ async function savePollsToCloud(){
 
 async function createPollBin(){
   try{
-    const res = await fetch(JSONBIN_BASE, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY, "X-Bin-Name": "rickparma-polls" },
-      body: JSON.stringify({ polls: [], activePollId: null })
-    });
+    alert('Poll storage is already connected via the proxy Worker — nothing to set up.'); return;
+    const res = null;
     const data = await res.json();
     const newId = data.metadata.id;
     alert(`Poll storage created!\n\nCopy this Bin ID and paste it into the POLL_BIN_ID constant near the top of this file, then re-upload:\n\n${newId}`);
