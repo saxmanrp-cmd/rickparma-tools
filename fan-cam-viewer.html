@@ -24,8 +24,7 @@
 <script>
   const CONFIG = {
     cloudName: "ffgvgf5j",
-    jsonbinId: "6a668bb8f5f4af5e29c51472",
-    jsonbinKey: "$2a$10$R94RuRqthE5DDtsO9.kzqOwjRLyF1eaqAAPX.3Qah3rJ7cXwsR1lK",
+    proxyBase: "https://rickparma-jsonbin-proxy.saxmanrp.workers.dev",
     passcode: "Success7848"
   };
 </script>
@@ -254,8 +253,7 @@ function showToast(msg){
 }
 
 async function fetchLatest(){
-  const res = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.jsonbinId}/latest?t=${Date.now()}`, {
-    headers:{ 'X-Master-Key': CONFIG.jsonbinKey },
+  const res = await fetch(`${CONFIG.proxyBase}/fancam?t=${Date.now()}`, {
     cache: 'no-store'
   });
   const data = await res.json();
@@ -389,9 +387,9 @@ async function performDelete(idx){
     const fresh = await fetchLatest();
     const updated = fresh.filter(e => e.mediaUrl !== entry.mediaUrl);
     const payload = updated.length > 0 ? updated : { seed: true };
-    const putRes = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.jsonbinId}`, {
+    const putRes = await fetch(`${CONFIG.proxyBase}/fancam`, {
       method:'PUT',
-      headers:{ 'Content-Type':'application/json', 'X-Master-Key': CONFIG.jsonbinKey },
+      headers:{ 'Content-Type':'application/json' },
       body: JSON.stringify(payload)
     });
     if(!putRes.ok){
