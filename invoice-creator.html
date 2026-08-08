@@ -1191,6 +1191,7 @@ function renderPaymentView(inv) {
             <option value="">Select...</option>
             <option>Zelle</option><option>Venmo</option><option>CashApp</option>
             <option>PayPal</option>
+            <option value="PaymentHub">Card / Apple Pay / PayPal (Instant)</option>
           </select>
         </div>
         <div id="pmt-btn-wrap" style="display:none;margin-top:14px"></div>
@@ -1230,6 +1231,43 @@ function updatePmtButton(invId, balance) {
     ? `<a class="btn solid" href="${link}" target="_blank" rel="noopener" onclick="recordPmtPayment('${invId}')">${label}</a>`
     : `<button class="btn solid" onclick="recordPmtPayment('${invId}')">${label}</button>`;
   wrap.style.display = 'block';
+}
+  function updatePmtButton(invId, balance) {
+  const method = document.getElementById('pmt-method').value;
+  const type = document.getElementById('pmt-type').value;
+  const amount = type === 'partial' ? parseFloat(document.getElementById('pmt-amount').value) : balance;
+  const wrap = document.getElementById('pmt-btn-wrap');
+  const valid = type && method && amount > 0;
+  if (!valid) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  if (method === 'PaymentHub') {
+    wrap.innerHTML = `<button class="btn solid" onclick="payWithHub('${invId}', ${amount})">Pay $${amount.toFixed(2)} Now</button>`;
+    wrap.style.display = 'block';
+    return;
+  }
+  const link = paymentLinkFor(method, amount);
+  const label = link ? `Pay via ${method === 'CashApp' ? 'Cash App' : method}` : 'Confirm Payment';
+  wrap.innerHTML = link
+    ? `<a class="btn solid" href="${link}" target="_blank" rel="noopener" onclick="recordPmtPayment('${invId}')">${label}</a>`
+    : `<button class="btn solid" onclick="recordPmtPayment('${invId}')">${label}</button>`;
+  wrap.style.display = 'block';
+}
+
+async function payWithHub(invId, amount) {
+  const wrap = document.getElementById('pmt-btn-wrap');
+  const original = wrap.innerHTML;
+  wrap.innerHTML = '<button class="btn solid" disabled>Preparing checkout…</button>';
+  try {
+    const res = await fetch('https://rickparma.com/api/invoices/pay-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoiceId: invId, amountCents: Math.round(amount * 100) })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.checkoutUrl) throw new Error((data && data.error) || 'Could not start checkout.');
+    window.location.href = data.checkoutUrl;
+  } catch (e) {
+    wrap.innerHTML = original + `<p style="color:#E8A3A3;font-size:12px;margin-top:6px">${(e && e.message) || 'Could not start checkout.'}</p>`;
+  }
 }
 
 async function recordPmtPayment(invId) {
