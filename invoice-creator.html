@@ -683,6 +683,13 @@ function collectFormData() {
 async function saveInvoiceCore() {
   const data = collectFormData();
   currentId = data.id;
+    try {
+      const freshRes = await fetch(`${PROXY_BASE}/invoices?t=${Date.now()}`, { cache: 'no-store' });
+      const freshData = await freshRes.json();
+      invoices = (freshData.record && freshData.record.invoices) || invoices;
+    } catch (e) {
+      // keep whatever is already in memory if the refresh fails
+    }
   const idx = invoices.findIndex(i => i.id === currentId);
   if (idx >= 0) invoices[idx] = data; else invoices.push(data);
   await persistInvoices();
