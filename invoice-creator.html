@@ -356,15 +356,6 @@
     <div id="print-content"></div>
   </div>
 
-  <div id="share-modal" class="no-print" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:50; align-items:center; justify-content:center;">
-    <div style="background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:20px; width:80%; max-width:320px; text-align:center;">
-      <h3 style="margin:0 0 16px; color:var(--accent); font-family:'Josefin Sans',sans-serif; font-size:17px;">Send via</h3>
-      <button class="btn solid" style="margin-bottom:10px" onclick="shareModalChoose('text')">Text Message</button>
-      <button class="btn solid" style="margin-bottom:10px" onclick="shareModalChoose('email')">Email</button>
-      <button class="btn" onclick="closeShareModal()">Cancel</button>
-    </div>
-  </div>
-
 </main>
 
 <script>
@@ -702,35 +693,25 @@ async function saveInvoice() {
   showView('history');
 }
 
-let pendingShare = null;
-
-function shareLink(url, title, text) {
-  pendingShare = { url, subject: title, body: text };
-  document.getElementById('share-modal').style.display = 'flex';
-}
-
-function closeShareModal() {
-  document.getElementById('share-modal').style.display = 'none';
-  pendingShare = null;
-}
-
-function shareModalChoose(kind) {
-  if (!pendingShare) return;
-  const { url, subject, body } = pendingShare;
-  const phone = (document.getElementById('f-phone').value || '').trim();
-  const email = (document.getElementById('f-email').value || '').trim();
-  closeShareModal();
-
-  if (kind === 'text') {
-    const smsBody = encodeURIComponent(`${body} ${url}`);
-    const target = phone.replace(/[^\d+]/g, '');
-    window.location.href = `sms:${target}${target ? '&' : ''}body=${smsBody}`;
-  } else {
-    const mailBody = encodeURIComponent(`${body}\n\n${url}`);
-    const mailSubject = encodeURIComponent(subject);
-    window.location.href = `mailto:${email}?subject=${mailSubject}&body=${mailBody}`;
+// Sends the given share kind ("pay" | "receipt" | "sign") for the current
+  // invoice through the Payment Hub's server-side endpoint, which looks up the
+  // client's real phone number and texts it from the Twilio toll-free number
+  // (so it shows up in the Messages tab of the Text Blast admin dashboard,
+  // instead of opening Rick's own Messages app under his personal number).
+  async function sendInvoiceText(kind, label) {
+      try {
+            const res = await fetch('https://rickparma.com/api/invoices/send-text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ invoiceId: currentId, kind })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Failed to send text.');
+            alert(`${label} texted to ${data.phone || 'the client'}.`);
+      } catch (err) {
+            alert(`Could not send ${label.toLowerCase()}: ${err.message}`);
+      }
   }
-}
 
 function addDaysToDateStr(dateStr, days) {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -819,22 +800,19 @@ function addToAppleCalendar() {
 }
 
 async function shareForSignature() {
-  await saveInvoiceCore();
-  const url = `${location.origin}${location.pathname}?sign=${encodeURIComponent(currentId)}`;
-  await shareLink(url, 'Invoice from Richard Parma', 'Please review and sign your invoice.');
+    await saveInvoiceCore();
+    await sendInvoiceText('sign', 'Signature request');
 }
 
-async function sharePaymentLink() {
-  await saveInvoiceCore();
-  const url = `${location.origin}${location.pathname}?pay=${encodeURIComponent(currentId)}`;
-  await shareLink(url, 'Make a Payment - Richard Parma', 'Tap to make a payment on your invoice from Richard Parma.');
-}
+  async function sharePaymentLink() {
+      await saveInvoiceCore();
+      await sendInvoiceText('pay', 'Payment link');
+  }
 
-async function shareReceiptLink() {
-  await saveInvoiceCore();
-  const url = `${location.origin}${location.pathname}?receipt=${encodeURIComponent(currentId)}`;
-  await shareLink(url, 'Your Receipt - Richard Parma', 'Here is your invoice receipt from Richard Parma.');
-}
+  async function shareReceiptLink() {
+      await saveInvoiceCore();
+      await sendInvoiceText('receipt', 'Receipt');
+  }
 
 function fmtTime(t) {
   if (!t) return '';
