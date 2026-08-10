@@ -709,7 +709,19 @@ async function saveInvoice() {
             if (!res.ok) throw new Error(data.error || 'Failed to send text.');
             alert(`${label} texted to ${data.phone || 'the client'}.`);
       } catch (err) {
-            alert(`Could not send ${label.toLowerCase()}: ${err.message}`);
+              const phoneEl = document.getElementById('f-phone');
+              const phone = phoneEl ? phoneEl.value.replace(/[^\d+]/g, '') : '';
+              const link = `https://saxmanrp-cmd.github.io/rickparma-tools/invoice-creator.html?${kind}=${encodeURIComponent(currentId)}`;
+              const msg = kind === 'sign'
+                ? `Please review and sign your invoice from Rick Parma: ${link}`
+                        : kind === 'receipt'
+                ? `Here is your invoice receipt from Rick Parma: ${link}`
+                        : `Tap to make a payment on your invoice from Rick Parma: ${link}`;
+              if (phone) {
+                        window.location.href = `sms:${phone}?&body=${encodeURIComponent(msg)}`;
+              } else {
+                        alert(`Could not send ${label.toLowerCase()}: ${err.message}`);
+              }
       }
   }
 
