@@ -1132,6 +1132,8 @@ function buildPrompt(directApi){
   if(getTime("show")) graphicalItems.push("Show time: " + getTime("show"));
   if(v("f-age")) graphicalItems.push("Age restriction: " + v("f-age"));
   if(v("f-price")) graphicalItems.push("Cover: " + v("f-price"));
+    if(!fmtDate(v("f-date"))) p += "\nDo NOT add any date text anywhere on the flyer -- no date was provided, so leave dates out entirely (the venue calendar lists the date separately, and this flyer gets reused for multiple dates at this venue). Never invent or guess a date.\n";
+    if(!getTime("show")) p += "\nDo NOT add any show time text anywhere on the flyer -- no time was provided. Never invent or guess a time.\n";
   if(graphicalItems.length){
     p += "\nGRAPHICAL / HIGHLIGHTED ELEMENTS — render each of these as bold, eye-catching, stylized graphic design elements that match the chosen flyer style and theme (NOT plain text in a box). Place the date and show time together, prominently:\n";
     graphicalItems.forEach(function(item){ p += "— " + item + "\n"; });
@@ -1233,6 +1235,8 @@ function buildEventDetailsText(){
   if(getTime("show")) graphicalItems.push("Show time: " + getTime("show"));
   if(v("f-age")) graphicalItems.push("Age restriction: " + v("f-age"));
   if(v("f-price")) graphicalItems.push("Cover: " + v("f-price"));
+    if(!fmtDate(v("f-date"))) p += "\nDo NOT add any date text anywhere on the flyer -- no date was provided, so leave dates out entirely (the venue calendar lists the date separately, and this flyer gets reused for multiple dates at this venue). Never invent or guess a date.\n";
+    if(!getTime("show")) p += "\nDo NOT add any show time text anywhere on the flyer -- no time was provided. Never invent or guess a time.\n";
   if(graphicalItems.length){
     p += "\nKey graphical/highlighted details (these should stand out visually, not be plain text):\n";
     graphicalItems.forEach(function(item){ p += "- " + item + "\n"; });
