@@ -507,10 +507,16 @@
     <!-- SUBSCRIBERS TAB -->
     <div class="tab-panel" id="tab-subscribers">
       <div class="card">
-        <h2>Add Subscriber</h2>
-        <div class="add-row">
-          <input type="tel" id="newPhone" placeholder="(702) 555-0123">
+<h2 id="subFormTitle">Add Subscriber</h2>
+        <label for="newPhone">Phone</label>
+        <input type="tel" id="newPhone" placeholder="(702) 555-0123">
+        <label for="newName" style="margin-top:10px;">Name (optional)</label>
+        <input type="text" id="newName" placeholder="First Last">
+        <label for="newTags" style="margin-top:10px;">Categories (comma-separated, optional)</label>
+        <input type="text" id="newTags" placeholder="Nevada, VIP">
+        <div class="row" style="margin-top:10px;">
           <button class="btn" id="addBtn" style="width:auto; padding: 12px 18px;">Add</button>
+          <button class="btn btn-secondary" id="cancelEditSubBtn" style="width:auto; display:none;">Cancel</button>
         </div>
         <div class="message-status" id="addStatus"></div>
       </div>
@@ -750,11 +756,47 @@
   // ================= SUBSCRIBERS =================
 
   const newPhone = document.getElementById('newPhone');
-  const addBtn = document.getElementById('addBtn');
-  const addStatus = document.getElementById('addStatus');
-  const subscriberList = document.getElementById('subscriberList');
-  const totalCount = document.getElementById('totalCount');
-  const refreshBtn = document.getElementById('refreshBtn');
+      const newName = document.getElementById('newName');
+      const newTags = document.getElementById('newTags');
+      const subFormTitle = document.getElementById('subFormTitle');
+      const cancelEditSubBtn = document.getElementById('cancelEditSubBtn');
+      const addBtn = document.getElementById('addBtn');
+      const addStatus = document.getElementById('addStatus');
+      const subscriberList = document.getElementById('subscriberList');
+      const totalCount = document.getElementById('totalCount');
+      const refreshBtn = document.getElementById('refreshBtn');
+      let editingSubPhone = null;
+
+      function resetSubForm() {
+        editingSubPhone = null;
+        newPhone.value = '';
+        newName.value = '';
+        newTags.value = '';
+        newPhone.disabled = false;
+        subFormTitle.textContent = 'Add Subscriber';
+        addBtn.textContent = 'Add';
+        cancelEditSubBtn.style.display = 'none';
+        addStatus.className = 'message-status';
+        addStatus.textContent = '';
+      }
+
+      function editSubscriber(phone) {
+        const sub = subscribers.find(s => s.phone === phone);
+        if (!sub) return;
+        editingSubPhone = phone;
+        newPhone.value = sub.phone;
+        newPhone.disabled = true;
+        newName.value = sub.name || '';
+        newTags.value = (sub.tags || []).join(', ');
+        subFormTitle.textContent = 'Edit Subscriber';
+        addBtn.textContent = 'Save';
+        cancelEditSubBtn.style.display = 'inline-block';
+        addStatus.className = 'message-status';
+        addStatus.textContent = '';
+        newName.focus();
+      }
+
+      cancelEditSubBtn.addEventListener('click', resetSubForm);
 
 async function loadBalance() { const wrap = document.getElementById('balanceWrap'); const val = document.getElementById('balanceValue'); try { const res = await apiFetch('/api/balance'); const bodyText = await res.text(); if (!res.ok) { val.textContent = `error ${res.status}: ${bodyText.slice(0, 120)}`; wrap.classList.remove('hidden'); return; } const data = JSON.parse(bodyText); if (data.balance !== undefined) { val.textContent = `${Math.abs(parseFloat(data.balance)).toFixed(2)} ${(data.currency || 'usd').toUpperCase()}`; } else { val.textContent = 'unexpected response: ' + bodyText.slice(0, 120); } wrap.classList.remove('hidden'); } catch (e) { val.textContent = 'JS error: ' + e.message; wrap.classList.remove('hidden'); } }  
   
@@ -832,43 +874,78 @@ async function loadBalance() { const wrap = document.getElementById('balanceWrap
           <span>
             <span class="${s.status === 'active' ? 'status-active' : 'status-stopped'}">${s.status}</span>
             &nbsp;·&nbsp;
-            <button class="remove-link" data-phone="${s.phone}">remove</button>
+            <button class="remove-link" data-action="edit" data-phone="${s.phone}">edit</button>
+              &nbsp;·&nbsp;
+              <button class="remove-link" data-action="remove" data-phone="${s.phone}">remove</button>
           </span>
         </div>
       `).join('');
 
     subscriberList.querySelectorAll('.remove-link').forEach(btn => {
-      btn.addEventListener('click', () => removeSubscriber(btn.dataset.phone));
+        btn.addEventListener('click', () => {
+          if (btn.dataset.action === 'edit') editSubscriber(btn.dataset.phone);
+          else removeSubscriber(btn.dataset.phone);
+        });
     });
   }
 
   addBtn.addEventListener('click', async () => {
-    const phone = newPhone.value.trim();
-    if (!phone) return;
-    addStatus.className = 'message-status';
-    addStatus.textContent = 'Adding...';
-    try {
-      const res = await apiFetch('/api/subscribers/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
+        const phone = newPhone.value.trim();
+        if (!phone) return;
+        const name = newName.value.trim();
+        const tags = newTags.value.split(',').map(t => t.trim()).filter(Boolean);
+        addStatus.className = 'message-status';
+        addStatus.textContent = editingSubPhone ? 'Saving...' : 'Adding...';
+        try {
+          if (editingSubPhone) {
+            const res = await apiFetch('/api/subscribers/update', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ phone: editingSubPhone, name, tags }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+              subscribers = data.subscribers;
+              renderSubscribers();
+              resetSubForm();
+              addStatus.className = 'message-status success';
+              addStatus.textContent = 'Saved.';
+            } else {
+              addStatus.className = 'message-status error';
+              addStatus.textContent = data.error || 'Failed to save.';
+            }
+          } else {
+            const res = await apiFetch('/api/subscribers/add', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ phone }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+              subscribers = data.subscribers;
+              if (name || tags.length) {
+                const res2 = await apiFetch('/api/subscribers/update', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ phone, name, tags }),
+                });
+                const data2 = await res2.json();
+                if (res2.ok) subscribers = data2.subscribers;
+              }
+              renderSubscribers();
+              resetSubForm();
+              addStatus.className = 'message-status success';
+              addStatus.textContent = 'Added.';
+            } else {
+              addStatus.className = 'message-status error';
+              addStatus.textContent = data.error || 'Failed to add.';
+            }
+          }
+        } catch (e) {
+          addStatus.className = 'message-status error';
+          addStatus.textContent = 'Connection error.';
+        }
       });
-      const data = await res.json();
-      if (res.ok) {
-        subscribers = data.subscribers;
-        renderSubscribers();
-        newPhone.value = '';
-        addStatus.className = 'message-status success';
-        addStatus.textContent = 'Added.';
-      } else {
-        addStatus.className = 'message-status error';
-        addStatus.textContent = data.error || 'Failed to add.';
-      }
-    } catch (e) {
-      addStatus.className = 'message-status error';
-      addStatus.textContent = 'Connection error.';
-    }
-  });
 
   async function removeSubscriber(phone) {
     if (!confirm(`Remove ${phone}?`)) return;
