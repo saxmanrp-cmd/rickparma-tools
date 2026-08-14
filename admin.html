@@ -869,7 +869,7 @@ async function loadBalance() { const wrap = document.getElementById('balanceWrap
         (s.name && s.name.toLowerCase().includes(q)) ||
         (s.phone && s.phone.toLowerCase().includes(q));
       const matchesCat = !cat || (s.tags || []).includes(cat);
-      return matchesSearch && matchesCat;
+      return matchesSearch && matchesCat && s.status !== 'removed';
     });
   }
 
