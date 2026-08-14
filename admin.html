@@ -512,8 +512,12 @@
         <input type="tel" id="newPhone" placeholder="(702) 555-0123">
         <label for="newName" style="margin-top:10px;">Name (optional)</label>
         <input type="text" id="newName" placeholder="First Last">
-        <label for="newTags" style="margin-top:10px;">Categories (comma-separated, optional)</label>
-        <input type="text" id="newTags" placeholder="Nevada, VIP">
+<label for="newTagsSelect" style="margin-top:10px;">Categories (optional — Cmd/Ctrl-click to select multiple)</label>
+        <select id="newTagsSelect" multiple size="6"></select>
+        <div class="row" style="margin-top:6px;">
+          <input type="text" id="newTagCustom" placeholder="Add new category" style="flex:1;">
+          <button type="button" class="btn btn-secondary" id="addNewTagBtn" style="width:auto;">Add category</button>
+        </div>
         <div class="row" style="margin-top:10px;">
           <button class="btn" id="addBtn" style="width:auto; padding: 12px 18px;">Add</button>
           <button class="btn btn-secondary" id="cancelEditSubBtn" style="width:auto; display:none;">Cancel</button>
@@ -757,7 +761,9 @@
 
   const newPhone = document.getElementById('newPhone');
       const newName = document.getElementById('newName');
-      const newTags = document.getElementById('newTags');
+      const newTagsSelect = document.getElementById('newTagsSelect');
+      const newTagCustom = document.getElementById('newTagCustom');
+      const addNewTagBtn = document.getElementById('addNewTagBtn');
       const subFormTitle = document.getElementById('subFormTitle');
       const cancelEditSubBtn = document.getElementById('cancelEditSubBtn');
       const addBtn = document.getElementById('addBtn');
@@ -767,11 +773,20 @@
       const refreshBtn = document.getElementById('refreshBtn');
       let editingSubPhone = null;
 
+function populateNewTagsSelect(selected = []) {
+        const set = new Set();
+        subscribers.forEach(s => (s.tags || []).forEach(t => set.add(t)));
+        selected.forEach(t => set.add(t));
+        const tags = Array.from(set).sort();
+        newTagsSelect.innerHTML = tags.map(t => `<option value="${t.replace(/"/g, '&quot;')}" ${selected.includes(t) ? 'selected' : ''}>${t}</option>`).join('');
+      }
+
       function resetSubForm() {
         editingSubPhone = null;
         newPhone.value = '';
         newName.value = '';
-        newTags.value = '';
+        newTagCustom.value = '';
+        populateNewTagsSelect([]);
         newPhone.disabled = false;
         subFormTitle.textContent = 'Add Subscriber';
         addBtn.textContent = 'Add';
@@ -787,7 +802,8 @@
         newPhone.value = sub.phone;
         newPhone.disabled = true;
         newName.value = sub.name || '';
-        newTags.value = (sub.tags || []).join(', ');
+        newTagCustom.value = '';
+        populateNewTagsSelect(sub.tags || []);
         subFormTitle.textContent = 'Edit Subscriber';
         addBtn.textContent = 'Save';
         cancelEditSubBtn.style.display = 'inline-block';
@@ -798,6 +814,19 @@
 
       cancelEditSubBtn.addEventListener('click', resetSubForm);
 
+      addNewTagBtn.addEventListener('click', () => {
+        const val = newTagCustom.value.trim();
+        if (!val) return;
+        let opt = Array.from(newTagsSelect.options).find(o => o.value === val);
+        if (!opt) {
+          opt = document.createElement('option');
+          opt.value = val;
+          opt.textContent = val;
+          newTagsSelect.appendChild(opt);
+        }
+        opt.selected = true;
+        newTagCustom.value = '';
+      });
 async function loadBalance() { const wrap = document.getElementById('balanceWrap'); const val = document.getElementById('balanceValue'); try { const res = await apiFetch('/api/balance'); const bodyText = await res.text(); if (!res.ok) { val.textContent = `error ${res.status}: ${bodyText.slice(0, 120)}`; wrap.classList.remove('hidden'); return; } const data = JSON.parse(bodyText); if (data.balance !== undefined) { val.textContent = `${Math.abs(parseFloat(data.balance)).toFixed(2)} ${(data.currency || 'usd').toUpperCase()}`; } else { val.textContent = 'unexpected response: ' + bodyText.slice(0, 120); } wrap.classList.remove('hidden'); } catch (e) { val.textContent = 'JS error: ' + e.message; wrap.classList.remove('hidden'); } }  
   
   async function loadSubscribers() {
@@ -851,6 +880,7 @@ async function loadBalance() { const wrap = document.getElementById('balanceWrap
     const active = subscribers.filter(s => s.status === 'active');
     totalCount.textContent = `${subscribers.length} total`;
     populateCategoryFilter();
+          if (!editingSubPhone) populateNewTagsSelect();
     if (typeof updateRecipientSummary === 'function') updateRecipientSummary();
     if (typeof updateStatsLine === 'function') updateStatsLine();
 
@@ -893,7 +923,9 @@ async function loadBalance() { const wrap = document.getElementById('balanceWrap
         const phone = newPhone.value.trim();
         if (!phone) return;
         const name = newName.value.trim();
-        const tags = newTags.value.split(',').map(t => t.trim()).filter(Boolean);
+        const customTag = newTagCustom.value.trim();
+        const tags = Array.from(newTagsSelect.selectedOptions).map(o => o.value);
+        if (customTag && !tags.includes(customTag)) tags.push(customTag);
         addStatus.className = 'message-status';
         addStatus.textContent = editingSubPhone ? 'Saving...' : 'Adding...';
         try {
