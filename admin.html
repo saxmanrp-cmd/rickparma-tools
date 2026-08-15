@@ -1217,22 +1217,37 @@ async function loadBalance() { const wrap = document.getElementById('balanceWrap
     if (!recipientPicker.classList.contains('hidden')) renderTagCheckList();
   });
 
-  function isGsm7(str) {
-    const gsm7 = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà^{}\\[~]|€";
-    for (const ch of str) if (!gsm7.includes(ch)) return false;
-    return true;
-  }
+function classifyMessage(str) {
+        const gsm7Basic = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
+        const gsm7Ext = "^{}\\[~]|€";
+        let effLen = 0;
+        for (const ch of str) {
+          if (gsm7Basic.includes(ch)) effLen += 1;
+          else if (gsm7Ext.includes(ch)) effLen += 2;
+          else return { encoding: 'UCS-2', effLen: str.length };
+        }
+        return { encoding: 'GSM-7', effLen };
+      }
 
-  function updateStatsLine() {
-    const len = blastMessage.value.length;
-    const unicode = len > 0 && !isGsm7(blastMessage.value);
-    const parts = len === 0 ? 0 : (unicode ? (len <= 70 ? 1 : Math.ceil(len / 67)) : (len <= 160 ? 1 : Math.ceil(len / 153)));
-    const costPerRecipient = parts * 0.0079;
-    const recipients = currentRecipients().length;
-    const total = costPerRecipient * recipients;
-    const warning = unicode ? ' ⚠️ special characters (e.g. curly quotes/em dashes) force Unicode encoding — smaller segments, higher cost' : '';
-    statsLine.textContent = `Characters: ${len} · Parts: ${parts} · Est. cost: $${costPerRecipient.toFixed(4)}/recipient (~$${total.toFixed(2)} total)${warning}`;
-  }
+      function partsFor(str) {
+        const { encoding, effLen } = classifyMessage(str);
+        if (effLen === 0) return { parts: 0, encoding };
+        const parts = encoding === 'GSM-7'
+          ? (effLen <= 160 ? 1 : Math.ceil(effLen / 153))
+          : (effLen <= 70 ? 1 : Math.ceil(effLen / 67));
+        return { parts, encoding };
+      }
+
+      function updateStatsLine() {
+        const msg = blastMessage.value;
+        const len = msg.length;
+        const { parts, encoding } = partsFor(msg);
+        const costPerRecipient = parts * 0.0079;
+        const recipients = currentRecipients().length;
+        const total = costPerRecipient * recipients;
+        const note = encoding === 'UCS-2' ? ' (Unicode encoding — smart quotes/em dashes/emoji use smaller segments)' : '';
+        statsLine.textContent = `Characters: ${len} · Parts: ${parts} · Est. cost: $${costPerRecipient.toFixed(4)}/recipient (~$${total.toFixed(2)} total)${note}`;
+      }
 
   blastMessage.addEventListener('input', updateStatsLine);
 
