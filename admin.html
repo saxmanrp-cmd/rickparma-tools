@@ -1217,13 +1217,21 @@ async function loadBalance() { const wrap = document.getElementById('balanceWrap
     if (!recipientPicker.classList.contains('hidden')) renderTagCheckList();
   });
 
+  function isGsm7(str) {
+    const gsm7 = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà^{}\\[~]|€";
+    for (const ch of str) if (!gsm7.includes(ch)) return false;
+    return true;
+  }
+
   function updateStatsLine() {
     const len = blastMessage.value.length;
-    const parts = len === 0 ? 0 : (len <= 160 ? 1 : Math.ceil(len / 153));
+    const unicode = len > 0 && !isGsm7(blastMessage.value);
+    const parts = len === 0 ? 0 : (unicode ? (len <= 70 ? 1 : Math.ceil(len / 67)) : (len <= 160 ? 1 : Math.ceil(len / 153)));
     const costPerRecipient = parts * 0.0079;
     const recipients = currentRecipients().length;
     const total = costPerRecipient * recipients;
-    statsLine.textContent = `Characters: ${len} · Parts: ${parts} · Est. cost: $${costPerRecipient.toFixed(4)}/recipient (~$${total.toFixed(2)} total)`;
+    const warning = unicode ? ' ⚠️ special characters (e.g. curly quotes/em dashes) force Unicode encoding — smaller segments, higher cost' : '';
+    statsLine.textContent = `Characters: ${len} · Parts: ${parts} · Est. cost: $${costPerRecipient.toFixed(4)}/recipient (~$${total.toFixed(2)} total)${warning}`;
   }
 
   blastMessage.addEventListener('input', updateStatsLine);
