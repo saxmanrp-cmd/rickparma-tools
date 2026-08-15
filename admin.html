@@ -433,10 +433,11 @@
         </div>
         <div class="char-count" id="statsLine">Characters: 0 · Parts: 0 · Est. cost: $0.00</div>
 
-        <label for="blastPhoto">Attach a photo (optional — sends as MMS)</label>
-        <input type="file" id="blastPhoto" accept="image/*">
+        <label for="blastPhoto">Attach a photo or video (optional — sends as MMS)</label>
+        <input type="file" id="blastPhoto" accept="image/*,video/*">
         <div id="blastPhotoPreviewWrap" class="hidden" style="margin-bottom:12px;">
           <img id="blastPhotoPreview" style="max-width:100%; max-height:180px; border-radius:8px; display:block; margin-bottom:6px;">
+          <video id="blastVideoPreview" muted playsinline loop controls style="max-width:100%; max-height:180px; border-radius:8px; display:block; margin-bottom:6px;"></video>
           <span class="subtitle" id="blastPhotoInfo"></span>
           &nbsp;·&nbsp;
           <button class="action-link" id="blastPhotoRemoveBtn">remove photo</button>
@@ -488,10 +489,11 @@
           <option value="">— None —</option>
         </select>
         <textarea id="replyMessage" placeholder="Type a reply..." style="min-height:70px;"></textarea>
-        <label for="replyPhoto">Attach a photo (optional — sends as MMS)</label>
-        <input type="file" id="replyPhoto" accept="image/*">
+        <label for="replyPhoto">Attach a photo or video (optional — sends as MMS)</label>
+        <input type="file" id="replyPhoto" accept="image/*,video/*">
         <div id="replyPhotoPreviewWrap" class="hidden" style="margin-bottom:12px;">
           <img id="replyPhotoPreview" style="max-width:100%; max-height:180px; border-radius:8px; display:block; margin-bottom:6px;">
+          <video id="replyVideoPreview" muted playsinline loop controls style="max-width:100%; max-height:180px; border-radius:8px; display:block; margin-bottom:6px;"></video>
           <span class="subtitle" id="replyPhotoInfo"></span>
           &nbsp;·&nbsp;
           <button class="action-link" id="replyPhotoRemoveBtn">remove photo</button>
@@ -1049,12 +1051,109 @@ async function loadBalance() { const wrap = document.getElementById('balanceWrap
     return { base64, blob, contentType: 'image/jpeg' };
   }
 
+  function isVideoFile(file) {
+    return file.type.indexOf('video') === 0;
+  }
+
+  function isVideoUrl(u) {
+    return typeof u === 'string' && u.indexOf('type=video') !== -1;
+  }
+
+  // Re-encodes a video at low resolution/bitrate so it stays well under Twilio's
+  // MMS size limits — carriers only reliably deliver video MMS when it's small,
+  // so we aim for well under 1MB for a short clip.
+  function compressVideo(file, maxDim = 640, videoBitsPerSecond = 700000) {
+    return new Promise((resolve, reject) => {
+      if (typeof MediaRecorder === 'undefined') { reject(new Error('Video is not supported on this browser.')); return; }
+      let mimeType = '';
+      if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/mp4';
+      else if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('video/webm')) mimeType = 'video/webm';
+      if (!mimeType) { reject(new Error('This browser cannot re-encode video.')); return; }
+
+      const video = document.createElement('video');
+      video.muted = true;
+      video.playsInline = true;
+      const url = URL.createObjectURL(file);
+      video.src = url;
+      let settled = false;
+      function fail(err) {
+        if (settled) return;
+        settled = true;
+        URL.revokeObjectURL(url);
+        reject(err);
+      }
+      function succeed(blob) {
+        if (settled) return;
+        settled = true;
+        URL.revokeObjectURL(url);
+        resolve(blob);
+      }
+      const safetyTimer = setTimeout(() => fail(new Error('Video processing timed out.')), 30000);
+
+      video.onloadedmetadata = () => {
+        try {
+          const scale = Math.min(1, maxDim / Math.max(video.videoWidth, video.videoHeight));
+          const w = Math.round(video.videoWidth * scale) || video.videoWidth;
+          const h = Math.round(video.videoHeight * scale) || video.videoHeight;
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+
+          const stream = canvas.captureStream(30);
+          const chunks = [];
+          const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond });
+          recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+          recorder.onstop = () => {
+            clearTimeout(safetyTimer);
+            if (chunks.length === 0) { fail(new Error('Could not process that video.')); return; }
+            succeed(new Blob(chunks, { type: mimeType }));
+          };
+          recorder.onerror = () => { clearTimeout(safetyTimer); fail(new Error('Could not process that video.')); };
+
+          video.play().then(() => {
+            recorder.start();
+            (function drawFrame() {
+              if (video.paused || video.ended) { recorder.stop(); return; }
+              ctx.drawImage(video, 0, 0, w, h);
+              requestAnimationFrame(drawFrame);
+            })();
+          }).catch(() => { clearTimeout(safetyTimer); fail(new Error('Could not process that video.')); });
+
+          video.onended = () => { try { recorder.stop(); } catch (e) {} };
+        } catch (e) { clearTimeout(safetyTimer); fail(e); }
+      };
+      video.onerror = () => { clearTimeout(safetyTimer); fail(new Error('Could not read that video file.')); };
+    });
+  }
+
   async function uploadPhoto(file, statusEl) {
     statusEl.className = 'message-status';
-    statusEl.textContent = 'Compressing photo...';
+    const isVideo = isVideoFile(file);
+    statusEl.textContent = isVideo ? 'Compressing video...' : 'Compressing photo...';
     try {
-      const { base64, blob, contentType } = await compressImage(file);
-      statusEl.textContent = 'Uploading photo...';
+      let base64, blob, contentType;
+      if (isVideo) {
+        blob = await compressVideo(file);
+        contentType = blob.type || 'video/mp4';
+        if (blob.size > 4.5 * 1024 * 1024) {
+          statusEl.className = 'message-status error';
+          statusEl.textContent = 'That video is too long/large even after compression — try a shorter clip (a few seconds works best).';
+          return null;
+        }
+        base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } else {
+        const r = await compressImage(file);
+        base64 = r.base64;
+        blob = r.blob;
+        contentType = r.contentType;
+      }
+      statusEl.textContent = isVideo ? 'Uploading video...' : 'Uploading photo...';
       const res = await apiFetch('/api/media/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1063,8 +1162,12 @@ async function loadBalance() { const wrap = document.getElementById('balanceWrap
       const data = await res.json();
       if (res.ok) {
         statusEl.className = 'message-status success';
-        statusEl.textContent = `Ready (${(blob.size / 1024).toFixed(0)}KB).`;
-        return { url: data.url, previewUrl: URL.createObjectURL(blob), size: blob.size };
+        const sizeKB = (blob.size / 1024).toFixed(0);
+        statusEl.textContent = (isVideo && blob.size > 1024 * 1024)
+          ? `Ready (${sizeKB}KB) — larger videos may not display on every phone/carrier.`
+          : `Ready (${sizeKB}KB).`;
+        const url = isVideo ? `${data.url}?type=video` : data.url;
+        return { url, previewUrl: URL.createObjectURL(blob), size: blob.size, isVideo };
       } else {
         statusEl.className = 'message-status error';
         statusEl.textContent = data.error || 'Upload failed.';
@@ -1072,7 +1175,7 @@ async function loadBalance() { const wrap = document.getElementById('balanceWrap
       }
     } catch (e) {
       statusEl.className = 'message-status error';
-      statusEl.textContent = 'Could not process that image.';
+      statusEl.textContent = (e && e.message) || (isVideo ? 'Could not process that video.' : 'Could not process that image.');
       return null;
     }
   }
@@ -1083,6 +1186,7 @@ async function loadBalance() { const wrap = document.getElementById('balanceWrap
   const blastPhoto = document.getElementById('blastPhoto');
   const blastPhotoPreviewWrap = document.getElementById('blastPhotoPreviewWrap');
   const blastPhotoPreview = document.getElementById('blastPhotoPreview');
+  const blastVideoPreview = document.getElementById('blastVideoPreview');
   const blastPhotoInfo = document.getElementById('blastPhotoInfo');
   const blastPhotoStatus = document.getElementById('blastPhotoStatus');
   const blastPhotoRemoveBtn = document.getElementById('blastPhotoRemoveBtn');
@@ -1093,7 +1197,15 @@ async function loadBalance() { const wrap = document.getElementById('balanceWrap
     const result = await uploadPhoto(file, blastPhotoStatus);
     if (result) {
       blastMediaUrl = result.url;
-      blastPhotoPreview.src = result.previewUrl;
+      if (result.isVideo) {
+        blastVideoPreview.src = result.previewUrl;
+        blastVideoPreview.style.display = 'block';
+        blastPhotoPreview.style.display = 'none';
+      } else {
+        blastPhotoPreview.src = result.previewUrl;
+        blastPhotoPreview.style.display = 'block';
+        blastVideoPreview.style.display = 'none';
+      }
       blastPhotoInfo.textContent = `${(result.size / 1024).toFixed(0)}KB, ready to send`;
       blastPhotoPreviewWrap.classList.remove('hidden');
     }
@@ -1102,6 +1214,9 @@ async function loadBalance() { const wrap = document.getElementById('balanceWrap
   blastPhotoRemoveBtn.addEventListener('click', () => {
     blastMediaUrl = null;
     blastPhoto.value = '';
+    blastVideoPreview.pause();
+    blastVideoPreview.removeAttribute('src');
+    blastVideoPreview.load();
     blastPhotoPreviewWrap.classList.add('hidden');
     blastPhotoStatus.textContent = '';
   });
@@ -1417,6 +1532,7 @@ blastPhoto.addEventListener('change', updateStatsLine);
   const replyPhoto = document.getElementById('replyPhoto');
   const replyPhotoPreviewWrap = document.getElementById('replyPhotoPreviewWrap');
   const replyPhotoPreview = document.getElementById('replyPhotoPreview');
+  const replyVideoPreview = document.getElementById('replyVideoPreview');
   const replyPhotoInfo = document.getElementById('replyPhotoInfo');
   const replyPhotoStatus = document.getElementById('replyPhotoStatus');
   const replyPhotoRemoveBtn = document.getElementById('replyPhotoRemoveBtn');
@@ -1427,7 +1543,15 @@ blastPhoto.addEventListener('change', updateStatsLine);
     const result = await uploadPhoto(file, replyPhotoStatus);
     if (result) {
       replyMediaUrl = result.url;
-      replyPhotoPreview.src = result.previewUrl;
+      if (result.isVideo) {
+        replyVideoPreview.src = result.previewUrl;
+        replyVideoPreview.style.display = 'block';
+        replyPhotoPreview.style.display = 'none';
+      } else {
+        replyPhotoPreview.src = result.previewUrl;
+        replyPhotoPreview.style.display = 'block';
+        replyVideoPreview.style.display = 'none';
+      }
       replyPhotoInfo.textContent = `${(result.size / 1024).toFixed(0)}KB, ready to send`;
       replyPhotoPreviewWrap.classList.remove('hidden');
     }
@@ -1436,6 +1560,9 @@ blastPhoto.addEventListener('change', updateStatsLine);
   replyPhotoRemoveBtn.addEventListener('click', () => {
     replyMediaUrl = null;
     replyPhoto.value = '';
+    replyVideoPreview.pause();
+    replyVideoPreview.removeAttribute('src');
+    replyVideoPreview.load();
     replyPhotoPreviewWrap.classList.add('hidden');
     replyPhotoStatus.textContent = '';
   });
@@ -1556,7 +1683,7 @@ blastPhoto.addEventListener('change', updateStatsLine);
     deleteConversations(Array.from(selectedConvoPhones));
   });
 
-  async function openThread(phone) {
+    async function openThread(phone) {
     currentThreadPhone = phone;
     const sub = subscribers.find(s => s.phone === phone);
     threadName.textContent = (sub && sub.name) ? sub.name : phone;
@@ -1571,8 +1698,10 @@ blastPhoto.addEventListener('change', updateStatsLine);
       threadScroll.innerHTML = messages.map(m => `
         <div class="thread-bubble ${m.dir}">
           ${m.media ? (m.dir === 'out'
-            ? `<img src="${m.media}" style="max-width:100%; border-radius:6px; margin-bottom:4px; display:block;">`
-            : `<div class="subtitle" style="margin-bottom:4px;">📷 Photo received</div>`) : ''}
+            ? (isVideoUrl(m.media)
+                ? `<video src="${m.media}" muted playsinline loop controls style="max-width:100%; border-radius:6px; margin-bottom:4px; display:block;"></video>`
+                : `<img src="${m.media}" style="max-width:100%; border-radius:6px; margin-bottom:4px; display:block;">`)
+            : `<div class="subtitle" style="margin-bottom:4px;">${isVideoUrl(m.media) ? '🎬 Video received' : '📷 Photo received'}</div>`) : ''}
           ${m.body || ''}
           <div class="thread-time">${new Date(m.at).toLocaleString()}</div>
         </div>
@@ -1883,7 +2012,7 @@ blastPhoto.addEventListener('change', updateStatsLine);
             <strong>${entry.segmentLabel || 'All active subscribers'}</strong>
             <span class="subtitle" style="font-size:0.78rem;">${when}</span>
           </div>
-          ${entry.mediaUrl ? `<img src="${entry.mediaUrl}" style="max-width:160px; border-radius:8px;">` : ''}
+                  ${entry.mediaUrl ? (isVideoUrl(entry.mediaUrl) ? `<video src="${entry.mediaUrl}" muted playsinline loop controls style="max-width:160px; border-radius:8px;"></video>` : `<img src="${entry.mediaUrl}" style="max-width:160px; border-radius:8px;">`) : ''}
           <div class="subtitle" style="font-size:0.85rem;">${(entry.message || '(photo only)').slice(0, 200)}</div>
           <div style="font-size:0.82rem; color:var(--steel);">
             Sent: ${entry.sent} · Failed: ${entry.failed} · Success rate: ${successRate}%
