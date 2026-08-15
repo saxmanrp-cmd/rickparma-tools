@@ -1332,13 +1332,50 @@ async function loadBalance() { const wrap = document.getElementById('balanceWrap
     if (!recipientPicker.classList.contains('hidden')) renderTagCheckList();
   });
 
-function classifyMessage(str) {
-        const gsm7Basic = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
-        const gsm7Ext = "^{}\\[~]|€";
+const GSM7_BASIC = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
+      const GSM7_EXT = "^{}\\[~]|€";
+
+      const SMART_TO_GSM7 = {
+        '‘': "'", '’': "'", '‚': "'", '‛': "'", '′': "'",
+        '“': '"', '”': '"', '„': '"', '‟': '"', '″': '"',
+        '–': '-', '—': '-', '―': '-', '−': '-',
+        '…': '...',
+        '•': '*', '‣': '*', '◦': '*', '⁃': '*',
+        ' ': ' ',
+        '™': '(TM)', '®': '(R)', '©': '(C)',
+        '×': 'x', '÷': '/'
+      };
+
+      // Auto-fixes iPhone "smart punctuation" (curly quotes, em/en dashes, ellipsis, etc.)
+      // back to their plain-ASCII GSM-7 equivalents, and silently drops anything else
+      // that isn't in the GSM-7 character set (emoji, other unicode) so a blast message
+      // can never accidentally fall into the expensive Unicode encoding.
+      function sanitizeToGSM7(str) {
+        if (!str) return str;
+        let out = '';
+        for (const ch of str) {
+          if (SMART_TO_GSM7[ch] !== undefined) { out += SMART_TO_GSM7[ch]; continue; }
+          if (GSM7_BASIC.includes(ch) || GSM7_EXT.includes(ch)) { out += ch; continue; }
+        }
+        return out;
+      }
+
+      function sanitizeTextareaInput(el) {
+        const pos = el.selectionStart;
+        const before = sanitizeToGSM7(el.value.slice(0, pos));
+        const after = sanitizeToGSM7(el.value.slice(pos));
+        const next = before + after;
+        if (next !== el.value) {
+          el.value = next;
+          el.setSelectionRange(before.length, before.length);
+        }
+      }
+
+      function classifyMessage(str) {
         let effLen = 0;
         for (const ch of str) {
-          if (gsm7Basic.includes(ch)) effLen += 1;
-          else if (gsm7Ext.includes(ch)) effLen += 2;
+          if (GSM7_BASIC.includes(ch)) effLen += 1;
+          else if (GSM7_EXT.includes(ch)) effLen += 2;
           else return { encoding: 'UCS-2', effLen: str.length };
         }
         return { encoding: 'GSM-7', effLen };
@@ -1375,7 +1412,7 @@ function updateStatsLine() {
         statsLine.textContent = `Characters: ${len} · Parts: ${parts} · Est. cost: $${costPerRecipient.toFixed(4)}/recipient (~$${total.toFixed(2)} total)${note}`;
       }
 
-  blastMessage.addEventListener('input', updateStatsLine);
+      blastMessage.addEventListener('input', () => { sanitizeTextareaInput(blastMessage); updateStatsLine(); });
 blastPhoto.addEventListener('change', updateStatsLine);
 
   insertNameTagBtn.addEventListener('click', () => {
@@ -1389,7 +1426,7 @@ blastPhoto.addEventListener('change', updateStatsLine);
   templateSelect.addEventListener('change', () => {
     const t = templates.find(t => t.id === templateSelect.value);
     if (t) {
-      blastMessage.value = t.body;
+              blastMessage.value = sanitizeToGSM7(t.body);
       updateStatsLine();
     }
   });
@@ -1516,6 +1553,7 @@ blastPhoto.addEventListener('change', updateStatsLine);
   const threadName = document.getElementById('threadName');
   const threadScroll = document.getElementById('threadScroll');
   const replyMessage = document.getElementById('replyMessage');
+        replyMessage.addEventListener('input', () => sanitizeTextareaInput(replyMessage));
   const replySendBtn = document.getElementById('replySendBtn');
   const replyStatus = document.getElementById('replyStatus');
   const backToConvosBtn = document.getElementById('backToConvosBtn');
