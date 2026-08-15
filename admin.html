@@ -1238,18 +1238,30 @@ function classifyMessage(str) {
         return { parts, encoding };
       }
 
-      function updateStatsLine() {
+function updateStatsLine() {
         const msg = blastMessage.value;
         const len = msg.length;
-        const { parts, encoding } = partsFor(msg);
-        const costPerRecipient = parts * 0.0079;
+        const hasPhoto = !!(blastPhoto.files && blastPhoto.files.length > 0);
+        let parts, encoding, costPerRecipient, note;
+        if (hasPhoto) {
+          parts = 1;
+          encoding = 'MMS';
+          costPerRecipient = 0.02;
+          note = ' (MMS — photo attached: billed as 1 message per recipient at a flat rate, not by character count)';
+        } else {
+          const result = partsFor(msg);
+          parts = result.parts;
+          encoding = result.encoding;
+          costPerRecipient = parts * 0.0079;
+          note = encoding === 'UCS-2' ? ' (Unicode encoding — smart quotes/em dashes/emoji use smaller segments)' : '';
+        }
         const recipients = currentRecipients().length;
         const total = costPerRecipient * recipients;
-        const note = encoding === 'UCS-2' ? ' (Unicode encoding — smart quotes/em dashes/emoji use smaller segments)' : '';
         statsLine.textContent = `Characters: ${len} · Parts: ${parts} · Est. cost: $${costPerRecipient.toFixed(4)}/recipient (~$${total.toFixed(2)} total)${note}`;
       }
 
   blastMessage.addEventListener('input', updateStatsLine);
+blastPhoto.addEventListener('change', updateStatsLine);
 
   insertNameTagBtn.addEventListener('click', () => {
     const pos = blastMessage.selectionStart || blastMessage.value.length;
