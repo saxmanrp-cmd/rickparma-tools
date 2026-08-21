@@ -393,6 +393,7 @@
 
     <div class="tabs">
       <button class="tab-btn active" data-tab="blast">Blast</button>
+        <button class="tab-btn" data-tab="schedule">Schedule</button>
       <button class="tab-btn" data-tab="messages">Messages</button>
       <button class="tab-btn" data-tab="subscribers">Subscribers</button>
       <button class="tab-btn" data-tab="templates">Templates</button>
@@ -461,6 +462,46 @@
           <button class="btn btn-secondary" id="editBlastBtn">← Edit Message</button>
           <button class="btn" id="confirmSendBtn">Send Now</button>
         </div>
+      </div>
+    </div>
+
+    <!-- SCHEDULE TAB -->
+    <div class="tab-panel" id="tab-schedule">
+      <div class="card">
+        <h2>Schedule a Blast</h2>
+        <label>Message</label>
+        <textarea id="schedMessage" placeholder="Hey {{first_name}}! Catch me live this Friday at..."></textarea>
+        <label>Media URL (optional)</label>
+        <input type="text" id="schedMediaUrl" placeholder="https://...">
+        <label>Segment Label (optional, for your own reference)</label>
+        <input type="text" id="schedSegmentLabel" placeholder="e.g. VIP list">
+        <label>Repeat</label>
+        <select id="schedRecurrence">
+          <option value="">One-time</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+        <div id="schedOneTimeRow"><label>Send at</label><input type="datetime-local" id="schedSendAt"></div>
+        <div id="schedTimeRow" style="display:none"><label>Time</label><input type="time" id="schedTime" value="09:00"></div>
+        <div id="schedWeeklyRow" style="display:none"><label>Day of week</label>
+          <select id="schedDayOfWeek">
+            <option value="0">Sunday</option>
+            <option value="1">Monday</option>
+            <option value="2">Tuesday</option>
+            <option value="3">Wednesday</option>
+            <option value="4">Thursday</option>
+            <option value="5">Friday</option>
+            <option value="6">Saturday</option>
+          </select>
+        </div>
+        <div id="schedMonthlyRow" style="display:none"><label>Day of month</label><input type="number" id="schedDayOfMonth" min="1" max="28" value="1"></div>
+        <button class="btn" id="createScheduledBtn">Schedule Blast</button>
+        <div id="schedFormMsg"></div>
+      </div>
+      <div class="card">
+        <h2>Upcoming Scheduled Blasts</h2>
+        <div id="scheduledList">Loading...</div>
       </div>
     </div>
 
@@ -692,6 +733,103 @@
     }
   });
 
+  // ---- Scheduling ----
+  function updateSchedRowsVisibility() {
+    const freq = document.getElementById('schedRecurrence').value;
+    document.getElementById('schedOneTimeRow').style.display = freq ? 'none' : '';
+    document.getElementById('schedTimeRow').style.display = freq ? '' : 'none';
+    document.getElementById('schedWeeklyRow').style.display = freq === 'weekly' ? '' : 'none';
+    document.getElementById('schedMonthlyRow').style.display = freq === 'monthly' ? '' : 'none';
+  }
+  document.getElementById('schedRecurrence').addEventListener('change', updateSchedRowsVisibility);
+
+  function renderScheduledList(items) {
+    const el = document.getElementById('scheduledList');
+    if (!items || !items.length) {
+      el.innerHTML = '<p>No scheduled blasts.</p>';
+      return;
+    }
+    el.innerHTML = items.map((item) => {
+      const when = item.nextRun ? new Date(item.nextRun).toLocaleString() : '(none)';
+      const rec = item.recurrence ? item.recurrence.freq : 'one-time';
+      const status = item.status || 'pending';
+      const cancelBtn = status === 'pending'
+        ? '<button class="btn small cancelSchedBtn" data-id="' + item.id + '">Cancel</button>'
+        : '';
+      return '<div class="scheduled-item">' +
+        '<div><strong>' + when + '</strong> (' + rec + ') — ' + status + '</div>' +
+        '<div>' + (item.message || '').slice(0, 120) + '</div>' +
+        cancelBtn +
+        '</div>';
+    }).join('');
+    document.querySelectorAll('.cancelSchedBtn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        await apiFetch('/api/scheduled/cancel', { method: 'POST', body: JSON.stringify({ id: btn.dataset.id }) });
+        loadScheduledBlasts();
+      });
+    });
+  }
+
+  async function loadScheduledBlasts() {
+    const el = document.getElementById('scheduledList');
+    el.innerHTML = 'Loading...';
+    try {
+      const res = await apiFetch('/api/scheduled');
+      const data = await res.json();
+      renderScheduledList(data.scheduled || []);
+    } catch (e) {
+      el.innerHTML = '<p>Failed to load scheduled blasts.</p>';
+    }
+  }
+
+  document.getElementById('createScheduledBtn').addEventListener('click', async () => {
+    const msgEl = document.getElementById('schedFormMsg');
+    msgEl.textContent = '';
+    const message = document.getElementById('schedMessage').value.trim();
+    const mediaUrl = document.getElementById('schedMediaUrl').value.trim();
+    const segmentLabel = document.getElementById('schedSegmentLabel').value.trim();
+    const freq = document.getElementById('schedRecurrence').value;
+    if (!message) {
+      msgEl.textContent = 'Message is required.';
+      return;
+    }
+    const payload = { message, mediaUrl: mediaUrl || undefined, segmentLabel: segmentLabel || undefined };
+    if (!freq) {
+      const sendAt = document.getElementById('schedSendAt').value;
+      if (!sendAt) {
+        msgEl.textContent = 'Pick a send time.';
+        return;
+      }
+      payload.sendAt = new Date(sendAt).toISOString();
+    } else {
+      payload.recurrence = {
+        freq,
+        time: document.getElementById('schedTime').value || '09:00',
+        dayOfWeek: freq === 'weekly' ? Number(document.getElementById('schedDayOfWeek').value) : undefined,
+        dayOfMonth: freq === 'monthly' ? Number(document.getElementById('schedDayOfMonth').value) : undefined,
+      };
+    }
+    try {
+      const res = await apiFetch('/api/scheduled', { method: 'POST', body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (data.error) {
+        msgEl.textContent = data.error;
+      } else {
+        msgEl.textContent = 'Scheduled!';
+        document.getElementById('schedMessage').value = '';
+        document.getElementById('schedMediaUrl').value = '';
+        document.getElementById('schedSegmentLabel').value = '';
+        loadScheduledBlasts();
+      }
+    } catch (e) {
+      msgEl.textContent = 'Failed to schedule blast.';
+    }
+  });
+
+  document.querySelector('[data-tab="schedule"]').addEventListener('click', loadScheduledBlasts);
+
+
   // ---- Tabs ----
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -732,6 +870,7 @@
   async function unlock() {
     lockError.textContent = "";
     const ok = await loadSubscribers();
+    loadScheduledBlasts();
     if (ok) {
       lockScreen.classList.add('hidden');
       app.classList.remove('hidden');
