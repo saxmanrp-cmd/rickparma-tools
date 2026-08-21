@@ -393,7 +393,7 @@
 
     <div class="tabs">
       <button class="tab-btn active" data-tab="blast">Blast</button>
-        <button class="tab-btn" data-tab="schedule">Schedule</button>
+        <button class="tab-btn" data-tab="schedule">Scheduled</button>
       <button class="tab-btn" data-tab="messages">Messages</button>
       <button class="tab-btn" data-tab="subscribers">Subscribers</button>
       <button class="tab-btn" data-tab="templates">Templates</button>
@@ -445,6 +445,36 @@
         </div>
         <div class="message-status" id="blastPhotoStatus"></div>
 
+
+        <label for="blastWhen">When</label>
+        <select id="blastWhen">
+          <option value="now">Send now</option>
+          <option value="scheduled">Schedule for later</option>
+        </select>
+        <div id="blastScheduleFields" class="hidden" style="margin-top:10px; margin-bottom:14px;">
+          <label>Repeat</label>
+          <select id="blastRecurrence">
+            <option value="">One-time</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+          <div id="blastOneTimeRow"><label>Send at</label><input type="datetime-local" id="blastSendAt"></div>
+          <div id="blastTimeRow" style="display:none"><label>Time</label><input type="time" id="blastTime" value="09:00"></div>
+          <div id="blastWeeklyRow" style="display:none"><label>Day of week</label>
+            <select id="blastDayOfWeek">
+              <option value="0">Sunday</option>
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+            </select>
+          </div>
+          <div id="blastMonthlyRow" style="display:none"><label>Day of month</label><input type="number" id="blastDayOfMonth" min="1" max="28" value="1"></div>
+        </div>
+
         <button class="btn" id="previewBtn">Preview</button>
         <div class="message-status" id="sendStatus"></div>
       </div>
@@ -461,6 +491,7 @@
         <div class="row" style="margin-top:16px;">
           <button class="btn btn-secondary" id="editBlastBtn">← Edit Message</button>
           <button class="btn" id="confirmSendBtn">Send Now</button>
+          <button class="btn hidden" id="confirmScheduleBtn">Schedule Blast</button>
         </div>
       </div>
     </div>
@@ -468,39 +499,8 @@
     <!-- SCHEDULE TAB -->
     <div class="tab-panel" id="tab-schedule">
       <div class="card">
-        <h2>Schedule a Blast</h2>
-        <label>Message</label>
-        <textarea id="schedMessage" placeholder="Hey {{first_name}}! Catch me live this Friday at..."></textarea>
-        <label>Media URL (optional)</label>
-        <input type="text" id="schedMediaUrl" placeholder="https://...">
-        <label>Segment Label (optional, for your own reference)</label>
-        <input type="text" id="schedSegmentLabel" placeholder="e.g. VIP list">
-        <label>Repeat</label>
-        <select id="schedRecurrence">
-          <option value="">One-time</option>
-          <option value="daily">Daily</option>
-          <option value="weekly">Weekly</option>
-          <option value="monthly">Monthly</option>
-        </select>
-        <div id="schedOneTimeRow"><label>Send at</label><input type="datetime-local" id="schedSendAt"></div>
-        <div id="schedTimeRow" style="display:none"><label>Time</label><input type="time" id="schedTime" value="09:00"></div>
-        <div id="schedWeeklyRow" style="display:none"><label>Day of week</label>
-          <select id="schedDayOfWeek">
-            <option value="0">Sunday</option>
-            <option value="1">Monday</option>
-            <option value="2">Tuesday</option>
-            <option value="3">Wednesday</option>
-            <option value="4">Thursday</option>
-            <option value="5">Friday</option>
-            <option value="6">Saturday</option>
-          </select>
-        </div>
-        <div id="schedMonthlyRow" style="display:none"><label>Day of month</label><input type="number" id="schedDayOfMonth" min="1" max="28" value="1"></div>
-        <button class="btn" id="createScheduledBtn">Schedule Blast</button>
-        <div id="schedFormMsg"></div>
-      </div>
-      <div class="card">
         <h2>Upcoming Scheduled Blasts</h2>
+        <p class="subtitle" style="margin-bottom:12px;">To schedule a blast, compose it on the Blast tab and choose "Schedule for later" under When.</p>
         <div id="scheduledList">Loading...</div>
       </div>
     </div>
@@ -733,16 +733,7 @@
     }
   });
 
-  // ---- Scheduling ----
-  function updateSchedRowsVisibility() {
-    const freq = document.getElementById('schedRecurrence').value;
-    document.getElementById('schedOneTimeRow').style.display = freq ? 'none' : '';
-    document.getElementById('schedTimeRow').style.display = freq ? '' : 'none';
-    document.getElementById('schedWeeklyRow').style.display = freq === 'weekly' ? '' : 'none';
-    document.getElementById('schedMonthlyRow').style.display = freq === 'monthly' ? '' : 'none';
-  }
-  document.getElementById('schedRecurrence').addEventListener('change', updateSchedRowsVisibility);
-
+  // ---- Scheduling (list/cancel only, composing happens on the Blast tab) ----
   function renderScheduledList(items) {
     const el = document.getElementById('scheduledList');
     if (!items || !items.length) {
@@ -782,50 +773,6 @@
       el.innerHTML = '<p>Failed to load scheduled blasts.</p>';
     }
   }
-
-  document.getElementById('createScheduledBtn').addEventListener('click', async () => {
-    const msgEl = document.getElementById('schedFormMsg');
-    msgEl.textContent = '';
-    const message = document.getElementById('schedMessage').value.trim();
-    const mediaUrl = document.getElementById('schedMediaUrl').value.trim();
-    const segmentLabel = document.getElementById('schedSegmentLabel').value.trim();
-    const freq = document.getElementById('schedRecurrence').value;
-    if (!message) {
-      msgEl.textContent = 'Message is required.';
-      return;
-    }
-    const payload = { message, mediaUrl: mediaUrl || undefined, segmentLabel: segmentLabel || undefined };
-    if (!freq) {
-      const sendAt = document.getElementById('schedSendAt').value;
-      if (!sendAt) {
-        msgEl.textContent = 'Pick a send time.';
-        return;
-      }
-      payload.sendAt = new Date(sendAt).toISOString();
-    } else {
-      payload.recurrence = {
-        freq,
-        time: document.getElementById('schedTime').value || '09:00',
-        dayOfWeek: freq === 'weekly' ? Number(document.getElementById('schedDayOfWeek').value) : undefined,
-        dayOfMonth: freq === 'monthly' ? Number(document.getElementById('schedDayOfMonth').value) : undefined,
-      };
-    }
-    try {
-      const res = await apiFetch('/api/scheduled', { method: 'POST', body: JSON.stringify(payload) });
-      const data = await res.json();
-      if (data.error) {
-        msgEl.textContent = data.error;
-      } else {
-        msgEl.textContent = 'Scheduled!';
-        document.getElementById('schedMessage').value = '';
-        document.getElementById('schedMediaUrl').value = '';
-        document.getElementById('schedSegmentLabel').value = '';
-        loadScheduledBlasts();
-      }
-    } catch (e) {
-      msgEl.textContent = 'Failed to schedule blast.';
-    }
-  });
 
   document.querySelector('[data-tab="schedule"]').addEventListener('click', loadScheduledBlasts);
 
@@ -1377,6 +1324,32 @@ async function loadBalance() { const wrap = document.getElementById('balanceWrap
   const previewRecipientCount = document.getElementById('previewRecipientCount');
   const editBlastBtn = document.getElementById('editBlastBtn');
   const confirmSendBtn = document.getElementById('confirmSendBtn');
+  const confirmScheduleBtn = document.getElementById('confirmScheduleBtn');
+  const blastWhen = document.getElementById('blastWhen');
+  const blastScheduleFields = document.getElementById('blastScheduleFields');
+  const blastRecurrence = document.getElementById('blastRecurrence');
+  const blastSendAt = document.getElementById('blastSendAt');
+  const blastTime = document.getElementById('blastTime');
+  const blastDayOfWeek = document.getElementById('blastDayOfWeek');
+  const blastDayOfMonth = document.getElementById('blastDayOfMonth');
+  const blastOneTimeRow = document.getElementById('blastOneTimeRow');
+  const blastTimeRow = document.getElementById('blastTimeRow');
+  const blastWeeklyRow = document.getElementById('blastWeeklyRow');
+  const blastMonthlyRow = document.getElementById('blastMonthlyRow');
+
+  function updateBlastScheduleRowsVisibility() {
+    const freq = blastRecurrence.value;
+    blastOneTimeRow.style.display = freq ? 'none' : '';
+    blastTimeRow.style.display = freq ? '' : 'none';
+    blastWeeklyRow.style.display = freq === 'weekly' ? '' : 'none';
+    blastMonthlyRow.style.display = freq === 'monthly' ? '' : 'none';
+  }
+  blastRecurrence.addEventListener('change', updateBlastScheduleRowsVisibility);
+
+  blastWhen.addEventListener('change', () => {
+    blastScheduleFields.classList.toggle('hidden', blastWhen.value !== 'scheduled');
+  });
+
 
   let selectedTags = [];
   let manualNumbers = []; // ad-hoc numbers for this blast only, not saved as subscribers
@@ -1601,8 +1574,17 @@ blastPhoto.addEventListener('change', updateStatsLine);
     document.querySelectorAll('#tab-blast .card').forEach(c => {
       if (c.id !== 'previewCard') c.classList.add('hidden');
     });
+    if (blastWhen.value === 'scheduled' && !blastRecurrence.value && !blastSendAt.value) {
+      sendStatus.className = 'message-status error';
+      sendStatus.textContent = 'Pick a send time or a repeat option.';
+      return;
+    }
+
     previewCard.classList.remove('hidden');
     previewCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    confirmSendBtn.classList.toggle('hidden', blastWhen.value !== 'now');
+    confirmScheduleBtn.classList.toggle('hidden', blastWhen.value !== 'scheduled');
   });
 
   editBlastBtn.addEventListener('click', () => {
@@ -1679,6 +1661,69 @@ blastPhoto.addEventListener('change', updateStatsLine);
       sendStatus.textContent = 'Connection error.';
     }
     confirmSendBtn.disabled = false;
+    editBlastBtn.disabled = false;
+  });
+
+  confirmScheduleBtn.addEventListener('click', async () => {
+    const message = blastMessage.value.trim();
+
+    confirmScheduleBtn.disabled = true;
+    editBlastBtn.disabled = true;
+    sendStatus.className = 'message-status';
+
+    const segmentLabel = toSummaryBtn.textContent.replace(/s*▾s*$/, '');
+    const payload = {
+      message,
+      tags: selectedTags,
+      extraNumbers: manualNumbers,
+      mediaUrl: blastMediaUrl,
+      segmentLabel,
+    };
+    const freq = blastRecurrence.value;
+    if (!freq) {
+      payload.sendAt = new Date(blastSendAt.value).toISOString();
+    } else {
+      payload.recurrence = {
+        freq,
+        time: blastTime.value || '09:00',
+        dayOfWeek: freq === 'weekly' ? Number(blastDayOfWeek.value) : undefined,
+        dayOfMonth: freq === 'monthly' ? Number(blastDayOfMonth.value) : undefined,
+      };
+    }
+
+    try {
+      const res = await apiFetch('/api/scheduled', { method: 'POST', body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        sendStatus.className = 'message-status error';
+        sendStatus.textContent = data.error || 'Failed to schedule blast.';
+        confirmScheduleBtn.disabled = false;
+        editBlastBtn.disabled = false;
+        return;
+      }
+      sendStatus.className = 'message-status success';
+      sendStatus.textContent = 'Scheduled!';
+      blastMessage.value = '';
+      manualNumbers = [];
+      renderManualNumbers();
+      blastMediaUrl = null;
+      blastPhoto.value = '';
+      blastPhotoPreviewWrap.classList.add('hidden');
+      blastPhotoStatus.textContent = '';
+      blastWhen.value = 'now';
+      blastScheduleFields.classList.add('hidden');
+      blastRecurrence.value = '';
+      blastSendAt.value = '';
+      updateStatsLine();
+      updateRecipientSummary();
+      previewCard.classList.add('hidden');
+      document.querySelectorAll('#tab-blast .card').forEach(c => c.classList.remove('hidden'));
+      if (typeof loadScheduledBlasts === 'function') loadScheduledBlasts();
+    } catch (e) {
+      sendStatus.className = 'message-status error';
+      sendStatus.textContent = 'Connection error.';
+    }
+    confirmScheduleBtn.disabled = false;
     editBlastBtn.disabled = false;
   });
 
