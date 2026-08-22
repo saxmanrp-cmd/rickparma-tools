@@ -86,6 +86,21 @@
               <div id="instagramTypeHint" class="field-hint">Post: photo · Story: photo/video · Reel: video</div>
             </div>
 
+            <div id="instagramReelAudioWrap" class="ig-audio-wrap hidden">
+              <div class="ig-people-head">
+                <div>
+                  <div class="section-label small-label">Reel Audio</div>
+                  <div class="field-hint left-hint">Name the original audio already embedded in your video.</div>
+                </div>
+                <span class="advanced-badge">REEL</span>
+              </div>
+              <div class="ig-tool-block">
+                <div class="ig-tool-title"><strong>Original Audio Name</strong><span>Optional</span></div>
+                <input id="igAudioName" class="compact-input full-input" type="text" maxlength="100" autocomplete="off" placeholder="e.g. Live at Easy's — Rick Parma" />
+                <div class="audio-meta-row"><span>This renames your Reel's original audio. It does not add music from Instagram's licensed library.</span><b><span id="igAudioCount">0</span>/100</b></div>
+              </div>
+            </div>
+
             <div id="instagramPeopleWrap" class="ig-people-wrap">
               <div class="ig-people-head">
                 <div>
@@ -218,7 +233,7 @@
         <button id="logoutBtn" class="button secondary full hidden" type="button">Log Out</button>
 
         <button id="clearHistoryBtn" class="danger-link" type="button">Clear prototype data</button>
-        <div class="version-footer">Social Publisher v0.6.4</div>
+        <div class="version-footer">Social Publisher v0.6.5</div>
       </section>
     </main>
 
