@@ -1,0 +1,45 @@
+name: Social Publisher CI
+
+on:
+  push:
+    branches: [main, social-publisher-dev]
+    paths:
+      - 'social-publisher/**'
+      - '.github/workflows/social-publisher-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'social-publisher/**'
+      - '.github/workflows/social-publisher-ci.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: social-publisher
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore verified source
+        run: node scripts/restore-source.mjs
+      - run: npm install
+      - run: npm test
+      - name: Materialize source on development branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/social-publisher-dev'
+        working-directory: .
+        run: |
+          if [[ -n "$(git status --porcelain -- social-publisher/public/app.js social-publisher/src/index.js)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add social-publisher/public/app.js social-publisher/src/index.js
+            git commit -m "Materialize Social Publisher v0.6.4 source"
+            git push
+          else
+            echo "Source already materialized."
+          fi
