@@ -7,6 +7,12 @@ on:
     paths:
       - social-publisher/tools/build-v067.mjs
       - .github/workflows/social-publisher-build-v067.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - social-publisher/**
+      - .github/workflows/social-publisher-build-v067.yml
 
 permissions:
   contents: write
