@@ -6,11 +6,15 @@ import { execFileSync } from 'node:child_process';
 
 const root = path.resolve(new URL('..', import.meta.url).pathname);
 const seedDir = path.join(root, '.seed');
-const chunks = fs.readdirSync(seedDir)
-  .filter(name => name.startsWith('source.tgz.b64.'))
-  .sort();
-
-if (!chunks.length) throw new Error('No source archive chunks found');
+const chunks = [
+  'source.tgz.b64.00',
+  'source.tgz.b64.01a',
+  'source.tgz.b64.01b',
+  'source.tgz.b64.02',
+];
+for (const name of chunks) {
+  if (!fs.existsSync(path.join(seedDir, name))) throw new Error(`Missing source seed chunk: ${name}`);
+}
 const encoded = chunks.map(name => fs.readFileSync(path.join(seedDir, name), 'utf8').trim()).join('');
 const archive = Buffer.from(encoded, 'base64');
 const hash = crypto.createHash('sha256').update(archive).digest('hex');
