@@ -1,2 +1,2 @@
 Rick Parma Social Publisher
-Version 0.6.6 - Max Reach + Facebook Reels
+Version 0.6.6.1 - Threads video retry reliability

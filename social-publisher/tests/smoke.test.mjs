@@ -16,7 +16,7 @@ test('worker health and auth guard', async () => {
   assert.equal(response.status, 200);
   const health = await response.json();
   assert.equal(health.ok, true);
-  assert.equal(health.version, '0.6.6');
+  assert.equal(health.version, '0.6.6.1');
 
   response = await worker.fetch(new Request('https://social.test/api/auth/status'), {}, { waitUntil() {} });
   const auth = await response.json();
@@ -112,4 +112,17 @@ test('Max Reach and Facebook Reel are wired end to end', () => {
   for (const needle of ["facebook_reel", 'publishFacebookReel', '/me/video_reels', "'file_url':mediaUrl"]) assert.equal(backend.includes(needle), true, `backend missing ${needle}`);
   for (const needle of ['getMaxReachRecommendation', 'applyMaxReachRecommendation', 'currentFacebookType', 'readVideoMetadata', 'facebook_reel']) assert.equal(frontend.includes(needle), true, `frontend missing ${needle}`);
   for (const needle of ['id="maxReachCard"', 'id="applyMaxReachBtn"', 'id="facebookTypeWrap"', 'name="fbType"']) assert.equal(html.includes(needle), true, `HTML missing ${needle}`);
+});
+
+
+test('Threads video jobs and retries are cron-owned and failed-only', () => {
+  const backend = read('src/index.js');
+  assert.equal(backend.includes("p === 'facebook_reel' || p === 'threads'"), true);
+  assert.equal(backend.includes('const attempts = 17;'), true);
+  assert.equal(backend.includes('const intervalMs = 15_000;'), true);
+  assert.equal(backend.includes('SELECT status, publish_results FROM posts WHERE id=?'), true);
+  assert.equal(backend.includes("post.platforms.filter(platform => !previousResults[platform]?.ok)"), true);
+  assert.equal(backend.includes("const results = isRetry ? { ...previousResults } : {};"), true);
+  const retryBlock = backend.match(/if \(url\.pathname\.match\(\/\^\\\/api\\\/posts.*?failedPlatforms \}\);\n    \}/s)?.[0] || '';
+  assert.equal(retryBlock.includes('ctx.waitUntil(processPost(env, id))'), false);
 });

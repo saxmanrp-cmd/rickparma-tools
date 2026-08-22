@@ -8,7 +8,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/api/health') {
-      return json({ ok: true, service: 'social-publisher-v3', version: '0.6.6', time: new Date().toISOString() });
+      return json({ ok: true, service: 'social-publisher-v3', version: '0.6.6.1', time: new Date().toISOString() });
     }
 
     if (url.pathname === '/api/auth/status' && request.method === 'GET') {
@@ -249,7 +249,7 @@ export default {
         // task can end after the response even though Instagram later publishes.
         // Let the every-minute cron own the full job so the final D1 status is saved.
         const longVideoJob = mt.startsWith('video/') && body.platforms.some(p =>
-          p === 'instagram_reel' || p === 'instagram_story' || p === 'facebook_reel'
+          p === 'instagram_reel' || p === 'instagram_story' || p === 'facebook_reel' || p === 'threads'
         );
         if (!longVideoJob) ctx.waitUntil(processPost(env, id));
       }
@@ -342,10 +342,21 @@ export default {
 
     if (url.pathname.match(/^\/api\/posts\/[^/]+\/retry$/) && request.method === 'POST') {
       const id = decodeURIComponent(url.pathname.split('/')[3]);
+      const existing = await env.DB.prepare(`
+        SELECT status, publish_results FROM posts WHERE id=?
+      `).bind(id).first();
+      if (!existing) return json({ error:'Post not found.' }, { status:404 });
+      if (!['failed','partial_failed'].includes(existing.status)) {
+        return json({ error:'Only failed posts can be retried.' }, { status:409 });
+      }
+      const priorResults = safeJson(existing.publish_results, {});
+      const failedPlatforms = Object.entries(priorResults)
+        .filter(([, result]) => !result?.ok)
+        .map(([platform]) => platform);
       const now = new Date().toISOString();
       await env.DB.prepare("UPDATE posts SET status='queued', last_error=NULL, updated_at=? WHERE id=?").bind(now, id).run();
-      ctx.waitUntil(processPost(env, id));
-      return json({ ok: true });
+      // Cron owns retries so long-running video processing is not tied to an HTTP request lifetime.
+      return json({ ok:true, status:'queued', failedPlatforms });
     }
 
     if (url.pathname.startsWith('/api/media/') && request.method === 'PUT') {
@@ -546,7 +557,7 @@ async function processDuePosts(env) {
 
   // Recover an invocation that was interrupted while a platform was processing.
   // This prevents a post from displaying "posting" forever.
-  const staleCutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const staleCutoff = new Date(Date.now() - 20 * 60 * 1000).toISOString();
   await env.DB.prepare(`
     UPDATE posts
     SET status='failed',
@@ -571,7 +582,7 @@ async function processDuePosts(env) {
 
 async function processPost(env, id) {
   const row = await env.DB.prepare(`
-    SELECT id, caption, platforms, media_key, media_type, status, scheduled_at, instagram_options
+    SELECT id, caption, platforms, media_key, media_type, status, scheduled_at, instagram_options, publish_results
     FROM posts WHERE id=?
   `).bind(id).first();
   if (!row || !['queued', 'scheduled', 'ready_to_publish', 'failed', 'partial_failed'].includes(row.status)) return;
@@ -584,9 +595,14 @@ async function processPost(env, id) {
   if (!claimed.meta?.changes) return;
 
   const post = parsePost(row);
-  const results = {};
-  const errors = [];
-  for (const platform of post.platforms) {
+  const previousResults = post.publish_results && typeof post.publish_results === 'object' ? post.publish_results : {};
+  const isRetry = Object.keys(previousResults).length > 0;
+  const results = isRetry ? { ...previousResults } : {};
+  const platformsToPublish = isRetry
+    ? post.platforms.filter(platform => !previousResults[platform]?.ok)
+    : post.platforms;
+
+  for (const platform of platformsToPublish) {
     try {
       if (platform === 'facebook') results.facebook = await publishFacebook(env, post);
       else if (platform === 'facebook_reel') results.facebook_reel = await publishFacebookReel(env, post);
@@ -596,13 +612,15 @@ async function processPost(env, id) {
       else throw new Error(`${platform} publishing is not connected yet.`);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      results[platform] = { ok: false, error: message };
-      errors.push(`${platform}: ${message}`);
+      results[platform] = { ok:false, error:message };
       console.error(`Publishing ${id} to ${platform} failed`, err);
     }
   }
 
-  const successes = Object.values(results).filter(r => r?.ok).length;
+  const successes = post.platforms.filter(platform => results[platform]?.ok).length;
+  const failures = post.platforms
+    .filter(platform => !results[platform]?.ok)
+    .map(platform => `${platform}: ${results[platform]?.error || 'Publishing failed.'}`);
   const finalStatus = successes === post.platforms.length ? 'published' : successes > 0 ? 'partial_failed' : 'failed';
   const now = new Date().toISOString();
   await env.DB.prepare(`
@@ -613,7 +631,7 @@ async function processPost(env, id) {
     finalStatus,
     successes ? now : null,
     JSON.stringify(results),
-    errors.length ? errors.join(' | ') : null,
+    failures.length ? failures.join(' | ') : null,
     now,
     id
   ).run();
@@ -893,7 +911,22 @@ async function publishThreads(env, post) {
   await waitForThreadsContainer(created.id,token); const publish=new URLSearchParams({access_token:token,creation_id:created.id}); const out=await threadsGraphPost(`https://graph.threads.net/v1.0/${row.user_id}/threads_publish`,publish); return {ok:true,id:out.id||null,containerId:created.id};
 }
 async function waitForThreadsContainer(id,token) {
-  for(let i=0;i<15;i++){ const u=new URL(`https://graph.threads.net/v1.0/${id}`); u.searchParams.set('fields','status,error_message');u.searchParams.set('access_token',token); const r=await fetch(u); const data=await r.json().catch(()=>({})); if(!r.ok) throw new Error(data.error?.message || 'Could not check Threads media status.'); if(['FINISHED','PUBLISHED'].includes(data.status)) return; if(['ERROR','EXPIRED'].includes(data.status)) throw new Error(data.error_message || `Threads media status: ${data.status}`); await sleep(2000); } throw new Error('Threads is still processing the media. Retry the post in a moment.');
+  // Threads video containers commonly need longer than the old ~30 second window.
+  // Cron owns video jobs, so allow up to roughly four minutes before surfacing a retry.
+  const attempts = 17;
+  const intervalMs = 15_000;
+  for (let i = 0; i < attempts; i++) {
+    const u = new URL(`https://graph.threads.net/v1.0/${id}`);
+    u.searchParams.set('fields','status,error_message');
+    u.searchParams.set('access_token',token);
+    const r = await fetch(u);
+    const data = await r.json().catch(()=>({}));
+    if (!r.ok) throw new Error(data.error?.message || 'Could not check Threads media status.');
+    if (['FINISHED','PUBLISHED'].includes(data.status)) return;
+    if (['ERROR','EXPIRED'].includes(data.status)) throw new Error(data.error_message || `Threads media status: ${data.status}`);
+    if (i < attempts - 1) await sleep(intervalMs);
+  }
+  throw new Error('Threads is still processing the media after several minutes. Retry will target Threads only.');
 }
 async function threadsGraphPost(endpoint, form) { const r=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:form}); const data=await r.json().catch(()=>({})); if(!r.ok || data.error) throw new Error(data.error?.message || data.error_message || `Threads request failed (${r.status}).`); return data; }
 
@@ -947,7 +980,7 @@ async function publishFacebookReel(env, post) {
     headers:{
       'Authorization':`OAuth ${token}`,
       'file_url':mediaUrl,
-      'User-Agent':'RickParma-SocialPublisher/0.6.6',
+      'User-Agent':'RickParma-SocialPublisher/0.6.6.1',
     },
   });
   const uploaded = await uploadResponse.json().catch(() => ({}));
