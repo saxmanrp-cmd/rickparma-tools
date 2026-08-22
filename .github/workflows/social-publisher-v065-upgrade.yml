@@ -5,6 +5,11 @@ on:
     branches: [social-publisher-dev]
     paths:
       - '.github/workflows/social-publisher-v065-upgrade.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'social-publisher/**'
+      - '.github/workflows/social-publisher-v065-upgrade.yml'
 
 permissions:
   contents: write
