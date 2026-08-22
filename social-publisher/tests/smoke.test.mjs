@@ -1,0 +1,82 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import worker from '../src/index.js';
+
+const root = path.resolve(new URL('..', import.meta.url).pathname);
+
+function read(rel) {
+  return fs.readFileSync(path.join(root, rel), 'utf8');
+}
+
+test('worker health and auth guard', async () => {
+  let response = await worker.fetch(new Request('https://social.test/api/health'), {}, { waitUntil() {} });
+  assert.equal(response.status, 200);
+  const health = await response.json();
+  assert.equal(health.ok, true);
+  assert.equal(health.version, '0.6.4');
+
+  response = await worker.fetch(new Request('https://social.test/api/auth/status'), {}, { waitUntil() {} });
+  const auth = await response.json();
+  assert.deepEqual(auth, { configured: false, authenticated: false });
+
+  response = await worker.fetch(new Request('https://social.test/api/posts'), {}, { waitUntil() {} });
+  assert.equal(response.status, 503);
+});
+
+test('fresh schema and v0.6.4 migration both produce instagram_options', () => {
+  const freshSchema = read('schema.sql');
+  const migration = read('migrations/0001_instagram_options.sql');
+
+  const fresh = new DatabaseSync(':memory:');
+  fresh.exec(freshSchema);
+  const freshColumns = fresh.prepare('PRAGMA table_info(posts)').all().map(row => row.name);
+  assert.equal(freshColumns.filter(name => name === 'instagram_options').length, 1);
+
+  const previousSchema = freshSchema.replace(/\n\s*instagram_options TEXT,/, '');
+  const upgraded = new DatabaseSync(':memory:');
+  upgraded.exec(previousSchema);
+  assert.equal(upgraded.prepare('PRAGMA table_info(posts)').all().some(row => row.name === 'instagram_options'), false);
+  upgraded.exec(migration);
+  assert.equal(upgraded.prepare('PRAGMA table_info(posts)').all().filter(row => row.name === 'instagram_options').length, 1);
+});
+
+test('frontend literal ID selectors exist and static shell is complete', () => {
+  const html = read('public/index.html');
+  const js = read('public/app.js');
+  const ids = [...html.matchAll(/\bid=["']([^"']+)["']/g)].map(match => match[1]);
+  assert.equal(new Set(ids).size, ids.length, 'duplicate HTML id found');
+
+  const usedIds = [...js.matchAll(/\$\('#([A-Za-z0-9_-]+)'\)/g)].map(match => match[1]);
+  const htmlIds = new Set(ids);
+  const missing = [...new Set(usedIds)].filter(id => !htmlIds.has(id));
+  assert.deepEqual(missing, []);
+
+  for (const rel of [
+    'public/app.js',
+    'public/styles.css',
+    'public/manifest.webmanifest',
+    'public/service-worker.js',
+    'public/icons/icon-180.png',
+    'public/icons/icon-192.png',
+    'public/icons/icon-512.png',
+  ]) assert.equal(fs.existsSync(path.join(root, rel)), true, `${rel} missing`);
+
+  assert.doesNotThrow(() => JSON.parse(read('public/manifest.webmanifest')));
+});
+
+test('Instagram people fields are wired into backend and frontend', () => {
+  const backend = read('src/index.js');
+  const frontend = read('public/app.js');
+  const migration = read('migrations/0001_instagram_options.sql');
+
+  for (const needle of ['instagram_options', "createForm.set('collaborators'", "createForm.set('user_tags'", 'validateInstagramOptions']) {
+    assert.equal(backend.includes(needle), true, `backend missing ${needle}`);
+  }
+  for (const needle of ['igTagUsername', 'igCollabUsername', 'openTagPosition', 'instagramOptions']) {
+    assert.equal(frontend.includes(needle), true, `frontend missing ${needle}`);
+  }
+  assert.match(migration, /ALTER TABLE posts ADD COLUMN instagram_options TEXT/i);
+});
