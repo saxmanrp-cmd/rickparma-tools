@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: '22'
       - name: Apply v0.6.6 source upgrade
-        run: python3 social-publisher/scripts/upgrade-066.py
+        run: python3 social-publisher/scripts/run-066.py
       - name: Validate v0.6.6
         working-directory: social-publisher
         run: |
