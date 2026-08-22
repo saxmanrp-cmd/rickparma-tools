@@ -8,7 +8,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/api/health') {
-      return json({ ok: true, service: 'social-publisher-v3', version: '0.6.7', time: new Date().toISOString() });
+      return json({ ok: true, service: 'social-publisher-v3', version: '0.6.8', time: new Date().toISOString() });
     }
 
     if (url.pathname === '/api/auth/status' && request.method === 'GET') {
@@ -193,11 +193,24 @@ export default {
       return json({ ok:true });
     }
 
+    if (url.pathname === '/api/intelligence/profile' && request.method === 'GET') {
+      if (!env.DB) return json({ error:'D1 binding DB is not configured.' }, { status:503 });
+      const timezone = url.searchParams.get('timezone') || '';
+      return json(await buildPerformanceProfile(env, timezone));
+    }
+
+    if (url.pathname === '/api/intelligence/refresh' && request.method === 'POST') {
+      if (!env.DB) return json({ error:'D1 binding DB is not configured.' }, { status:503 });
+      await processPerformanceTracking(env);
+      const timezone = url.searchParams.get('timezone') || '';
+      return json(await buildPerformanceProfile(env, timezone));
+    }
+
     if (url.pathname === '/api/posts' && request.method === 'GET') {
       if (!env.DB) return json({ error: 'D1 binding DB is not configured.' }, { status: 503 });
       const { results } = await env.DB.prepare(`
         SELECT id, caption, platforms, media_key, media_type, status, scheduled_at, published_at,
-               publish_results, instagram_options, last_error, created_at, updated_at
+               publish_results, instagram_options, timezone, last_error, created_at, updated_at
         FROM posts ORDER BY created_at DESC LIMIT 100
       `).all();
       return json({ posts: results.map(parsePost) });
@@ -225,11 +238,12 @@ export default {
       const igOptionsResult = validateInstagramOptions(body.instagramOptions, body.platforms, mt);
       if (igOptionsResult.error) return json({ error:igOptionsResult.error }, { status:400 });
       const instagramOptions = igOptionsResult.value;
+      const timezone = validTimeZone(String(body.timezone || '')) || null;
       const id = crypto.randomUUID();
       const now = new Date().toISOString();
       await env.DB.prepare(`
-        INSERT INTO posts (id, caption, platforms, media_key, media_type, status, scheduled_at, instagram_options, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO posts (id, caption, platforms, media_key, media_type, status, scheduled_at, instagram_options, timezone, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         id,
         String(body.caption).trim(),
@@ -239,6 +253,7 @@ export default {
         status,
         body.scheduledAt || null,
         instagramOptions ? JSON.stringify(instagramOptions) : null,
+        timezone,
         now,
         now
       ).run();
@@ -295,11 +310,12 @@ export default {
       const igOptionsResult = validateInstagramOptions(body.instagramOptions, body.platforms, mt);
       if (igOptionsResult.error) return json({ error:igOptionsResult.error }, { status:400 });
       const instagramOptions = igOptionsResult.value;
+      const timezone = validTimeZone(String(body.timezone || '')) || null;
 
       const now = new Date().toISOString();
       const updated = await env.DB.prepare(`
         UPDATE posts
-        SET caption=?, platforms=?, media_key=?, media_type=?, scheduled_at=?, instagram_options=?,
+        SET caption=?, platforms=?, media_key=?, media_type=?, scheduled_at=?, instagram_options=?, timezone=?,
             last_error=NULL, publish_results=NULL, updated_at=?
         WHERE id=? AND status='scheduled'
       `).bind(
@@ -309,6 +325,7 @@ export default {
         mediaType,
         scheduledDate.toISOString(),
         instagramOptions ? JSON.stringify(instagramOptions) : null,
+        timezone,
         now,
         id
       ).run();
@@ -390,7 +407,7 @@ export default {
 
   async scheduled(controller, env, ctx) {
     if (!env.DB) return;
-    ctx.waitUntil(processDuePosts(env));
+    ctx.waitUntil(Promise.all([processDuePosts(env), processPerformanceTracking(env)]));
   },
 };
 
@@ -635,6 +652,361 @@ async function processPost(env, id) {
     now,
     id
   ).run();
+  if (successes) await seedPerformanceTracking(env, post, results, now);
+}
+
+const PERFORMANCE_CHECK_HOURS = [2, 24, 72];
+const PERFORMANCE_SUPPORTED_PLATFORMS = new Set(['instagram_post','instagram_reel','facebook','facebook_reel','threads']);
+
+function performancePlatformSupported(platform) {
+  return PERFORMANCE_SUPPORTED_PLATFORMS.has(platform);
+}
+
+async function seedPerformanceTracking(env, post, results, publishedAt = new Date().toISOString()) {
+  if (!env.DB || !post?.id || !results) return;
+  const now = new Date().toISOString();
+  for (const platform of post.platforms || []) {
+    const receipt = results[platform];
+    if (!receipt?.ok || !receipt.id || !performancePlatformSupported(platform)) continue;
+    await env.DB.prepare(`
+      INSERT INTO performance_tracking
+        (post_id, platform, external_id, check_index, next_check_at, completed, updated_at)
+      VALUES (?, ?, ?, 0, ?, 0, ?)
+      ON CONFLICT(post_id, platform) DO UPDATE SET
+        external_id=excluded.external_id,
+        next_check_at=CASE WHEN performance_tracking.completed=1 THEN performance_tracking.next_check_at ELSE excluded.next_check_at END,
+        updated_at=excluded.updated_at
+    `).bind(post.id, platform, String(receipt.id), new Date(new Date(publishedAt).getTime() + 2 * 60 * 60 * 1000).toISOString(), now).run();
+  }
+}
+
+async function seedRecentPerformanceTracking(env) {
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { results } = await env.DB.prepare(`
+    SELECT id, platforms, publish_results, published_at
+    FROM posts
+    WHERE status='published' AND published_at IS NOT NULL AND published_at >= ?
+    ORDER BY published_at DESC LIMIT 100
+  `).bind(cutoff).all();
+  const now = new Date();
+  for (const row of results) {
+    const platforms = safeJson(row.platforms, []);
+    const receipts = safeJson(row.publish_results, {});
+    const ageHours = Math.max(0, (now.getTime() - new Date(row.published_at).getTime()) / 3600000);
+    const initialIndex = ageHours >= 72 ? 2 : ageHours >= 24 ? 1 : 0;
+    for (const platform of platforms) {
+      const receipt = receipts?.[platform];
+      if (!receipt?.ok || !receipt.id || !performancePlatformSupported(platform)) continue;
+      await env.DB.prepare(`
+        INSERT OR IGNORE INTO performance_tracking
+          (post_id, platform, external_id, check_index, next_check_at, completed, updated_at)
+        VALUES (?, ?, ?, ?, ?, 0, ?)
+      `).bind(row.id, platform, String(receipt.id), initialIndex, now.toISOString(), now.toISOString()).run();
+    }
+  }
+}
+
+async function processPerformanceTracking(env) {
+  if (!env.DB) return;
+  try {
+    await seedRecentPerformanceTracking(env);
+  } catch (err) {
+    if (String(err?.message || err).includes('no such table')) return;
+    console.warn('Performance backfill skipped', err);
+  }
+
+  const now = new Date();
+  let rows;
+  try {
+    ({ results: rows } = await env.DB.prepare(`
+      SELECT t.post_id, t.platform, t.external_id, t.check_index, p.published_at
+      FROM performance_tracking t
+      JOIN posts p ON p.id=t.post_id
+      WHERE t.completed=0 AND t.next_check_at IS NOT NULL AND t.next_check_at <= ?
+      ORDER BY t.next_check_at ASC LIMIT 6
+    `).bind(now.toISOString()).all());
+  } catch (err) {
+    if (String(err?.message || err).includes('no such table')) return;
+    throw err;
+  }
+
+  for (const row of rows) {
+    const publishedAt = row.published_at ? new Date(row.published_at) : now;
+    const ageHours = Math.max(0, (now.getTime() - publishedAt.getTime()) / 3600000);
+    try {
+      const performance = await fetchPlatformPerformance(env, row.platform, row.external_id);
+      const capturedAt = new Date().toISOString();
+      await env.DB.prepare(`
+        INSERT INTO performance_snapshots
+          (id, post_id, platform, external_id, captured_at, age_hours, metrics_json, performance_score, source)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        crypto.randomUUID(), row.post_id, row.platform, row.external_id, capturedAt, ageHours,
+        JSON.stringify(performance.metrics || {}), Number(performance.score || 0), performance.source || 'engagement'
+      ).run();
+
+      const nextIndex = Number(row.check_index || 0) + 1;
+      const completed = nextIndex >= PERFORMANCE_CHECK_HOURS.length || ageHours >= 72;
+      let nextCheckAt = null;
+      if (!completed) {
+        const targetHours = PERFORMANCE_CHECK_HOURS[nextIndex];
+        const delayHours = Math.max(1, targetHours - ageHours);
+        nextCheckAt = new Date(Date.now() + delayHours * 3600000).toISOString();
+      }
+      await env.DB.prepare(`
+        UPDATE performance_tracking
+        SET check_index=?, next_check_at=?, completed=?, last_metrics=?, last_score=?, last_error=NULL,
+            last_checked_at=?, updated_at=?
+        WHERE post_id=? AND platform=?
+      `).bind(nextIndex, nextCheckAt, completed ? 1 : 0, JSON.stringify(performance.metrics || {}), Number(performance.score || 0), capturedAt, capturedAt, row.post_id, row.platform).run();
+    } catch (err) {
+      const nextIndex = Number(row.check_index || 0) + 1;
+      const completed = nextIndex >= PERFORMANCE_CHECK_HOURS.length;
+      const retryAt = completed ? null : new Date(Date.now() + 12 * 3600000).toISOString();
+      await env.DB.prepare(`
+        UPDATE performance_tracking
+        SET check_index=?, next_check_at=?, completed=?, last_error=?, last_checked_at=?, updated_at=?
+        WHERE post_id=? AND platform=?
+      `).bind(nextIndex, retryAt, completed ? 1 : 0, String(err?.message || err).slice(0, 500), new Date().toISOString(), new Date().toISOString(), row.post_id, row.platform).run();
+      console.warn(`Performance check failed for ${row.platform}/${row.external_id}`, err);
+    }
+  }
+}
+
+async function fetchPlatformPerformance(env, platform, externalId) {
+  if (platform === 'instagram_post' || platform === 'instagram_reel') return fetchInstagramPerformance(env, externalId);
+  if (platform === 'facebook' || platform === 'facebook_reel') return fetchFacebookPerformance(env, externalId);
+  if (platform === 'threads') return fetchThreadsPerformance(env, externalId);
+  throw new Error('Performance metrics are not supported for this destination yet.');
+}
+
+function weightedPerformanceScore(metrics = {}) {
+  const likes = Number(metrics.likes || metrics.reactions || 0);
+  const comments = Number(metrics.comments || metrics.replies || 0);
+  const shares = Number(metrics.shares || 0);
+  const saves = Number(metrics.saves || 0);
+  const reposts = Number(metrics.reposts || 0);
+  const quotes = Number(metrics.quotes || 0);
+  const engagements = likes + comments * 2 + shares * 3 + saves * 3 + reposts * 3 + quotes * 3;
+  const denominator = Number(metrics.reach || metrics.views || 0);
+  return denominator > 0 ? (engagements / denominator) * 1000 : engagements;
+}
+
+async function fetchInstagramPerformance(env, externalId) {
+  const account = await loadSocialAccount(env, 'instagram');
+  if (!account) throw new Error('Instagram is not connected.');
+  const token = await decryptSecret(account.access_token_encrypted, env.TOKEN_ENCRYPTION_KEY);
+  const version = env.META_GRAPH_VERSION || 'v24.0';
+  const base = await graphGetJson(`https://graph.facebook.com/${version}/${encodeURIComponent(externalId)}`, {
+    fields:'id,media_type,media_product_type,timestamp,permalink,like_count,comments_count', access_token:token
+  });
+  const metrics = {
+    likes:Number(base.like_count || 0), comments:Number(base.comments_count || 0),
+    mediaType:base.media_type || null, mediaProductType:base.media_product_type || null
+  };
+  try {
+    const insights = await graphGetJson(`https://graph.facebook.com/${version}/${encodeURIComponent(externalId)}/insights`, {
+      metric:'reach,saved,shares,views', access_token:token
+    });
+    Object.assign(metrics, insightMetrics(insights.data));
+  } catch {}
+  return { metrics, score:weightedPerformanceScore(metrics), source:metrics.reach || metrics.views ? 'instagram_insights' : 'instagram_engagement' };
+}
+
+async function fetchFacebookPerformance(env, externalId) {
+  const account = await loadSocialAccount(env, 'facebook');
+  if (!account) throw new Error('Facebook is not connected.');
+  const token = await decryptSecret(account.access_token_encrypted, env.TOKEN_ENCRYPTION_KEY);
+  const version = env.META_GRAPH_VERSION || 'v24.0';
+  let data;
+  try {
+    data = await graphGetJson(`https://graph.facebook.com/${version}/${encodeURIComponent(externalId)}`, {
+      fields:'id,created_time,permalink_url,reactions.limit(0).summary(true),comments.limit(0).summary(true),shares', access_token:token
+    });
+  } catch {
+    data = await graphGetJson(`https://graph.facebook.com/${version}/${encodeURIComponent(externalId)}`, {
+      fields:'id,created_time,reactions.limit(0).summary(true),comments.limit(0).summary(true)', access_token:token
+    });
+  }
+  const metrics = {
+    reactions:Number(data.reactions?.summary?.total_count || 0),
+    comments:Number(data.comments?.summary?.total_count || 0),
+    shares:Number(data.shares?.count || 0)
+  };
+  return { metrics, score:weightedPerformanceScore(metrics), source:'facebook_engagement' };
+}
+
+async function fetchThreadsPerformance(env, externalId) {
+  const account = await env.DB.prepare(`SELECT scopes FROM threads_account WHERE id='threads'`).first();
+  const scopes = String(account?.scopes || '').split(',').map(v => v.trim()).filter(Boolean);
+  if (!scopes.includes('threads_manage_insights')) throw new Error('Threads insights permission is not enabled yet.');
+  const token = await getThreadsAccessToken(env);
+  const data = await graphGetJson(`https://graph.threads.net/v1.0/${encodeURIComponent(externalId)}/insights`, {
+    metric:'views,likes,replies,reposts,quotes,shares', access_token:token
+  });
+  const metrics = insightMetrics(data.data);
+  return { metrics, score:weightedPerformanceScore(metrics), source:'threads_insights' };
+}
+
+async function graphGetJson(endpoint, params = {}) {
+  const u = new URL(endpoint);
+  for (const [key, value] of Object.entries(params)) if (value !== null && value !== undefined) u.searchParams.set(key, String(value));
+  const r = await fetch(u);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || data.error) throw new Error(data.error?.message || `Metrics request failed (${r.status}).`);
+  return data;
+}
+
+function insightMetrics(data = []) {
+  const out = {};
+  for (const item of Array.isArray(data) ? data : []) {
+    const raw = item?.total_value?.value ?? item?.values?.[0]?.value ?? 0;
+    const value = typeof raw === 'object' && raw !== null ? Number(raw.value || 0) : Number(raw || 0);
+    out[item.name] = Number.isFinite(value) ? value : 0;
+  }
+  return out;
+}
+
+function validTimeZone(value) {
+  try { new Intl.DateTimeFormat('en-US', { timeZone:value }).format(new Date()); return value; } catch { return ''; }
+}
+
+function performanceFormatKind(row) {
+  const platforms = safeJson(row.platforms, []);
+  if (platforms.some(p => p === 'instagram_reel' || p === 'facebook_reel')) return 'short_video';
+  if (String(row.media_type || '').startsWith('image/')) return 'photo';
+  if (String(row.media_type || '').startsWith('video/')) return 'video';
+  return 'text';
+}
+
+function formatWindowLabel(weekday, startHour, endHour) {
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const fmt = hour => {
+    const h = ((hour + 11) % 12) + 1;
+    return `${h}${hour < 12 ? ' AM' : ' PM'}`;
+  };
+  return `${days[weekday]} ${fmt(startHour)}–${fmt(endHour)}`;
+}
+
+async function buildPerformanceProfile(env, timezoneOverride = '') {
+  const targetSamples = 5;
+  let rows;
+  try {
+    ({ results: rows } = await env.DB.prepare(`
+      SELECT s.post_id, s.platform, s.age_hours, s.performance_score, s.metrics_json, s.captured_at,
+             p.caption, p.platforms, p.media_type, p.published_at, p.timezone
+      FROM performance_snapshots s
+      JOIN posts p ON p.id=s.post_id
+      WHERE p.published_at IS NOT NULL
+      ORDER BY s.captured_at DESC LIMIT 500
+    `).all());
+  } catch (err) {
+    if (String(err?.message || err).includes('no such table')) {
+      return { available:false, migrationNeeded:true, ready:false, sampleCount:0, targetSamples, learningProgress:0 };
+    }
+    throw err;
+  }
+
+  const latest = new Map();
+  for (const row of rows) {
+    const key = `${row.post_id}|${row.platform}`;
+    if (!latest.has(key)) latest.set(key, row);
+  }
+  const allSamples = [...latest.values()];
+  const mature = allSamples.filter(row => Number(row.age_hours || 0) >= 18);
+  const samples = mature.length >= 3 ? mature : allSamples;
+  const platformStats = new Map();
+  for (const row of samples) {
+    const entry = platformStats.get(row.platform) || { sum:0, count:0 };
+    entry.sum += Number(row.performance_score || 0); entry.count += 1; platformStats.set(row.platform, entry);
+  }
+  const normalized = samples.map(row => {
+    const stat = platformStats.get(row.platform);
+    const avg = stat?.count ? stat.sum / stat.count : 0;
+    return { ...row, normalized:avg > 0 ? Number(row.performance_score || 0) / avg : 1 };
+  });
+  const uniquePosts = new Map();
+  for (const row of normalized) {
+    const post = uniquePosts.get(row.post_id) || { ...row, normalizedSum:0, normalizedCount:0 };
+    post.normalizedSum += row.normalized; post.normalizedCount += 1; uniquePosts.set(row.post_id, post);
+  }
+  const posts = [...uniquePosts.values()].map(row => ({ ...row, normalized:row.normalizedCount ? row.normalizedSum / row.normalizedCount : 1 }));
+  const sampleCount = posts.length;
+  const tzOverride = validTimeZone(timezoneOverride);
+
+  const windows = new Map();
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  for (const row of posts) {
+    const tz = validTimeZone(row.timezone) || tzOverride;
+    if (!tz || !row.published_at) continue;
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone:tz, weekday:'short', hour:'2-digit', hourCycle:'h23' }).formatToParts(new Date(row.published_at));
+    const dayName = parts.find(p => p.type === 'weekday')?.value;
+    const hour = Number(parts.find(p => p.type === 'hour')?.value);
+    const weekday = dayNames.indexOf(dayName);
+    if (weekday < 0 || !Number.isFinite(hour)) continue;
+    const startHour = hour < 8 ? 8 : hour < 11 ? 8 : hour < 14 ? 11 : hour < 17 ? 14 : hour < 20 ? 17 : 20;
+    const endHour = startHour === 20 ? 23 : startHour + 3;
+    const key = `${weekday}|${startHour}`;
+    const entry = windows.get(key) || { weekday, startHour, endHour, sum:0, count:0 };
+    entry.sum += row.normalized; entry.count += 1; windows.set(key, entry);
+  }
+  let bestWindow = null;
+  const windowCandidates = [...windows.values()].map(w => ({ ...w, average:w.count ? w.sum / w.count : 0 })).sort((a,b) => b.average - a.average);
+  if (windowCandidates.length) {
+    const candidate = windowCandidates.find(w => w.count >= (sampleCount >= 8 ? 2 : 1)) || windowCandidates[0];
+    bestWindow = {
+      weekday:candidate.weekday, startHour:candidate.startHour, endHour:candidate.endHour,
+      label:formatWindowLabel(candidate.weekday, candidate.startHour, candidate.endHour), samples:candidate.count,
+      liftPercent:Math.round((candidate.average - 1) * 100)
+    };
+  }
+
+  const formatGroups = new Map();
+  for (const row of posts) {
+    const kind = performanceFormatKind(row);
+    const entry = formatGroups.get(kind) || { kind, sum:0, count:0 };
+    entry.sum += row.normalized; entry.count += 1; formatGroups.set(kind, entry);
+  }
+  const formatLabels = { short_video:'Short-form Reels', photo:'Photo posts', video:'Full video', text:'Text posts' };
+  const formatCandidates = [...formatGroups.values()].map(g => ({ ...g, average:g.count ? g.sum/g.count : 0 })).sort((a,b)=>b.average-a.average);
+  const bestFormatRaw = formatCandidates[0];
+  const bestFormat = bestFormatRaw ? {
+    kind:bestFormatRaw.kind, label:formatLabels[bestFormatRaw.kind] || bestFormatRaw.kind,
+    samples:bestFormatRaw.count, liftPercent:Math.round((bestFormatRaw.average - 1) * 100)
+  } : null;
+
+  const captionTraits = { question:{yes:[],no:[]}, short:{yes:[],no:[]} };
+  for (const row of posts) {
+    const caption = String(row.caption || '').trim();
+    const question = caption.slice(0, 140).includes('?');
+    const short = caption.length > 0 && caption.length <= 180;
+    captionTraits.question[question ? 'yes' : 'no'].push(row.normalized);
+    captionTraits.short[short ? 'yes' : 'no'].push(row.normalized);
+  }
+  const avg = list => list.length ? list.reduce((a,b)=>a+b,0)/list.length : 0;
+  let captionPattern = null;
+  const patterns = [
+    { key:'question', label:'Question-led captions', yes:captionTraits.question.yes, no:captionTraits.question.no },
+    { key:'short', label:'Concise captions (≤180 chars)', yes:captionTraits.short.yes, no:captionTraits.short.no },
+  ].filter(p => p.yes.length >= 2 && p.no.length >= 2).map(p => ({ ...p, lift:avg(p.yes)/(avg(p.no)||1)-1 })).sort((a,b)=>b.lift-a.lift);
+  if (patterns[0] && patterns[0].lift > 0.05) captionPattern = {
+    key:patterns[0].key, label:patterns[0].label, liftPercent:Math.round(patterns[0].lift * 100), samples:patterns[0].yes.length
+  };
+
+  const coverage = {};
+  for (const row of allSamples) coverage[row.platform] = (coverage[row.platform] || 0) + 1;
+  return {
+    available:true,
+    ready:sampleCount >= targetSamples,
+    sampleCount,
+    targetSamples,
+    learningProgress:Math.min(100, Math.round((sampleCount / targetSamples) * 100)),
+    bestWindow,
+    bestFormat,
+    captionPattern,
+    coverage,
+    note:sampleCount >= targetSamples ? 'Personalized from your own published-post performance.' : `Learning from your posts: ${sampleCount}/${targetSamples} needed for personalized timing.`
+  };
 }
 
 function tiktokConfigured(env) {
@@ -980,7 +1352,7 @@ async function publishFacebookReel(env, post) {
     headers:{
       'Authorization':`OAuth ${token}`,
       'file_url':mediaUrl,
-      'User-Agent':'RickParma-SocialPublisher/0.6.7',
+      'User-Agent':'RickParma-SocialPublisher/0.6.8',
     },
   });
   const uploaded = await uploadResponse.json().catch(() => ({}));

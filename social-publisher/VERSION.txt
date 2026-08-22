@@ -1,2 +1,2 @@
 Rick Parma Social Publisher
-Version 0.6.7 - Reach Intelligence
+Version 0.6.8 - Performance Learning

@@ -1,5 +1,7 @@
 (() => {
   const q = selector => document.querySelector(selector);
+  let performanceProfile = null;
+  let profileLoaded = false;
 
   function localDateInput(date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -55,6 +57,31 @@
     return new Date(now.getTime() + 24 * 60 * 60 * 1000);
   }
 
+  function nextPersonalizedSlot(windowData, now = new Date()) {
+    if (!windowData || !Number.isFinite(Number(windowData.weekday)) || !Number.isFinite(Number(windowData.startHour))) return null;
+    const minimum = new Date(now.getTime() + 30 * 60 * 1000);
+    const targetHour = Math.min(Number(windowData.startHour) + 1, Math.max(Number(windowData.startHour), Number(windowData.endHour || windowData.startHour + 2) - 1));
+    for (let offset = 0; offset < 8; offset++) {
+      const day = new Date(now);
+      day.setDate(now.getDate() + offset);
+      if (day.getDay() !== Number(windowData.weekday)) continue;
+      const candidate = new Date(day.getFullYear(), day.getMonth(), day.getDate(), targetHour, 0, 0, 0);
+      if (candidate >= minimum) return candidate;
+    }
+    return null;
+  }
+
+  async function loadPerformanceProfile() {
+    try {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+      const r = await fetch(`/api/intelligence/profile?timezone=${encodeURIComponent(timezone)}`, { headers:{accept:'application/json'} });
+      if (!r.ok) return;
+      performanceProfile = await r.json();
+      profileLoaded = true;
+      renderReachIntelligence();
+    } catch {}
+  }
+
   function buildReachIntelligence() {
     const rec = typeof getMaxReachRecommendation === 'function' ? getMaxReachRecommendation() : { ready:false };
     const media = state?.currentMedia;
@@ -66,9 +93,12 @@
     const isPhoto = type.startsWith('image/');
     const isShort = rec.badge === 'SHORT VIDEO';
     const kind = isShort ? 'short' : isPhoto ? 'photo' : 'video';
+    const formatKind = isShort ? 'short_video' : isPhoto ? 'photo' : 'video';
     const now = new Date();
     const urgent = intent === 'urgent_event';
-    const slot = urgent ? null : nextSuggestedSlot(kind, now);
+    const personalized = Boolean(performanceProfile?.ready);
+    const personalizedSlot = personalized && !urgent ? nextPersonalizedSlot(performanceProfile.bestWindow, now) : null;
+    const slot = urgent ? null : (personalizedSlot || nextSuggestedSlot(kind, now));
 
     let formatFit = isShort ? 96 : isPhoto ? 88 : 78;
     const duration = Number(media.duration || 0);
@@ -124,6 +154,31 @@
       starter = `A moment worth watching all the way through.\n\n[One sentence of context]\n\nWhat part hits you most?`;
     }
 
+    if (personalized && performanceProfile.bestFormat) {
+      const best = performanceProfile.bestFormat;
+      const lift = Number(best.liftPercent || 0);
+      if (best.kind === formatKind) {
+        contentBody += ` This matches your strongest learned format${lift > 4 ? `, currently about ${lift}% above your baseline` : ''}.`;
+      } else if (lift > 4) {
+        contentBody += ` Your own results currently favor ${best.label} by about ${lift}%; consider making a version in that format too.`;
+      }
+    }
+    if (personalized && performanceProfile.captionPattern?.liftPercent > 4) {
+      captionFormula += ` Your ${performanceProfile.captionPattern.label.toLowerCase()} are currently about ${performanceProfile.captionPattern.liftPercent}% stronger in your sample.`;
+    }
+
+    const personalizedWindow = personalized && personalizedSlot && performanceProfile.bestWindow;
+    const timeTitle = urgent
+      ? 'Post now'
+      : personalizedWindow
+        ? `Your learned window: ${formatSlot(slot)}`
+        : `Suggested test window: ${formatSlot(slot)}`;
+    const timeBody = urgent
+      ? 'Your caption sounds time-sensitive, so waiting for a generic window is more likely to hurt than help.'
+      : personalizedWindow
+        ? `Based on ${performanceProfile.sampleCount} of your own posts. ${performanceProfile.bestWindow.label}${performanceProfile.bestWindow.liftPercent > 4 ? ` is running about ${performanceProfile.bestWindow.liftPercent}% above your current baseline` : ' is your strongest learned window so far'}.`
+        : 'This is a starting window based on format and local day/time. Your own performance data will replace these general rules as the sample grows.';
+
     return {
       ready:true,
       formatFit,
@@ -135,10 +190,10 @@
       starter,
       timingMode: urgent ? 'now' : 'schedule',
       slot,
-      timeTitle: urgent ? 'Post now' : `Suggested test window: ${formatSlot(slot)}`,
-      timeBody: urgent
-        ? 'Your caption sounds time-sensitive, so waiting for a generic window is more likely to hurt than help.'
-        : 'This is a starting window based on format and local day/time. Personal account analytics will eventually replace these general rules.'
+      timeTitle,
+      timeBody,
+      personalized,
+      profile:performanceProfile,
     };
   }
 
@@ -162,8 +217,24 @@
     setText('reachCaptionBody', intel.captionFormula);
     setText('reachFollowupBody', intel.followUp);
 
+    const profile = intel.profile;
+    const summary = q('#reachPersonalizedSummary');
+    if (summary) {
+      summary.classList.remove('hidden');
+      if (!profileLoaded) summary.textContent = 'PERFORMANCE LEARNING · loading your results…';
+      else if (profile?.migrationNeeded) summary.textContent = 'PERFORMANCE LEARNING · database update needed';
+      else if (profile?.ready) summary.textContent = `PERSONALIZED · learned from ${profile.sampleCount} posts`;
+      else summary.textContent = `LEARNING · ${profile?.sampleCount || 0}/${profile?.targetSamples || 5} posts toward personalization`;
+    }
+    const note = q('#reachLearningNote');
+    if (note) {
+      note.textContent = profile?.ready
+        ? 'Personalized mode: recommendations now blend your own Instagram/Facebook post performance with format rules. Threads can join the model when insight permission is enabled.'
+        : `Learning mode: Social Publisher is automatically collecting post performance. ${profile?.sampleCount || 0}/${profile?.targetSamples || 5} usable posts so far; general timing rules stay in place until the sample is large enough.`;
+    }
+
     const timeButton = q('#useReachTimeBtn');
-    if (timeButton) timeButton.textContent = intel.timingMode === 'now' ? 'Use Post Now' : 'Use Suggested Time';
+    if (timeButton) timeButton.textContent = intel.timingMode === 'now' ? 'Use Post Now' : (intel.personalized ? 'Use My Best Time' : 'Use Suggested Time');
     const captionButton = q('#useReachCaptionBtn');
     if (captionButton) captionButton.disabled = Boolean(q('#caption')?.value.trim());
   }
@@ -182,7 +253,7 @@
     const timeInput = q('#scheduleTime');
     if (dateInput) dateInput.value = localDateInput(intel.slot);
     if (timeInput) timeInput.value = localTimeInput(intel.slot);
-    toast(`Suggested time set: ${formatSlot(intel.slot)}.`);
+    toast(`${intel.personalized ? 'Your best learned time' : 'Suggested time'} set: ${formatSlot(intel.slot)}.`);
   }
 
   function applyCaptionStarter() {
@@ -212,4 +283,9 @@
   }
 
   renderReachIntelligence();
+  setTimeout(loadPerformanceProfile, 400);
+  window.addEventListener('focus', () => {
+    if (!profileLoaded) loadPerformanceProfile();
+  });
+  setInterval(loadPerformanceProfile, 5 * 60 * 1000);
 })();
