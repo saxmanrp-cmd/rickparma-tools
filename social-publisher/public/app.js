@@ -11,7 +11,7 @@ let currentFile = null;
 let editingPostId = null;
 let deferredInstallPrompt = null;
 let renderedMediaItems = [];
-let instagramOptions = { userTags: [], collaborators: [] };
+let instagramOptions = { userTags: [], collaborators: [], audioName: '' };
 let placingTagIndex = null;
 let pendingTagPosition = null;
 
@@ -74,6 +74,7 @@ function updateInstagramTypeVisibility() {
   const selected = $('.platform-chip[data-platform="instagram"] input')?.checked;
   $('#instagramTypeWrap')?.classList.toggle('hidden', !selected);
   updateInstagramPeopleVisibility();
+  updateInstagramReelAudioVisibility();
 }
 function updateInstagramPeopleVisibility() {
   const selected = $('.platform-chip[data-platform="instagram"] input')?.checked;
@@ -86,10 +87,26 @@ function updateInstagramPeopleVisibility() {
   $('#igTagPositionHelp')?.classList.toggle('hidden', type !== 'post');
   renderInstagramPeople();
 }
+function updateInstagramReelAudioVisibility() {
+  const selected = $('.platform-chip[data-platform="instagram"] input')?.checked;
+  const show = selected && currentInstagramType() === 'reel';
+  $('#instagramReelAudioWrap')?.classList.toggle('hidden', !show);
+  renderInstagramAudio();
+}
+function renderInstagramAudio() {
+  const input = $('#igAudioName');
+  if (input && input.value !== (instagramOptions.audioName || '')) input.value = instagramOptions.audioName || '';
+  if ($('#igAudioCount')) $('#igAudioCount').textContent = String((instagramOptions.audioName || '').length);
+}
+$('#igAudioName')?.addEventListener('input', event => {
+  instagramOptions.audioName = String(event.target.value || '').slice(0, 100);
+  if ($('#igAudioCount')) $('#igAudioCount').textContent = String(instagramOptions.audioName.length);
+});
 $('.platform-chip[data-platform="instagram"] input')?.addEventListener('change', updateInstagramTypeVisibility);
 $$('input[name="igType"]').forEach(input => input.addEventListener('change', () => {
   $$('.ig-type-segmented .segment').forEach(s => s.classList.toggle('active', s.querySelector('input')?.checked));
   updateInstagramPeopleVisibility();
+  updateInstagramReelAudioVisibility();
 }));
 updateInstagramTypeVisibility();
 
@@ -380,6 +397,7 @@ function collectPost(status) {
     igOptions = {
       userTags:instagramOptions.userTags.map(t => ({ username:t.username, ...(Number.isFinite(t.x) ? {x:t.x} : {}), ...(Number.isFinite(t.y) ? {y:t.y} : {}) })),
       collaborators:[...instagramOptions.collaborators],
+      audioName:currentInstagramType() === 'reel' ? String(instagramOptions.audioName || '').trim() : '',
     };
   }
   return { caption:caption.value.trim(), platforms, status, scheduledAt, instagramOptions:igOptions };
@@ -503,7 +521,7 @@ function updateLocalScheduledPost(id, draft) {
 function clearComposer() {
   caption.value=''; caption.dispatchEvent(new Event('input'));
   currentFile=null; state.currentMedia=null; mediaInput.value=''; renderCurrentMedia();
-  instagramOptions = { userTags: [], collaborators: [] }; renderInstagramPeople();
+  instagramOptions = { userTags: [], collaborators: [], audioName: '' }; renderInstagramPeople(); renderInstagramAudio();
   setPlatformSelection(['instagram','facebook']);
   const igPost = $('input[name="igType"][value="post"]'); if (igPost) { igPost.checked=true; igPost.dispatchEvent(new Event('change')); }
   updateInstagramTypeVisibility();
@@ -526,6 +544,7 @@ function startEditingScheduledPost(id) {
   caption.dispatchEvent(new Event('input'));
   instagramOptions = normalizeStoredInstagramOptions(post.instagramOptions);
   renderInstagramPeople();
+  renderInstagramAudio();
   {
     const plats = post.platforms || [];
     setPlatformSelection(plats.map(p => p.startsWith('instagram_') || p === 'instagram' ? 'instagram' : p));
@@ -593,13 +612,15 @@ function normalizeStoredInstagramOptions(value) {
     ...(Number.isFinite(Number(t?.y)) ? {y:Number(t.y)} : {}),
   })).filter(t => t.username) : [];
   const collaborators = Array.isArray(raw.collaborators) ? raw.collaborators.map(normalizeIgUsername).filter(Boolean).slice(0,3) : [];
-  return { userTags, collaborators };
+  const audioName = String(raw.audioName || '').trim().replace(/\s+/g, ' ').slice(0,100);
+  return { userTags, collaborators, audioName };
 }
 function instagramPeopleSummaryHtml(post) {
   const opts = normalizeStoredInstagramOptions(post.instagramOptions);
   const bits = [];
   if (opts.userTags.length) bits.push(`Tagged ${opts.userTags.map(t=>'@'+escapeHtml(t.username)).join(', ')}`);
   if (opts.collaborators.length) bits.push(`Collab ${opts.collaborators.map(u=>'@'+escapeHtml(u)).join(', ')}`);
+  if (opts.audioName) bits.push(`Audio “${escapeHtml(opts.audioName)}”`);
   return bits.length ? `<div class="people-summary">${bits.join(' · ')}</div>` : '';
 }
 
@@ -656,6 +677,7 @@ async function reusePost(id) {
   caption.dispatchEvent(new Event('input'));
   instagramOptions = normalizeStoredInstagramOptions(post.instagramOptions);
   renderInstagramPeople();
+  renderInstagramAudio();
   const platforms = post.platforms || [];
   setPlatformSelection(platforms.map(p => p.startsWith('instagram_') || p === 'instagram' ? 'instagram' : p));
   const ig = platforms.find(p => p.startsWith('instagram_'));

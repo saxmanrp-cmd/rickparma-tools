@@ -16,7 +16,7 @@ test('worker health and auth guard', async () => {
   assert.equal(response.status, 200);
   const health = await response.json();
   assert.equal(health.ok, true);
-  assert.equal(health.version, '0.6.4');
+  assert.equal(health.version, '0.6.5');
 
   response = await worker.fetch(new Request('https://social.test/api/auth/status'), {}, { waitUntil() {} });
   const auth = await response.json();
@@ -79,4 +79,18 @@ test('Instagram people fields are wired into backend and frontend', () => {
     assert.equal(frontend.includes(needle), true, `frontend missing ${needle}`);
   }
   assert.match(migration, /ALTER TABLE posts ADD COLUMN instagram_options TEXT/i);
+});
+
+
+test('Instagram Reel original audio name is wired end to end', () => {
+  const backend = read('src/index.js');
+  const frontend = read('public/app.js');
+  const html = read('public/index.html');
+
+  assert.equal(backend.includes("createForm.set('audio_name', igOptions.audioName)"), true);
+  assert.equal(backend.includes('audioName'), true);
+  assert.equal(frontend.includes('igAudioName'), true);
+  assert.equal(frontend.includes('audioName'), true);
+  assert.equal(html.includes('id="instagramReelAudioWrap"'), true);
+  assert.equal(html.includes('id="igAudioName"'), true);
 });

@@ -8,7 +8,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/api/health') {
-      return json({ ok: true, service: 'social-publisher-v3', version: '0.6.4', time: new Date().toISOString() });
+      return json({ ok: true, service: 'social-publisher-v3', version: '0.6.5', time: new Date().toISOString() });
     }
 
     if (url.pathname === '/api/auth/status' && request.method === 'GET') {
@@ -959,6 +959,7 @@ async function publishInstagram(env, post, publishType = 'post') {
     createForm.set('media_type', 'REELS');
     createForm.set('video_url', mediaUrl);
     createForm.set('share_to_feed', 'true');
+    if (igOptions.audioName) createForm.set('audio_name', igOptions.audioName);
   } else {
     createForm.set('image_url', mediaUrl);
   }
@@ -1031,6 +1032,7 @@ function normalizeInstagramUsername(value = '') {
 
 function normalizeInstagramOptions(value) {
   const raw = value && typeof value === 'object' ? value : {};
+  const audioName = String(raw.audioName || '').trim().replace(/\s+/g, ' ').slice(0, 100);
   const collaborators = Array.isArray(raw.collaborators)
     ? [...new Map(raw.collaborators.map(v => normalizeInstagramUsername(v)).filter(Boolean).map(v => [v.toLowerCase(), v])).values()].slice(0, 3)
     : [];
@@ -1045,7 +1047,7 @@ function normalizeInstagramOptions(value) {
         return [username.toLowerCase(), out];
       }).filter(Boolean)).values()].slice(0, 20)
     : [];
-  return { userTags, collaborators };
+  return { userTags, collaborators, audioName };
 }
 
 function validateInstagramOptions(value, platforms = [], mediaType = '') {
@@ -1053,6 +1055,8 @@ function validateInstagramOptions(value, platforms = [], mediaType = '') {
   if (!hasInstagram || !value) return { value:null };
   const rawTags = Array.isArray(value.userTags) ? value.userTags : [];
   const rawCollabs = Array.isArray(value.collaborators) ? value.collaborators : [];
+  const rawAudioName = String(value.audioName || '').trim();
+  if (rawAudioName.length > 100) return { error:'Instagram Reel audio name must be 100 characters or fewer.' };
   if (rawTags.length > 20) return { error:'Instagram supports up to 20 profile tags.' };
   if (rawCollabs.length > 3) return { error:'Instagram supports up to 3 collaborators.' };
   for (const tag of rawTags) if (!normalizeInstagramUsername(tag?.username)) return { error:'One of the Instagram tag usernames is invalid.' };
@@ -1067,7 +1071,8 @@ function validateInstagramOptions(value, platforms = [], mediaType = '') {
     }
   }
   if (platforms.includes('instagram_story')) return { value:null };
-  return { value:options.userTags.length || options.collaborators.length ? options : null };
+  if (!platforms.includes('instagram_reel')) options.audioName = '';
+  return { value:options.userTags.length || options.collaborators.length || options.audioName ? options : null };
 }
 
 function parsePost(row) {
