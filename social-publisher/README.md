@@ -2,7 +2,12 @@
 
 Current source version: **v0.6.4**
 
-This directory is the canonical GitHub source for Social Publisher. Development happens on `social-publisher-dev`; stable releases are merged into `main` after CI passes.
+This directory is the canonical GitHub source for Social Publisher.
+
+- Development branch: `social-publisher-dev`
+- Stable branch: `main`
+- CI: `.github/workflows/social-publisher-ci.yml`
+- Cloudflare Worker deployment remains a separate release step.
 
 ## Validate locally
 
@@ -11,15 +16,22 @@ npm install
 npm test
 ```
 
-If you are checking out the initial GitHub seed commit before the materialization commit exists, run:
+`npm test` runs the automated smoke tests plus JavaScript syntax checks for the Worker and browser app.
+
+## Database
+
+v0.6.4 adds the Instagram tagging/collaborator options column. Apply the included migration before deploying v0.6.4 to the live Worker:
 
 ```bash
-node scripts/restore-source.mjs
-npm test
+npm run db:migrate
 ```
-
-The restore step reconstructs `public/app.js` and `src/index.js` from a checksum-verified compressed source seed. GitHub Actions performs this automatically and materializes the source after the first successful development-branch run.
 
 ## Deploy
 
-Deployment to the existing Cloudflare Worker remains separate from GitHub source control. Do not run database migrations or deploy until the release notes for the target version say to do so.
+After tests pass and the required migration has been applied:
+
+```bash
+npm run deploy
+```
+
+Never commit `.dev.vars`, access tokens, app secrets, or other credentials.
