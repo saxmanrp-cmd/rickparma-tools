@@ -233,14 +233,14 @@ setInterval(() => {
   }
 }, 15000);
 
-$$('.segment').forEach(segment => segment.addEventListener('click', () => {
+$$('.segmented:not(.ig-type-segmented) .segment').forEach(segment => segment.addEventListener('click', () => {
   const input = segment.querySelector('input');
   if (!input) return;
   if (editingPostId && input.value === 'now') {
     toast('Scheduled posts stay scheduled while editing.');
     return;
   }
-  $$('.segment').forEach(s => s.classList.remove('active'));
+  $$('.segmented:not(.ig-type-segmented) .segment').forEach(s => s.classList.remove('active'));
   segment.classList.add('active');
   input.checked = true;
   const scheduled = input.value === 'schedule';

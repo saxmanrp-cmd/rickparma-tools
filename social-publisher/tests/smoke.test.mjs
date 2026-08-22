@@ -16,7 +16,7 @@ test('worker health and auth guard', async () => {
   assert.equal(response.status, 200);
   const health = await response.json();
   assert.equal(health.ok, true);
-  assert.equal(health.version, '0.6.5');
+  assert.equal(health.version, '0.6.5.1');
 
   response = await worker.fetch(new Request('https://social.test/api/auth/status'), {}, { waitUntil() {} });
   const auth = await response.json();
@@ -93,4 +93,12 @@ test('Instagram Reel original audio name is wired end to end', () => {
   assert.equal(frontend.includes('audioName'), true);
   assert.equal(html.includes('id="instagramReelAudioWrap"'), true);
   assert.equal(html.includes('id="igAudioName"'), true);
+});
+
+
+test('Instagram type selector is isolated from timing selector', () => {
+  const frontend = read('public/app.js');
+  assert.equal(frontend.includes("$$('.segmented:not(.ig-type-segmented) .segment').forEach(segment"), true);
+  assert.equal(frontend.includes("$$('.segment').forEach(segment => segment.addEventListener('click'"), false);
+  assert.equal(frontend.includes('updateInstagramReelAudioVisibility();'), true);
 });
