@@ -12,7 +12,6 @@ function replaceOnce(text, from, to, label) {
   return text.slice(0, first) + to + text.slice(first + from.length);
 }
 
-// package.json
 {
   const rel = 'package.json';
   let s = read(rel);
@@ -20,7 +19,6 @@ function replaceOnce(text, from, to, label) {
   write(rel, s);
 }
 
-// Worker: health version, Reel audio_name, normalization + validation.
 {
   const rel = 'src/index.js';
   let s = read(rel);
@@ -57,7 +55,6 @@ function replaceOnce(text, from, to, label) {
   write(rel, s);
 }
 
-// Frontend logic: Reel-only original audio name, persistence, edit/reuse, summary.
 {
   const rel = 'public/app.js';
   let s = read(rel);
@@ -109,7 +106,6 @@ function replaceOnce(text, from, to, label) {
   write(rel, s);
 }
 
-// Composer markup + version footer.
 {
   const rel = 'public/index.html';
   let s = read(rel);
@@ -120,7 +116,6 @@ function replaceOnce(text, from, to, label) {
   write(rel, s);
 }
 
-// Reel audio styling.
 {
   const rel = 'public/styles.css';
   let s = read(rel);
@@ -128,7 +123,6 @@ function replaceOnce(text, from, to, label) {
   write(rel, s);
 }
 
-// Service worker cache bump so installed PWAs pick up the new shell.
 {
   const rel = 'public/service-worker.js';
   let s = read(rel);
@@ -136,7 +130,6 @@ function replaceOnce(text, from, to, label) {
   write(rel, s);
 }
 
-// Tests.
 {
   const rel = 'tests/smoke.test.mjs';
   let s = read(rel);
@@ -145,7 +138,32 @@ function replaceOnce(text, from, to, label) {
   write(rel, s);
 }
 
-write('VERSION.txt', `Rick Parma Social Publisher\nVersion 0.6.5 - Instagram Reel original-audio naming\n`);
-write('UPGRADE-v0.6.5.md', `# Social Publisher v0.6.5\n\nAdds Instagram Reel original-audio naming with Meta's \\`audio_name\\` publishing field.\n\n## What changed\n\n- Reel-only Original Audio Name field in Create\n- Audio name is preserved when scheduling, editing, and using **Use Again**\n- Reel publishing sends \\`audio_name\\` to Instagram\n- History shows the saved audio name\n- PWA shell cache bumped so installed copies refresh\n\n## Important limitation\n\nThis names the original audio already embedded in the uploaded Reel video. It does **not** browse or attach tracks from Instagram's licensed/trending music library.\n\n## Upgrade\n\nNo D1 migration is required. The value is stored inside the existing \\`instagram_options\\` JSON column.\n\n1. \\`npm install\\`\n2. \\`npm test\\`\n3. \\`npm run deploy\\`\n`);
+write('VERSION.txt', 'Rick Parma Social Publisher\nVersion 0.6.5 - Instagram Reel original-audio naming\n');
+write('UPGRADE-v0.6.5.md', [
+  '# Social Publisher v0.6.5',
+  '',
+  'Adds Instagram Reel original-audio naming with Meta audio_name publishing support.',
+  '',
+  '## What changed',
+  '',
+  '- Reel-only Original Audio Name field in Create',
+  '- Audio name is preserved when scheduling, editing, and using **Use Again**',
+  '- Reel publishing sends audio_name to Instagram',
+  '- History shows the saved audio name',
+  '- PWA shell cache bumped so installed copies refresh',
+  '',
+  '## Important limitation',
+  '',
+  "This names the original audio already embedded in the uploaded Reel video. It does **not** browse or attach tracks from Instagram's licensed/trending music library.",
+  '',
+  '## Upgrade',
+  '',
+  'No D1 migration is required. The value is stored inside the existing instagram_options JSON column.',
+  '',
+  '1. npm install',
+  '2. npm test',
+  '3. npm run deploy',
+  '',
+].join('\n'));
 
 console.log('Social Publisher upgraded to v0.6.5.');
