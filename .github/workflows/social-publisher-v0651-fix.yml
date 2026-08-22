@@ -1,0 +1,36 @@
+name: Social Publisher v0.6.5.1 Fix
+
+on:
+  push:
+    branches: [social-publisher-dev]
+    paths:
+      - '.github/workflows/social-publisher-v0651-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: social-publisher-dev
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply selector fix
+        run: node social-publisher/scripts/fix-0651.mjs
+      - name: Validate
+        working-directory: social-publisher
+        run: |
+          npm install
+          npm test
+      - name: Commit fixed source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add social-publisher
+          git commit -m "Fix Instagram type selector and Reel Audio visibility"
+          git push origin HEAD:social-publisher-dev
