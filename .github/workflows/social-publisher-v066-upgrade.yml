@@ -5,6 +5,11 @@ on:
     branches: [social-publisher-dev]
     paths:
       - '.github/workflows/social-publisher-v066-upgrade.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'social-publisher/**'
+      - '.github/workflows/social-publisher-v066-upgrade.yml'
 
 permissions:
   contents: write
@@ -34,5 +39,3 @@ jobs:
           git add social-publisher
           git commit -m "Add Max Reach and Facebook Reel publishing"
           git push origin HEAD:social-publisher-dev
-
-# v0.6.6 build trigger
