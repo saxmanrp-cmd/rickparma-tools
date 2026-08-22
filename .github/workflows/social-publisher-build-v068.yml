@@ -9,6 +9,12 @@ on:
       - social-publisher/tools/v068-performance-snippet.txt
       - social-publisher/tools/v068-reach-full.txt
       - .github/workflows/social-publisher-build-v068.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - social-publisher/**
+      - .github/workflows/social-publisher-build-v068.yml
 
 permissions:
   contents: write
