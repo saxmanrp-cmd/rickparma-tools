@@ -34,3 +34,5 @@ jobs:
           git add social-publisher
           git commit -m "Add Max Reach and Facebook Reel publishing"
           git push origin HEAD:social-publisher-dev
+
+# v0.6.6 build trigger
