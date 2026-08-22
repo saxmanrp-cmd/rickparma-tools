@@ -551,7 +551,7 @@ async function submitRemotePost(draft) {
   const apiStatus = draft.status === 'ready' ? 'queued' : draft.status;
   const r = await fetch('/api/posts', {
     method:'POST', headers:{'content-type':'application/json'},
-    body:JSON.stringify({ caption:draft.caption, platforms:draft.platforms, status:apiStatus, scheduledAt:draft.scheduledAt, mediaKey, mediaType, instagramOptions:draft.instagramOptions }),
+    body:JSON.stringify({ caption:draft.caption, platforms:draft.platforms, status:apiStatus, scheduledAt:draft.scheduledAt, mediaKey, mediaType, instagramOptions:draft.instagramOptions, timezone:Intl.DateTimeFormat().resolvedOptions().timeZone || null }),
   });
   const data = await r.json().catch(()=>({}));
   if (!r.ok) throw new Error(data.error || 'Could not create post.');
@@ -577,6 +577,7 @@ async function updateRemoteScheduledPost(id, draft) {
       mediaKey,
       mediaType,
       instagramOptions:draft.instagramOptions,
+      timezone:Intl.DateTimeFormat().resolvedOptions().timeZone || null,
     }),
   });
   const data = await r.json().catch(()=>({}));

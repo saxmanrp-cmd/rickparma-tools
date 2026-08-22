@@ -1,4 +1,4 @@
-const CACHE = 'social-publisher-shell-v670';
+const CACHE = 'social-publisher-shell-v680';
 const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/reach-intelligence.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', event => {

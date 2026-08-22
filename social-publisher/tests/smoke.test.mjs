@@ -16,7 +16,7 @@ test('worker health and auth guard', async () => {
   assert.equal(response.status, 200);
   const health = await response.json();
   assert.equal(health.ok, true);
-  assert.equal(health.version, '0.6.7');
+  assert.equal(health.version, '0.6.8');
 
   response = await worker.fetch(new Request('https://social.test/api/auth/status'), {}, { waitUntil() {} });
   const auth = await response.json();
@@ -136,5 +136,43 @@ test('Reach Intelligence is wired into Max Reach', () => {
   for (const needle of ['buildReachIntelligence','classifyIntent','nextSuggestedSlot','timingMode','Caption starter added']) assert.equal(reach.includes(needle), true, 'Reach Intelligence missing ' + needle);
   assert.equal(css.includes('v0.6.7 Reach Intelligence'), true);
   assert.equal(sw.includes('/reach-intelligence.js'), true);
-  assert.equal(sw.includes('social-publisher-shell-v670'), true);
+  assert.equal(sw.includes('social-publisher-shell-v680'), true);
+});
+
+
+test('Performance Learning schema upgrades cleanly', () => {
+  const schema = read('schema.sql');
+  const migration1 = read('migrations/0001_instagram_options.sql');
+  const migration2 = read('migrations/0002_performance_learning.sql');
+  const fresh = new DatabaseSync(':memory:');
+  fresh.exec(schema);
+  const columns = fresh.prepare('PRAGMA table_info(posts)').all().map(row => row.name);
+  assert.equal(columns.includes('timezone'), true);
+  assert.equal(fresh.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='performance_tracking'").get().name, 'performance_tracking');
+  assert.equal(fresh.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='performance_snapshots'").get().name, 'performance_snapshots');
+  const previous = schema
+    .replace(/\n\s*instagram_options TEXT,/, '')
+    .replace(/\n\s*timezone TEXT,/, '')
+    .replace(/\n\nCREATE TABLE IF NOT EXISTS performance_tracking[\s\S]*$/, '');
+  const upgraded = new DatabaseSync(':memory:');
+  upgraded.exec(previous);
+  upgraded.exec(migration1);
+  upgraded.exec(migration2);
+  const upgradedColumns = upgraded.prepare('PRAGMA table_info(posts)').all().map(row => row.name);
+  assert.equal(upgradedColumns.includes('instagram_options'), true);
+  assert.equal(upgradedColumns.includes('timezone'), true);
+});
+
+test('Performance Learning is wired into publishing and Reach Intelligence', () => {
+  const backend = read('src/index.js');
+  const frontend = read('public/app.js');
+  const reach = read('public/reach-intelligence.js');
+  const html = read('public/index.html');
+  const sw = read('public/service-worker.js');
+  for (const needle of ['processPerformanceTracking','seedPerformanceTracking','fetchInstagramPerformance','fetchFacebookPerformance','buildPerformanceProfile','/api/intelligence/profile','performance_snapshots']) assert.equal(backend.includes(needle), true, 'backend missing ' + needle);
+  assert.equal(frontend.includes('resolvedOptions().timeZone'), true);
+  for (const needle of ['loadPerformanceProfile','nextPersonalizedSlot','PERSONALIZED','Use My Best Time','bestFormat','captionPattern']) assert.equal(reach.includes(needle), true, 'reach missing ' + needle);
+  assert.equal(html.includes('id="reachPersonalizedSummary"'), true);
+  assert.equal(html.includes('id="reachLearningNote"'), true);
+  assert.equal(sw.includes('social-publisher-shell-v680'), true);
 });
