@@ -1,2 +1,2 @@
 Rick Parma Social Publisher
-Version 0.6.6.1 - Threads video retry reliability
+Version 0.6.7 - Reach Intelligence

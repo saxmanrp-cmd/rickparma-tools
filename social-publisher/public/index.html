@@ -49,6 +49,27 @@
             </div>
             <div id="maxReachSummary" class="max-reach-summary">Add a photo or video to get a recommendation.</div>
             <div id="maxReachDetails" class="max-reach-details"></div>
+            <div id="reachIntelligence" class="reach-intelligence hidden">
+              <div class="reach-intel-divider"></div>
+              <div class="reach-intel-head">
+                <div>
+                  <strong>Reach Intelligence</strong>
+                  <span>Format + caption + local timing</span>
+                </div>
+                <b id="reachFitScore" class="reach-fit-score">FORMAT FIT</b>
+              </div>
+              <div class="reach-intel-grid">
+                <div class="reach-intel-tip"><small>CONTENT</small><strong id="reachContentTitle"></strong><p id="reachContentBody"></p></div>
+                <div class="reach-intel-tip"><small>WHEN</small><strong id="reachTimeTitle"></strong><p id="reachTimeBody"></p></div>
+                <div class="reach-intel-tip"><small>CAPTION</small><strong>Caption structure</strong><p id="reachCaptionBody"></p></div>
+                <div class="reach-intel-tip"><small>FOLLOW-UP</small><strong>Second touch</strong><p id="reachFollowupBody"></p></div>
+              </div>
+              <div class="reach-intel-actions">
+                <button id="useReachTimeBtn" class="button secondary" type="button">Use Suggested Time</button>
+                <button id="useReachCaptionBtn" class="button secondary" type="button">Use Caption Starter</button>
+              </div>
+              <div class="reach-intel-note">Learning mode: timing windows are starting points until Social Publisher has enough of your own post-performance data to personalize them.</div>
+            </div>
             <button id="applyMaxReachBtn" class="button max-reach-button full" type="button" disabled>Apply Recommendation</button>
           </div>
 
@@ -256,7 +277,7 @@
         <button id="logoutBtn" class="button secondary full hidden" type="button">Log Out</button>
 
         <button id="clearHistoryBtn" class="danger-link" type="button">Clear prototype data</button>
-        <div class="version-footer">Social Publisher v0.6.6</div>
+        <div class="version-footer">Social Publisher v0.6.7</div>
       </section>
     </main>
 
@@ -311,5 +332,6 @@
 
   <div id="toast" class="toast" role="status"></div>
   <script src="/app.js"></script>
+  <script src="/reach-intelligence.js"></script>
 </body>
 </html>
