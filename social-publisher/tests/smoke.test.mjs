@@ -16,7 +16,7 @@ test('worker health and auth guard', async () => {
   assert.equal(response.status, 200);
   const health = await response.json();
   assert.equal(health.ok, true);
-  assert.equal(health.version, '0.6.5.1');
+  assert.equal(health.version, '0.6.6');
 
   response = await worker.fetch(new Request('https://social.test/api/auth/status'), {}, { waitUntil() {} });
   const auth = await response.json();
@@ -98,7 +98,18 @@ test('Instagram Reel original audio name is wired end to end', () => {
 
 test('Instagram type selector is isolated from timing selector', () => {
   const frontend = read('public/app.js');
-  assert.equal(frontend.includes("$$('.segmented:not(.ig-type-segmented) .segment').forEach(segment"), true);
+  assert.equal(frontend.includes("$$('.timing-segmented .segment').forEach(segment"), true);
   assert.equal(frontend.includes("$$('.segment').forEach(segment => segment.addEventListener('click'"), false);
   assert.equal(frontend.includes('updateInstagramReelAudioVisibility();'), true);
+});
+
+
+test('Max Reach and Facebook Reel are wired end to end', () => {
+  const backend = read('src/index.js');
+  const frontend = read('public/app.js');
+  const html = read('public/index.html');
+
+  for (const needle of ["facebook_reel", 'publishFacebookReel', '/me/video_reels', "'file_url':mediaUrl"]) assert.equal(backend.includes(needle), true, `backend missing ${needle}`);
+  for (const needle of ['getMaxReachRecommendation', 'applyMaxReachRecommendation', 'currentFacebookType', 'readVideoMetadata', 'facebook_reel']) assert.equal(frontend.includes(needle), true, `frontend missing ${needle}`);
+  for (const needle of ['id="maxReachCard"', 'id="applyMaxReachBtn"', 'id="facebookTypeWrap"', 'name="fbType"']) assert.equal(html.includes(needle), true, `HTML missing ${needle}`);
 });

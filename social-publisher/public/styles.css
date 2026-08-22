@@ -86,3 +86,14 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,label:focus-with
 .full-input{width:100%;min-height:44px;background:#0d1118;border:1px solid #2c3543;border-radius:12px;color:#fff;padding:10px 12px;outline:none}
 .audio-meta-row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-top:7px;color:var(--muted);font-size:10px;line-height:1.4}
 .audio-meta-row span{flex:1}.audio-meta-row b{white-space:nowrap;color:#aeb6c5;font-weight:800}
+
+
+/* v0.6.6 Max Reach */
+.max-reach-card{border-color:#443d78;background:linear-gradient(145deg,rgba(124,92,255,.14),rgba(18,22,32,.98));box-shadow:0 14px 36px rgba(30,20,70,.15)}
+.max-reach-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.max-reach-head .field-hint{margin-top:4px;max-width:470px}
+.max-reach-badge{border:1px solid #6959ad;background:#261f40;color:#d5ccff;border-radius:999px;padding:5px 8px;font-size:9px;font-weight:900;letter-spacing:.08em;white-space:nowrap}
+.max-reach-summary{font-size:13px;font-weight:800;line-height:1.4;margin-top:12px;color:#f3f0ff}
+.max-reach-details{display:grid;gap:7px;margin:10px 0 12px}.max-reach-details div{display:grid;grid-template-columns:18px 1fr;gap:6px;color:#aab2c1;font-size:11px;line-height:1.35}.max-reach-details div span{color:#9b8bff;font-weight:900}
+.max-reach-button{background:#211c37;border-color:#55468b;color:#ded8ff}.max-reach-button:disabled{opacity:.45}
+.fb-type-wrap{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.fb-type-segmented{grid-template-columns:1fr 1fr}

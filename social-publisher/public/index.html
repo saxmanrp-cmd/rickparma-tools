@@ -39,6 +39,19 @@
             <button id="removeMediaBtn" class="text-button danger" type="button">Remove</button>
           </div>
 
+          <div id="maxReachCard" class="card max-reach-card">
+            <div class="max-reach-head">
+              <div>
+                <div class="section-label">Max Reach</div>
+                <div class="field-hint left-hint">Social Publisher analyzes the media and recommends the strongest distribution mix.</div>
+              </div>
+              <span id="maxReachBadge" class="max-reach-badge">ANALYZE</span>
+            </div>
+            <div id="maxReachSummary" class="max-reach-summary">Add a photo or video to get a recommendation.</div>
+            <div id="maxReachDetails" class="max-reach-details"></div>
+            <button id="applyMaxReachBtn" class="button max-reach-button full" type="button" disabled>Apply Recommendation</button>
+          </div>
+
           <div class="card compact-card">
             <div class="caption-topline">
               <label for="caption">Caption</label>
@@ -84,6 +97,16 @@
                 <label class="segment"><input type="radio" name="igType" value="reel" /><span>Reel</span></label>
               </div>
               <div id="instagramTypeHint" class="field-hint">Post: photo · Story: photo/video · Reel: video</div>
+            </div>
+
+
+            <div id="facebookTypeWrap" class="fb-type-wrap">
+              <div class="section-label small-label">Facebook Type</div>
+              <div class="segmented fb-type-segmented">
+                <label class="segment active"><input type="radio" name="fbType" value="post" checked /><span>Post / Video</span></label>
+                <label class="segment"><input type="radio" name="fbType" value="reel" /><span>Reel</span></label>
+              </div>
+              <div class="field-hint">Use Reel for qualifying 9:16 short-form video.</div>
             </div>
 
             <div id="instagramReelAudioWrap" class="ig-audio-wrap hidden">
@@ -134,7 +157,7 @@
 
           <div class="card compact-card">
             <div class="section-label">When</div>
-            <div class="segmented">
+            <div class="segmented timing-segmented">
               <label class="segment active">
                 <input type="radio" name="timing" value="now" checked />
                 <span>Now</span>
@@ -233,7 +256,7 @@
         <button id="logoutBtn" class="button secondary full hidden" type="button">Log Out</button>
 
         <button id="clearHistoryBtn" class="danger-link" type="button">Clear prototype data</button>
-        <div class="version-footer">Social Publisher v0.6.5</div>
+        <div class="version-footer">Social Publisher v0.6.6</div>
       </section>
     </main>
 

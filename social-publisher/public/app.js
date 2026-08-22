@@ -110,6 +110,17 @@ $$('input[name="igType"]').forEach(input => input.addEventListener('change', () 
 }));
 updateInstagramTypeVisibility();
 
+function currentFacebookType() { return $('input[name="fbType"]:checked')?.value || 'post'; }
+function updateFacebookTypeVisibility() {
+  const selected = $('.platform-chip[data-platform="facebook"] input')?.checked;
+  $('#facebookTypeWrap')?.classList.toggle('hidden', !selected);
+}
+$('.platform-chip[data-platform="facebook"] input')?.addEventListener('change', updateFacebookTypeVisibility);
+$$('input[name="fbType"]').forEach(input => input.addEventListener('change', () => {
+  $$('.fb-type-segmented .segment').forEach(s => s.classList.toggle('active', s.querySelector('input')?.checked));
+}));
+updateFacebookTypeVisibility();
+
 function normalizeIgUsername(value='') {
   const username = String(value).trim().replace(/^@+/, '');
   return /^[A-Za-z0-9._]{1,30}$/.test(username) ? username : '';
@@ -233,14 +244,14 @@ setInterval(() => {
   }
 }, 15000);
 
-$$('.segmented:not(.ig-type-segmented) .segment').forEach(segment => segment.addEventListener('click', () => {
+$$('.timing-segmented .segment').forEach(segment => segment.addEventListener('click', () => {
   const input = segment.querySelector('input');
   if (!input) return;
   if (editingPostId && input.value === 'now') {
     toast('Scheduled posts stay scheduled while editing.');
     return;
   }
-  $$('.segmented:not(.ig-type-segmented) .segment').forEach(s => s.classList.remove('active'));
+  $$('.timing-segmented .segment').forEach(s => s.classList.remove('active'));
   segment.classList.add('active');
   input.checked = true;
   const scheduled = input.value === 'schedule';
@@ -264,12 +275,20 @@ function setScheduleFromIso(iso) {
 }
 
 function setPlatformSelection(platforms = []) {
+  const normalized = platforms.map(p => p === 'facebook_reel' ? 'facebook' : (p === 'instagram' || p.startsWith('instagram_') ? 'instagram' : p));
   $$('.platform-chip').forEach(card => {
     const input = card.querySelector('input');
     if (!input || input.disabled) return;
-    input.checked = platforms.includes(input.value);
+    input.checked = normalized.includes(input.value);
     card.classList.toggle('selected', input.checked);
   });
+  const ig = platforms.find(p => p.startsWith('instagram_'));
+  const igType = ig ? ig.replace('instagram_','') : 'post';
+  const igInput = $(`input[name="igType"][value="${igType}"]`);
+  if (igInput) { igInput.checked = true; $$('.ig-type-segmented .segment').forEach(s => s.classList.toggle('active', s.querySelector('input')?.checked)); }
+  const fbType = platforms.includes('facebook_reel') ? 'reel' : 'post';
+  const fbInput = $(`input[name="fbType"][value="${fbType}"]`);
+  if (fbInput) { fbInput.checked = true; $$('.fb-type-segmented .segment').forEach(s => s.classList.toggle('active', s.querySelector('input')?.checked)); }
 }
 
 function setScheduleTiming() {
@@ -292,13 +311,81 @@ $('#changeMediaBtn').addEventListener('click', e => { e.preventDefault(); mediaI
 dropZone.addEventListener('dragover', e => e.preventDefault());
 dropZone.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) handleMedia(f); });
 
+function readVideoMetadata(file) {
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    const done = value => { URL.revokeObjectURL(url); resolve(value); };
+    video.onloadedmetadata = () => done({ width:video.videoWidth || 0, height:video.videoHeight || 0, duration:Number.isFinite(video.duration) ? video.duration : 0 });
+    video.onerror = () => done({});
+    video.src = url;
+  });
+}
+
+function getMaxReachRecommendation() {
+  const media = state.currentMedia;
+  if (!media) return { ready:false, badge:'ANALYZE', summary:'Add a photo or video to get a recommendation.', details:[] };
+  const type = String(media.type || '');
+  if (type.startsWith('image/')) {
+    return {
+      ready:true, badge:'PHOTO',
+      summary:'Best fit: Feed distribution across Instagram, Facebook and Threads.',
+      details:['Instagram Post for saves, shares and profile discovery','Facebook Post for your Page audience','Threads for an extra conversation surface','Story can be a follow-up after the feed post'],
+      platforms:['instagram_post','facebook','threads'],
+    };
+  }
+  if (type.startsWith('video/')) {
+    const width = Number(media.width || 0), height = Number(media.height || 0), duration = Number(media.duration || 0);
+    const ratio = width > 0 && height > 0 ? width / height : 0;
+    const hasMetadata = width > 0 && height > 0 && duration > 0;
+    const fbReelEligible = hasMetadata && width >= 540 && height >= 960 && duration >= 4 && duration <= 60 && Math.abs(ratio - (9/16)) <= 0.025;
+    if (fbReelEligible) {
+      return {
+        ready:true, badge:'SHORT VIDEO',
+        summary:'Best fit: short-form Reel distribution on both Meta platforms.',
+        details:[`Detected ${width}×${height} · ${Math.round(duration)} sec`,`Instagram Reel with Share to Feed already enabled`,`Facebook Reel instead of a standard Page video`,`Threads + TikTok add more distribution surfaces`],
+        platforms:['instagram_reel','facebook_reel','threads','tiktok'],
+      };
+    }
+    const mediaLine = hasMetadata ? `Detected ${width}×${height} · ${Math.round(duration)} sec` : 'Video detected; exact dimensions are unavailable for reused media';
+    return {
+      ready:true, badge:'VIDEO',
+      summary:'Strong video mix: Instagram Reel plus broad distribution; Facebook stays standard video unless the file is Reel-ready.',
+      details:[mediaLine,'Instagram Reel is recommended for discovery','Facebook Post / Video avoids forcing a non-compliant Reel','Threads + TikTok extend distribution'],
+      platforms:['instagram_reel','facebook','threads','tiktok'],
+    };
+  }
+  return { ready:false, badge:'MEDIA', summary:'This media type cannot be analyzed yet.', details:[] };
+}
+
+function updateMaxReachRecommendation() {
+  const rec = getMaxReachRecommendation();
+  if ($('#maxReachBadge')) $('#maxReachBadge').textContent = rec.badge;
+  if ($('#maxReachSummary')) $('#maxReachSummary').textContent = rec.summary;
+  if ($('#maxReachDetails')) $('#maxReachDetails').innerHTML = (rec.details || []).map(item => `<div><span>✓</span>${escapeHtml(item)}</div>`).join('');
+  if ($('#applyMaxReachBtn')) $('#applyMaxReachBtn').disabled = !rec.ready;
+}
+
+function applyMaxReachRecommendation() {
+  const rec = getMaxReachRecommendation();
+  if (!rec.ready) return toast('Add media first.');
+  setPlatformSelection(rec.platforms || []);
+  updateInstagramTypeVisibility();
+  updateFacebookTypeVisibility();
+  toast('Max Reach recommendation applied.');
+}
+$('#applyMaxReachBtn')?.addEventListener('click', applyMaxReachRecommendation);
+
 async function handleMedia(file) {
   if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) return toast('Choose a photo or video.');
   try {
     invalidatePhotoTagPositions();
     currentFile = file.type.startsWith('image/') ? await normalizeImage(file) : file;
+    const metadata = currentFile.type.startsWith('video/') ? await readVideoMetadata(currentFile) : {};
     const dataUrl = await fileToDataUrl(currentFile);
-    state.currentMedia = { name:currentFile.name, type:currentFile.type, dataUrl, createdAt:new Date().toISOString() };
+    state.currentMedia = { name:currentFile.name, type:currentFile.type, dataUrl, ...metadata, createdAt:new Date().toISOString() };
     renderCurrentMedia();
     if (file.type.startsWith('image/') && currentFile.type === 'image/jpeg' && file.type !== 'image/jpeg') toast('Image converted for Instagram.');
   } catch {
@@ -343,6 +430,7 @@ function mediaTag(media, autoplay = false) {
 }
 function renderCurrentMedia() {
   const media = state.currentMedia;
+  updateMaxReachRecommendation();
   $('#uploadPrompt').classList.toggle('hidden', !!media);
   $('#mediaPreview').classList.toggle('hidden', !media);
   $('#mediaActions').classList.toggle('hidden', !media);
@@ -361,6 +449,7 @@ $('#removeMediaBtn').addEventListener('click', e => {
 function selectedPlatforms() {
   return $$('.platform-chip input:checked:not(:disabled)').map(i => {
     if (i.value === 'instagram') return `instagram_${currentInstagramType()}`;
+    if (i.value === 'facebook') return currentFacebookType() === 'reel' ? 'facebook_reel' : 'facebook';
     return i.value;
   });
 }
@@ -371,6 +460,7 @@ function validateMediaForPlatforms(platforms) {
   const mediaType = String(state.currentMedia?.type || '');
   if (platforms.includes('instagram_post') && hasMedia && !mediaType.startsWith('image/')) return 'Instagram Post currently requires a photo. Choose Reel for video.';
   if (platforms.includes('instagram_reel') && hasMedia && !mediaType.startsWith('video/')) return 'Instagram Reel requires a video.';
+  if (platforms.includes('facebook_reel') && hasMedia && !mediaType.startsWith('video/')) return 'Facebook Reel requires a video.';
   return '';
 }
 
@@ -547,7 +637,7 @@ function startEditingScheduledPost(id) {
   renderInstagramAudio();
   {
     const plats = post.platforms || [];
-    setPlatformSelection(plats.map(p => p.startsWith('instagram_') || p === 'instagram' ? 'instagram' : p));
+    setPlatformSelection(plats);
     const ig = plats.find(p => p.startsWith('instagram_'));
     if (ig) { const type = ig.replace('instagram_',''); const input = $(`input[name="igType"][value="${type}"]`); if (input) { input.checked=true; input.dispatchEvent(new Event('change')); } }
     updateInstagramTypeVisibility();
@@ -624,7 +714,7 @@ function instagramPeopleSummaryHtml(post) {
   return bits.length ? `<div class="people-summary">${bits.join(' · ')}</div>` : '';
 }
 
-function platformName(p) { return ({instagram:'Instagram',instagram_post:'Instagram Post',instagram_story:'Instagram Story',instagram_reel:'Instagram Reel',facebook:'Facebook',threads:'Threads',tiktok:'TikTok'}[p] || p); }
+function platformName(p) { return ({instagram:'Instagram',instagram_post:'Instagram Post',instagram_story:'Instagram Story',instagram_reel:'Instagram Reel',facebook:'Facebook',facebook_reel:'Facebook Reel',threads:'Threads',tiktok:'TikTok'}[p] || p); }
 function platformLabel(list) { return (list||[]).map(platformName).join(' + '); }
 function formatDate(iso) { if (!iso) return ''; return new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}).format(new Date(iso)); }
 function postIcon(status) { return status === 'scheduled' ? '◷' : status === 'draft' ? '✎' : ['failed','partial_failed'].includes(status) ? '!' : status === 'published' ? '✓' : '↗'; }
@@ -679,7 +769,7 @@ async function reusePost(id) {
   renderInstagramPeople();
   renderInstagramAudio();
   const platforms = post.platforms || [];
-  setPlatformSelection(platforms.map(p => p.startsWith('instagram_') || p === 'instagram' ? 'instagram' : p));
+  setPlatformSelection(platforms);
   const ig = platforms.find(p => p.startsWith('instagram_'));
   const igType = ig ? ig.replace('instagram_','') : 'post';
   const igInput = $(`input[name="igType"][value="${igType}"]`);
