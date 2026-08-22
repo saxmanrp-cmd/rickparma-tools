@@ -405,6 +405,7 @@
     <div class="tab-panel active" id="tab-blast">
       <div class="card">
         <h2>Send a Blast <span class="count-pill" id="recipientCountPill">0 recipients</span></h2>
+<div class="message-status hidden" id="editingScheduleBanner" style="background:#fff3cd; color:#7a5b00; padding:8px 12px; border-radius:8px; margin-bottom:12px;">Editing a scheduled blast — <button class="action-link" id="cancelEditScheduleBtn" style="padding:0;">cancel edit</button></div>
 
         <label>To</label>
         <button class="btn btn-secondary" id="toSummaryBtn" style="text-align:left;">Select recipients ▾</button>
@@ -734,33 +735,51 @@
   });
 
   // ---- Scheduling (list/cancel only, composing happens on the Blast tab) ----
-  function renderScheduledList(items) {
-    const el = document.getElementById('scheduledList');
-    if (!items || !items.length) {
-      el.innerHTML = '<p>No scheduled blasts.</p>';
-      return;
-    }
-    el.innerHTML = items.map((item) => {
-      const when = item.nextRun ? new Date(item.nextRun).toLocaleString() : '(none)';
-      const rec = item.recurrence ? item.recurrence.freq : 'one-time';
-      const status = item.status || 'pending';
-      const cancelBtn = status === 'pending'
-        ? '<button class="btn small cancelSchedBtn" data-id="' + item.id + '">Cancel</button>'
-        : '';
-      return '<div class="scheduled-item">' +
-        '<div><strong>' + when + '</strong> (' + rec + ') — ' + status + '</div>' +
-        '<div>' + (item.message || '').slice(0, 120) + '</div>' +
-        cancelBtn +
-        '</div>';
-    }).join('');
-    document.querySelectorAll('.cancelSchedBtn').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        await apiFetch('/api/scheduled/cancel', { method: 'POST', body: JSON.stringify({ id: btn.dataset.id }) });
-        loadScheduledBlasts();
-      });
-    });
+function renderScheduledList(items) {
+  const el = document.getElementById('scheduledList');
+  if (!items || !items.length) {
+    el.innerHTML = '<p>No scheduled blasts.</p>';
+    return;
   }
+  el.innerHTML = items.map((item) => {
+    const when = item.nextRun ? new Date(item.nextRun).toLocaleString() : '(none)';
+    const rec = item.recurrence ? item.recurrence.freq : 'one-time';
+    const status = item.status || 'pending';
+    const editBtn = status === 'pending'
+      ? '<button class="btn small editSchedBtn" data-id="' + item.id + '">Edit</button>'
+      : '';
+    const cancelBtn = status === 'pending'
+      ? '<button class="btn small cancelSchedBtn" data-id="' + item.id + '">Cancel</button>'
+      : '';
+    const deleteBtn = '<button class="btn small btn-danger deleteSchedBtn" data-id="' + item.id + '">Delete</button>';
+    return '<div class="scheduled-item">' +
+      '<div><strong>' + when + '</strong> (' + rec + ') — ' + status + '</div>' +
+      '<div>' + (item.message || '').slice(0, 120) + '</div>' +
+      editBtn + cancelBtn + deleteBtn +
+      '</div>';
+  }).join('');
+  document.querySelectorAll('.cancelSchedBtn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      await apiFetch('/api/scheduled/cancel', { method: 'POST', body: JSON.stringify({ id: btn.dataset.id }) });
+      loadScheduledBlasts();
+    });
+  });
+  document.querySelectorAll('.deleteSchedBtn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Permanently delete this scheduled blast? This cannot be undone.')) return;
+      btn.disabled = true;
+      await apiFetch('/api/scheduled/delete', { method: 'POST', body: JSON.stringify({ id: btn.dataset.id }) });
+      loadScheduledBlasts();
+    });
+  });
+  document.querySelectorAll('.editSchedBtn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const item = items.find((i) => i.id === btn.dataset.id);
+      if (item) startEditingScheduled(item);
+    });
+  });
+}
 
   async function loadScheduledBlasts() {
     const el = document.getElementById('scheduledList');
@@ -1352,6 +1371,7 @@ async function loadBalance() { const wrap = document.getElementById('balanceWrap
 
 
   let selectedTags = [];
+let editingScheduledId = null;
   let manualNumbers = []; // ad-hoc numbers for this blast only, not saved as subscribers
 
   const manualNumberInput = document.getElementById('manualNumberInput');
@@ -1692,7 +1712,8 @@ blastPhoto.addEventListener('change', updateStatsLine);
     }
 
     try {
-      const res = await apiFetch('/api/scheduled', { method: 'POST', body: JSON.stringify(payload) });
+      if (editingScheduledId) payload.id = editingScheduledId;
+      const res = await apiFetch(editingScheduledId ? '/api/scheduled/update' : '/api/scheduled', { method: 'POST', body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok || data.error) {
         sendStatus.className = 'message-status error';
@@ -1702,7 +1723,7 @@ blastPhoto.addEventListener('change', updateStatsLine);
         return;
       }
       sendStatus.className = 'message-status success';
-      sendStatus.textContent = 'Scheduled!';
+      sendStatus.textContent = editingScheduledId ? 'Saved changes!' : 'Scheduled!';
       blastMessage.value = '';
       manualNumbers = [];
       renderManualNumbers();
@@ -1714,6 +1735,9 @@ blastPhoto.addEventListener('change', updateStatsLine);
       blastScheduleFields.classList.add('hidden');
       blastRecurrence.value = '';
       blastSendAt.value = '';
+    editingScheduledId = null;
+    confirmScheduleBtn.textContent = 'Schedule Blast';
+    editingScheduleBanner.classList.add('hidden');
       updateStatsLine();
       updateRecipientSummary();
       previewCard.classList.add('hidden');
@@ -1727,7 +1751,88 @@ blastPhoto.addEventListener('change', updateStatsLine);
     editBlastBtn.disabled = false;
   });
 
-  // ================= MESSAGES / INBOX =================
+  // ---- Editing an existing scheduled blast from the Scheduled tab ----
+const editingScheduleBanner = document.getElementById('editingScheduleBanner');
+const cancelEditScheduleBtn = document.getElementById('cancelEditScheduleBtn');
+
+function startEditingScheduled(item) {
+  previewCard.classList.add('hidden');
+  document.querySelectorAll('#tab-blast .card').forEach(c => c.classList.remove('hidden'));
+
+  editingScheduledId = item.id;
+  blastMessage.value = item.message || '';
+  selectedTags = Array.isArray(item.tags) ? item.tags.slice() : [];
+  manualNumbers = Array.isArray(item.extraNumbers) ? item.extraNumbers.slice() : [];
+  renderManualNumbers();
+  renderTagCheckList();
+  recipientPicker.classList.remove('hidden');
+
+  blastMediaUrl = item.mediaUrl || null;
+  if (blastMediaUrl) {
+    const isVideo = isVideoUrl(blastMediaUrl);
+    blastPhotoPreviewWrap.classList.remove('hidden');
+    if (isVideo) {
+      blastPhotoPreview.style.display = 'none';
+      blastVideoPreview.style.display = 'block';
+      blastVideoPreview.src = blastMediaUrl;
+    } else {
+      blastVideoPreview.style.display = 'none';
+      blastPhotoPreview.style.display = 'block';
+      blastPhotoPreview.src = blastMediaUrl;
+    }
+    blastPhotoInfo.textContent = 'Existing attachment (upload a new file to replace it)';
+  } else {
+    blastPhotoPreviewWrap.classList.add('hidden');
+  }
+
+  blastWhen.value = 'scheduled';
+  blastScheduleFields.classList.remove('hidden');
+
+  if (item.recurrence && item.recurrence.freq) {
+    blastRecurrence.value = item.recurrence.freq;
+    blastTime.value = item.recurrence.time || '09:00';
+    if (item.recurrence.freq === 'weekly') blastDayOfWeek.value = String(item.recurrence.dayOfWeek || 0);
+    if (item.recurrence.freq === 'monthly') blastDayOfMonth.value = String(item.recurrence.dayOfMonth || 1);
+  } else {
+    blastRecurrence.value = '';
+    if (item.nextRun) {
+      const d = new Date(item.nextRun);
+      const pad = (n) => String(n).padStart(2, '0');
+      blastSendAt.value = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+  }
+  updateBlastScheduleRowsVisibility();
+  updateStatsLine();
+  updateRecipientSummary();
+
+  confirmScheduleBtn.textContent = 'Save Changes';
+  editingScheduleBanner.classList.remove('hidden');
+
+  document.querySelector('[data-tab="blast"]').click();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+cancelEditScheduleBtn.addEventListener('click', () => {
+  editingScheduledId = null;
+  blastMessage.value = '';
+  manualNumbers = [];
+  renderManualNumbers();
+  selectedTags = [];
+  blastMediaUrl = null;
+  blastPhoto.value = '';
+  blastPhotoPreviewWrap.classList.add('hidden');
+  blastPhotoStatus.textContent = '';
+  blastWhen.value = 'now';
+  blastScheduleFields.classList.add('hidden');
+  blastRecurrence.value = '';
+  blastSendAt.value = '';
+  updateStatsLine();
+  updateRecipientSummary();
+  confirmScheduleBtn.textContent = 'Schedule Blast';
+  editingScheduleBanner.classList.add('hidden');
+});
+
+// ================= MESSAGES / INBOX =================
 
   const conversationList = document.getElementById('conversationList');
   const convoCount = document.getElementById('convoCount');
