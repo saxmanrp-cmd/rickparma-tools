@@ -1,0 +1,36 @@
+name: Social Publisher v0.6.5 Upgrade
+
+on:
+  push:
+    branches: [social-publisher-dev]
+    paths:
+      - '.github/workflows/social-publisher-v065-upgrade.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  upgrade:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: social-publisher-dev
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply v0.6.5 source upgrade
+        run: node social-publisher/scripts/upgrade-065.mjs
+      - name: Validate v0.6.5
+        working-directory: social-publisher
+        run: |
+          npm install
+          npm test
+      - name: Commit upgraded source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add social-publisher
+          git commit -m "Add Instagram Reel original audio naming"
+          git push origin HEAD:social-publisher-dev
