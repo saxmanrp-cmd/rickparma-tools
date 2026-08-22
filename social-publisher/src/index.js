@@ -8,7 +8,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/api/health') {
-      return json({ ok: true, service: 'social-publisher-v3', version: '0.6.6.1', time: new Date().toISOString() });
+      return json({ ok: true, service: 'social-publisher-v3', version: '0.6.7', time: new Date().toISOString() });
     }
 
     if (url.pathname === '/api/auth/status' && request.method === 'GET') {
@@ -980,7 +980,7 @@ async function publishFacebookReel(env, post) {
     headers:{
       'Authorization':`OAuth ${token}`,
       'file_url':mediaUrl,
-      'User-Agent':'RickParma-SocialPublisher/0.6.6.1',
+      'User-Agent':'RickParma-SocialPublisher/0.6.7',
     },
   });
   const uploaded = await uploadResponse.json().catch(() => ({}));

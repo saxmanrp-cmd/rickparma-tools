@@ -16,7 +16,7 @@ test('worker health and auth guard', async () => {
   assert.equal(response.status, 200);
   const health = await response.json();
   assert.equal(health.ok, true);
-  assert.equal(health.version, '0.6.6.1');
+  assert.equal(health.version, '0.6.7');
 
   response = await worker.fetch(new Request('https://social.test/api/auth/status'), {}, { waitUntil() {} });
   const auth = await response.json();
@@ -125,4 +125,16 @@ test('Threads video jobs and retries are cron-owned and failed-only', () => {
   assert.equal(backend.includes("const results = isRetry ? { ...previousResults } : {};"), true);
   const retryBlock = backend.match(/if \(url\.pathname\.match\(\/\^\\\/api\\\/posts.*?failedPlatforms \}\);\n    \}/s)?.[0] || '';
   assert.equal(retryBlock.includes('ctx.waitUntil(processPost(env, id))'), false);
+});
+
+test('Reach Intelligence is wired into Max Reach', () => {
+  const html = read('public/index.html');
+  const reach = read('public/reach-intelligence.js');
+  const css = read('public/styles.css');
+  const sw = read('public/service-worker.js');
+  for (const needle of ['id="reachIntelligence"','id="reachFitScore"','id="useReachTimeBtn"','id="useReachCaptionBtn"','/reach-intelligence.js','Learning mode:']) assert.equal(html.includes(needle), true, 'HTML missing ' + needle);
+  for (const needle of ['buildReachIntelligence','classifyIntent','nextSuggestedSlot','timingMode','Caption starter added']) assert.equal(reach.includes(needle), true, 'Reach Intelligence missing ' + needle);
+  assert.equal(css.includes('v0.6.7 Reach Intelligence'), true);
+  assert.equal(sw.includes('/reach-intelligence.js'), true);
+  assert.equal(sw.includes('social-publisher-shell-v670'), true);
 });

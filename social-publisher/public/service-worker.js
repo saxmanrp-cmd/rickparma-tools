@@ -1,5 +1,5 @@
-const CACHE = 'social-publisher-shell-v661';
-const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
+const CACHE = 'social-publisher-shell-v670';
+const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/reach-intelligence.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
