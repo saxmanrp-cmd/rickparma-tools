@@ -1,2 +1,2 @@
 Rick Parma Social Publisher
-Version 0.6.5.1 - iPhone Instagram type selector fix
+Version 0.6.6 - Max Reach + Facebook Reels

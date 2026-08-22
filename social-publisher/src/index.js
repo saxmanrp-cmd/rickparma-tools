@@ -8,7 +8,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/api/health') {
-      return json({ ok: true, service: 'social-publisher-v3', version: '0.6.5.1', time: new Date().toISOString() });
+      return json({ ok: true, service: 'social-publisher-v3', version: '0.6.6', time: new Date().toISOString() });
     }
 
     if (url.pathname === '/api/auth/status' && request.method === 'GET') {
@@ -209,7 +209,7 @@ export default {
       if (!body.caption || !Array.isArray(body.platforms) || !body.platforms.length) {
         return json({ error: 'caption and at least one platform are required.' }, { status: 400 });
       }
-      const allowedPlatforms = ['facebook','instagram','instagram_post','instagram_story','instagram_reel','threads','tiktok'];
+      const allowedPlatforms = ['facebook','facebook_reel','instagram','instagram_post','instagram_story','instagram_reel','threads','tiktok'];
       const unsupported = body.platforms.filter(p => !allowedPlatforms.includes(p));
       if (unsupported.length) return json({ error: `Not connected yet: ${unsupported.join(', ')}` }, { status: 400 });
 
@@ -221,6 +221,7 @@ export default {
       const mt = String(body.mediaType || '');
       if (body.platforms.includes('instagram_post') && body.mediaKey && !mt.startsWith('image/')) return json({ error:'Instagram Post requires a photo. Use Reel for video.' }, { status:400 });
       if (body.platforms.includes('instagram_reel') && body.mediaKey && !mt.startsWith('video/')) return json({ error:'Instagram Reel requires a video.' }, { status:400 });
+      if (body.platforms.includes('facebook_reel') && body.mediaKey && !mt.startsWith('video/')) return json({ error:'Facebook Reel requires a video.' }, { status:400 });
       const igOptionsResult = validateInstagramOptions(body.instagramOptions, body.platforms, mt);
       if (igOptionsResult.error) return json({ error:igOptionsResult.error }, { status:400 });
       const instagramOptions = igOptionsResult.value;
@@ -247,10 +248,10 @@ export default {
         // Do not run those inside an HTTP waitUntil(), because the background
         // task can end after the response even though Instagram later publishes.
         // Let the every-minute cron own the full job so the final D1 status is saved.
-        const instagramVideoJob = mt.startsWith('video/') && body.platforms.some(p =>
-          p === 'instagram_reel' || p === 'instagram_story'
+        const longVideoJob = mt.startsWith('video/') && body.platforms.some(p =>
+          p === 'instagram_reel' || p === 'instagram_story' || p === 'facebook_reel'
         );
-        if (!instagramVideoJob) ctx.waitUntil(processPost(env, id));
+        if (!longVideoJob) ctx.waitUntil(processPost(env, id));
       }
       return json({ ok: true, id, status }, { status: 201 });
     }
@@ -271,7 +272,7 @@ export default {
       if (!body.caption || !Array.isArray(body.platforms) || !body.platforms.length) {
         return json({ error: 'caption and at least one platform are required.' }, { status: 400 });
       }
-      const allowedPlatforms = ['facebook','instagram','instagram_post','instagram_story','instagram_reel','threads','tiktok'];
+      const allowedPlatforms = ['facebook','facebook_reel','instagram','instagram_post','instagram_story','instagram_reel','threads','tiktok'];
       const unsupported = body.platforms.filter(p => !allowedPlatforms.includes(p));
       if (unsupported.length) return json({ error: `Not connected yet: ${unsupported.join(', ')}` }, { status: 400 });
       if (!body.scheduledAt) return json({ error: 'scheduledAt is required.' }, { status: 400 });
@@ -290,6 +291,7 @@ export default {
       const mt = String(mediaType || '');
       if (body.platforms.includes('instagram_post') && mediaKey && !mt.startsWith('image/')) return json({ error:'Instagram Post requires a photo. Use Reel for video.' }, { status:400 });
       if (body.platforms.includes('instagram_reel') && mediaKey && !mt.startsWith('video/')) return json({ error:'Instagram Reel requires a video.' }, { status:400 });
+      if (body.platforms.includes('facebook_reel') && mediaKey && !mt.startsWith('video/')) return json({ error:'Facebook Reel requires a video.' }, { status:400 });
       const igOptionsResult = validateInstagramOptions(body.instagramOptions, body.platforms, mt);
       if (igOptionsResult.error) return json({ error:igOptionsResult.error }, { status:400 });
       const instagramOptions = igOptionsResult.value;
@@ -587,6 +589,7 @@ async function processPost(env, id) {
   for (const platform of post.platforms) {
     try {
       if (platform === 'facebook') results.facebook = await publishFacebook(env, post);
+      else if (platform === 'facebook_reel') results.facebook_reel = await publishFacebookReel(env, post);
       else if (platform === 'instagram' || platform.startsWith('instagram_')) results[platform] = await publishInstagram(env, post, platform === 'instagram' ? 'post' : platform.replace('instagram_',''));
       else if (platform === 'threads') results.threads = await publishThreads(env, post);
       else if (platform === 'tiktok') results.tiktok = await uploadTikTokDraft(env, post);
@@ -923,6 +926,43 @@ async function publishFacebook(env, post) {
 
   const data = await graphPost(endpoint, form);
   return { ok: true, id: data.post_id || data.id || null };
+}
+
+async function publishFacebookReel(env, post) {
+  const account = await loadSocialAccount(env, 'facebook');
+  if (!account) throw new Error('Facebook is not connected.');
+  if (!post.media_key || !String(post.media_type || '').startsWith('video/')) throw new Error('Facebook Reel requires a video.');
+  const token = await decryptSecret(account.access_token_encrypted, env.TOKEN_ENCRYPTION_KEY);
+  const version = env.META_GRAPH_VERSION || 'v24.0';
+  const mediaUrl = publicMediaUrl(env, post.media_key);
+
+  const startForm = new URLSearchParams();
+  startForm.set('access_token', token);
+  startForm.set('upload_phase', 'start');
+  const started = await graphPost(`https://graph.facebook.com/${version}/me/video_reels`, startForm);
+  if (!started.video_id || !started.upload_url) throw new Error('Facebook did not return a Reel upload session.');
+
+  const uploadResponse = await fetch(started.upload_url, {
+    method:'POST',
+    headers:{
+      'Authorization':`OAuth ${token}`,
+      'file_url':mediaUrl,
+      'User-Agent':'RickParma-SocialPublisher/0.6.6',
+    },
+  });
+  const uploaded = await uploadResponse.json().catch(() => ({}));
+  if (!uploadResponse.ok || uploaded.success === false || uploaded.error) {
+    throw new Error(uploaded.error?.message || 'Facebook Reel upload failed.');
+  }
+
+  const finishForm = new URLSearchParams();
+  finishForm.set('access_token', token);
+  finishForm.set('video_id', started.video_id);
+  finishForm.set('upload_phase', 'finish');
+  finishForm.set('video_state', 'PUBLISHED');
+  finishForm.set('description', post.caption);
+  const finished = await graphPost(`https://graph.facebook.com/${version}/me/video_reels`, finishForm);
+  return { ok:true, id:finished.id || started.video_id, videoId:started.video_id, type:'reel' };
 }
 
 async function publishInstagram(env, post, publishType = 'post') {
