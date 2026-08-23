@@ -99,7 +99,7 @@
       });
     }
     const footer = $('.version-footer');
-    if (footer) footer.textContent = 'Social Publisher v0.6.9';
+    if (footer) footer.textContent = 'Social Publisher v0.7.0';
   }
 
   async function loginWithPasskey() {
@@ -271,4 +271,12 @@
   injectUi();
   refreshPasskeyUi();
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshPasskeyUi(); });
+
+  // v0.7.0 Smart Plan is loaded here so installed PWAs receive it without a shell markup migration.
+  if (!document.querySelector('script[data-smart-plan]')) {
+    const smartPlan = document.createElement('script');
+    smartPlan.src = '/smart-plan.js';
+    smartPlan.dataset.smartPlan = 'true';
+    document.body.appendChild(smartPlan);
+  }
 })();

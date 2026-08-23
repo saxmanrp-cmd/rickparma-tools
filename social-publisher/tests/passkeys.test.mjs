@@ -8,12 +8,12 @@ import worker from '../src/entry.js';
 const root = path.resolve(new URL('..', import.meta.url).pathname);
 const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
 
-test('v0.6.9 entrypoint exposes passkey-aware health and auth status', async () => {
+test('v0.7.0 entrypoint exposes passkey-aware health and auth status', async () => {
   let response = await worker.fetch(new Request('https://social.test/api/health'), {}, { waitUntil() {} });
   assert.equal(response.status, 200);
   const health = await response.json();
   assert.equal(health.ok, true);
-  assert.equal(health.version, '0.6.9');
+  assert.equal(health.version, '0.7.0');
 
   response = await worker.fetch(new Request('https://social.test/api/auth/status'), {}, { waitUntil() {} });
   assert.equal(response.status, 200);
@@ -63,13 +63,15 @@ test('Face ID and WebAuthn are wired through backend, frontend, shell and Worker
   }
   assert.equal(backend.includes('(flags & 0x04) === 0'), true, 'backend must require user verification');
   assert.equal(backend.includes("crypto.subtle.verify({ name:'ECDSA', hash:'SHA-256' }"), true, 'backend must verify ES256 assertions');
-  assert.equal(entry.includes("const VERSION = '0.6.9'"), true);
+  assert.equal(entry.includes("const VERSION = '0.7.0'"), true);
 
   for (const needle of ['navigator.credentials.create','navigator.credentials.get','Sign in with Face ID','Enable Face ID','getPublicKey','userVerification:\'required\'']) {
     assert.equal(frontend.includes(needle), true, `frontend missing ${needle}`);
   }
   assert.equal(html.includes('<script src="/passkeys.js"></script>'), true);
-  assert.equal(sw.includes('social-publisher-shell-v690'), true);
+  assert.equal(frontend.includes("smartPlan.src = '/smart-plan.js'"), true);
+  assert.equal(sw.includes('social-publisher-shell-v700'), true);
   assert.equal(sw.includes("'/passkeys.js'"), true);
+  assert.equal(sw.includes("'/smart-plan.js'"), true);
   assert.equal(wrangler.includes('"main": "src/entry.js"'), true);
 });
