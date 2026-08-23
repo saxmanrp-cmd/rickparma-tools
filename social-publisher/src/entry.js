@@ -8,8 +8,9 @@ import {
   addThreadsInsightsScope,
   persistThreadsInsightsScope,
 } from './threads-insights.js';
+import { handleContentPlanRequest } from './content-plan.js';
 
-const VERSION = '0.7.1';
+const VERSION = '0.7.2';
 
 const json = (data, init = {}) => new Response(JSON.stringify(data), {
   ...init,
@@ -33,6 +34,14 @@ export default {
 
     const passkeyResponse = await handlePasskeyRequest(request, env);
     if (passkeyResponse) return passkeyResponse;
+
+    if (url.pathname.startsWith('/api/content-plan')) {
+      const configured = Boolean(env.APP_PASSWORD && env.SESSION_SECRET);
+      if (!configured) return json({ error:'App login is not configured.' }, { status:503 });
+      if (!await isLegacySessionAuthenticated(request, env)) return json({ error:'Authentication required.' }, { status:401 });
+      const response = await handleContentPlanRequest(request, env);
+      if (response) return response;
+    }
 
     if (url.pathname === '/api/threads/connect' && request.method === 'GET') {
       const response = await core.fetch(request, env, ctx);

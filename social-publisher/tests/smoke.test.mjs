@@ -81,7 +81,6 @@ test('Instagram people fields are wired into backend and frontend', () => {
   assert.match(migration, /ALTER TABLE posts ADD COLUMN instagram_options TEXT/i);
 });
 
-
 test('Instagram Reel original audio name is wired end to end', () => {
   const backend = read('src/index.js');
   const frontend = read('public/app.js');
@@ -95,14 +94,12 @@ test('Instagram Reel original audio name is wired end to end', () => {
   assert.equal(html.includes('id="igAudioName"'), true);
 });
 
-
 test('Instagram type selector is isolated from timing selector', () => {
   const frontend = read('public/app.js');
   assert.equal(frontend.includes("$$('.timing-segmented .segment').forEach(segment"), true);
   assert.equal(frontend.includes("$$('.segment').forEach(segment => segment.addEventListener('click'"), false);
   assert.equal(frontend.includes('updateInstagramReelAudioVisibility();'), true);
 });
-
 
 test('Max Reach and Facebook Reel are wired end to end', () => {
   const backend = read('src/index.js');
@@ -113,7 +110,6 @@ test('Max Reach and Facebook Reel are wired end to end', () => {
   for (const needle of ['getMaxReachRecommendation', 'applyMaxReachRecommendation', 'currentFacebookType', 'readVideoMetadata', 'facebook_reel']) assert.equal(frontend.includes(needle), true, `frontend missing ${needle}`);
   for (const needle of ['id="maxReachCard"', 'id="applyMaxReachBtn"', 'id="facebookTypeWrap"', 'name="fbType"']) assert.equal(html.includes(needle), true, `HTML missing ${needle}`);
 });
-
 
 test('Threads video jobs and retries are cron-owned and failed-only', () => {
   const backend = read('src/index.js');
@@ -136,9 +132,8 @@ test('Reach Intelligence is wired into Max Reach', () => {
   for (const needle of ['buildReachIntelligence','classifyIntent','nextSuggestedSlot','timingMode','Caption starter added']) assert.equal(reach.includes(needle), true, 'Reach Intelligence missing ' + needle);
   assert.equal(css.includes('v0.6.7 Reach Intelligence'), true);
   assert.equal(sw.includes('/reach-intelligence.js'), true);
-  assert.equal(sw.includes('social-publisher-shell-v710'), true);
+  assert.equal(sw.includes('social-publisher-shell-v720'), true);
 });
-
 
 test('Performance Learning schema upgrades cleanly', () => {
   const schema = read('schema.sql');
@@ -174,5 +169,5 @@ test('Performance Learning is wired into publishing and Reach Intelligence', () 
   for (const needle of ['loadPerformanceProfile','nextPersonalizedSlot','PERSONALIZED','Use My Best Time','bestFormat','captionPattern']) assert.equal(reach.includes(needle), true, 'reach missing ' + needle);
   assert.equal(html.includes('id="reachPersonalizedSummary"'), true);
   assert.equal(html.includes('id="reachLearningNote"'), true);
-  assert.equal(sw.includes('social-publisher-shell-v710'), true);
+  assert.equal(sw.includes('social-publisher-shell-v720'), true);
 });
