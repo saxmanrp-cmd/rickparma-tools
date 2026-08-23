@@ -24,7 +24,7 @@ test('Weekly Planner schema upgrades cleanly and fresh schema contains content p
   assert.equal(upgraded.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='content_plan_items'").get().name, 'content_plan_items');
 });
 
-test('Weekly Planner API and client stay wired in v0.7.3', () => {
+test('Weekly Planner API and client stay wired in v0.7.4', () => {
   const entry = read('src/entry.js');
   const backend = read('src/content-plan.js');
   const planner = read('public/weekly-planner.js');
@@ -35,18 +35,18 @@ test('Weekly Planner API and client stay wired in v0.7.3', () => {
   for (const needle of ['/api/content-plan/generate','content_plan_items','week_key','allowedStatuses','weekly-planner','validSource','gig-campaign:','source=?']) {
     assert.equal(backend.includes(needle), true, `content plan backend missing ${needle}`);
   }
-  assert.equal(entry.includes("handleContentPlanRequest"), true);
-  assert.equal(entry.includes("const VERSION = '0.7.3'"), true);
+  assert.equal(entry.includes('handleContentPlanRequest'), true);
+  assert.equal(entry.includes("const VERSION = '0.7.4'"), true);
   assert.equal(entry.includes("url.pathname.startsWith('/api/content-plan')"), true);
   assert.equal(entry.includes('isLegacySessionAuthenticated'), true);
 
   for (const needle of ['Weekly Planner','Your content week','Build My Week','Rebuild','Start Post','/api/content-plan/generate','/api/intelligence/profile','bestFormat','bestWindow','captionStarter','scheduledFor',"navigate('create')"]) {
     assert.equal(planner.includes(needle), true, `Weekly Planner client missing ${needle}`);
   }
-  assert.equal(smart.includes("planner.src = '/weekly-planner.js'"), true);
+  assert.equal(smart.includes("loadScript('/weekly-planner.js','weekly-planner')"), true);
   assert.equal(sw.includes("'/weekly-planner.js'"), true);
-  assert.equal(sw.includes('social-publisher-shell-v730'), true);
+  assert.equal(sw.includes('social-publisher-shell-v740'), true);
   assert.equal(pkg.includes('src/content-plan.js'), true);
   assert.equal(pkg.includes('public/weekly-planner.js'), true);
-  assert.equal(pkg.includes('"version": "0.7.3"'), true);
+  assert.equal(pkg.includes('"version": "0.7.4"'), true);
 });
