@@ -29,7 +29,8 @@ test('root navigation is gated by Worker before the app shell is served', () => 
     "import { renderLoginPage } from './login-page.js'",
     "url.pathname === '/' || url.pathname === '/index.html'",
     'return renderLoginPage({ passkeyAvailable })',
-    'return env.ASSETS.fetch(request)',
+    'return freshAppShell(request, env)',
+    'env.ASSETS.fetch(request)',
   ]) assert.equal(entry.includes(needle), true, `entry missing ${needle}`);
 
   assert.equal(wrangler.includes('"run_worker_first": ["/", "/index.html", "/api/*", "/media/*"]'), true);
