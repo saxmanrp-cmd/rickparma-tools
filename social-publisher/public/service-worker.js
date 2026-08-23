@@ -1,6 +1,6 @@
-// v0.6.9 upgrades the previous social-publisher-shell-v680 cache so installed iPhones receive the passkey client.
-const CACHE = 'social-publisher-shell-v690';
-const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/reach-intelligence.js', '/passkeys.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
+// v0.7.0 upgrades the previous social-publisher-shell-v690 cache; v0.6.9 itself upgraded social-publisher-shell-v680.
+const CACHE = 'social-publisher-shell-v700';
+const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/reach-intelligence.js', '/passkeys.js', '/smart-plan.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
