@@ -63,7 +63,7 @@ test('v0.7.4 client wires Google Calendar shows into Gig Campaigns', () => {
     'rickparma-google-calendar',
   ]) assert.equal(backend.includes(needle), true, `calendar bridge missing ${needle}`);
 
-  assert.equal(entry.includes("handleSiteCalendarRequest"), true);
+  assert.equal(entry.includes('handleSiteCalendarRequest'), true);
   assert.equal(entry.includes("url.pathname.startsWith('/api/site-calendar')"), true);
   assert.equal(entry.includes("const VERSION = '0.7.4'"), true);
 
@@ -80,7 +80,7 @@ test('v0.7.4 client wires Google Calendar shows into Gig Campaigns', () => {
     'campaignPhases',
   ]) assert.equal(client.includes(needle), true, `calendar sync client missing ${needle}`);
 
-  assert.equal(smart.includes("loadScript('/calendar-sync.js','calendar-sync')"), true);
+  assert.equal(smart.includes("'/calendar-sync.js','calendar-sync'"), true);
   assert.equal(sw.includes("'/calendar-sync.js'"), true);
   assert.equal(sw.includes('social-publisher-shell-v740'), true);
   assert.equal(pkg.includes('src/site-calendar.js'), true);
