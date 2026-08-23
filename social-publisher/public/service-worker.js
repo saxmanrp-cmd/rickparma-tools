@@ -1,6 +1,6 @@
-// v0.7.1 upgrades the previous social-publisher-shell-v700 cache and adds Content Coach.
-const CACHE = 'social-publisher-shell-v710';
-const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/reach-intelligence.js', '/passkeys.js', '/smart-plan.js', '/content-coach.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
+// v0.7.2 upgrades the previous social-publisher-shell-v710 cache and adds Weekly Planner.
+const CACHE = 'social-publisher-shell-v720';
+const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/reach-intelligence.js', '/passkeys.js', '/smart-plan.js', '/content-coach.js', '/weekly-planner.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
