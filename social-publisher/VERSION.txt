@@ -1,2 +1,2 @@
 Rick Parma Social Publisher
-Version 0.6.8 - Performance Learning
+Version 0.6.9 - Face ID + Threads Performance Learning
