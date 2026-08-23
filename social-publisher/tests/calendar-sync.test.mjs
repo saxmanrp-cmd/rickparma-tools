@@ -47,6 +47,24 @@ test('site calendar bridge normalizes Google events and matches website flyers',
   }
 });
 
+test('site calendar flyer proxy only accepts RickParma.com media', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async url => {
+    assert.equal(String(url), 'https://rickparma.com/media/easys.jpg');
+    return new Response(new Uint8Array([1,2,3]), { headers:{'content-type':'image/jpeg'} });
+  };
+  try {
+    const good = await handleSiteCalendarRequest(new Request('https://social.test/api/site-calendar/flyer?src=https%3A%2F%2Frickparma.com%2Fmedia%2Feasys.jpg'));
+    assert.equal(good.status, 200);
+    assert.equal(good.headers.get('content-type'), 'image/jpeg');
+
+    const bad = await handleSiteCalendarRequest(new Request('https://social.test/api/site-calendar/flyer?src=https%3A%2F%2Fevil.example%2Fflyer.jpg'));
+    assert.equal(bad.status, 400);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('Google Calendar campaign sources are accepted by content-plan validation', () => {
   assert.equal(validSource('gig-campaign:gcal:show-123'), 'gig-campaign:gcal:show-123');
   assert.equal(validSource('gig-campaign:gcal:abc_DEF-123'), 'gig-campaign:gcal:abc_DEF-123');
@@ -54,7 +72,7 @@ test('Google Calendar campaign sources are accepted by content-plan validation',
   assert.equal(validSource('gig-campaign:gcal:bad value'), '');
 });
 
-test('v0.7.5 client wires Google Calendar shows into Gig Campaigns', () => {
+test('v0.7.6 Calendar is flyer-first with a post-type dropdown', () => {
   const backend = read('src/site-calendar.js');
   const entry = read('src/entry.js');
   const client = read('public/calendar-sync.js');
@@ -69,31 +87,34 @@ test('v0.7.5 client wires Google Calendar shows into Gig Campaigns', () => {
     'flyers.json',
     'public/basic.ics',
     'rickparma-google-calendar',
+    '/api/site-calendar/flyer',
+    'safeFlyerUrl',
   ]) assert.equal(backend.includes(needle), true, `calendar bridge missing ${needle}`);
 
   assert.equal(entry.includes('handleSiteCalendarRequest'), true);
   assert.equal(entry.includes("url.pathname.startsWith('/api/site-calendar')"), true);
-  assert.equal(entry.includes("const VERSION = '0.7.5'"), true);
+  assert.equal(entry.includes("const VERSION = '0.7.6'"), true);
 
   for (const needle of [
-    'Upcoming from RickParma.com',
-    'GOOGLE CALENDAR',
-    '/api/site-calendar/gigs',
+    'Your upcoming shows',
+    'Post the flyer now',
+    'Announcement',
+    'Reminder',
+    'Day of show',
+    'Last call',
+    'After show / thank you',
+    'Build all reminders',
+    '/api/site-calendar/flyer',
+    'handleMedia(file)',
     '/api/content-plan/generate',
     'gig-campaign:gcal:',
-    'Build Campaign',
-    'Campaign Ready',
-    'flyerSrc',
-    'infoUrl',
     'campaignPhases',
   ]) assert.equal(client.includes(needle), true, `calendar sync client missing ${needle}`);
 
   assert.equal(smart.includes("'/calendar-sync.js','calendar-sync'"), true);
-  assert.equal(sw.includes("'/calendar-sync.js'"), true);
-  assert.equal(sw.includes("'/easy-mode.js'"), true);
-  assert.equal(sw.includes('social-publisher-shell-v750'), true);
-  assert.equal(pkg.includes('src/site-calendar.js'), true);
-  assert.equal(pkg.includes('public/calendar-sync.js'), true);
-  assert.equal(pkg.includes('public/easy-mode.js'), true);
-  assert.equal(pkg.includes('"version": "0.7.5"'), true);
+  assert.equal(smart.includes("'/flyer-first.js','flyer-first'"), true);
+  for (const asset of ['/calendar-sync.js','/easy-mode.js','/flyer-first.js']) assert.equal(sw.includes(`'${asset}'`), true);
+  assert.equal(sw.includes('social-publisher-shell-v760'), true);
+  for (const pathName of ['src/site-calendar.js','public/calendar-sync.js','public/easy-mode.js','public/flyer-first.js']) assert.equal(pkg.includes(pathName), true);
+  assert.equal(pkg.includes('"version": "0.7.6"'), true);
 });
