@@ -11,7 +11,7 @@ import {
 import { handleContentPlanRequest } from './content-plan.js';
 import { handleSiteCalendarRequest } from './site-calendar.js';
 
-const VERSION = '0.7.4';
+const VERSION = '0.7.5';
 
 const json = (data, init = {}) => new Response(JSON.stringify(data), {
   ...init,
