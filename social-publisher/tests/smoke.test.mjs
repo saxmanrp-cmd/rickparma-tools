@@ -136,7 +136,7 @@ test('Reach Intelligence is wired into Max Reach', () => {
   for (const needle of ['buildReachIntelligence','classifyIntent','nextSuggestedSlot','timingMode','Caption starter added']) assert.equal(reach.includes(needle), true, 'Reach Intelligence missing ' + needle);
   assert.equal(css.includes('v0.6.7 Reach Intelligence'), true);
   assert.equal(sw.includes('/reach-intelligence.js'), true);
-  assert.equal(sw.includes('social-publisher-shell-v680'), true);
+  assert.equal(sw.includes('social-publisher-shell-v710'), true);
 });
 
 
@@ -174,5 +174,5 @@ test('Performance Learning is wired into publishing and Reach Intelligence', () 
   for (const needle of ['loadPerformanceProfile','nextPersonalizedSlot','PERSONALIZED','Use My Best Time','bestFormat','captionPattern']) assert.equal(reach.includes(needle), true, 'reach missing ' + needle);
   assert.equal(html.includes('id="reachPersonalizedSummary"'), true);
   assert.equal(html.includes('id="reachLearningNote"'), true);
-  assert.equal(sw.includes('social-publisher-shell-v680'), true);
+  assert.equal(sw.includes('social-publisher-shell-v710'), true);
 });
