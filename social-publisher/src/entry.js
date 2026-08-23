@@ -10,7 +10,7 @@ import {
 } from './threads-insights.js';
 import { handleContentPlanRequest } from './content-plan.js';
 
-const VERSION = '0.7.2';
+const VERSION = '0.7.3';
 
 const json = (data, init = {}) => new Response(JSON.stringify(data), {
   ...init,
