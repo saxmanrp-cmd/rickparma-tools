@@ -24,7 +24,8 @@ test('Smart Plan composes existing reach controls without overwriting captions',
     "loadScript('/content-coach.js','content-coach')",
     "loadScript('/weekly-planner.js','weekly-planner')",
     "loadScript('/gig-campaign.js','gig-campaign'",
-    "loadScript('/calendar-sync.js','calendar-sync')",
+    "'/calendar-sync.js','calendar-sync'",
+    'stampVersion',
   ]) assert.equal(smart.includes(needle), true, `Smart Plan missing ${needle}`);
 
   assert.equal(passkeys.includes("smartPlan.src = '/smart-plan.js'"), true);
