@@ -11,6 +11,7 @@ import {
 import { handleContentPlanRequest } from './content-plan.js';
 import { handleSiteCalendarRequest } from './site-calendar.js';
 import { handleTextBlastRequest } from './text-blast-bridge.js';
+import { renderLoginPage } from './login-page.js';
 
 const VERSION = '0.7.6';
 
@@ -26,9 +27,25 @@ async function requireAppLogin(request, env) {
   return null;
 }
 
+async function handleAppShell(request, env) {
+  const configured = Boolean(env.APP_PASSWORD && env.SESSION_SECRET);
+  if (configured) {
+    const authenticated = await isLegacySessionAuthenticated(request, env);
+    if (!authenticated) {
+      const passkeyAvailable = await getPasskeyAvailability(env);
+      return renderLoginPage({ passkeyAvailable });
+    }
+  }
+  return env.ASSETS.fetch(request);
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    if ((url.pathname === '/' || url.pathname === '/index.html') && request.method === 'GET') {
+      return handleAppShell(request, env);
+    }
 
     if (url.pathname === '/api/health' && request.method === 'GET') {
       return json({ ok:true, service:'social-publisher-v3', version:VERSION, time:new Date().toISOString() });
