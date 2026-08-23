@@ -6,7 +6,7 @@ import path from 'node:path';
 const root = path.resolve(new URL('..', import.meta.url).pathname);
 const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
 
-test('Smart Plan composes existing reach controls without overwriting captions', () => {
+test('Smart Plan composes existing reach controls under Flyer First', () => {
   const smart = read('public/smart-plan.js');
   const passkeys = read('public/passkeys.js');
   const sw = read('public/service-worker.js');
@@ -26,16 +26,17 @@ test('Smart Plan composes existing reach controls without overwriting captions',
     "loadScript('/gig-campaign.js','gig-campaign'",
     "'/calendar-sync.js','calendar-sync'",
     "'/easy-mode.js','easy-mode'",
+    "'/flyer-first.js','flyer-first'",
     'stampVersion',
   ]) assert.equal(smart.includes(needle), true, `Smart Plan missing ${needle}`);
 
   assert.equal(passkeys.includes("smartPlan.src = '/smart-plan.js'"), true);
-  for (const asset of ['/smart-plan.js','/content-coach.js','/weekly-planner.js','/gig-campaign.js','/calendar-sync.js','/easy-mode.js']) {
+  for (const asset of ['/smart-plan.js','/content-coach.js','/weekly-planner.js','/gig-campaign.js','/calendar-sync.js','/easy-mode.js','/flyer-first.js']) {
     assert.equal(sw.includes(`'${asset}'`), true, `shell missing ${asset}`);
   }
-  assert.equal(sw.includes('social-publisher-shell-v750'), true);
-  for (const pathName of ['public/smart-plan.js','public/content-coach.js','public/weekly-planner.js','public/gig-campaign.js','public/calendar-sync.js','public/easy-mode.js']) {
+  assert.equal(sw.includes('social-publisher-shell-v760'), true);
+  for (const pathName of ['public/smart-plan.js','public/content-coach.js','public/weekly-planner.js','public/gig-campaign.js','public/calendar-sync.js','public/easy-mode.js','public/flyer-first.js']) {
     assert.equal(pkg.includes(pathName), true, `package check missing ${pathName}`);
   }
-  assert.equal(pkg.includes('"version": "0.7.5"'), true);
+  assert.equal(pkg.includes('"version": "0.7.6"'), true);
 });
