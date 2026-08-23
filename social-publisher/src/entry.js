@@ -10,8 +10,9 @@ import {
 } from './threads-insights.js';
 import { handleContentPlanRequest } from './content-plan.js';
 import { handleSiteCalendarRequest } from './site-calendar.js';
+import { handleTextBlastRequest } from './text-blast-bridge.js';
 
-const VERSION = '0.7.5';
+const VERSION = '0.7.6';
 
 const json = (data, init = {}) => new Response(JSON.stringify(data), {
   ...init,
@@ -54,6 +55,13 @@ export default {
       const authError = await requireAppLogin(request, env);
       if (authError) return authError;
       const response = await handleSiteCalendarRequest(request, env);
+      if (response) return response;
+    }
+
+    if (url.pathname.startsWith('/api/text-blast')) {
+      const authError = await requireAppLogin(request, env);
+      if (authError) return authError;
+      const response = await handleTextBlastRequest(request, env);
       if (response) return response;
     }
 
