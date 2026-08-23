@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { handleSiteCalendarRequest } from '../src/site-calendar.js';
+import { validSource } from '../src/content-plan.js';
 
 const root = path.resolve(new URL('..', import.meta.url).pathname);
 const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
@@ -44,6 +45,13 @@ test('site calendar bridge normalizes Google events and matches website flyers',
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('Google Calendar campaign sources are accepted by content-plan validation', () => {
+  assert.equal(validSource('gig-campaign:gcal:show-123'), 'gig-campaign:gcal:show-123');
+  assert.equal(validSource('gig-campaign:gcal:abc_DEF-123'), 'gig-campaign:gcal:abc_DEF-123');
+  assert.equal(validSource('gig-campaign:gcal:'), '');
+  assert.equal(validSource('gig-campaign:gcal:bad value'), '');
 });
 
 test('v0.7.4 client wires Google Calendar shows into Gig Campaigns', () => {
