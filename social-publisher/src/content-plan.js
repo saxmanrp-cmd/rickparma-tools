@@ -27,6 +27,13 @@ function cleanText(value, max=500) {
   return String(value || '').trim().slice(0, max);
 }
 
+function validSource(value) {
+  const source = cleanText(value, 90) || 'weekly-planner';
+  if (source === 'weekly-planner') return source;
+  if (/^gig-campaign:[A-Za-z0-9-]{8,64}$/.test(source)) return source;
+  return '';
+}
+
 export async function handleContentPlanRequest(request, env) {
   const url = new URL(request.url);
   if (!url.pathname.startsWith('/api/content-plan')) return null;
@@ -36,7 +43,7 @@ export async function handleContentPlanRequest(request, env) {
     const weekKey = cleanText(url.searchParams.get('weekKey'), 20);
     const query = weekKey
       ? env.DB.prepare(`SELECT * FROM content_plan_items WHERE week_key=? ORDER BY scheduled_for, created_at`).bind(weekKey)
-      : env.DB.prepare(`SELECT * FROM content_plan_items WHERE status != 'dismissed' ORDER BY scheduled_for, created_at LIMIT 30`);
+      : env.DB.prepare(`SELECT * FROM content_plan_items WHERE status != 'dismissed' ORDER BY scheduled_for, created_at LIMIT 60`);
     const { results = [] } = await query.all();
     return json({ items:results.map(parseItem) });
   }
@@ -44,13 +51,15 @@ export async function handleContentPlanRequest(request, env) {
   if (url.pathname === '/api/content-plan/generate' && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     const weekKey = cleanText(body.weekKey, 20);
+    const source = validSource(body.source);
     const items = Array.isArray(body.items) ? body.items.slice(0, 7) : [];
     if (!/^\d{4}-\d{2}-\d{2}$/.test(weekKey)) return json({ error:'weekKey must be YYYY-MM-DD.' }, { status:400 });
+    if (!source) return json({ error:'Invalid content-plan source.' }, { status:400 });
     if (!items.length) return json({ error:'At least one content-plan item is required.' }, { status:400 });
 
     const now = new Date().toISOString();
     const statements = [
-      env.DB.prepare(`DELETE FROM content_plan_items WHERE week_key=? AND status='planned'`).bind(weekKey),
+      env.DB.prepare(`DELETE FROM content_plan_items WHERE week_key=? AND source=? AND status='planned'`).bind(weekKey, source),
     ];
     const created = [];
 
@@ -66,9 +75,9 @@ export async function handleContentPlanRequest(request, env) {
       statements.push(env.DB.prepare(`
         INSERT INTO content_plan_items
           (id, week_key, title, kind, media_accept, caption_starter, why_text, scheduled_for, status, source, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'planned', 'weekly-planner', ?, ?)
-      `).bind(id, weekKey, title, kind, mediaAccept, captionStarter, why, scheduledFor, now, now));
-      created.push({ id, weekKey, title, kind, mediaAccept, captionStarter, why, scheduledFor, status:'planned', source:'weekly-planner', createdAt:now, updatedAt:now });
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'planned', ?, ?, ?)
+      `).bind(id, weekKey, title, kind, mediaAccept, captionStarter, why, scheduledFor, source, now, now));
+      created.push({ id, weekKey, title, kind, mediaAccept, captionStarter, why, scheduledFor, status:'planned', source, createdAt:now, updatedAt:now });
     }
 
     if (!created.length) return json({ error:'No valid content-plan items were supplied.' }, { status:400 });
@@ -91,8 +100,10 @@ export async function handleContentPlanRequest(request, env) {
   if (url.pathname === '/api/content-plan/clear' && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     const weekKey = cleanText(body.weekKey, 20);
+    const source = validSource(body.source);
     if (!weekKey) return json({ error:'weekKey is required.' }, { status:400 });
-    await env.DB.prepare(`DELETE FROM content_plan_items WHERE week_key=? AND status='planned'`).bind(weekKey).run();
+    if (!source) return json({ error:'Invalid content-plan source.' }, { status:400 });
+    await env.DB.prepare(`DELETE FROM content_plan_items WHERE week_key=? AND source=? AND status='planned'`).bind(weekKey, source).run();
     return json({ ok:true });
   }
 
