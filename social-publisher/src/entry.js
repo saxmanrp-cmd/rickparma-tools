@@ -9,7 +9,7 @@ import {
   persistThreadsInsightsScope,
 } from './threads-insights.js';
 
-const VERSION = '0.7.0';
+const VERSION = '0.7.1';
 
 const json = (data, init = {}) => new Response(JSON.stringify(data), {
   ...init,
