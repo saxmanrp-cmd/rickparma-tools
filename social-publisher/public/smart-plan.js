@@ -1,4 +1,4 @@
-// v0.7.1 Smart Plan composes Max Reach and Performance Learning into one action.
+// v0.7.2 Smart Plan composes Max Reach and Performance Learning into one action.
 (() => {
   const q = selector => document.querySelector(selector);
 
@@ -116,12 +116,18 @@
   setInterval(refreshSmartPlanState, 1500);
 
   const footer = q('.version-footer');
-  if (footer) footer.textContent = 'Social Publisher v0.7.1';
+  if (footer) footer.textContent = 'Social Publisher v0.7.2';
 
   if (!document.querySelector('script[data-content-coach]')) {
     const coach = document.createElement('script');
     coach.src = '/content-coach.js';
     coach.dataset.contentCoach = 'true';
     document.body.appendChild(coach);
+  }
+  if (!document.querySelector('script[data-weekly-planner]')) {
+    const planner = document.createElement('script');
+    planner.src = '/weekly-planner.js';
+    planner.dataset.weeklyPlanner = 'true';
+    document.body.appendChild(planner);
   }
 })();
