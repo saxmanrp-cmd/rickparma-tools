@@ -1,4 +1,4 @@
-// v0.7.5 Smart Plan composes Max Reach and Performance Learning into one action.
+// v0.7.6 Smart Plan composes Max Reach and Performance Learning into one action.
 (() => {
   const q = selector => document.querySelector(selector);
 
@@ -128,7 +128,7 @@
 
   function stampVersion() {
     const footer = q('.version-footer');
-    if (footer) footer.textContent = 'Social Publisher v0.7.5';
+    if (footer) footer.textContent = 'Social Publisher v0.7.6';
   }
 
   injectUi();
@@ -140,7 +140,9 @@
   loadScript('/weekly-planner.js','weekly-planner');
   loadScript('/gig-campaign.js','gig-campaign', () => {
     loadScript('/calendar-sync.js','calendar-sync', () => {
-      loadScript('/easy-mode.js','easy-mode', stampVersion);
+      loadScript('/easy-mode.js','easy-mode', () => {
+        loadScript('/flyer-first.js','flyer-first', stampVersion);
+      });
     });
   });
 })();
