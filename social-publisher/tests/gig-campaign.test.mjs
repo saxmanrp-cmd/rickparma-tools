@@ -37,10 +37,13 @@ test('Gig Campaigns build an isolated multi-touch show campaign', () => {
     'mediaAccept',
   ]) assert.equal(campaign.includes(needle), true, `Gig Campaign client missing ${needle}`);
 
-  assert.equal(smart.includes("campaign.src = '/gig-campaign.js'"), true);
+  assert.equal(smart.includes("'/gig-campaign.js'"), true);
+  assert.equal(smart.includes("'/calendar-sync.js'"), true);
   assert.equal(sw.includes("'/gig-campaign.js'"), true);
-  assert.equal(sw.includes('social-publisher-shell-v730'), true);
+  assert.equal(sw.includes("'/calendar-sync.js'"), true);
+  assert.equal(sw.includes('social-publisher-shell-v740'), true);
   assert.equal(pkg.includes('public/gig-campaign.js'), true);
-  assert.equal(pkg.includes('"version": "0.7.3"'), true);
-  assert.equal(entry.includes("const VERSION = '0.7.3'"), true);
+  assert.equal(pkg.includes('public/calendar-sync.js'), true);
+  assert.equal(pkg.includes('"version": "0.7.4"'), true);
+  assert.equal(entry.includes("const VERSION = '0.7.4'"), true);
 });
