@@ -1,4 +1,5 @@
 // v0.7.4 upgrades the previous social-publisher-shell-v730 cache and adds Google Calendar sync.
+// Upgrade lineage includes social-publisher-shell-v720 from the Weekly Planner release.
 const CACHE = 'social-publisher-shell-v740';
 const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/reach-intelligence.js', '/passkeys.js', '/smart-plan.js', '/content-coach.js', '/weekly-planner.js', '/gig-campaign.js', '/calendar-sync.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
