@@ -28,15 +28,19 @@ test('Content Coach recommends before media and personalizes from performance pr
     "input.click()",
   ]) assert.equal(coach.includes(needle), true, `Content Coach missing ${needle}`);
 
-  assert.equal(smart.includes("coach.src = '/content-coach.js'"), true);
-  assert.equal(smart.includes("planner.src = '/weekly-planner.js'"), true);
-  assert.equal(smart.includes("campaign.src = '/gig-campaign.js'"), true);
-  assert.equal(sw.includes("'/content-coach.js'"), true);
-  assert.equal(sw.includes("'/weekly-planner.js'"), true);
-  assert.equal(sw.includes("'/gig-campaign.js'"), true);
-  assert.equal(sw.includes('social-publisher-shell-v730'), true);
-  assert.equal(pkg.includes('public/content-coach.js'), true);
-  assert.equal(pkg.includes('public/weekly-planner.js'), true);
-  assert.equal(pkg.includes('public/gig-campaign.js'), true);
-  assert.equal(pkg.includes('"version": "0.7.3"'), true);
+  for (const needle of [
+    "loadScript('/content-coach.js','content-coach')",
+    "loadScript('/weekly-planner.js','weekly-planner')",
+    "loadScript('/gig-campaign.js','gig-campaign'",
+    "'/calendar-sync.js','calendar-sync'",
+  ]) assert.equal(smart.includes(needle), true, `loader missing ${needle}`);
+
+  for (const asset of ['/content-coach.js','/weekly-planner.js','/gig-campaign.js','/calendar-sync.js']) {
+    assert.equal(sw.includes(`'${asset}'`), true, `shell missing ${asset}`);
+  }
+  assert.equal(sw.includes('social-publisher-shell-v740'), true);
+  for (const pathName of ['public/content-coach.js','public/weekly-planner.js','public/gig-campaign.js','public/calendar-sync.js']) {
+    assert.equal(pkg.includes(pathName), true, `package check missing ${pathName}`);
+  }
+  assert.equal(pkg.includes('"version": "0.7.4"'), true);
 });
