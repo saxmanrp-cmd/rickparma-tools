@@ -1,5 +1,5 @@
-// v0.7.6 hotfix refreshes the Flyer First shell so iPhone login gets the latest password fallback.
-const CACHE = 'social-publisher-shell-v761';
+// v0.7.6 hotfix re-installs the existing Flyer First shell so iPhone login gets the latest password fallback.
+const CACHE = 'social-publisher-shell-v760';
 const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/reach-intelligence.js', '/passkeys.js', '/smart-plan.js', '/login-stability.js', '/content-coach.js', '/weekly-planner.js', '/gig-campaign.js', '/calendar-sync.js', '/easy-mode.js', '/flyer-first.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', event => {
