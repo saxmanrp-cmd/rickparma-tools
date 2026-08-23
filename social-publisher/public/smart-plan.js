@@ -1,3 +1,4 @@
+// v0.7.0 Smart Plan composes Max Reach and Performance Learning into one action.
 (() => {
   const q = selector => document.querySelector(selector);
 
