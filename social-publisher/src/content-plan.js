@@ -27,10 +27,14 @@ function cleanText(value, max=500) {
   return String(value || '').trim().slice(0, max);
 }
 
-function validSource(value) {
+export function validSource(value) {
   const source = cleanText(value, 90) || 'weekly-planner';
   if (source === 'weekly-planner') return source;
   if (/^gig-campaign:[A-Za-z0-9-]{8,64}$/.test(source)) return source;
+  // Google Calendar campaigns use a stable source so the same event cannot
+  // accidentally build duplicate campaigns. Keep this namespace restricted
+  // while allowing Google event IDs after the gcal marker.
+  if (/^gig-campaign:gcal:[A-Za-z0-9_-]{1,64}$/.test(source)) return source;
   return '';
 }
 
