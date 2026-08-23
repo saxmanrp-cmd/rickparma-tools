@@ -126,14 +126,19 @@
     return script;
   }
 
+  function stampVersion() {
+    const footer = q('.version-footer');
+    if (footer) footer.textContent = 'Social Publisher v0.7.4';
+  }
+
   injectUi();
   watchRecommendationState();
   setInterval(refreshSmartPlanState, 1500);
-
-  const footer = q('.version-footer');
-  if (footer) footer.textContent = 'Social Publisher v0.7.4';
+  stampVersion();
 
   loadScript('/content-coach.js','content-coach');
   loadScript('/weekly-planner.js','weekly-planner');
-  loadScript('/gig-campaign.js','gig-campaign', () => loadScript('/calendar-sync.js','calendar-sync'));
+  loadScript('/gig-campaign.js','gig-campaign', () => {
+    loadScript('/calendar-sync.js','calendar-sync', stampVersion);
+  });
 })();
