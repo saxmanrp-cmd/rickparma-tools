@@ -9,13 +9,21 @@ import {
   persistThreadsInsightsScope,
 } from './threads-insights.js';
 import { handleContentPlanRequest } from './content-plan.js';
+import { handleSiteCalendarRequest } from './site-calendar.js';
 
-const VERSION = '0.7.3';
+const VERSION = '0.7.4';
 
 const json = (data, init = {}) => new Response(JSON.stringify(data), {
   ...init,
   headers:{ 'content-type':'application/json; charset=utf-8', ...(init.headers || {}) },
 });
+
+async function requireAppLogin(request, env) {
+  const configured = Boolean(env.APP_PASSWORD && env.SESSION_SECRET);
+  if (!configured) return json({ error:'App login is not configured.' }, { status:503 });
+  if (!await isLegacySessionAuthenticated(request, env)) return json({ error:'Authentication required.' }, { status:401 });
+  return null;
+}
 
 export default {
   async fetch(request, env, ctx) {
@@ -36,10 +44,16 @@ export default {
     if (passkeyResponse) return passkeyResponse;
 
     if (url.pathname.startsWith('/api/content-plan')) {
-      const configured = Boolean(env.APP_PASSWORD && env.SESSION_SECRET);
-      if (!configured) return json({ error:'App login is not configured.' }, { status:503 });
-      if (!await isLegacySessionAuthenticated(request, env)) return json({ error:'Authentication required.' }, { status:401 });
+      const authError = await requireAppLogin(request, env);
+      if (authError) return authError;
       const response = await handleContentPlanRequest(request, env);
+      if (response) return response;
+    }
+
+    if (url.pathname.startsWith('/api/site-calendar')) {
+      const authError = await requireAppLogin(request, env);
+      if (authError) return authError;
+      const response = await handleSiteCalendarRequest(request, env);
       if (response) return response;
     }
 
