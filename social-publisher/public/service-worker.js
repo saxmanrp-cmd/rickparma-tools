@@ -1,3 +1,4 @@
+// v0.6.9 upgrades the previous social-publisher-shell-v680 cache so installed iPhones receive the passkey client.
 const CACHE = 'social-publisher-shell-v690';
 const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/reach-intelligence.js', '/passkeys.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
