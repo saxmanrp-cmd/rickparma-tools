@@ -1,4 +1,4 @@
-// v0.7.3 Smart Plan composes Max Reach and Performance Learning into one action.
+// v0.7.4 Smart Plan composes Max Reach and Performance Learning into one action.
 (() => {
   const q = selector => document.querySelector(selector);
 
@@ -111,29 +111,29 @@
     if (personalized) new MutationObserver(refreshSmartPlanState).observe(personalized, { childList:true, subtree:true, characterData:true });
   }
 
+  function loadScript(src, dataKey, afterLoad) {
+    const selector = `script[data-${dataKey}]`;
+    const existing = document.querySelector(selector);
+    if (existing) {
+      if (afterLoad) setTimeout(afterLoad,0);
+      return existing;
+    }
+    const script = document.createElement('script');
+    script.src = src;
+    script.dataset[dataKey.replace(/-([a-z])/g,(_,c)=>c.toUpperCase())] = 'true';
+    if (afterLoad) script.addEventListener('load', afterLoad, { once:true });
+    document.body.appendChild(script);
+    return script;
+  }
+
   injectUi();
   watchRecommendationState();
   setInterval(refreshSmartPlanState, 1500);
 
   const footer = q('.version-footer');
-  if (footer) footer.textContent = 'Social Publisher v0.7.3';
+  if (footer) footer.textContent = 'Social Publisher v0.7.4';
 
-  if (!document.querySelector('script[data-content-coach]')) {
-    const coach = document.createElement('script');
-    coach.src = '/content-coach.js';
-    coach.dataset.contentCoach = 'true';
-    document.body.appendChild(coach);
-  }
-  if (!document.querySelector('script[data-weekly-planner]')) {
-    const planner = document.createElement('script');
-    planner.src = '/weekly-planner.js';
-    planner.dataset.weeklyPlanner = 'true';
-    document.body.appendChild(planner);
-  }
-  if (!document.querySelector('script[data-gig-campaign]')) {
-    const campaign = document.createElement('script');
-    campaign.src = '/gig-campaign.js';
-    campaign.dataset.gigCampaign = 'true';
-    document.body.appendChild(campaign);
-  }
+  loadScript('/content-coach.js','content-coach');
+  loadScript('/weekly-planner.js','weekly-planner');
+  loadScript('/gig-campaign.js','gig-campaign', () => loadScript('/calendar-sync.js','calendar-sync'));
 })();
