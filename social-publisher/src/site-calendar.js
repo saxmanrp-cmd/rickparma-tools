@@ -136,8 +136,43 @@ async function fetchIcsFallback() {
     .slice(0,40);
 }
 
+function safeFlyerUrl(value='') {
+  try {
+    const url = new URL(String(value || ''));
+    const host = url.hostname.toLowerCase();
+    if (url.protocol !== 'https:') return null;
+    if (host !== 'rickparma.com' && host !== 'www.rickparma.com') return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+async function proxyFlyer(url) {
+  const src = safeFlyerUrl(url.searchParams.get('src'));
+  if (!src) return json({ error:'Invalid flyer URL.' }, { status:400 });
+  try {
+    const response = await fetch(src.toString(), { cf:{ cacheTtl:300, cacheEverything:true } });
+    if (!response.ok) return json({ error:'Could not load that flyer.' }, { status:502 });
+    const type = response.headers.get('content-type') || 'application/octet-stream';
+    if (!type.startsWith('image/') && !type.startsWith('video/')) return json({ error:'That flyer is not an image or video.' }, { status:415 });
+    return new Response(response.body, {
+      status:200,
+      headers:{
+        'content-type':type,
+        'cache-control':'private, max-age=300',
+        'x-content-type-options':'nosniff',
+      },
+    });
+  } catch {
+    return json({ error:'Could not load that flyer.' }, { status:502 });
+  }
+}
+
 export async function handleSiteCalendarRequest(request) {
   const url = new URL(request.url);
+
+  if (url.pathname === '/api/site-calendar/flyer' && request.method === 'GET') return proxyFlyer(url);
   if (url.pathname !== '/api/site-calendar/gigs' || request.method !== 'GET') return null;
 
   const flyerMap = await fetchFlyerMap();
