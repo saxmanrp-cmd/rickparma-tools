@@ -8,12 +8,12 @@ import worker from '../src/entry.js';
 const root = path.resolve(new URL('..', import.meta.url).pathname);
 const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
 
-test('v0.7.3 entrypoint exposes passkey-aware health and auth status', async () => {
+test('v0.7.4 entrypoint exposes passkey-aware health and auth status', async () => {
   let response = await worker.fetch(new Request('https://social.test/api/health'), {}, { waitUntil() {} });
   assert.equal(response.status, 200);
   const health = await response.json();
   assert.equal(health.ok, true);
-  assert.equal(health.version, '0.7.3');
+  assert.equal(health.version, '0.7.4');
 
   response = await worker.fetch(new Request('https://social.test/api/auth/status'), {}, { waitUntil() {} });
   assert.equal(response.status, 200);
@@ -63,18 +63,16 @@ test('Face ID and WebAuthn are wired through backend, frontend, shell and Worker
   }
   assert.equal(backend.includes('(flags & 0x04) === 0'), true, 'backend must require user verification');
   assert.equal(backend.includes("crypto.subtle.verify({ name:'ECDSA', hash:'SHA-256' }"), true, 'backend must verify ES256 assertions');
-  assert.equal(entry.includes("const VERSION = '0.7.3'"), true);
+  assert.equal(entry.includes("const VERSION = '0.7.4'"), true);
 
   for (const needle of ['navigator.credentials.create','navigator.credentials.get','Sign in with Face ID','Enable Face ID','getPublicKey','userVerification:\'required\'']) {
     assert.equal(frontend.includes(needle), true, `frontend missing ${needle}`);
   }
   assert.equal(html.includes('<script src="/passkeys.js"></script>'), true);
   assert.equal(frontend.includes("smartPlan.src = '/smart-plan.js'"), true);
-  assert.equal(sw.includes('social-publisher-shell-v730'), true);
-  assert.equal(sw.includes("'/passkeys.js'"), true);
-  assert.equal(sw.includes("'/smart-plan.js'"), true);
-  assert.equal(sw.includes("'/content-coach.js'"), true);
-  assert.equal(sw.includes("'/weekly-planner.js'"), true);
-  assert.equal(sw.includes("'/gig-campaign.js'"), true);
+  assert.equal(sw.includes('social-publisher-shell-v740'), true);
+  for (const asset of ['/passkeys.js','/smart-plan.js','/content-coach.js','/weekly-planner.js','/gig-campaign.js','/calendar-sync.js']) {
+    assert.equal(sw.includes(`'${asset}'`), true, `shell missing ${asset}`);
+  }
   assert.equal(wrangler.includes('"main": "src/entry.js"'), true);
 });
