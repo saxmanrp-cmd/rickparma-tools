@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 concurrency:
   group: social-publisher-production
@@ -43,3 +44,15 @@ jobs:
 
       - name: Deploy Worker
         run: npm run deploy
+
+      - name: Report deploy success
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" -f state=success -f context='social-publisher/deploy' -f description='Tests, migration, and deploy succeeded'
+
+      - name: Report deploy failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" -f state=failure -f context='social-publisher/deploy' -f description='Social Publisher deployment failed'
