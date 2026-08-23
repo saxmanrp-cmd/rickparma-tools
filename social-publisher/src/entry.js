@@ -14,7 +14,7 @@ import { handleTextBlastRequest } from './text-blast-bridge.js';
 import { renderLoginPage } from './login-page.js';
 
 const VERSION = '0.7.6';
-const APP_BOOT = '0763';
+const APP_BOOT = '0764';
 
 const json = (data, init = {}) => new Response(JSON.stringify(data), {
   ...init,
@@ -92,12 +92,16 @@ async function freshAppShell(request, env) {
   let html = await assetResponse.text();
   html = addFreshAssetVersions(html);
   html = injectBootRecovery(html);
-  const headers = new Headers(assetResponse.headers);
-  headers.set('content-type', 'text/html; charset=utf-8');
-  headers.set('cache-control', 'no-store, no-cache, must-revalidate, max-age=0');
-  headers.set('pragma', 'no-cache');
-  headers.set('expires', '0');
-  headers.set('x-social-publisher-boot', APP_BOOT);
+
+  // The body changed, so never reuse body-specific headers from the original static asset.
+  // In particular an old Content-Length/Content-Encoding can leave iOS browsers waiting forever.
+  const headers = new Headers({
+    'content-type':'text/html; charset=utf-8',
+    'cache-control':'no-store, no-cache, must-revalidate, max-age=0',
+    'pragma':'no-cache',
+    'expires':'0',
+    'x-social-publisher-boot':APP_BOOT,
+  });
   return new Response(html, { status:assetResponse.status, headers });
 }
 
