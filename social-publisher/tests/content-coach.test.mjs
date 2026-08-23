@@ -33,14 +33,15 @@ test('Content Coach recommends before media and personalizes from performance pr
     "loadScript('/weekly-planner.js','weekly-planner')",
     "loadScript('/gig-campaign.js','gig-campaign'",
     "'/calendar-sync.js','calendar-sync'",
+    "'/easy-mode.js','easy-mode'",
   ]) assert.equal(smart.includes(needle), true, `loader missing ${needle}`);
 
-  for (const asset of ['/content-coach.js','/weekly-planner.js','/gig-campaign.js','/calendar-sync.js']) {
+  for (const asset of ['/content-coach.js','/weekly-planner.js','/gig-campaign.js','/calendar-sync.js','/easy-mode.js']) {
     assert.equal(sw.includes(`'${asset}'`), true, `shell missing ${asset}`);
   }
-  assert.equal(sw.includes('social-publisher-shell-v740'), true);
-  for (const pathName of ['public/content-coach.js','public/weekly-planner.js','public/gig-campaign.js','public/calendar-sync.js']) {
+  assert.equal(sw.includes('social-publisher-shell-v750'), true);
+  for (const pathName of ['public/content-coach.js','public/weekly-planner.js','public/gig-campaign.js','public/calendar-sync.js','public/easy-mode.js']) {
     assert.equal(pkg.includes(pathName), true, `package check missing ${pathName}`);
   }
-  assert.equal(pkg.includes('"version": "0.7.4"'), true);
+  assert.equal(pkg.includes('"version": "0.7.5"'), true);
 });

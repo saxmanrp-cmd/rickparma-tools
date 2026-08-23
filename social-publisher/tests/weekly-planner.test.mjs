@@ -24,7 +24,7 @@ test('Weekly Planner schema upgrades cleanly and fresh schema contains content p
   assert.equal(upgraded.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='content_plan_items'").get().name, 'content_plan_items');
 });
 
-test('Weekly Planner API and client stay wired in v0.7.4', () => {
+test('Weekly Planner API and client stay wired in v0.7.5', () => {
   const entry = read('src/entry.js');
   const backend = read('src/content-plan.js');
   const planner = read('public/weekly-planner.js');
@@ -36,7 +36,7 @@ test('Weekly Planner API and client stay wired in v0.7.4', () => {
     assert.equal(backend.includes(needle), true, `content plan backend missing ${needle}`);
   }
   assert.equal(entry.includes('handleContentPlanRequest'), true);
-  assert.equal(entry.includes("const VERSION = '0.7.4'"), true);
+  assert.equal(entry.includes("const VERSION = '0.7.5'"), true);
   assert.equal(entry.includes("url.pathname.startsWith('/api/content-plan')"), true);
   assert.equal(entry.includes('isLegacySessionAuthenticated'), true);
 
@@ -44,9 +44,12 @@ test('Weekly Planner API and client stay wired in v0.7.4', () => {
     assert.equal(planner.includes(needle), true, `Weekly Planner client missing ${needle}`);
   }
   assert.equal(smart.includes("loadScript('/weekly-planner.js','weekly-planner')"), true);
+  assert.equal(smart.includes("'/easy-mode.js','easy-mode'"), true);
   assert.equal(sw.includes("'/weekly-planner.js'"), true);
-  assert.equal(sw.includes('social-publisher-shell-v740'), true);
+  assert.equal(sw.includes("'/easy-mode.js'"), true);
+  assert.equal(sw.includes('social-publisher-shell-v750'), true);
   assert.equal(pkg.includes('src/content-plan.js'), true);
   assert.equal(pkg.includes('public/weekly-planner.js'), true);
-  assert.equal(pkg.includes('"version": "0.7.4"'), true);
+  assert.equal(pkg.includes('public/easy-mode.js'), true);
+  assert.equal(pkg.includes('"version": "0.7.5"'), true);
 });

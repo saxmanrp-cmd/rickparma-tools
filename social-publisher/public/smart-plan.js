@@ -1,4 +1,4 @@
-// v0.7.4 Smart Plan composes Max Reach and Performance Learning into one action.
+// v0.7.5 Smart Plan composes Max Reach and Performance Learning into one action.
 (() => {
   const q = selector => document.querySelector(selector);
 
@@ -10,7 +10,7 @@
       .smart-plan-block{display:grid;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)}
       .smart-plan-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
       .smart-plan-head strong{font-size:13px}.smart-plan-head span{display:block;margin-top:3px;color:var(--muted);font-size:10px;line-height:1.4}
-      .smart-plan-badge{flex:0 0 auto;border:1px solid #4d4271;background:#241f39;color:#cfc4ff;border-radius:999px;padding:4px 7px;font-size:8px;font-weight:900;letter-spacing:.05em}
+      .smart-plan-badge{flex:0 0 auto;border:1px solid #4d4271;background:#241f39;color:#cfc4ff;border-radius:999px;padding:4px 7px;font-size:8px;font-weight:900;letter-spacing:.05em;white-space:nowrap}
       .smart-plan-button{background:linear-gradient(135deg,#6557dc,#9b7aff)!important;box-shadow:0 10px 26px rgba(124,92,255,.22)}
       .smart-plan-result{border-radius:11px;background:#0c1017;padding:9px 10px;color:#adb6c5;font-size:10px;line-height:1.45}
       .smart-plan-result strong{color:#f1efff}
@@ -128,7 +128,7 @@
 
   function stampVersion() {
     const footer = q('.version-footer');
-    if (footer) footer.textContent = 'Social Publisher v0.7.4';
+    if (footer) footer.textContent = 'Social Publisher v0.7.5';
   }
 
   injectUi();
@@ -139,6 +139,8 @@
   loadScript('/content-coach.js','content-coach');
   loadScript('/weekly-planner.js','weekly-planner');
   loadScript('/gig-campaign.js','gig-campaign', () => {
-    loadScript('/calendar-sync.js','calendar-sync', stampVersion);
+    loadScript('/calendar-sync.js','calendar-sync', () => {
+      loadScript('/easy-mode.js','easy-mode', stampVersion);
+    });
   });
 })();
