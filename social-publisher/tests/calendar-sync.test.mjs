@@ -54,7 +54,7 @@ test('Google Calendar campaign sources are accepted by content-plan validation',
   assert.equal(validSource('gig-campaign:gcal:bad value'), '');
 });
 
-test('v0.7.4 client wires Google Calendar shows into Gig Campaigns', () => {
+test('v0.7.5 client wires Google Calendar shows into Gig Campaigns', () => {
   const backend = read('src/site-calendar.js');
   const entry = read('src/entry.js');
   const client = read('public/calendar-sync.js');
@@ -73,7 +73,7 @@ test('v0.7.4 client wires Google Calendar shows into Gig Campaigns', () => {
 
   assert.equal(entry.includes('handleSiteCalendarRequest'), true);
   assert.equal(entry.includes("url.pathname.startsWith('/api/site-calendar')"), true);
-  assert.equal(entry.includes("const VERSION = '0.7.4'"), true);
+  assert.equal(entry.includes("const VERSION = '0.7.5'"), true);
 
   for (const needle of [
     'Upcoming from RickParma.com',
@@ -90,8 +90,10 @@ test('v0.7.4 client wires Google Calendar shows into Gig Campaigns', () => {
 
   assert.equal(smart.includes("'/calendar-sync.js','calendar-sync'"), true);
   assert.equal(sw.includes("'/calendar-sync.js'"), true);
-  assert.equal(sw.includes('social-publisher-shell-v740'), true);
+  assert.equal(sw.includes("'/easy-mode.js'"), true);
+  assert.equal(sw.includes('social-publisher-shell-v750'), true);
   assert.equal(pkg.includes('src/site-calendar.js'), true);
   assert.equal(pkg.includes('public/calendar-sync.js'), true);
-  assert.equal(pkg.includes('"version": "0.7.4"'), true);
+  assert.equal(pkg.includes('public/easy-mode.js'), true);
+  assert.equal(pkg.includes('"version": "0.7.5"'), true);
 });
