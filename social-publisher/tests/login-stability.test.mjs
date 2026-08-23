@@ -6,7 +6,7 @@ import path from 'node:path';
 const root = path.resolve(new URL('..', import.meta.url).pathname);
 const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
 
-test('login stability isolates auth overlay and preserves password fallback', () => {
+test('login stability isolates auth overlay and owns a resilient password fallback', () => {
   const login = read('public/login-stability.js');
   const smart = read('public/smart-plan.js');
   const sw = read('public/service-worker.js');
@@ -18,6 +18,13 @@ test('login stability isolates auth overlay and preserves password fallback', ()
     'body.auth-open #appPassword',
     'input.disabled = false',
     'input.readOnly = false',
+    'releaseProgrammaticFocus',
+    'passwordTouched',
+    'bindPasswordFallback',
+    "fetch('/api/auth/login'",
+    'event.stopImmediatePropagation()',
+    'controller.abort()',
+    'Login timed out.',
     'isUserVerifyingPlatformAuthenticatorAvailable',
     'Face ID tip:',
     'Safari or your Home Screen',
@@ -25,5 +32,6 @@ test('login stability isolates auth overlay and preserves password fallback', ()
 
   assert.equal(smart.includes("loadScript('/login-stability.js','login-stability')"), true);
   assert.equal(sw.includes("'/login-stability.js'"), true);
+  assert.equal(sw.includes('social-publisher-shell-v760'), true);
   assert.equal(pkg.includes('public/login-stability.js'), true);
 });

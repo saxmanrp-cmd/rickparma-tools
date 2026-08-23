@@ -4,6 +4,13 @@
   const overlay = q('#loginOverlay');
   if (!overlay) return;
 
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const fromChatGPT = /chatgpt\.com|openai\.com/i.test(document.referrer || '');
+  let passwordTouched = false;
+  let wasOpen = false;
+  let passkeyTimer = null;
+
   const style = document.createElement('style');
   style.id = 'loginStabilityStyles';
   style.textContent = `
@@ -15,10 +22,9 @@
     body.auth-open #loginForm button{pointer-events:auto!important;touch-action:manipulation!important}
     .login-browser-help{font-size:12px;line-height:1.45;color:#9aa5b5;text-align:center;margin-top:-2px}
     .login-browser-help strong{color:#d8def0}
+    .login-browser-help.visible{display:block!important}
   `;
   document.head.appendChild(style);
-
-  let passkeyTimer = null;
 
   function ensureHelp() {
     let help = q('#loginBrowserHelp');
@@ -26,9 +32,15 @@
     help = document.createElement('div');
     help.id = 'loginBrowserHelp';
     help.className = 'login-browser-help hidden';
-    help.innerHTML = '<strong>Face ID tip:</strong> if it is blocked in an in-app browser, open Social Publisher from Safari or your Home Screen. Your password will still work.';
+    help.innerHTML = '<strong>Face ID tip:</strong> if you opened this from ChatGPT or another in-app browser, use Safari or your Home Screen for Face ID. Password login works here too.';
     q('#loginForm')?.appendChild(help);
     return help;
+  }
+
+  function showHelp() {
+    const help = ensureHelp();
+    help?.classList.remove('hidden');
+    help?.classList.add('visible');
   }
 
   function keepPasswordUsable() {
@@ -38,13 +50,30 @@
     input.readOnly = false;
     input.tabIndex = 0;
     input.setAttribute('inputmode','text');
+    if (!input.dataset.touchBound) {
+      input.dataset.touchBound = 'true';
+      input.addEventListener('pointerdown', () => { passwordTouched = true; }, { passive:true });
+      input.addEventListener('touchstart', () => { passwordTouched = true; }, { passive:true });
+    }
+  }
+
+  function releaseProgrammaticFocus() {
+    if (!isIOS || passwordTouched) return;
+    const input = q('#appPassword');
+    if (input && document.activeElement === input) input.blur();
   }
 
   async function checkPasskeyEnvironment() {
     const button = q('#passkeyLoginBtn');
     const divider = q('#passkeyDivider');
-    const help = ensureHelp();
     if (!button || !window.PublicKeyCredential) return;
+
+    if (fromChatGPT) {
+      button.classList.add('hidden');
+      divider?.classList.add('hidden');
+      showHelp();
+      return;
+    }
 
     if (typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== 'function') return;
     try {
@@ -52,10 +81,10 @@
       if (!available) {
         button.classList.add('hidden');
         divider?.classList.add('hidden');
-        help?.classList.remove('hidden');
+        showHelp();
       }
     } catch {
-      help?.classList.remove('hidden');
+      showHelp();
     }
   }
 
@@ -67,9 +96,65 @@
       clearTimeout(passkeyTimer);
       const help = ensureHelp();
       help?.classList.add('hidden');
+      help?.classList.remove('visible');
       passkeyTimer = setTimeout(() => {
-        if (!overlay.classList.contains('hidden') && !button.disabled) help?.classList.remove('hidden');
-      }, 2500);
+        if (!overlay.classList.contains('hidden')) showHelp();
+      }, 5000);
+    }, { capture:true });
+  }
+
+  function bindPasswordFallback() {
+    const form = q('#loginForm');
+    const input = q('#appPassword');
+    if (!form || !input || form.dataset.passwordFallbackBound) return;
+    form.dataset.passwordFallbackBound = 'true';
+
+    form.addEventListener('submit', async event => {
+      if (overlay.classList.contains('hidden')) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const password = String(input.value || '');
+      const error = q('#loginError');
+      const button = form.querySelector('button[type="submit"]');
+      if (!password) {
+        error.textContent = 'Enter your password.';
+        error.classList.remove('hidden');
+        passwordTouched = true;
+        input.focus();
+        return;
+      }
+
+      const oldText = button?.textContent || 'Open App';
+      if (button) { button.disabled = true; button.textContent = 'Opening…'; }
+      error.classList.add('hidden');
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method:'POST',
+          cache:'no-store',
+          headers:{ 'content-type':'application/json', accept:'application/json' },
+          body:JSON.stringify({ password }),
+          signal:controller.signal,
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          error.textContent = data.error || 'Incorrect password.';
+          error.classList.remove('hidden');
+          return;
+        }
+        location.reload();
+      } catch (err) {
+        error.textContent = err?.name === 'AbortError'
+          ? 'Login timed out. Try again, or open this page in Safari.'
+          : 'Could not sign in. Try again.';
+        error.classList.remove('hidden');
+      } finally {
+        clearTimeout(timeout);
+        if (button) { button.disabled = false; button.textContent = oldText; }
+      }
     }, { capture:true });
   }
 
@@ -77,18 +162,29 @@
     const open = !overlay.classList.contains('hidden');
     document.documentElement.classList.toggle('auth-open', open);
     document.body.classList.toggle('auth-open', open);
+
     if (!open) {
       clearTimeout(passkeyTimer);
+      wasOpen = false;
       return;
     }
+
+    if (!wasOpen) {
+      passwordTouched = false;
+      wasOpen = true;
+    }
+
     keepPasswordUsable();
+    bindPasswordFallback();
     window.scrollTo(0,0);
     requestAnimationFrame(() => window.scrollTo(0,0));
     setTimeout(() => {
       keepPasswordUsable();
+      releaseProgrammaticFocus();
       bindPasskeyFeedback();
+      bindPasswordFallback();
       checkPasskeyEnvironment();
-    }, 80);
+    }, 140);
   }
 
   new MutationObserver(syncAuthState).observe(overlay, { attributes:true, attributeFilter:['class'] });
@@ -96,6 +192,7 @@
     if (!overlay.classList.contains('hidden')) {
       keepPasswordUsable();
       bindPasskeyFeedback();
+      bindPasswordFallback();
       checkPasskeyEnvironment();
     }
   }).observe(q('#loginForm') || overlay, { childList:true, subtree:true });
