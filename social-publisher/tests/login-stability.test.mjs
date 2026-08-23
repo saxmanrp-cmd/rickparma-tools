@@ -32,6 +32,6 @@ test('login stability isolates auth overlay and owns a resilient password fallba
 
   assert.equal(smart.includes("loadScript('/login-stability.js','login-stability')"), true);
   assert.equal(sw.includes("'/login-stability.js'"), true);
-  assert.equal(sw.includes('social-publisher-shell-v761'), true);
+  assert.equal(sw.includes('social-publisher-shell-v760'), true);
   assert.equal(pkg.includes('public/login-stability.js'), true);
 });
