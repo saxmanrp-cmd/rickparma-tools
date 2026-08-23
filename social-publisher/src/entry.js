@@ -4,6 +4,10 @@ import {
   handlePasskeyRequest,
   isLegacySessionAuthenticated,
 } from './passkey-auth.js';
+import {
+  addThreadsInsightsScope,
+  persistThreadsInsightsScope,
+} from './threads-insights.js';
 
 const VERSION = '0.6.9';
 
@@ -29,6 +33,17 @@ export default {
 
     const passkeyResponse = await handlePasskeyRequest(request, env);
     if (passkeyResponse) return passkeyResponse;
+
+    if (url.pathname === '/api/threads/connect' && request.method === 'GET') {
+      const response = await core.fetch(request, env, ctx);
+      return addThreadsInsightsScope(response);
+    }
+
+    if (url.pathname === '/api/threads/callback' && request.method === 'GET') {
+      const response = await core.fetch(request, env, ctx);
+      await persistThreadsInsightsScope(response, env).catch(() => false);
+      return response;
+    }
 
     return core.fetch(request, env, ctx);
   },
