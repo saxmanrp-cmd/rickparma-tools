@@ -39,11 +39,14 @@ test('Gig Campaigns build an isolated multi-touch show campaign', () => {
 
   assert.equal(smart.includes("'/gig-campaign.js'"), true);
   assert.equal(smart.includes("'/calendar-sync.js'"), true);
+  assert.equal(smart.includes("'/easy-mode.js'"), true);
   assert.equal(sw.includes("'/gig-campaign.js'"), true);
   assert.equal(sw.includes("'/calendar-sync.js'"), true);
-  assert.equal(sw.includes('social-publisher-shell-v740'), true);
+  assert.equal(sw.includes("'/easy-mode.js'"), true);
+  assert.equal(sw.includes('social-publisher-shell-v750'), true);
   assert.equal(pkg.includes('public/gig-campaign.js'), true);
   assert.equal(pkg.includes('public/calendar-sync.js'), true);
-  assert.equal(pkg.includes('"version": "0.7.4"'), true);
-  assert.equal(entry.includes("const VERSION = '0.7.4'"), true);
+  assert.equal(pkg.includes('public/easy-mode.js'), true);
+  assert.equal(pkg.includes('"version": "0.7.5"'), true);
+  assert.equal(entry.includes("const VERSION = '0.7.5'"), true);
 });
