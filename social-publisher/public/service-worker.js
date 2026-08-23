@@ -1,4 +1,4 @@
-// v0.7.6 dedicated-login hotfix: navigation is always network-authenticated and never cached as app shell.
+// v0.7.6 dedicated-login hotfix upgrades the previous social-publisher-shell-v760 cache; navigation is always network-authenticated and never cached as app shell.
 const CACHE = 'social-publisher-shell-v762';
 const SHELL = ['/styles.css', '/app.js', '/reach-intelligence.js', '/passkeys.js', '/smart-plan.js', '/login-stability.js', '/content-coach.js', '/weekly-planner.js', '/gig-campaign.js', '/calendar-sync.js', '/easy-mode.js', '/flyer-first.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
