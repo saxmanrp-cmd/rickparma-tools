@@ -26,12 +26,15 @@ test('Smart Plan composes existing reach controls without overwriting captions',
   assert.equal(passkeys.includes("smartPlan.src = '/smart-plan.js'"), true);
   assert.equal(smart.includes("coach.src = '/content-coach.js'"), true);
   assert.equal(smart.includes("planner.src = '/weekly-planner.js'"), true);
+  assert.equal(smart.includes("campaign.src = '/gig-campaign.js'"), true);
   assert.equal(sw.includes("'/smart-plan.js'"), true);
   assert.equal(sw.includes("'/content-coach.js'"), true);
   assert.equal(sw.includes("'/weekly-planner.js'"), true);
-  assert.equal(sw.includes('social-publisher-shell-v720'), true);
+  assert.equal(sw.includes("'/gig-campaign.js'"), true);
+  assert.equal(sw.includes('social-publisher-shell-v730'), true);
   assert.equal(pkg.includes('public/smart-plan.js'), true);
   assert.equal(pkg.includes('public/content-coach.js'), true);
   assert.equal(pkg.includes('public/weekly-planner.js'), true);
-  assert.equal(pkg.includes('"version": "0.7.2"'), true);
+  assert.equal(pkg.includes('public/gig-campaign.js'), true);
+  assert.equal(pkg.includes('"version": "0.7.3"'), true);
 });
