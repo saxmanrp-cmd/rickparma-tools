@@ -29,8 +29,11 @@ test('Content Coach recommends before media and personalizes from performance pr
   ]) assert.equal(coach.includes(needle), true, `Content Coach missing ${needle}`);
 
   assert.equal(smart.includes("coach.src = '/content-coach.js'"), true);
+  assert.equal(smart.includes("planner.src = '/weekly-planner.js'"), true);
   assert.equal(sw.includes("'/content-coach.js'"), true);
-  assert.equal(sw.includes('social-publisher-shell-v710'), true);
+  assert.equal(sw.includes("'/weekly-planner.js'"), true);
+  assert.equal(sw.includes('social-publisher-shell-v720'), true);
   assert.equal(pkg.includes('public/content-coach.js'), true);
-  assert.equal(pkg.includes('"version": "0.7.1"'), true);
+  assert.equal(pkg.includes('public/weekly-planner.js'), true);
+  assert.equal(pkg.includes('"version": "0.7.2"'), true);
 });
