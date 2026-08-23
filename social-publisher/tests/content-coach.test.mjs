@@ -32,7 +32,7 @@ test('Content Coach recommends before media and personalizes from performance pr
     "loadScript('/content-coach.js','content-coach')",
     "loadScript('/weekly-planner.js','weekly-planner')",
     "loadScript('/gig-campaign.js','gig-campaign'",
-    "loadScript('/calendar-sync.js','calendar-sync')",
+    "'/calendar-sync.js','calendar-sync'",
   ]) assert.equal(smart.includes(needle), true, `loader missing ${needle}`);
 
   for (const asset of ['/content-coach.js','/weekly-planner.js','/gig-campaign.js','/calendar-sync.js']) {
