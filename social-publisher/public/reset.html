@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#090b10" />
+  <title>Reset Social Publisher</title>
+  <style>
+    :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#090b10;color:#f7f8fb;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,sans-serif;padding:24px}.card{width:min(100%,460px);border:1px solid #352b59;background:#10141d;border-radius:24px;padding:28px;box-shadow:0 24px 70px rgba(0,0,0,.35);text-align:center}.logo{width:74px;height:74px;border-radius:22px;margin:0 auto 18px;display:grid;place-items:center;background:linear-gradient(145deg,#6352ff,#986cff);font-weight:900;font-size:27px}.status{font-size:23px;font-weight:850;line-height:1.15}.detail{margin:12px auto 22px;color:#aab3c2;font-size:15px;line-height:1.5}.button{width:100%;min-height:58px;border:0;border-radius:17px;background:linear-gradient(135deg,#6557dc,#9b7aff);color:white;font-size:18px;font-weight:850;padding:12px 18px}.button[disabled]{opacity:.55}.small{margin-top:14px;color:#727d8e;font-size:12px;line-height:1.4}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="logo">RP</div>
+    <div id="status" class="status">Cleaning Social Publisher…</div>
+    <div id="detail" class="detail">Removing the old Home Screen/browser cache without touching your posts or account.</div>
+    <button id="openBtn" class="button" type="button" disabled>Open Clean Copy</button>
+    <div class="small">This reset removes old browser files and the previous installed-app worker. Your cloud posts and calendar stay intact.</div>
+  </main>
+  <script>
+    (async () => {
+      const status = document.getElementById('status');
+      const detail = document.getElementById('detail');
+      const button = document.getElementById('openBtn');
+      try {
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations().catch(() => []);
+          await Promise.all(registrations.map(reg => reg.unregister().catch(() => false)));
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys().catch(() => []);
+          await Promise.all(keys.filter(key => key.startsWith('social-publisher-shell-')).map(key => caches.delete(key)));
+        }
+        try { sessionStorage.removeItem('socialPublisherActiveView'); } catch {}
+        try { localStorage.removeItem('socialPublisherV3'); } catch {}
+        status.textContent = 'Reset complete ✓';
+        detail.textContent = 'The old installed-app/browser state is gone. Open a clean copy now.';
+      } catch (error) {
+        status.textContent = 'Reset finished';
+        detail.textContent = 'The cleanup ran as far as this browser allows. Open a clean copy now.';
+      }
+      button.disabled = false;
+      button.addEventListener('click', () => {
+        location.replace('/clean.html?fresh=' + Date.now());
+      });
+    })();
+  </script>
+</body>
+</html>
