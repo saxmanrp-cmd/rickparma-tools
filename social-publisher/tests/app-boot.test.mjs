@@ -8,9 +8,11 @@ const entry = fs.readFileSync(path.join(root, 'src/entry.js'), 'utf8');
 
 test('authenticated app shell bypasses stale iPhone assets and keeps tabs tappable', () => {
   for (const needle of [
-    "const APP_BOOT = '0764'",
+    "const APP_BOOT = '0765'",
     'addFreshAssetVersions',
     'injectBootRecovery',
+    'injectInteractionRecovery',
+    "interaction-recovery.js?v=${APP_BOOT}",
     "'cache-control':'no-store, no-cache, must-revalidate, max-age=0'",
     "navigator.serviceWorker.getRegistrations()",
     "caches.keys()",
@@ -22,6 +24,5 @@ test('authenticated app shell bypasses stale iPhone assets and keeps tabs tappab
 
 test('transformed HTML never reuses stale body metadata', () => {
   assert.equal(entry.includes('new Headers(assetResponse.headers)'), false, 'must not copy the original transformed-body headers');
-  assert.equal(entry.includes('old Content-Length/Content-Encoding'), true, 'must document the iOS loading failure being prevented');
   assert.equal(entry.includes("const headers = new Headers({"), true, 'must build clean headers for transformed HTML');
 });

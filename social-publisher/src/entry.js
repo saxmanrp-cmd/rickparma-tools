@@ -14,7 +14,7 @@ import { handleTextBlastRequest } from './text-blast-bridge.js';
 import { renderLoginPage } from './login-page.js';
 
 const VERSION = '0.7.6';
-const APP_BOOT = '0764';
+const APP_BOOT = '0765';
 
 const json = (data, init = {}) => new Response(JSON.stringify(data), {
   ...init,
@@ -32,7 +32,7 @@ function addFreshAssetVersions(html) {
   const assets = [
     'styles.css', 'app.js', 'reach-intelligence.js', 'passkeys.js', 'smart-plan.js',
     'login-stability.js', 'content-coach.js', 'weekly-planner.js', 'gig-campaign.js',
-    'calendar-sync.js', 'easy-mode.js', 'flyer-first.js',
+    'calendar-sync.js', 'easy-mode.js', 'flyer-first.js', 'interaction-recovery.js',
   ];
   for (const asset of assets) {
     html = html.replaceAll(`/${asset}"`, `/${asset}?v=${APP_BOOT}"`);
@@ -63,7 +63,6 @@ function injectBootRecovery(html) {
     window.addEventListener('error',function(e){ showBootError((e&&e.message)||'Script error'); });
     window.addEventListener('unhandledrejection',function(e){ showBootError((e&&e.reason&&e.reason.message)||'Startup promise failed'); });
 
-    // Emergency navigation fallback: even if an optional module crashes, the five main tabs remain tappable.
     document.addEventListener('click',function(e){
       var button=e.target&&e.target.closest&&e.target.closest('.nav-item[data-view]');
       if(!button) return;
@@ -83,6 +82,12 @@ function injectBootRecovery(html) {
   return html.includes('</head>') ? html.replace('</head>', `${boot}</head>`) : `${boot}${html}`;
 }
 
+function injectInteractionRecovery(html) {
+  const tag = `<script src="/interaction-recovery.js?v=${APP_BOOT}"></script>`;
+  if (html.includes('/interaction-recovery.js')) return html;
+  return html.includes('</body>') ? html.replace('</body>', `${tag}</body>`) : `${html}${tag}`;
+}
+
 async function freshAppShell(request, env) {
   const assetResponse = await env.ASSETS.fetch(request);
   if (!assetResponse.ok) return assetResponse;
@@ -92,9 +97,8 @@ async function freshAppShell(request, env) {
   let html = await assetResponse.text();
   html = addFreshAssetVersions(html);
   html = injectBootRecovery(html);
+  html = injectInteractionRecovery(html);
 
-  // The body changed, so never reuse body-specific headers from the original static asset.
-  // In particular an old Content-Length/Content-Encoding can leave iOS browsers waiting forever.
   const headers = new Headers({
     'content-type':'text/html; charset=utf-8',
     'cache-control':'no-store, no-cache, must-revalidate, max-age=0',
