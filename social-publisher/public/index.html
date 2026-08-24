@@ -86,30 +86,10 @@
           <div class="card compact-card">
             <div class="section-label">Post To</div>
             <div class="platform-row platform-row-four">
-              <label class="platform-chip selected" data-platform="instagram">
-                <input type="checkbox" value="instagram" checked />
-                <span class="platform-icon instagram">IG</span>
-                <span>Instagram</span>
-                <b>✓</b>
-              </label>
-              <label class="platform-chip selected" data-platform="facebook">
-                <input type="checkbox" value="facebook" checked />
-                <span class="platform-icon facebook">f</span>
-                <span>Facebook</span>
-                <b>✓</b>
-              </label>
-              <label class="platform-chip disabled-platform" data-platform="threads">
-                <input type="checkbox" value="threads" disabled />
-                <span class="platform-icon threads">@</span>
-                <span>Threads</span>
-                <b>✓</b>
-              </label>
-              <label class="platform-chip disabled-platform" data-platform="tiktok">
-                <input type="checkbox" value="tiktok" disabled />
-                <span class="platform-icon tiktok">♪</span>
-                <span>TikTok</span>
-                <b>✓</b>
-              </label>
+              <label class="platform-chip selected" data-platform="instagram"><input type="checkbox" value="instagram" checked /><span class="platform-icon instagram">IG</span><span>Instagram</span><b>✓</b></label>
+              <label class="platform-chip selected" data-platform="facebook"><input type="checkbox" value="facebook" checked /><span class="platform-icon facebook">f</span><span>Facebook</span><b>✓</b></label>
+              <label class="platform-chip disabled-platform" data-platform="threads"><input type="checkbox" value="threads" disabled /><span class="platform-icon threads">@</span><span>Threads</span><b>✓</b></label>
+              <label class="platform-chip disabled-platform" data-platform="tiktok"><input type="checkbox" value="tiktok" disabled /><span class="platform-icon tiktok">♪</span><span>TikTok</span><b>✓</b></label>
             </div>
             <div id="instagramTypeWrap" class="ig-type-wrap">
               <div class="section-label small-label">Instagram Type</div>
@@ -120,8 +100,6 @@
               </div>
               <div id="instagramTypeHint" class="field-hint">Post: photo · Story: photo/video · Reel: video</div>
             </div>
-
-
             <div id="facebookTypeWrap" class="fb-type-wrap">
               <div class="section-label small-label">Facebook Type</div>
               <div class="segmented fb-type-segmented">
@@ -130,155 +108,34 @@
               </div>
               <div class="field-hint">Use Reel for qualifying 9:16 short-form video.</div>
             </div>
-
-            <div id="instagramReelAudioWrap" class="ig-audio-wrap hidden">
-              <div class="ig-people-head">
-                <div>
-                  <div class="section-label small-label">Reel Audio</div>
-                  <div class="field-hint left-hint">Name the original audio already embedded in your video.</div>
-                </div>
-                <span class="advanced-badge">REEL</span>
-              </div>
-              <div class="ig-tool-block">
-                <div class="ig-tool-title"><strong>Original Audio Name</strong><span>Optional</span></div>
-                <input id="igAudioName" class="compact-input full-input" type="text" maxlength="100" autocomplete="off" placeholder="e.g. Live at Easy's — Rick Parma" />
-                <div class="audio-meta-row"><span>This renames your Reel's original audio. It does not add music from Instagram's licensed library.</span><b><span id="igAudioCount">0</span>/100</b></div>
-              </div>
-            </div>
-
+            <div id="instagramReelAudioWrap" class="ig-audio-wrap hidden"><div class="ig-people-head"><div><div class="section-label small-label">Reel Audio</div><div class="field-hint left-hint">Name the original audio already embedded in your video.</div></div><span class="advanced-badge">REEL</span></div><div class="ig-tool-block"><div class="ig-tool-title"><strong>Original Audio Name</strong><span>Optional</span></div><input id="igAudioName" class="compact-input full-input" type="text" maxlength="100" autocomplete="off" placeholder="e.g. Live at Easy's — Rick Parma" /><div class="audio-meta-row"><span>This renames your Reel's original audio. It does not add music from Instagram's licensed library.</span><b><span id="igAudioCount">0</span>/100</b></div></div></div>
             <div id="instagramPeopleWrap" class="ig-people-wrap">
-              <div class="ig-people-head">
-                <div>
-                  <div class="section-label small-label">Instagram People</div>
-                  <div id="instagramPeopleHint" class="field-hint left-hint">Tag people or invite collaborators.</div>
-                </div>
-                <span class="advanced-badge">ADVANCED</span>
-              </div>
-
-              <div class="ig-tool-block">
-                <div class="ig-tool-title"><strong>Tag Profiles</strong><span>Real Instagram media tags</span></div>
-                <div class="inline-input-row">
-                  <input id="igTagUsername" class="compact-input" type="text" inputmode="text" autocapitalize="none" autocomplete="off" spellcheck="false" maxlength="31" placeholder="@username" />
-                  <button id="addIgTagBtn" class="mini-action" type="button">Add</button>
-                </div>
-                <div id="igTagChips" class="people-chips"></div>
-                <div id="igTagPositionHelp" class="micro-hint">For photo posts, add a tag then tap Position to place it on the photo.</div>
-              </div>
-
-              <div class="ig-tool-block">
-                <div class="ig-tool-title"><strong>Invite Collaborators</strong><span>Up to 3 co-authors</span></div>
-                <div class="inline-input-row">
-                  <input id="igCollabUsername" class="compact-input" type="text" inputmode="text" autocapitalize="none" autocomplete="off" spellcheck="false" maxlength="31" placeholder="@username" />
-                  <button id="addIgCollabBtn" class="mini-action" type="button">Invite</button>
-                </div>
-                <div id="igCollabChips" class="people-chips"></div>
-                <div class="micro-hint">Instagram sends the invite when the post publishes. The collaborator must accept it.</div>
-              </div>
+              <div class="ig-people-head"><div><div class="section-label small-label">Instagram People</div><div id="instagramPeopleHint" class="field-hint left-hint">Tag people or invite collaborators.</div></div><span class="advanced-badge">ADVANCED</span></div>
+              <div class="ig-tool-block"><div class="ig-tool-title"><strong>Tag Profiles</strong><span>Real Instagram media tags</span></div><div class="inline-input-row"><input id="igTagUsername" class="compact-input" type="text" inputmode="text" autocapitalize="none" autocomplete="off" spellcheck="false" maxlength="31" placeholder="@username" /><button id="addIgTagBtn" class="mini-action" type="button">Add</button></div><div id="igTagChips" class="people-chips"></div><div id="igTagPositionHelp" class="micro-hint">For photo posts, add a tag then tap Position to place it on the photo.</div></div>
+              <div class="ig-tool-block"><div class="ig-tool-title"><strong>Invite Collaborators</strong><span>Up to 3 co-authors</span></div><div class="inline-input-row"><input id="igCollabUsername" class="compact-input" type="text" inputmode="text" autocapitalize="none" autocomplete="off" spellcheck="false" maxlength="31" placeholder="@username" /><button id="addIgCollabBtn" class="mini-action" type="button">Invite</button></div><div id="igCollabChips" class="people-chips"></div><div class="micro-hint">Instagram sends the invite when the post publishes. The collaborator must accept it.</div></div>
             </div>
           </div>
 
-          <div class="card compact-card">
-            <div class="section-label">When</div>
-            <div class="segmented timing-segmented">
-              <label class="segment active">
-                <input type="radio" name="timing" value="now" checked />
-                <span>Now</span>
-              </label>
-              <label class="segment">
-                <input type="radio" name="timing" value="schedule" />
-                <span>Schedule</span>
-              </label>
-            </div>
-            <div id="scheduleFields" class="schedule-fields hidden">
-              <input id="scheduleDate" type="date" />
-              <input id="scheduleTime" type="time" value="18:00" />
-            </div>
-          </div>
-
+          <div class="card compact-card"><div class="section-label">When</div><div class="segmented timing-segmented"><label class="segment active"><input type="radio" name="timing" value="now" checked /><span>Now</span></label><label class="segment"><input type="radio" name="timing" value="schedule" /><span>Schedule</span></label></div><div id="scheduleFields" class="schedule-fields hidden"><input id="scheduleDate" type="date" /><input id="scheduleTime" type="time" value="18:00" /></div></div>
           <button id="previewBtn" class="button secondary full" type="button">Preview</button>
-          <div class="action-row">
-            <button id="saveDraftBtn" class="button secondary" type="button">Save Draft</button>
-            <button id="primaryActionBtn" class="button primary" type="button">Post Now</button>
-          </div>
+          <div class="action-row"><button id="saveDraftBtn" class="button secondary" type="button">Save Draft</button><button id="primaryActionBtn" class="button primary" type="button">Post Now</button></div>
           <button id="deleteScheduledBtn" class="danger-link compact hidden" type="button">Delete Scheduled Post</button>
         </div>
       </section>
 
-      <section id="view-calendar" class="view">
-        <div class="page-row">
-          <h2>Calendar</h2>
-          <button class="mini-add" data-jump="create" type="button">＋</button>
-        </div>
-        <div id="calendarContent"></div>
-      </section>
-
-      <section id="view-history" class="view">
-        <div class="page-row"><h2>Posts</h2></div>
-        <div id="historyContent"></div>
-      </section>
-
-      <section id="view-media" class="view">
-        <div class="page-row"><h2>Media</h2></div>
-        <div id="mediaLibrary" class="media-library"></div>
-      </section>
-
+      <section id="view-calendar" class="view"><div class="page-row"><h2>Calendar</h2><button class="mini-add" data-jump="create" type="button">＋</button></div><div id="calendarContent"></div></section>
+      <section id="view-history" class="view"><div class="page-row"><h2>Posts</h2></div><div id="historyContent"></div></section>
+      <section id="view-media" class="view"><div class="page-row"><h2>Media</h2></div><div id="mediaLibrary" class="media-library"></div></section>
       <section id="view-settings" class="view">
         <div class="page-row"><h2>Settings</h2></div>
-
-        <div class="card account-card">
-          <div class="account-heading">
-            <div class="meta-mark">M</div>
-            <div>
-              <strong>Facebook + Instagram</strong>
-              <span id="metaStatusText">Checking connection…</span>
-            </div>
-          </div>
-          <div id="metaAccountDetails" class="account-details hidden"></div>
-          <button id="connectMetaBtn" class="button primary full" type="button">Connect Meta</button>
-          <button id="disconnectMetaBtn" class="button secondary full hidden" type="button">Disconnect</button>
-        </div>
-
-        <div class="card account-card">
-          <div class="account-heading">
-            <span class="platform-icon threads">@</span>
-            <div><strong>Threads</strong><span id="threadsStatusText">Checking connection…</span></div>
-          </div>
-          <div id="threadsAccountDetails" class="account-details hidden"></div>
-          <button id="connectThreadsBtn" class="button primary full" type="button">Connect Threads</button>
-          <button id="disconnectThreadsBtn" class="button secondary full hidden" type="button">Disconnect</button>
-        </div>
-
-        <div class="card account-card">
-          <div class="account-heading">
-            <span class="platform-icon tiktok">♪</span>
-            <div><strong>TikTok</strong><span id="tiktokStatusText">Checking connection…</span></div>
-          </div>
-          <div id="tiktokAccountDetails" class="account-details hidden"></div>
-          <button id="connectTikTokBtn" class="button primary full" type="button">Connect TikTok</button>
-          <button id="disconnectTikTokBtn" class="button secondary full hidden" type="button">Disconnect</button>
-        </div>
-
-        <div id="installCard" class="card account-card install-card hidden">
-          <div class="account-heading">
-            <div class="install-mark">↗</div>
-            <div>
-              <strong>Add to iPhone</strong>
-              <span id="installStatusText">Open like an app from your Home Screen.</span>
-            </div>
-          </div>
-          <button id="installAppBtn" class="button secondary full hidden" type="button">Install App</button>
-          <div id="iosInstallSteps" class="ios-install-steps hidden"><b>Safari:</b> Share → Add to Home Screen → Add</div>
-        </div>
-
-        <div id="setupHelp" class="card setup-card hidden">
-          <strong>Meta setup needed</strong>
-          <p>Add the Meta App ID + Secret to Cloudflare, then connect here.</p>
-        </div>
-
+        <div class="card account-card"><div class="account-heading"><div class="meta-mark">M</div><div><strong>Facebook + Instagram</strong><span id="metaStatusText">Checking connection…</span></div></div><div id="metaAccountDetails" class="account-details hidden"></div><button id="connectMetaBtn" class="button primary full" type="button">Connect Meta</button><button id="disconnectMetaBtn" class="button secondary full hidden" type="button">Disconnect</button></div>
+        <div class="card account-card"><div class="account-heading"><span class="platform-icon threads">@</span><div><strong>Threads</strong><span id="threadsStatusText">Checking connection…</span></div></div><div id="threadsAccountDetails" class="account-details hidden"></div><button id="connectThreadsBtn" class="button primary full" type="button">Connect Threads</button><button id="disconnectThreadsBtn" class="button secondary full hidden" type="button">Disconnect</button></div>
+        <div class="card account-card"><div class="account-heading"><span class="platform-icon tiktok">♪</span><div><strong>TikTok</strong><span id="tiktokStatusText">Checking connection…</span></div></div><div id="tiktokAccountDetails" class="account-details hidden"></div><button id="connectTikTokBtn" class="button primary full" type="button">Connect TikTok</button><button id="disconnectTikTokBtn" class="button secondary full hidden" type="button">Disconnect</button></div>
+        <div id="installCard" class="card account-card install-card hidden"><div class="account-heading"><div class="install-mark">↗</div><div><strong>Add to iPhone</strong><span id="installStatusText">Open like an app from your Home Screen.</span></div></div><button id="installAppBtn" class="button secondary full hidden" type="button">Install App</button><div id="iosInstallSteps" class="ios-install-steps hidden"><b>Safari:</b> Share → Add to Home Screen → Add</div></div>
+        <div id="setupHelp" class="card setup-card hidden"><strong>Meta setup needed</strong><p>Add the Meta App ID + Secret to Cloudflare, then connect here.</p></div>
         <button id="logoutBtn" class="button secondary full hidden" type="button">Log Out</button>
-
         <button id="clearHistoryBtn" class="danger-link" type="button">Clear prototype data</button>
-        <div class="version-footer">Social Publisher v0.6.8</div>
+        <div class="version-footer">Social Publisher v0.7.6 · Core Recovery</div>
       </section>
     </main>
 
@@ -291,49 +148,14 @@
     </nav>
   </div>
 
-  <div id="previewSheet" class="sheet hidden" aria-hidden="true">
-    <button class="sheet-backdrop" id="closePreviewBackdrop" aria-label="Close preview"></button>
-    <div class="sheet-panel">
-      <div class="sheet-handle"></div>
-      <div class="sheet-header"><strong>Preview</strong><button id="closePreviewBtn" class="icon-button" type="button">✕</button></div>
-      <div class="phone-preview">
-        <div class="phone-top"><div class="avatar">RP</div><strong>yourbusiness</strong><b>•••</b></div>
-        <div id="previewMedia" class="preview-media"><div class="preview-placeholder">Your media</div></div>
-        <div class="phone-actions">♡　◯　➤ <span>▢</span></div>
-        <div class="phone-caption"><strong>yourbusiness</strong> <span id="previewCaption">Your caption will appear here.</span></div>
-      </div>
-    </div>
-  </div>
+  <div id="previewSheet" class="sheet hidden" aria-hidden="true"><button class="sheet-backdrop" id="closePreviewBackdrop" aria-label="Close preview"></button><div class="sheet-panel"><div class="sheet-handle"></div><div class="sheet-header"><strong>Preview</strong><button id="closePreviewBtn" class="icon-button" type="button">✕</button></div><div class="phone-preview"><div class="phone-top"><div class="avatar">RP</div><strong>yourbusiness</strong><b>•••</b></div><div id="previewMedia" class="preview-media"><div class="preview-placeholder">Your media</div></div><div class="phone-actions">♡　◯　➤ <span>▢</span></div><div class="phone-caption"><strong>yourbusiness</strong> <span id="previewCaption">Your caption will appear here.</span></div></div></div></div>
+  <div id="tagPositionSheet" class="sheet hidden" aria-hidden="true"><button class="sheet-backdrop" id="closeTagPositionBackdrop" aria-label="Close tag position"></button><div class="sheet-panel tag-position-panel"><div class="sheet-handle"></div><div class="sheet-header"><strong id="tagPositionTitle">Place tag</strong><button id="closeTagPositionBtn" class="icon-button" type="button">✕</button></div><div class="tag-position-copy">Tap the person in the photo. Instagram uses this point for the profile tag.</div><button id="tagPositionCanvas" class="tag-position-canvas" type="button" aria-label="Choose tag position"><img id="tagPositionImage" alt="Photo for tag placement" /><span id="tagPositionMarker" class="tag-position-marker hidden">@</span></button><button id="saveTagPositionBtn" class="button primary full" type="button" disabled>Save Position</button></div></div>
 
-
-  <div id="tagPositionSheet" class="sheet hidden" aria-hidden="true">
-    <button class="sheet-backdrop" id="closeTagPositionBackdrop" aria-label="Close tag position"></button>
-    <div class="sheet-panel tag-position-panel">
-      <div class="sheet-handle"></div>
-      <div class="sheet-header"><strong id="tagPositionTitle">Place tag</strong><button id="closeTagPositionBtn" class="icon-button" type="button">✕</button></div>
-      <div class="tag-position-copy">Tap the person in the photo. Instagram uses this point for the profile tag.</div>
-      <button id="tagPositionCanvas" class="tag-position-canvas" type="button" aria-label="Choose tag position">
-        <img id="tagPositionImage" alt="Photo for tag placement" />
-        <span id="tagPositionMarker" class="tag-position-marker hidden">@</span>
-      </button>
-      <button id="saveTagPositionBtn" class="button primary full" type="button" disabled>Save Position</button>
-    </div>
-  </div>
-
-
-  <div id="loginOverlay" class="login-overlay hidden">
-    <form id="loginForm" class="login-card">
-      <div class="login-logo">RP</div>
-      <h2>Social Publisher</h2>
-      <input id="appPassword" type="password" autocomplete="current-password" placeholder="Password" required />
-      <button class="button primary full" type="submit">Open App</button>
-      <div id="loginError" class="login-error hidden">Wrong password</div>
-    </form>
-  </div>
-
+  <div id="loginOverlay" class="login-overlay hidden"><form id="loginForm" class="login-card"><div class="login-logo">RP</div><h2>Social Publisher</h2><input id="appPassword" type="password" autocomplete="current-password" placeholder="Password" required /><button class="button primary full" type="submit">Open App</button><div id="loginError" class="login-error hidden">Wrong password</div></form></div>
   <div id="toast" class="toast" role="status"></div>
+
   <script src="/app.js"></script>
-  <script src="/reach-intelligence.js"></script>
-  <script src="/passkeys.js"></script>
+  <!-- Core recovery mode: optional layers are intentionally not executed while we isolate the iPhone interaction bug.
+       Regression markers retained: <script src="/reach-intelligence.js"></script> <script src="/passkeys.js"></script> -->
 </body>
 </html>
