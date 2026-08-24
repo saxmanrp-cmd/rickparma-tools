@@ -14,7 +14,7 @@
     <div class="logo">RP</div>
     <div id="status" class="status">Cleaning Social Publisher…</div>
     <div id="detail" class="detail">Removing the old Home Screen/browser cache without touching your posts or account.</div>
-    <button id="openBtn" class="button" type="button" disabled>Open Social Publisher</button>
+    <button id="openBtn" class="button" type="button" disabled>Open Clean Copy</button>
     <div class="small">This reset removes old browser files and the previous installed-app worker. Your cloud posts and calendar stay intact.</div>
   </main>
   <script>
@@ -37,11 +37,11 @@
         detail.textContent = 'The old installed-app/browser state is gone. Open a clean copy now.';
       } catch (error) {
         status.textContent = 'Reset finished';
-        detail.textContent = 'The cleanup ran as far as this browser allows. Open Social Publisher now.';
+        detail.textContent = 'The cleanup ran as far as this browser allows. Open a clean copy now.';
       }
       button.disabled = false;
       button.addEventListener('click', () => {
-        location.replace('/?fresh=' + Date.now());
+        location.replace('/clean.html?fresh=' + Date.now());
       });
     })();
   </script>
