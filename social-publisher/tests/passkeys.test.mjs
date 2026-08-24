@@ -43,7 +43,7 @@ test('passkey migration upgrades previous schema and fresh schema contains crede
   assert.equal(upgraded.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='passkeys'").get().name, 'passkeys');
 });
 
-test('Face ID and WebAuthn stay wired through Flyer First release', () => {
+test('Face ID and WebAuthn remain implemented while recovery temporarily leaves the client disabled', () => {
   const backend = read('src/passkey-auth.js');
   const entry = read('src/entry.js');
   const frontend = read('public/passkeys.js');
@@ -64,7 +64,8 @@ test('Face ID and WebAuthn stay wired through Flyer First release', () => {
   for (const needle of ['navigator.credentials.create','navigator.credentials.get','Sign in with Face ID','Enable Face ID','getPublicKey','userVerification:\'required\'']) {
     assert.equal(frontend.includes(needle), true, `frontend missing ${needle}`);
   }
-  assert.equal(html.includes('<script src="/passkeys.js"></script>'), true);
+  assert.equal(html.includes('<script src="/passkeys.js"></script>'), false, 'recovery must not boot passkeys yet');
+  assert.equal(html.includes('Face ID and feature-chain scripts remain disabled'), true);
   assert.equal(frontend.includes("smartPlan.src = '/smart-plan.js'"), true);
   assert.equal(sw.includes('social-publisher-shell-v760'), true);
   for (const asset of ['/passkeys.js','/smart-plan.js','/content-coach.js','/weekly-planner.js','/gig-campaign.js','/calendar-sync.js','/easy-mode.js','/flyer-first.js']) {
