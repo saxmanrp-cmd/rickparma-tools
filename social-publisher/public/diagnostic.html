@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#090b10" />
+  <title>Social Publisher Login Test</title>
+  <style>
+    :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#090b10;color:#f7f8fb;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,sans-serif;padding:calc(24px + env(safe-area-inset-top)) 20px 32px}.wrap{max-width:520px;margin:0 auto}.logo{width:66px;height:66px;border-radius:20px;display:grid;place-items:center;background:linear-gradient(135deg,#5a5cff,#a76cff);font-weight:900;font-size:22px;margin:26px auto 18px}h1{text-align:center;font-size:28px;margin:0 0 8px}.sub{text-align:center;color:#9aa5b5;font-size:15px;line-height:1.45;margin-bottom:24px}.card{background:#10151e;border:1px solid #2b3342;border-radius:20px;padding:18px;margin:14px 0}.label{font-size:13px;font-weight:800;color:#b9c2d0;margin-bottom:8px}.status{font-size:15px;line-height:1.45}.good{color:#8ce6b4}.bad{color:#ff8e9b}.wait{color:#d0c5ff}input{width:100%;height:58px;border:1px solid #343e4f;border-radius:14px;background:#121923;color:white;padding:0 16px;font-size:18px;outline:none}input:focus{border-color:#8b72ff;box-shadow:0 0 0 3px rgba(139,114,255,.25)}button{width:100%;min-height:56px;border:0;border-radius:15px;background:linear-gradient(135deg,#6557dc,#9b7aff);color:#fff;font-size:17px;font-weight:850;margin-top:12px}.secondary{background:#171d28;border:1px solid #333d4d}.tiny{color:#788496;font-size:12px;line-height:1.45;margin-top:12px}.row{display:grid;gap:8px}.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;white-space:pre-wrap;word-break:break-word;color:#aeb8c8;background:#0b0f15;border-radius:12px;padding:10px;margin-top:10px}.hidden{display:none!important}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="logo">RP</div>
+    <h1>Login Test</h1>
+    <div class="sub">This page does not load the Social Publisher app, Face ID code, Easy Mode, or any PWA scripts. It only tests your browser, the password field, and the login API.</div>
+
+    <section class="card">
+      <div class="label">1 · Tap test</div>
+      <div id="tapStatus" class="status">Tap the button below.</div>
+      <button id="tapBtn" class="secondary" type="button">Tap Me</button>
+    </section>
+
+    <section class="card">
+      <div class="label">2 · Server test</div>
+      <div id="serverStatus" class="status wait">Checking the Social Publisher server…</div>
+    </section>
+
+    <section class="card">
+      <div class="label">3 · Password test</div>
+      <form id="loginForm" class="row">
+        <input id="password" type="password" autocomplete="current-password" placeholder="Tap here and type password" required />
+        <button id="loginBtn" type="submit">Test Password Login</button>
+      </form>
+      <div id="loginStatus" class="status" style="margin-top:12px">Nothing is sent until you tap Test Password Login.</div>
+      <div id="debug" class="code hidden"></div>
+    </section>
+
+    <button id="openApp" class="secondary hidden" type="button">Open Social Publisher</button>
+    <div class="tiny">Do not send your password to ChatGPT. Enter it only into this page.</div>
+  </main>
+
+  <script>
+    (() => {
+      const byId=id=>document.getElementById(id);
+      const debug = byId('debug');
+      const showDebug = value => { debug.textContent = String(value || ''); debug.classList.remove('hidden'); };
+      let taps = 0;
+      byId('tapBtn').addEventListener('click', () => {
+        taps += 1;
+        byId('tapStatus').className='status good';
+        byId('tapStatus').textContent=`Tap works ✓ (${taps})`;
+      });
+
+      async function checkServer() {
+        try {
+          const health = await fetch('/api/health?diag=' + Date.now(), { cache:'no-store', headers:{accept:'application/json'} });
+          const data = await health.json().catch(()=>({}));
+          if (!health.ok) throw new Error(`Health ${health.status}`);
+          const auth = await fetch('/api/auth/status?diag=' + Date.now(), { cache:'no-store', headers:{accept:'application/json'} });
+          const authData = await auth.json().catch(()=>({}));
+          if (!auth.ok) throw new Error(`Auth ${auth.status}`);
+          byId('serverStatus').className='status good';
+          byId('serverStatus').textContent=`Server works ✓ · v${data.version || '?'} · login ${authData.configured ? 'configured' : 'not configured'}`;
+        } catch (error) {
+          byId('serverStatus').className='status bad';
+          byId('serverStatus').textContent='Server test failed ✕';
+          showDebug(error?.message || error);
+        }
+      }
+
+      byId('password').addEventListener('focus', () => {
+        byId('loginStatus').textContent='Password box received focus ✓ — type your password, then tap Test Password Login.';
+      });
+      byId('password').addEventListener('input', event => {
+        byId('loginStatus').className='status good';
+        byId('loginStatus').textContent=`Keyboard/input works ✓ · ${event.target.value.length} character${event.target.value.length === 1 ? '' : 's'} entered`;
+      });
+
+      byId('loginForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        const button = byId('loginBtn');
+        const password = byId('password').value;
+        button.disabled=true;
+        byId('loginStatus').className='status wait';
+        byId('loginStatus').textContent='Sending password to Social Publisher…';
+        try {
+          const response = await fetch('/api/auth/login', {
+            method:'POST',
+            headers:{'content-type':'application/json','accept':'application/json'},
+            body:JSON.stringify({password}),
+            cache:'no-store',
+          });
+          const data = await response.json().catch(()=>({}));
+          if (!response.ok) {
+            byId('loginStatus').className='status bad';
+            byId('loginStatus').textContent=response.status === 401 ? 'Server responded: incorrect password.' : `Login API failed (${response.status}).`;
+            showDebug(data.error || `HTTP ${response.status}`);
+            return;
+          }
+          byId('loginStatus').className='status good';
+          byId('loginStatus').textContent='Password login works ✓';
+          byId('openApp').classList.remove('hidden');
+          byId('password').value='';
+        } catch (error) {
+          byId('loginStatus').className='status bad';
+          byId('loginStatus').textContent='Browser could not complete the login request ✕';
+          showDebug(error?.message || error);
+        } finally {
+          button.disabled=false;
+        }
+      });
+
+      byId('openApp').addEventListener('click', () => location.href='/?diag=' + Date.now());
+      checkServer();
+    })();
+  </script>
+</body>
+</html>
