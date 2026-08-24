@@ -136,9 +136,6 @@
   setInterval(refreshSmartPlanState, 1500);
   stampVersion();
 
-  // Authentication stability loads first so iPhone/webview login is isolated
-  // from the scrollable app shell before the rest of the optional UI modules run.
-  loadScript('/login-stability.js','login-stability');
   loadScript('/content-coach.js','content-coach');
   loadScript('/weekly-planner.js','weekly-planner');
   loadScript('/gig-campaign.js','gig-campaign', () => {
