@@ -6,8 +6,11 @@ import path from 'node:path';
 const root = path.resolve(new URL('..', import.meta.url).pathname);
 const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
 
-test('core recovery boots only the intended front-end layers', () => {
+test('recovery stage 1 boots core plus Reach Intelligence only', () => {
   const html = read('public/index.html');
   assert.equal(html.includes('<script src="/app.js"></script>'), true);
-  assert.equal(html.includes('Core recovery mode'), true);
+  assert.equal(html.includes('<script src="/reach-intelligence.js"></script>'), true);
+  assert.equal(html.includes('<script src="/passkeys.js"></script>'), false);
+  assert.equal(html.includes('<script src="/smart-plan.js"></script>'), false);
+  assert.equal(html.includes('Recovery Stage 1'), true);
 });
