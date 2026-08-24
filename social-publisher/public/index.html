@@ -135,7 +135,7 @@
         <div id="setupHelp" class="card setup-card hidden"><strong>Meta setup needed</strong><p>Add the Meta App ID + Secret to Cloudflare, then connect here.</p></div>
         <button id="logoutBtn" class="button secondary full hidden" type="button">Log Out</button>
         <button id="clearHistoryBtn" class="danger-link" type="button">Clear prototype data</button>
-        <div class="version-footer">Social Publisher v0.7.6 · Core Recovery</div>
+        <div class="version-footer">Social Publisher v0.7.6 · Recovery Stage 1</div>
       </section>
     </main>
 
@@ -155,7 +155,7 @@
   <div id="toast" class="toast" role="status"></div>
 
   <script src="/app.js"></script>
-  <!-- Core recovery mode: optional layers are intentionally not executed while we isolate the iPhone interaction bug.
-       Regression markers retained: <script src="/reach-intelligence.js"></script> <script src="/passkeys.js"></script> -->
+  <script src="/reach-intelligence.js"></script>
+  <!-- Recovery Stage 1: Face ID and feature-chain scripts remain disabled until this layer is verified on iPhone. -->
 </body>
 </html>
