@@ -1,4 +1,6 @@
 const PREFIX = 'comic-templates/';
+const CATEGORY_KEY = `${PREFIX}_categories.json`;
+const DEFAULT_CATEGORY = 'Rick Parma Comics';
 const MAX_BYTES = 30 * 1024 * 1024;
 
 const json = (data, init = {}) => new Response(JSON.stringify(data), {
@@ -47,6 +49,49 @@ function publicMediaUrl(key) {
   return `/media/${encodeURIComponent(key)}`;
 }
 
+function normalizeCategories(values=[]) {
+  const seen = new Set();
+  const categories = [];
+  for (const raw of [DEFAULT_CATEGORY, ...values]) {
+    const name = safeMeta(raw, 80);
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    categories.push(name);
+  }
+  return categories;
+}
+
+async function readCategories(env) {
+  try {
+    const object = await env.MEDIA.get(CATEGORY_KEY);
+    if (!object) return [DEFAULT_CATEGORY];
+    const parsed = JSON.parse(await object.text());
+    return normalizeCategories(Array.isArray(parsed) ? parsed : parsed?.categories || []);
+  } catch {
+    return [DEFAULT_CATEGORY];
+  }
+}
+
+async function writeCategories(env, categories) {
+  const normalized = normalizeCategories(categories);
+  await env.MEDIA.put(CATEGORY_KEY, JSON.stringify({ categories:normalized }), {
+    httpMetadata:{ contentType:'application/json; charset=utf-8' },
+  });
+  return normalized;
+}
+
+async function ensureCategory(env, raw) {
+  const category = safeMeta(raw, 80) || DEFAULT_CATEGORY;
+  const categories = await readCategories(env);
+  if (!categories.some(name => name.toLowerCase() === category.toLowerCase())) {
+    categories.push(category);
+    await writeCategories(env, categories);
+  }
+  return category;
+}
+
 function toTemplate(object) {
   const meta = object.customMetadata || {};
   const id = object.key.startsWith(PREFIX) ? object.key.slice(PREFIX.length) : object.key;
@@ -55,6 +100,7 @@ function toTemplate(object) {
     key:object.key,
     url:publicMediaUrl(object.key),
     name:meta.name || id.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' '),
+    category:meta.category || DEFAULT_CATEGORY,
     pairId:meta.pairId || '',
     format:inferFormat(id, meta.format),
     size:Number(object.size || 0),
@@ -68,22 +114,52 @@ function toTemplate(object) {
   };
 }
 
+function customMetadataFromHeaders(request, id, format, category) {
+  return {
+    name:safeMeta(request.headers.get('x-template-name') || id.replace(/\.[^.]+$/,'')),
+    category,
+    pairId:safeMeta(request.headers.get('x-template-pair') || ''),
+    format,
+    bubbleX:numberMeta(request.headers.get('x-bubble-x')),
+    bubbleY:numberMeta(request.headers.get('x-bubble-y')),
+    bubbleWidth:numberMeta(request.headers.get('x-bubble-width')),
+    bubbleHeight:numberMeta(request.headers.get('x-bubble-height')),
+  };
+}
+
 export async function handleComicTemplateRequest(request, env={}) {
   const url = new URL(request.url);
   if (!url.pathname.startsWith('/api/comic-templates')) return null;
   if (!env.MEDIA) return json({ error:'Media storage is not configured.' }, { status:503 });
 
+  if (url.pathname === '/api/comic-templates/categories') {
+    if (request.method === 'GET') {
+      return json({ ok:true, categories:await readCategories(env) });
+    }
+    if (request.method === 'POST') {
+      const body = await request.json().catch(() => ({}));
+      const name = safeMeta(body.name, 80);
+      if (!name) return json({ error:'Category name is required.' }, { status:400 });
+      const categories = await readCategories(env);
+      if (!categories.some(category => category.toLowerCase() === name.toLowerCase())) categories.push(name);
+      return json({ ok:true, categories:await writeCategories(env, categories), category:name }, { status:201 });
+    }
+    return json({ error:'Method not allowed.' }, { status:405 });
+  }
+
   if (url.pathname === '/api/comic-templates' && request.method === 'GET') {
     const listed = await env.MEDIA.list({
       prefix:PREFIX,
       include:['customMetadata','httpMetadata'],
-      limit:100,
+      limit:500,
     });
     const templates = (listed.objects || [])
+      .filter(object => object.key !== CATEGORY_KEY)
       .filter(object => /^image\//i.test(object.httpMetadata?.contentType || '') || /\.(png|jpe?g|webp)$/i.test(object.key))
       .map(toTemplate)
-      .sort((a,b) => (a.pairId || a.name).localeCompare(b.pairId || b.name) || a.format.localeCompare(b.format));
-    return json({ ok:true, templates });
+      .sort((a,b) => a.category.localeCompare(b.category) || (a.pairId || a.name).localeCompare(b.pairId || b.name) || a.format.localeCompare(b.format));
+    const categories = normalizeCategories([...(await readCategories(env)), ...templates.map(template => template.category)]);
+    return json({ ok:true, templates, categories });
   }
 
   const match = url.pathname.match(/^\/api\/comic-templates\/([^/]+)$/);
@@ -103,23 +179,37 @@ export async function handleComicTemplateRequest(request, env={}) {
     if (!/\.(png|jpe?g|webp)$/i.test(id)) id += ext;
     const key = PREFIX + id;
     const format = inferFormat(id, request.headers.get('x-template-format'));
-    const customMetadata = {
-      name:safeMeta(request.headers.get('x-template-name') || id.replace(/\.[^.]+$/,'')),
-      pairId:safeMeta(request.headers.get('x-template-pair') || ''),
-      format,
-      bubbleX:numberMeta(request.headers.get('x-bubble-x')),
-      bubbleY:numberMeta(request.headers.get('x-bubble-y')),
-      bubbleWidth:numberMeta(request.headers.get('x-bubble-width')),
-      bubbleHeight:numberMeta(request.headers.get('x-bubble-height')),
-    };
+    const category = await ensureCategory(env, request.headers.get('x-template-category'));
+    const customMetadata = customMetadataFromHeaders(request, id, format, category);
     await env.MEDIA.put(key, request.body, {
       httpMetadata:{ contentType },
       customMetadata,
     });
-    return json({
-      ok:true,
-      template:{ id, key, url:publicMediaUrl(key), name:customMetadata.name, pairId:customMetadata.pairId, format, bubble:{ x:Number(customMetadata.bubbleX || 0), y:Number(customMetadata.bubbleY || 0), width:Number(customMetadata.bubbleWidth || 0), height:Number(customMetadata.bubbleHeight || 0) } },
-    }, { status:201 });
+    return json({ ok:true, template:toTemplate({ key, size:contentLength, uploaded:new Date(), httpMetadata:{contentType}, customMetadata }) }, { status:201 });
+  }
+
+  if (request.method === 'PATCH') {
+    const key = PREFIX + id;
+    const existing = await env.MEDIA.get(key);
+    if (!existing) return json({ error:'Template not found.' }, { status:404 });
+    const body = await request.json().catch(() => ({}));
+    const old = existing.customMetadata || {};
+    const category = body.category !== undefined ? await ensureCategory(env, body.category) : (old.category || DEFAULT_CATEGORY);
+    const format = body.format !== undefined ? inferFormat(id, body.format) : inferFormat(id, old.format);
+    const bubble = body.bubble && typeof body.bubble === 'object' ? body.bubble : {};
+    const customMetadata = {
+      name:body.name !== undefined ? safeMeta(body.name) : (old.name || id.replace(/\.[^.]+$/,'')),
+      category,
+      pairId:body.pairId !== undefined ? safeMeta(body.pairId) : (old.pairId || ''),
+      format,
+      bubbleX:bubble.x !== undefined ? numberMeta(bubble.x) : (old.bubbleX || ''),
+      bubbleY:bubble.y !== undefined ? numberMeta(bubble.y) : (old.bubbleY || ''),
+      bubbleWidth:bubble.width !== undefined ? numberMeta(bubble.width) : (old.bubbleWidth || ''),
+      bubbleHeight:bubble.height !== undefined ? numberMeta(bubble.height) : (old.bubbleHeight || ''),
+    };
+    const httpMetadata = existing.httpMetadata || { contentType:'application/octet-stream' };
+    await env.MEDIA.put(key, existing.body, { httpMetadata, customMetadata });
+    return json({ ok:true, template:toTemplate({ key, size:existing.size, uploaded:new Date(), httpMetadata, customMetadata }) });
   }
 
   if (request.method === 'DELETE') {
