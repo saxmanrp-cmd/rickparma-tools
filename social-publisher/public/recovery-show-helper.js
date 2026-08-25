@@ -97,11 +97,24 @@
     }
   }
 
+  function loadComicLibraryManager() {
+    if (document.querySelector('script[data-comic-library-manager]')) return;
+    const manager = document.createElement('script');
+    manager.src = '/comic-library-manager.js';
+    manager.dataset.comicLibraryManager = '1';
+    document.body.appendChild(manager);
+  }
+
   function loadComicPolish() {
-    if (document.querySelector('script[data-comic-blast-polish]')) return;
+    const existing = document.querySelector('script[data-comic-blast-polish]');
+    if (existing) {
+      loadComicLibraryManager();
+      return;
+    }
     const polish = document.createElement('script');
     polish.src = '/comic-blast-polish.js';
     polish.dataset.comicBlastPolish = '1';
+    polish.addEventListener('load',loadComicLibraryManager,{once:true});
     document.body.appendChild(polish);
   }
 
