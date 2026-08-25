@@ -1,0 +1,1 @@
+Rick Parma Comics starter assets are uploaded to the live R2 background library by the one-time seed workflow in `.github/workflows/social-publisher-seed-comics.yml`.
