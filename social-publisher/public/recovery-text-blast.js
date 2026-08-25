@@ -331,6 +331,7 @@
 
   function boot() {
     injectUi();
+    render();
     if (token()) sync(false);
     const footer = q('.version-footer');
     if (footer) footer.textContent = 'Social Publisher v0.7.6 · Recovery Stage 4';
