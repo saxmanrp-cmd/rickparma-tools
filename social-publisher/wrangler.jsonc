@@ -12,6 +12,12 @@
   "vars": {
     "META_GRAPH_VERSION": "v24.0"
   },
+  "services": [
+    {
+      "binding": "SMS_BLAST",
+      "service": "sms-blast"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
