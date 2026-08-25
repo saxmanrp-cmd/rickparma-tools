@@ -11,6 +11,7 @@ import {
 import { handleContentPlanRequest } from './content-plan.js';
 import { handleSiteCalendarRequest } from './site-calendar.js';
 import { handleTextBlastRequest } from './text-blast-bridge.js';
+import { handleComicTemplateRequest } from './comic-templates.js';
 
 const VERSION = '0.7.6';
 
@@ -62,6 +63,13 @@ export default {
       const authError = await requireAppLogin(request, env);
       if (authError) return authError;
       const response = await handleTextBlastRequest(request, env);
+      if (response) return response;
+    }
+
+    if (url.pathname.startsWith('/api/comic-templates')) {
+      const authError = await requireAppLogin(request, env);
+      if (authError) return authError;
+      const response = await handleComicTemplateRequest(request, env);
       if (response) return response;
     }
 
