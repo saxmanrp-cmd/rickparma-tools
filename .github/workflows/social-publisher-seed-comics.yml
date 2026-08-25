@@ -1,0 +1,32 @@
+name: Seed Rick Parma Comics
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'social-publisher/seed/rick-parma-comics/**'
+      - '.github/workflows/social-publisher-seed-comics.yml'
+  workflow_dispatch:
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+      - name: Upload starter comic backgrounds to R2
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for file in social-publisher/seed/rick-parma-comics/*.jpg; do
+            name="$(basename "$file")"
+            wrangler r2 object put "social-publisher-media/comic-templates/$name" --file="$file" --content-type=image/jpeg --remote
+          done
