@@ -136,7 +136,6 @@
     }
 
     q('#showMoreGigsBtn')?.remove();
-    cards.forEach(card => card.classList.remove('is-extra-show'));
 
     let wrap = q('#showDatePickerWrap');
     if (!wrap) {
