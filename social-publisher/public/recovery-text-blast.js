@@ -340,6 +340,14 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once:true});
   else boot();
 
-  // Deliberately no MutationObserver or repeating timer here. This layer refreshes only on user action
+  // Stage 5 adds one small flyer-first posting helper without restoring the old Smart Plan chain.
+  if (!document.querySelector('script[data-recovery-show-helper]')) {
+    const helper = document.createElement('script');
+    helper.src = '/recovery-show-helper.js';
+    helper.dataset.recoveryShowHelper = '1';
+    document.body.appendChild(helper);
+  }
+
+  // Deliberately no repeating timer here. This layer refreshes only on user action
   // so it cannot interfere with the proven working navigation/render loop.
 })();
