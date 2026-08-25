@@ -43,7 +43,7 @@ test('passkey migration upgrades previous schema and fresh schema contains crede
   assert.equal(upgraded.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='passkeys'").get().name, 'passkeys');
 });
 
-test('Face ID and WebAuthn remain implemented while recovery stage 2 leaves the client disabled', () => {
+test('Face ID and WebAuthn remain implemented while recovery stage 3 leaves the client disabled', () => {
   const backend = read('src/passkey-auth.js');
   const entry = read('src/entry.js');
   const frontend = read('public/passkeys.js');
@@ -65,7 +65,7 @@ test('Face ID and WebAuthn remain implemented while recovery stage 2 leaves the 
     assert.equal(frontend.includes(needle), true, `frontend missing ${needle}`);
   }
   assert.equal(html.includes('<script src="/passkeys.js"></script>'), false, 'recovery must not boot passkeys yet');
-  assert.equal(html.includes('Face ID, Smart Plan, Easy Mode, Flyer First, Text Blast Social, Weekly Planner, and Content Coach remain disabled'), true);
+  assert.equal(html.includes('Face ID, Smart Plan, Text Blast Social, Weekly Planner, and Content Coach remain disabled'), true);
   assert.equal(frontend.includes("smartPlan.src = '/smart-plan.js'"), true);
   assert.equal(sw.includes('social-publisher-shell-v760'), true);
   for (const asset of ['/passkeys.js','/smart-plan.js','/content-coach.js','/weekly-planner.js','/gig-campaign.js','/calendar-sync.js','/easy-mode.js','/flyer-first.js']) {
