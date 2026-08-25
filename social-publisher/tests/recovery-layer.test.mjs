@@ -9,6 +9,7 @@ const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
 test('recovery stage 3 boots core, Reach, Calendar/Gig, and safe Easy/Flyer UI only', () => {
   const html = read('public/index.html');
   const safeUi = read('public/recovery-easy-flyer.js');
+  const polish = read('public/stage3-ui-polish.js');
   assert.equal(html.includes('<script src="/app.js"></script>'), true);
   assert.equal(html.includes('<script src="/reach-intelligence.js"></script>'), true);
   assert.equal(html.includes('<script src="/gig-campaign.js"></script>'), true);
@@ -19,6 +20,12 @@ test('recovery stage 3 boots core, Reach, Calendar/Gig, and safe Easy/Flyer UI o
   }
   assert.equal(safeUi.includes('Choose your flyer, photo, or video'), true);
   assert.equal(safeUi.includes('gig-phase-select'), true);
+  assert.equal(safeUi.includes("polish.src = '/stage3-ui-polish.js'"), true);
+  assert.equal(polish.includes('Help Me Get More Views'), true);
+  assert.equal(polish.includes('Show More Shows'), false); // copy is generated with the count for clarity
+  assert.equal(polish.includes('Saved Promo Plans'), true);
+  assert.equal(polish.includes('Scheduled Social Posts'), true);
+  assert.equal(polish.includes('is-extra-show'), true);
   assert.equal(safeUi.includes('Text Blast'), false);
   assert.equal(html.includes('Recovery Stage 3'), true);
 });
