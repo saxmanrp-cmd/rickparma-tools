@@ -9,8 +9,10 @@ const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
 test('Comic Blast enhancer adds a full-screen editor and social-ready image optimization', () => {
   const helper = read('public/recovery-show-helper.js');
   const enhancer = read('public/comic-blast-enhancer.js');
+  const sync = read('public/comic-blast-editor-sync.js');
 
   assert.equal(helper.includes("enhancer.src = '/comic-blast-enhancer.js'"), true);
+  assert.equal(helper.includes("sync.src = '/comic-blast-editor-sync.js'"), true);
   assert.equal(helper.includes("script.addEventListener('load',loadComicEnhancer"), true);
 
   assert.equal(enhancer.includes('Open Full-Screen Editor'), true);
@@ -27,6 +29,11 @@ test('Comic Blast enhancer adds a full-screen editor and social-ready image opti
   assert.equal(enhancer.includes('Optimize Existing Backgrounds'), true);
   assert.equal(enhancer.includes('/api/comic-templates'), true);
 
+  assert.equal(sync.includes("target?.id !== 'comicFullscreenText'"), true);
+  assert.equal(sync.includes('stopImmediatePropagation'), true);
+  assert.equal(sync.includes("inline.dispatchEvent(new Event('input'"), true);
+
   assert.equal(enhancer.includes('setInterval'), false);
   assert.equal(enhancer.includes('new MutationObserver'), false);
+  assert.equal(sync.includes('setInterval'), false);
 });
