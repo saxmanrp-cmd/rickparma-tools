@@ -207,4 +207,12 @@
   observer.observe(document.body,{childList:true,subtree:true});
   q('.nav-item[data-view="calendar"]')?.addEventListener('click',() => setTimeout(schedule,120));
   window.addEventListener('focus',schedule);
+
+  // Load the small readability/layout polish layer only after the proven working Stage 3 UI is active.
+  if (!document.querySelector('script[data-stage3-ui-polish]')) {
+    const polish = document.createElement('script');
+    polish.src = '/stage3-ui-polish.js';
+    polish.dataset.stage3UiPolish = '1';
+    document.body.appendChild(polish);
+  }
 })();
