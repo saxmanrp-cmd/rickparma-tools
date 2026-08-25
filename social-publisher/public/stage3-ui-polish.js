@@ -1,0 +1,210 @@
+// Stage 3 UI polish: keep the proven working feature set, but make Create and Calendar much easier to read.
+(() => {
+  const q = (selector, root=document) => root.querySelector(selector);
+  const qa = (selector, root=document) => [...root.querySelectorAll(selector)];
+
+  function setText(el, text) {
+    if (el && el.textContent !== text) el.textContent = text;
+  }
+
+  function injectStyles() {
+    if (q('#stage3UiPolishStyles')) return;
+    const style = document.createElement('style');
+    style.id = 'stage3UiPolishStyles';
+    style.textContent = `
+      /* No tiny helper copy on the main workflow. */
+      body.recovery-easy .field-hint,
+      body.recovery-easy .micro-hint,
+      body.recovery-easy .audio-meta-row,
+      body.recovery-easy .char-count{font-size:14px!important;line-height:1.45!important}
+      body.recovery-easy .bottom-nav .nav-item small{font-size:13px!important;font-weight:800!important}
+      body.recovery-easy .bottom-nav .nav-item span{font-size:23px!important}
+
+      /* Max Reach should read like help, not an analytics console. */
+      body.recovery-easy #maxReachCard{padding:17px!important;border-color:rgba(145,116,255,.28)!important;background:linear-gradient(145deg,#171329,#101723 58%,#10131a)!important}
+      body.recovery-easy #maxReachCard .max-reach-head{align-items:flex-start!important}
+      body.recovery-easy #maxReachCard .max-reach-badge,
+      body.recovery-easy #maxReachDetails,
+      body.recovery-easy #reachFitScore,
+      body.recovery-easy #reachPersonalizedSummary,
+      body.recovery-easy #reachLearningNote,
+      body.recovery-easy #reachIntelligence .reach-intel-head span,
+      body.recovery-easy #reachIntelligence .reach-intel-tip small{display:none!important}
+      body.recovery-easy #maxReachCard .max-reach-head .section-label{font-size:20px!important;line-height:1.2!important}
+      body.recovery-easy #maxReachCard .max-reach-head .field-hint{font-size:15px!important;line-height:1.45!important;color:#b8c1cf!important;margin-top:6px!important}
+      body.recovery-easy #maxReachSummary{font-size:16px!important;line-height:1.45!important;color:#f1f3f7!important;margin:13px 0!important}
+      body.recovery-easy #reachIntelligence{margin-top:12px!important}
+      body.recovery-easy #reachIntelligence .reach-intel-head strong{font-size:18px!important}
+      body.recovery-easy #reachIntelligence .reach-intel-grid{grid-template-columns:1fr!important;gap:10px!important}
+      body.recovery-easy #reachIntelligence .reach-intel-tip{padding:12px!important;border-radius:13px!important}
+      body.recovery-easy #reachIntelligence .reach-intel-tip strong{font-size:16px!important;line-height:1.3!important}
+      body.recovery-easy #reachIntelligence .reach-intel-tip p{font-size:15px!important;line-height:1.45!important;margin-top:5px!important}
+      body.recovery-easy #reachIntelligence .reach-intel-actions{grid-template-columns:1fr!important;gap:9px!important}
+      body.recovery-easy #reachIntelligence .reach-intel-actions button,
+      body.recovery-easy #applyMaxReachBtn{font-size:16px!important;min-height:50px!important}
+
+      /* Calendar: the show list is the page. Remove the giant nested dashboard look. */
+      body.recovery-easy #view-calendar{padding-bottom:28px}
+      body.recovery-easy #view-calendar>.page-row{margin-bottom:3px}
+      body.recovery-easy #view-calendar>.page-row h2{font-size:28px!important;line-height:1.15!important}
+      body.recovery-easy .easy-calendar-intro{font-size:16px!important;line-height:1.45!important;margin:5px 2px 18px!important;color:#b8c1cf!important}
+      body.recovery-easy #gigCampaign.card{padding:0!important;margin:0 0 14px!important;border:0!important;background:transparent!important;box-shadow:none!important}
+      body.recovery-easy #calendarSync{padding:0!important;margin:0!important;border:0!important}
+      body.recovery-easy .calendar-sync-head{display:block!important;margin-bottom:13px!important}
+      body.recovery-easy .calendar-sync-head strong{font-size:23px!important;line-height:1.2!important}
+      body.recovery-easy .calendar-sync-head span{font-size:16px!important;line-height:1.45!important;margin-top:6px!important;color:#b9c2d0!important}
+      body.recovery-easy .calendar-sync-list{gap:13px!important;margin-top:0!important}
+      body.recovery-easy .calendar-sync-event{grid-template-columns:96px minmax(0,1fr)!important;gap:13px!important;padding:13px!important;border-radius:18px!important;background:#0b1119!important;border:1px solid rgba(255,255,255,.08)!important;box-shadow:none!important}
+      body.recovery-easy .calendar-sync-thumb{width:96px!important;height:124px!important;border-radius:13px!important;background:#141b25!important;align-self:start!important}
+      body.recovery-easy .calendar-sync-thumb img,
+      body.recovery-easy .calendar-sync-thumb video{width:100%!important;height:100%!important;object-fit:cover!important}
+      body.recovery-easy .calendar-sync-copy strong{font-size:19px!important;line-height:1.25!important;white-space:normal!important}
+      body.recovery-easy .calendar-sync-copy small{font-size:16px!important;line-height:1.3!important;margin-top:6px!important;color:#ffbd84!important}
+      body.recovery-easy .calendar-sync-copy p{font-size:15px!important;line-height:1.4!important;margin-top:6px!important;color:#aeb8c7!important;white-space:normal!important}
+      body.recovery-easy .calendar-sync-flyer-note{font-size:15px!important;color:#9faabb!important}
+      body.recovery-easy .calendar-sync-controls{grid-column:1/-1!important;display:grid!important;grid-template-columns:1fr!important;gap:9px!important;margin-top:2px!important}
+      body.recovery-easy .calendar-sync-select{min-height:52px!important;border-radius:14px!important;font-size:17px!important;padding:0 13px!important}
+      body.recovery-easy .calendar-sync-action{min-height:54px!important;border-radius:14px!important;font-size:17px!important;width:100%!important}
+      body.recovery-easy .calendar-sync-refresh{font-size:16px!important;min-height:46px!important;padding:10px 3px!important;margin-top:8px!important}
+      body.recovery-easy .calendar-sync-empty{font-size:16px!important;line-height:1.45!important}
+      body.recovery-easy .calendar-sync-event.is-extra-show{display:none!important}
+      body.recovery-easy .calendar-sync-list.show-all .calendar-sync-event.is-extra-show{display:grid!important}
+      body.recovery-easy .show-more-gigs{width:100%;min-height:50px;margin:10px 0 2px;border:1px solid rgba(145,116,255,.3);border-radius:14px;background:#111625;color:#c9beff;font-size:16px;font-weight:850}
+
+      /* Manual entry and saved campaigns are optional, collapsed sections. */
+      body.recovery-easy .easy-manual-show{margin-top:14px!important;padding-top:12px!important}
+      body.recovery-easy .easy-manual-show>summary{font-size:16px!important;line-height:1.3!important;padding:14px!important}
+      body.recovery-easy .saved-promo-plans{margin-top:14px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px}
+      body.recovery-easy .saved-promo-plans>summary{list-style:none;cursor:pointer;padding:14px;border-radius:14px;background:#101620;color:#eef2f8;font-size:17px;font-weight:850}
+      body.recovery-easy .saved-promo-plans>summary::-webkit-details-marker{display:none}
+      body.recovery-easy .saved-promo-plans>summary::after{content:'＋';float:right;color:#9d8cff}
+      body.recovery-easy .saved-promo-plans[open]>summary::after{content:'−'}
+      body.recovery-easy .saved-promo-plans .gig-campaign-list{margin-top:10px!important}
+      body.recovery-easy .gig-group{padding:14px!important;border-radius:15px!important;background:#0b1119!important}
+      body.recovery-easy .gig-group-head strong{font-size:18px!important}
+      body.recovery-easy .gig-group-hide{font-size:14px!important;padding:7px!important}
+      body.recovery-easy .gig-phase-select{font-size:16px!important;min-height:50px!important}
+      body.recovery-easy .gig-phase strong{font-size:16px!important}
+      body.recovery-easy .gig-phase-time{font-size:15px!important}
+      body.recovery-easy .gig-phase-actions button{font-size:15px!important;min-height:48px!important}
+
+      body.recovery-easy .scheduled-posts-details{margin:16px 0 0;border-top:1px solid rgba(255,255,255,.08);padding-top:12px}
+      body.recovery-easy .scheduled-posts-details>summary{list-style:none;cursor:pointer;padding:14px;border-radius:14px;background:#0d131c;color:#c4cbd6;font-size:16px;font-weight:800}
+      body.recovery-easy .scheduled-posts-details>summary::-webkit-details-marker{display:none}
+      body.recovery-easy .scheduled-posts-details>summary::after{content:'＋';float:right;color:#8f99a8}
+      body.recovery-easy .scheduled-posts-details[open]>summary::after{content:'−'}
+      body.recovery-easy .scheduled-posts-details.is-empty{display:none!important}
+      body.recovery-easy .scheduled-posts-details #calendarContent{margin-top:10px}
+
+      @media(max-width:390px){
+        body.recovery-easy .calendar-sync-event{grid-template-columns:86px minmax(0,1fr)!important;padding:11px!important;gap:11px!important}
+        body.recovery-easy .calendar-sync-thumb{width:86px!important;height:112px!important}
+        body.recovery-easy .calendar-sync-copy strong{font-size:18px!important}
+        body.recovery-easy .calendar-sync-copy small{font-size:15px!important}
+        body.recovery-easy .calendar-sync-copy p{font-size:14px!important}
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function simplifyMaxReach() {
+    setText(q('#maxReachCard .max-reach-head .section-label'), 'Help Me Get More Views ✨');
+    setText(q('#maxReachCard .max-reach-head .field-hint'), 'After you choose your flyer, photo, or video, I’ll suggest the best way and time to post it.');
+    const summary = q('#maxReachSummary');
+    if (summary && /add a photo or video/i.test(summary.textContent || '')) {
+      summary.textContent = 'Choose your media first — I’ll handle the recommendations after that.';
+    }
+    setText(q('#applyMaxReachBtn'), 'Use My Best Setup');
+    setText(q('#reachIntelligence .reach-intel-head strong'), 'My Suggestions');
+    setText(q('#useReachTimeBtn'), 'Use This Time');
+    setText(q('#useReachCaptionBtn'), 'Use This Caption');
+  }
+
+  function simplifyCalendarTitle() {
+    const view = q('#view-calendar');
+    const row = view?.querySelector(':scope > .page-row');
+    setText(row?.querySelector('h2'), 'My Shows');
+    setText(q('#easyCalendarIntro'), 'Pick a show, choose what kind of post you want, and use the flyer you already made.');
+    const sync = q('#calendarSync');
+    if (sync) {
+      setText(q('.calendar-sync-head strong', sync), 'Upcoming Shows 🎤');
+      setText(q('.calendar-sync-head span', sync), 'Your flyers and show dates are ready to use.');
+      setText(q('#calendarSyncRefresh'), '↻ Refresh My Shows');
+    }
+  }
+
+  function limitShowList() {
+    const list = q('#calendarSyncList');
+    if (!list) return;
+    const cards = qa('.calendar-sync-event', list);
+    cards.forEach((card, index) => card.classList.toggle('is-extra-show', index >= 4));
+    let button = q('#showMoreGigsBtn');
+    if (cards.length <= 4) {
+      button?.remove();
+      list.classList.remove('show-all');
+      return;
+    }
+    if (!button) {
+      button = document.createElement('button');
+      button.id = 'showMoreGigsBtn';
+      button.type = 'button';
+      button.className = 'show-more-gigs';
+      list.after(button);
+      button.addEventListener('click', () => {
+        const expanded = list.classList.toggle('show-all');
+        button.textContent = expanded ? 'Show Fewer Shows' : `Show ${Math.max(0, cards.length - 4)} More Shows`;
+      });
+    }
+    if (!list.classList.contains('show-all')) button.textContent = `Show ${cards.length - 4} More Shows`;
+  }
+
+  function wrapSavedPromoPlans() {
+    const list = q('#gigCampaignList');
+    if (!list || list.closest('#savedPromoPlans')) return;
+    const details = document.createElement('details');
+    details.id = 'savedPromoPlans';
+    details.className = 'saved-promo-plans';
+    const summary = document.createElement('summary');
+    summary.textContent = 'Saved Promo Plans';
+    details.appendChild(summary);
+    list.parentNode.insertBefore(details, list);
+    details.appendChild(list);
+  }
+
+  function wrapScheduledPosts() {
+    const content = q('#calendarContent');
+    if (!content) return;
+    let details = content.closest('#scheduledPostsDetails');
+    if (!details) {
+      details = document.createElement('details');
+      details.id = 'scheduledPostsDetails';
+      details.className = 'scheduled-posts-details';
+      const summary = document.createElement('summary');
+      summary.textContent = 'Scheduled Social Posts';
+      details.appendChild(summary);
+      content.parentNode.insertBefore(details, content);
+      details.appendChild(content);
+    }
+    const text = String(content.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const empty = !text || text === 'nothing scheduled' || text.includes('nothing scheduled');
+    details.classList.toggle('is-empty', empty);
+  }
+
+  function apply() {
+    injectStyles();
+    simplifyMaxReach();
+    simplifyCalendarTitle();
+    wrapSavedPromoPlans();
+    wrapScheduledPosts();
+    limitShowList();
+    const footer = q('.version-footer');
+    if (footer) footer.textContent = 'Social Publisher v0.7.6 · Simple UI';
+  }
+
+  apply();
+  [250, 700, 1400, 2800].forEach(delay => setTimeout(apply, delay));
+  q('.nav-item[data-view="calendar"]')?.addEventListener('click', () => {
+    setTimeout(apply, 80);
+    setTimeout(apply, 450);
+  });
+})();
