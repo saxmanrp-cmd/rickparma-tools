@@ -97,12 +97,21 @@
     }
   }
 
+  function loadComicStudio() {
+    if (document.querySelector('script[data-comic-blast-studio]')) return;
+    const script = document.createElement('script');
+    script.src = '/comic-blast-studio.js';
+    script.dataset.comicBlastStudio = '1';
+    document.body.appendChild(script);
+  }
+
   function boot() {
     injectUi();
     const source = q('#applyMaxReachBtn');
     if (source) new MutationObserver(refresh).observe(source, {attributes:true, attributeFilter:['disabled']});
     const footer = q('.version-footer');
     if (footer) footer.textContent = 'Social Publisher v0.7.6 · Recovery Stage 5';
+    loadComicStudio();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once:true});
