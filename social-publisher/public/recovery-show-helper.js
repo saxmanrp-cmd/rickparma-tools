@@ -97,11 +97,25 @@
     }
   }
 
+  function loadComicEnhancer() {
+    if (document.querySelector('script[data-comic-blast-enhancer]')) return;
+    const enhancer = document.createElement('script');
+    enhancer.src = '/comic-blast-enhancer.js';
+    enhancer.dataset.comicBlastEnhancer = '1';
+    document.body.appendChild(enhancer);
+  }
+
   function loadComicStudio() {
-    if (document.querySelector('script[data-comic-blast-studio]')) return;
+    const existing = document.querySelector('script[data-comic-blast-studio]');
+    if (existing) {
+      if (document.querySelector('#comicBlastStudio')) loadComicEnhancer();
+      else existing.addEventListener('load',loadComicEnhancer,{once:true});
+      return;
+    }
     const script = document.createElement('script');
     script.src = '/comic-blast-studio.js';
     script.dataset.comicBlastStudio = '1';
+    script.addEventListener('load',loadComicEnhancer,{once:true});
     document.body.appendChild(script);
   }
 
