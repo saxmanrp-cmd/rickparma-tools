@@ -14,6 +14,7 @@ import { handleTextBlastRequest } from './text-blast-bridge.js';
 import { handleComicTemplateRequest } from './comic-templates.js';
 
 const VERSION = '0.7.6';
+const COMIC_MEDIA_PREFIX = 'comic-templates/';
 
 const json = (data, init = {}) => new Response(JSON.stringify(data), {
   ...init,
@@ -27,9 +28,38 @@ async function requireAppLogin(request, env) {
   return null;
 }
 
+function comicMediaKey(url) {
+  try {
+    const raw = decodeURIComponent(url.pathname.slice('/media/'.length));
+    if (!raw.startsWith(COMIC_MEDIA_PREFIX)) return '';
+    const name = raw.slice(COMIC_MEDIA_PREFIX.length);
+    if (!name || name.length > 160 || !/^[A-Za-z0-9._-]+$/.test(name)) return '';
+    return `${COMIC_MEDIA_PREFIX}${name}`;
+  } catch {
+    return '';
+  }
+}
+
+async function serveComicMedia(request, url, env) {
+  if (!env.MEDIA) return new Response('Media storage is not configured.', { status:503 });
+  const key = comicMediaKey(url);
+  if (!key) return new Response('Not found', { status:404 });
+  const object = await env.MEDIA.get(key);
+  if (!object) return new Response('Not found', { status:404 });
+  const headers = new Headers();
+  object.writeHttpMetadata?.(headers);
+  if (object.httpEtag) headers.set('etag', object.httpEtag);
+  headers.set('cache-control','public, max-age=86400');
+  return new Response(request.method === 'HEAD' ? null : object.body, { status:200, headers });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    if ((request.method === 'GET' || request.method === 'HEAD') && url.pathname.startsWith('/media/comic-templates')) {
+      return serveComicMedia(request, url, env);
+    }
 
     if (url.pathname === '/api/health' && request.method === 'GET') {
       return json({ ok:true, service:'social-publisher-v3', version:VERSION, time:new Date().toISOString() });
