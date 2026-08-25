@@ -17,7 +17,25 @@ function cleanEntry(entry={}) {
   };
 }
 
-export async function handleTextBlastRequest(request) {
+async function fetchTextBlast(env, path, token) {
+  const init = {
+    headers:{ 'X-Admin-Token':token, accept:'application/json' },
+  };
+
+  // Production: use a Cloudflare Service Binding. A Worker cannot reliably call another
+  // Worker on the same workers.dev zone with global fetch, which can surface as error 1042.
+  if (env?.SMS_BLAST && typeof env.SMS_BLAST.fetch === 'function') {
+    return env.SMS_BLAST.fetch(new Request(`https://sms-blast.internal${path}`, init));
+  }
+
+  // Local/unit-test fallback.
+  return fetch(`${SMS_WORKER}${path}`, {
+    ...init,
+    cf:{ cacheTtl:0, cacheEverything:false },
+  });
+}
+
+export async function handleTextBlastRequest(request, env = {}) {
   const url = new URL(request.url);
   if (!url.pathname.startsWith('/api/text-blast')) return null;
 
@@ -26,12 +44,14 @@ export async function handleTextBlastRequest(request) {
 
   if ((url.pathname === '/api/text-blast/history' || url.pathname === '/api/text-blast/check') && request.method === 'GET') {
     try {
-      const response = await fetch(`${SMS_WORKER}/api/blastlog`, {
-        headers:{ 'X-Admin-Token':token, accept:'application/json' },
-        cf:{ cacheTtl:0, cacheEverything:false },
-      });
+      const response = await fetchTextBlast(env, '/api/blastlog', token);
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) return json({ error:response.status === 401 || response.status === 403 ? 'Text Blast password is not correct.' : (data.error || 'Could not reach Text Blast.') }, { status:response.status === 401 || response.status === 403 ? 401 : 502 });
+      if (!response.ok) {
+        const badPassword = response.status === 401 || response.status === 403;
+        return json({
+          error: badPassword ? 'Text Blast password is not correct.' : (data.error || 'Could not reach Text Blast.'),
+        }, { status:badPassword ? 401 : 502 });
+      }
       const log = (Array.isArray(data.log) ? data.log : []).map(cleanEntry).sort((a,b) => String(b.at).localeCompare(String(a.at)));
       if (url.pathname === '/api/text-blast/check') return json({ ok:true, connected:true, latest:log[0] || null });
       return json({ ok:true, connected:true, log:log.slice(0,50) });
