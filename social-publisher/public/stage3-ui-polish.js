@@ -46,7 +46,7 @@
       body.recovery-easy #reachIntelligence .reach-intel-actions button,
       body.recovery-easy #applyMaxReachBtn{font-size:16px!important;min-height:50px!important}
 
-      /* Calendar: one simple dropdown of dates, then only the selected show's flyer/action. */
+      /* Calendar: one simple dropdown of event names, then only the selected show's flyer/action. */
       body.recovery-easy #view-calendar{padding-bottom:28px}
       body.recovery-easy #view-calendar>.page-row{margin-bottom:10px}
       body.recovery-easy #view-calendar>.page-row h2{font-size:28px!important;line-height:1.15!important}
@@ -64,7 +64,7 @@
       body.recovery-easy .calendar-sync-thumb img,
       body.recovery-easy .calendar-sync-thumb video{width:100%!important;height:100%!important;object-fit:cover!important}
       body.recovery-easy .calendar-sync-copy strong{font-size:20px!important;line-height:1.25!important;white-space:normal!important}
-      body.recovery-easy .calendar-sync-copy small{display:none!important}
+      body.recovery-easy .calendar-sync-copy small{display:block!important;font-size:16px!important;line-height:1.35!important;margin-top:7px!important;color:#ffbd84!important}
       body.recovery-easy .calendar-sync-copy p{font-size:16px!important;line-height:1.4!important;margin-top:8px!important;color:#aeb8c7!important;white-space:normal!important}
       body.recovery-easy .calendar-sync-flyer-note{display:none!important}
       body.recovery-easy .calendar-sync-controls{grid-column:1/-1!important;display:grid!important;grid-template-columns:1fr!important;gap:10px!important;margin-top:2px!important}
@@ -73,7 +73,7 @@
       body.recovery-easy .calendar-sync-refresh{font-size:15px!important;min-height:42px!important;padding:8px 3px!important;margin:8px 0 0!important}
       body.recovery-easy .calendar-sync-empty{font-size:17px!important;line-height:1.45!important}
 
-      /* Everything secondary is collapsed so Calendar stays about dates. */
+      /* Everything secondary is collapsed so Calendar stays about the selected event. */
       body.recovery-easy .easy-manual-show{margin-top:14px!important;padding-top:10px!important}
       body.recovery-easy .easy-manual-show>summary{font-size:16px!important;line-height:1.3!important;padding:14px!important}
       body.recovery-easy .saved-promo-plans{margin-top:12px;border-top:1px solid rgba(255,255,255,.07);padding-top:10px}
@@ -125,7 +125,7 @@
     const view = q('#view-calendar');
     const row = view?.querySelector(':scope > .page-row');
     setText(row?.querySelector('h2'), 'Calendar');
-    setText(q('#calendarSyncRefresh'), '↻ Refresh Dates');
+    setText(q('#calendarSyncRefresh'), '↻ Refresh Events');
   }
 
   function dateOnlyLabel(raw='') {
@@ -149,7 +149,7 @@
       wrap = document.createElement('div');
       wrap.id = 'showDatePickerWrap';
       wrap.className = 'show-date-picker';
-      wrap.innerHTML = '<label for="showDatePicker">Choose a date</label><select id="showDatePicker" aria-label="Choose a show date"></select>';
+      wrap.innerHTML = '<label for="showDatePicker">Choose an event</label><select id="showDatePicker" aria-label="Choose an event"></select>';
       list.parentNode.insertBefore(wrap, list);
     }
 
@@ -158,15 +158,16 @@
     const baseChoices = cards.map((card, index) => ({
       index,
       date: dateOnlyLabel(q('.calendar-sync-copy small', card)?.textContent || `Show ${index + 1}`),
-      title: String(q('.calendar-sync-copy strong', card)?.textContent || '').trim(),
+      title: String(q('.calendar-sync-copy strong', card)?.textContent || '').trim() || `Show ${index + 1}`,
     }));
     const counts = baseChoices.reduce((map, choice) => {
-      map[choice.date] = (map[choice.date] || 0) + 1;
+      const key = choice.title.toLowerCase();
+      map[key] = (map[key] || 0) + 1;
       return map;
     }, {});
     const choices = baseChoices.map(choice => ({
       ...choice,
-      label: counts[choice.date] > 1 && choice.title ? `${choice.date} — ${choice.title}` : choice.date,
+      label: counts[choice.title.toLowerCase()] > 1 ? `${choice.title} — ${choice.date}` : choice.title,
     }));
     const signature = choices.map(choice => choice.label).join('|');
     const oldValue = select.value;
@@ -226,7 +227,7 @@
     wrapSavedPromoPlans();
     wrapScheduledPosts();
     const footer = q('.version-footer');
-    if (footer) footer.textContent = 'Social Publisher v0.7.6 · Simple Date Calendar';
+    if (footer) footer.textContent = 'Social Publisher v0.7.6 · Event Name Calendar';
   }
 
   apply();
