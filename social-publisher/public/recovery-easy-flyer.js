@@ -1,4 +1,4 @@
-// Recovery Stage 3: restore the beginner-friendly, flyer-first UI without booting the old feature chain.
+// Recovery Stage 4: beginner-friendly, flyer-first UI plus the isolated Text Blast social layer.
 (() => {
   const q = (selector, root=document) => root.querySelector(selector);
   const qa = (selector, root=document) => [...root.querySelectorAll(selector)];
@@ -193,7 +193,7 @@
     simplifyCalendar();
     simplifyCampaignGroups();
     const footer = q('.version-footer');
-    if (footer) footer.textContent = 'Social Publisher v0.7.6 · Recovery Stage 3';
+    if (footer) footer.textContent = 'Social Publisher v0.7.6 · Recovery Stage 4';
   }
 
   let queued = false;
@@ -214,5 +214,13 @@
     polish.src = '/stage3-ui-polish.js';
     polish.dataset.stage3UiPolish = '1';
     document.body.appendChild(polish);
+  }
+
+  // Restore Text Blast as its own small layer. The old flyer-first feature chain stays disabled.
+  if (!document.querySelector('script[data-recovery-text-blast]')) {
+    const textBlast = document.createElement('script');
+    textBlast.src = '/recovery-text-blast.js';
+    textBlast.dataset.recoveryTextBlast = '1';
+    document.body.appendChild(textBlast);
   }
 })();
