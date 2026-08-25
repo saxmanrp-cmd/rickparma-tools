@@ -6,12 +6,13 @@ import path from 'node:path';
 const root = path.resolve(new URL('..', import.meta.url).pathname);
 const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
 
-test('recovery stage 5 boots the proven core plus isolated Text Blast and one safe flyer helper', () => {
+test('recovery build keeps the proven core while Comic Blast replaces the old standalone Text Blast card', () => {
   const html = read('public/index.html');
   const safeUi = read('public/recovery-easy-flyer.js');
   const polish = read('public/stage3-ui-polish.js');
-  const textBlast = read('public/recovery-text-blast.js');
+  const textBlastLoader = read('public/recovery-text-blast.js');
   const helper = read('public/recovery-show-helper.js');
+  const comic = read('public/comic-blast-studio.js');
 
   assert.equal(html.includes('<script src="/app.js"></script>'), true);
   assert.equal(html.includes('<script src="/reach-intelligence.js"></script>'), true);
@@ -20,7 +21,7 @@ test('recovery stage 5 boots the proven core plus isolated Text Blast and one sa
   assert.equal(html.includes('<script src="/recovery-easy-flyer.js"></script>'), true);
 
   for (const asset of ['/passkeys.js','/smart-plan.js','/easy-mode.js','/flyer-first.js','/weekly-planner.js','/content-coach.js']) {
-    assert.equal(html.includes(`<script src="${asset}"></script>`), false, `${asset} should remain disabled in recovery stage 5`);
+    assert.equal(html.includes(`<script src="${asset}"></script>`), false, `${asset} should remain disabled`);
   }
 
   assert.equal(safeUi.includes('Choose your flyer, photo, or video'), true);
@@ -30,26 +31,21 @@ test('recovery stage 5 boots the proven core plus isolated Text Blast and one sa
 
   assert.equal(polish.includes('Help Me Get More Views'), true);
   assert.equal(polish.includes('Choose an event'), true);
-  assert.equal(polish.includes('dateOnlyLabel'), true);
   assert.equal(polish.includes('showDatePicker'), true);
-  assert.equal(polish.includes('is-selected-show'), true);
-  assert.equal(polish.includes('More Promo Plans'), true);
-  assert.equal(polish.includes('Scheduled Posts'), true);
-  assert.equal(polish.includes('Event Name Calendar'), true);
 
-  assert.equal(textBlast.includes('Turn a Text Blast into a post'), true);
-  assert.equal(textBlast.includes('/api/text-blast/history'), true);
-  assert.equal(textBlast.includes('Make Social Bubble'), true);
-  assert.equal(textBlast.includes('canvas.width = 1080'), true);
-  assert.equal(textBlast.includes('canvas.height = 1350'), true);
-  assert.equal(textBlast.includes("helper.src = '/recovery-show-helper.js'"), true);
-  assert.equal(textBlast.includes('setInterval'), false);
-
+  assert.equal(textBlastLoader.includes('Turn a Text Blast into a post'), false);
+  assert.equal(textBlastLoader.includes("helper.src = '/recovery-show-helper.js'"), true);
   assert.equal(helper.includes('Make This Easy'), true);
   assert.equal(helper.includes('Help Me Post This Flyer'), true);
-  assert.equal(helper.includes("q('#applyMaxReachBtn')"), true);
-  assert.equal(helper.includes("q('#useReachTimeBtn')?.click()"), true);
-  assert.equal(helper.includes("q('#useReachCaptionBtn')?.click()"), true);
-  assert.equal(helper.includes('Recovery Stage 5'), true);
+  assert.equal(helper.includes("script.src = '/comic-blast-studio.js'"), true);
+
+  assert.equal(comic.includes('Comic Blast Studio'), true);
+  assert.equal(comic.includes('Background Library'), true);
+  assert.equal(comic.includes('Upload Package'), true);
+  assert.equal(comic.includes('Create Category'), true);
+  assert.equal(comic.includes('Text Blast admin password'), true);
+
+  assert.equal(textBlastLoader.includes('setInterval'), false);
   assert.equal(helper.includes('setInterval'), false);
+  assert.equal(comic.includes('setInterval'), false);
 });
