@@ -12,7 +12,6 @@
     const style = document.createElement('style');
     style.id = 'stage3UiPolishStyles';
     style.textContent = `
-      /* No tiny helper copy on the main workflow. */
       body.recovery-easy .field-hint,
       body.recovery-easy .micro-hint,
       body.recovery-easy .audio-meta-row,
@@ -43,36 +42,35 @@
       body.recovery-easy #reachIntelligence .reach-intel-actions button,
       body.recovery-easy #applyMaxReachBtn{font-size:16px!important;min-height:50px!important}
 
-      /* Calendar: the show list is the page. Remove the giant nested dashboard look. */
+      /* Calendar: one date dropdown, one selected show. */
       body.recovery-easy #view-calendar{padding-bottom:28px}
       body.recovery-easy #view-calendar>.page-row{margin-bottom:3px}
       body.recovery-easy #view-calendar>.page-row h2{font-size:28px!important;line-height:1.15!important}
-      body.recovery-easy .easy-calendar-intro{font-size:16px!important;line-height:1.45!important;margin:5px 2px 18px!important;color:#b8c1cf!important}
+      body.recovery-easy .easy-calendar-intro{font-size:17px!important;line-height:1.4!important;margin:5px 2px 17px!important;color:#c0c8d4!important}
       body.recovery-easy #gigCampaign.card{padding:0!important;margin:0 0 14px!important;border:0!important;background:transparent!important;box-shadow:none!important}
       body.recovery-easy #calendarSync{padding:0!important;margin:0!important;border:0!important}
-      body.recovery-easy .calendar-sync-head{display:block!important;margin-bottom:13px!important}
-      body.recovery-easy .calendar-sync-head strong{font-size:23px!important;line-height:1.2!important}
-      body.recovery-easy .calendar-sync-head span{font-size:16px!important;line-height:1.45!important;margin-top:6px!important;color:#b9c2d0!important}
-      body.recovery-easy .calendar-sync-list{gap:13px!important;margin-top:0!important}
-      body.recovery-easy .calendar-sync-event{grid-template-columns:96px minmax(0,1fr)!important;gap:13px!important;padding:13px!important;border-radius:18px!important;background:#0b1119!important;border:1px solid rgba(255,255,255,.08)!important;box-shadow:none!important}
-      body.recovery-easy .calendar-sync-thumb{width:96px!important;height:124px!important;border-radius:13px!important;background:#141b25!important;align-self:start!important}
+      body.recovery-easy .calendar-sync-head{display:none!important}
+      body.recovery-easy .show-date-picker{margin:0 0 14px;padding:15px;border-radius:17px;background:#111827;border:1px solid rgba(145,116,255,.28)}
+      body.recovery-easy .show-date-picker label{display:block;font-size:18px;font-weight:900;color:#f4f5f8;margin-bottom:9px}
+      body.recovery-easy .show-date-picker select{width:100%;min-height:58px;border-radius:14px;background:#0a1019;border:1px solid rgba(255,255,255,.14);color:#fff;padding:0 14px;font-size:18px!important;font-weight:750}
+      body.recovery-easy .calendar-sync-list{display:block!important;margin-top:0!important}
+      body.recovery-easy .calendar-sync-event{display:none!important;grid-template-columns:108px minmax(0,1fr)!important;gap:14px!important;padding:14px!important;border-radius:18px!important;background:#0b1119!important;border:1px solid rgba(255,255,255,.08)!important;box-shadow:none!important}
+      body.recovery-easy .calendar-sync-event.is-selected-show{display:grid!important}
+      body.recovery-easy .calendar-sync-thumb{width:108px!important;height:140px!important;border-radius:13px!important;background:#141b25!important;align-self:start!important}
       body.recovery-easy .calendar-sync-thumb img,
       body.recovery-easy .calendar-sync-thumb video{width:100%!important;height:100%!important;object-fit:cover!important}
-      body.recovery-easy .calendar-sync-copy strong{font-size:19px!important;line-height:1.25!important;white-space:normal!important}
-      body.recovery-easy .calendar-sync-copy small{font-size:16px!important;line-height:1.3!important;margin-top:6px!important;color:#ffbd84!important}
-      body.recovery-easy .calendar-sync-copy p{font-size:15px!important;line-height:1.4!important;margin-top:6px!important;color:#aeb8c7!important;white-space:normal!important}
-      body.recovery-easy .calendar-sync-flyer-note{font-size:15px!important;color:#9faabb!important}
-      body.recovery-easy .calendar-sync-controls{grid-column:1/-1!important;display:grid!important;grid-template-columns:1fr!important;gap:9px!important;margin-top:2px!important}
-      body.recovery-easy .calendar-sync-select{min-height:52px!important;border-radius:14px!important;font-size:17px!important;padding:0 13px!important}
-      body.recovery-easy .calendar-sync-action{min-height:54px!important;border-radius:14px!important;font-size:17px!important;width:100%!important}
-      body.recovery-easy .calendar-sync-refresh{font-size:16px!important;min-height:46px!important;padding:10px 3px!important;margin-top:8px!important}
-      body.recovery-easy .calendar-sync-empty{font-size:16px!important;line-height:1.45!important}
-      body.recovery-easy .calendar-sync-event.is-extra-show{display:none!important}
-      body.recovery-easy .calendar-sync-list.show-all .calendar-sync-event.is-extra-show{display:grid!important}
-      body.recovery-easy .show-more-gigs{width:100%;min-height:50px;margin:10px 0 2px;border:1px solid rgba(145,116,255,.3);border-radius:14px;background:#111625;color:#c9beff;font-size:16px;font-weight:850}
+      body.recovery-easy .calendar-sync-copy strong{font-size:20px!important;line-height:1.25!important;white-space:normal!important}
+      body.recovery-easy .calendar-sync-copy small{font-size:17px!important;line-height:1.3!important;margin-top:7px!important;color:#ffbd84!important}
+      body.recovery-easy .calendar-sync-copy p{font-size:16px!important;line-height:1.4!important;margin-top:7px!important;color:#aeb8c7!important;white-space:normal!important}
+      body.recovery-easy .calendar-sync-flyer-note{font-size:16px!important;color:#9faabb!important}
+      body.recovery-easy .calendar-sync-controls{grid-column:1/-1!important;display:grid!important;grid-template-columns:1fr!important;gap:10px!important;margin-top:3px!important}
+      body.recovery-easy .calendar-sync-select{min-height:54px!important;border-radius:14px!important;font-size:18px!important;padding:0 13px!important}
+      body.recovery-easy .calendar-sync-action{min-height:56px!important;border-radius:14px!important;font-size:18px!important;width:100%!important}
+      body.recovery-easy .calendar-sync-refresh{font-size:16px!important;min-height:46px!important;padding:10px 3px!important;margin-top:10px!important}
+      body.recovery-easy .calendar-sync-empty{font-size:17px!important;line-height:1.45!important}
 
-      /* Manual entry and saved campaigns are optional, collapsed sections. */
-      body.recovery-easy .easy-manual-show{margin-top:14px!important;padding-top:12px!important}
+      /* Manual entry and saved campaigns stay available, but out of the way. */
+      body.recovery-easy .easy-manual-show{margin-top:16px!important;padding-top:12px!important}
       body.recovery-easy .easy-manual-show>summary{font-size:16px!important;line-height:1.3!important;padding:14px!important}
       body.recovery-easy .saved-promo-plans{margin-top:14px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px}
       body.recovery-easy .saved-promo-plans>summary{list-style:none;cursor:pointer;padding:14px;border-radius:14px;background:#101620;color:#eef2f8;font-size:17px;font-weight:850}
@@ -97,11 +95,11 @@
       body.recovery-easy .scheduled-posts-details #calendarContent{margin-top:10px}
 
       @media(max-width:390px){
-        body.recovery-easy .calendar-sync-event{grid-template-columns:86px minmax(0,1fr)!important;padding:11px!important;gap:11px!important}
-        body.recovery-easy .calendar-sync-thumb{width:86px!important;height:112px!important}
-        body.recovery-easy .calendar-sync-copy strong{font-size:18px!important}
-        body.recovery-easy .calendar-sync-copy small{font-size:15px!important}
-        body.recovery-easy .calendar-sync-copy p{font-size:14px!important}
+        body.recovery-easy .calendar-sync-event{grid-template-columns:92px minmax(0,1fr)!important;padding:12px!important;gap:11px!important}
+        body.recovery-easy .calendar-sync-thumb{width:92px!important;height:120px!important}
+        body.recovery-easy .calendar-sync-copy strong{font-size:19px!important}
+        body.recovery-easy .calendar-sync-copy small{font-size:16px!important}
+        body.recovery-easy .calendar-sync-copy p{font-size:15px!important}
       }
     `;
     document.head.appendChild(style);
@@ -124,38 +122,54 @@
     const view = q('#view-calendar');
     const row = view?.querySelector(':scope > .page-row');
     setText(row?.querySelector('h2'), 'My Shows');
-    setText(q('#easyCalendarIntro'), 'Pick a show, choose what kind of post you want, and use the flyer you already made.');
-    const sync = q('#calendarSync');
-    if (sync) {
-      setText(q('.calendar-sync-head strong', sync), 'Upcoming Shows 🎤');
-      setText(q('.calendar-sync-head span', sync), 'Your flyers and show dates are ready to use.');
-      setText(q('#calendarSyncRefresh'), '↻ Refresh My Shows');
-    }
+    setText(q('#easyCalendarIntro'), 'Choose a date. Your flyer and posting options will appear below.');
+    setText(q('#calendarSyncRefresh'), '↻ Refresh My Shows');
   }
 
-  function limitShowList() {
+  function buildShowDateDropdown() {
     const list = q('#calendarSyncList');
     if (!list) return;
     const cards = qa('.calendar-sync-event', list);
-    cards.forEach((card, index) => card.classList.toggle('is-extra-show', index >= 4));
-    let button = q('#showMoreGigsBtn');
-    if (cards.length <= 4) {
-      button?.remove();
-      list.classList.remove('show-all');
+    if (!cards.length) {
+      q('#showDatePickerWrap')?.remove();
       return;
     }
-    if (!button) {
-      button = document.createElement('button');
-      button.id = 'showMoreGigsBtn';
-      button.type = 'button';
-      button.className = 'show-more-gigs';
-      list.after(button);
-      button.addEventListener('click', () => {
-        const expanded = list.classList.toggle('show-all');
-        button.textContent = expanded ? 'Show Fewer Shows' : `Show ${Math.max(0, cards.length - 4)} More Shows`;
-      });
+
+    q('#showMoreGigsBtn')?.remove();
+    cards.forEach(card => card.classList.remove('is-extra-show'));
+
+    let wrap = q('#showDatePickerWrap');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'showDatePickerWrap';
+      wrap.className = 'show-date-picker';
+      wrap.innerHTML = '<label for="showDatePicker">Choose a show date</label><select id="showDatePicker" aria-label="Choose a show date"></select>';
+      list.parentNode.insertBefore(wrap, list);
     }
-    if (!list.classList.contains('show-all')) button.textContent = `Show ${cards.length - 4} More Shows`;
+
+    const select = q('#showDatePicker');
+    if (!select) return;
+    const choices = cards.map((card, index) => {
+      const date = String(q('.calendar-sync-copy small', card)?.textContent || `Show ${index + 1}`).trim();
+      const title = String(q('.calendar-sync-copy strong', card)?.textContent || '').trim();
+      return { index, label: title ? `${date} — ${title}` : date };
+    });
+    const signature = choices.map(choice => choice.label).join('|');
+    const oldValue = select.value;
+    if (select.dataset.signature !== signature) {
+      select.innerHTML = choices.map(choice => `<option value="${choice.index}">${choice.label.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</option>`).join('');
+      select.dataset.signature = signature;
+      if (choices.some(choice => String(choice.index) === oldValue)) select.value = oldValue;
+      else select.value = '0';
+    }
+
+    const showSelected = () => {
+      const currentCards = qa('.calendar-sync-event', q('#calendarSyncList'));
+      const selected = Number(select.value || 0);
+      currentCards.forEach((card, index) => card.classList.toggle('is-selected-show', index === selected));
+    };
+    select.onchange = showSelected;
+    showSelected();
   }
 
   function wrapSavedPromoPlans() {
@@ -194,11 +208,11 @@
     injectStyles();
     simplifyMaxReach();
     simplifyCalendarTitle();
+    buildShowDateDropdown();
     wrapSavedPromoPlans();
     wrapScheduledPosts();
-    limitShowList();
     const footer = q('.version-footer');
-    if (footer) footer.textContent = 'Social Publisher v0.7.6 · Simple UI';
+    if (footer) footer.textContent = 'Social Publisher v0.7.6 · Date Dropdown';
   }
 
   apply();
