@@ -16,6 +16,15 @@ test('Rick Parma comic pack uses the ten canonical scene names', () => {
   assert.equal(script.includes("method:'PATCH'"), true);
 });
 
+test('Rick Parma naming repairs generic names even when extra backgrounds exist', () => {
+  const script = read('public/rick-parma-background-auto-names.js');
+  assert.equal(script.includes('genericNumber'), true);
+  assert.equal(script.includes("canonical[(number - 1) % canonical.length]"), true);
+  assert.equal(script.includes('Rick Parma Bonus Scene'), true);
+  assert.equal(script.includes("CATEGORY_ALIASES = new Set(['rick parma comics','comics'])"), true);
+  assert.equal(script.includes('list.length !== 10'), false);
+});
+
 test('auto bubble mapper intercepts comic background PUT uploads and writes coordinates', () => {
   const script = read('public/auto-bubble-map.js');
   assert.equal(script.includes("method === 'PUT'"), true);
