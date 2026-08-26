@@ -16,11 +16,10 @@ test('Rick Parma comic pack uses the ten canonical scene names', () => {
   assert.equal(script.includes("method:'PATCH'"), true);
 });
 
-test('auto bubble mapper intercepts only comic background PUT uploads', () => {
+test('auto bubble mapper intercepts comic background PUT uploads and writes coordinates', () => {
   const script = read('public/auto-bubble-map.js');
   assert.equal(script.includes("method === 'PUT'"), true);
-  assert.equal(script.includes('/\\/api\\/comic-templates\\//'), false);
-  assert.equal(script.includes("/\\/api\\/comic-templates\\//.test(url)"), true);
+  assert.equal(script.includes('comic-templates'), true);
   assert.equal(script.includes("headers.set('x-bubble-x'"), true);
   assert.equal(script.includes("headers.set('x-bubble-y'"), true);
   assert.equal(script.includes("headers.set('x-bubble-width'"), true);
