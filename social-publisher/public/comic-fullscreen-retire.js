@@ -30,6 +30,14 @@
     document.body.appendChild(script);
   }
 
+  function loadSmartScheduleAwareness() {
+    if (document.querySelector('script[data-smart-schedule-awareness]')) return;
+    const script = document.createElement('script');
+    script.src = '/smart-schedule-awareness.js';
+    script.dataset.smartScheduleAwareness = '1';
+    document.body.appendChild(script);
+  }
+
   function loadSmartRatioPeopleReach() {
     if (document.querySelector('script[data-smart-ratio-people-reach]')) {
       loadCreateFlowHingesFix();
@@ -81,5 +89,6 @@
   injectRetiredStyles();
   window.retireComicFullscreenEditor = retireComicFullscreenEditor;
   retireComicFullscreenEditor();
+  loadSmartScheduleAwareness();
   loadDestinationPreviewCarousel();
 })();
