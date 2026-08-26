@@ -1,4 +1,4 @@
-// Retire the old full-screen comic editor now that speech bubbles are mapped in the inline editor.
+// Retire the old full-screen comic editor and load Create-flow preview upgrades.
 (() => {
   const STYLE_ID = 'comicFullscreenRetiredStyles';
 
@@ -22,7 +22,16 @@
     overlay?.remove();
   }
 
+  function loadDestinationPreviewCarousel() {
+    if (document.querySelector('script[data-destination-preview-carousel]')) return;
+    const script = document.createElement('script');
+    script.src = '/destination-preview-carousel.js';
+    script.dataset.destinationPreviewCarousel = '1';
+    document.body.appendChild(script);
+  }
+
   injectRetiredStyles();
   window.retireComicFullscreenEditor = retireComicFullscreenEditor;
   retireComicFullscreenEditor();
+  loadDestinationPreviewCarousel();
 })();
