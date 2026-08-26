@@ -1,6 +1,7 @@
 const PREFIX = 'comic-templates/';
 const CATEGORY_KEY = `${PREFIX}_categories.json`;
 const DEFAULT_CATEGORY = 'Rick Parma Comics';
+const REMOVED_CATEGORIES = new Set(['people talking']);
 const MAX_BYTES = 30 * 1024 * 1024;
 
 const json = (data, init = {}) => new Response(JSON.stringify(data), {
@@ -56,7 +57,7 @@ function normalizeCategories(values=[]) {
     const name = safeMeta(raw, 80);
     if (!name) continue;
     const key = name.toLowerCase();
-    if (seen.has(key)) continue;
+    if (REMOVED_CATEGORIES.has(key) || seen.has(key)) continue;
     seen.add(key);
     categories.push(name);
   }
