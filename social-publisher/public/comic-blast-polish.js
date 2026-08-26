@@ -84,16 +84,26 @@
     document.body.appendChild(script);
   }
 
+  function loadMediaBackgroundBulkFix() {
+    if (document.querySelector('script[data-media-background-bulk-fix]')) return;
+    const script = document.createElement('script');
+    script.src = '/media-background-bulk-fix.js';
+    script.dataset.mediaBackgroundBulkFix = '1';
+    document.body.appendChild(script);
+  }
+
   function loadMediaBackgroundLibrary() {
     const existing = document.querySelector('script[data-media-background-library]');
     if (existing) {
       if (document.querySelector('.bg-media-shell')) {
         loadMediaBackgroundLibraryFix();
         loadMediaBackgroundBulkTools();
+        loadMediaBackgroundBulkFix();
       } else {
         existing.addEventListener('load',() => {
           loadMediaBackgroundLibraryFix();
           loadMediaBackgroundBulkTools();
+          loadMediaBackgroundBulkFix();
         },{once:true});
       }
       return;
@@ -104,6 +114,7 @@
     script.addEventListener('load',() => {
       loadMediaBackgroundLibraryFix();
       loadMediaBackgroundBulkTools();
+      loadMediaBackgroundBulkFix();
     },{once:true});
     document.body.appendChild(script);
   }
