@@ -22,11 +22,23 @@
     overlay?.remove();
   }
 
+  function loadCreateFlowHingesFix() {
+    if (document.querySelector('script[data-create-flow-hinges-fix]')) return;
+    const script = document.createElement('script');
+    script.src = '/create-flow-hinges-fix.js';
+    script.dataset.createFlowHingesFix = '1';
+    document.body.appendChild(script);
+  }
+
   function loadSmartRatioPeopleReach() {
-    if (document.querySelector('script[data-smart-ratio-people-reach]')) return;
+    if (document.querySelector('script[data-smart-ratio-people-reach]')) {
+      loadCreateFlowHingesFix();
+      return;
+    }
     const script = document.createElement('script');
     script.src = '/smart-ratio-people-reach.js';
     script.dataset.smartRatioPeopleReach = '1';
+    script.addEventListener('load',loadCreateFlowHingesFix,{once:true});
     document.body.appendChild(script);
   }
 
