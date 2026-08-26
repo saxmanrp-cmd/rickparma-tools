@@ -1,4 +1,4 @@
-// Stage 15: simplify the Create page, compact media picking, and reorder caption/help tools.
+// Stage 15: simplify the Create page, consolidate media picking, and reorder caption/help tools.
 (() => {
   const q = (selector, root=document) => root.querySelector(selector);
 
@@ -13,26 +13,24 @@
       body.recovery-easy #uploadPrompt,
       body.recovery-easy #comicBlastStudio .comic-studio-copy{display:none!important}
 
-      body.recovery-easy #stage15MediaCard{padding:14px!important;margin-bottom:12px!important}
-      body.recovery-easy .stage15-section-title{font-size:17px;font-weight:900;color:#f2f5f9;margin-bottom:9px}
-      body.recovery-easy #stage15MediaSource{
-        width:100%;min-height:50px;border-radius:13px;border:1px solid rgba(255,255,255,.13);
-        background:#0a1018;color:#fff;padding:0 12px;font-size:16px;font-weight:750
+      body.recovery-easy #comicBlastStudio #stage15UploadMediaBtn{
+        width:100%!important;min-height:50px!important;margin:0 0 10px!important;font-size:16px!important;font-weight:900!important
       }
       body.recovery-easy #dropZone.stage15-compact-media{
-        min-height:0!important;height:auto!important;margin-top:10px!important;padding:0!important;
+        min-height:0!important;height:auto!important;margin:0 0 10px!important;padding:0!important;
         border:1px solid rgba(255,255,255,.10)!important;border-radius:13px!important;
         background:#090e15!important;overflow:hidden!important
       }
       body.recovery-easy #dropZone.stage15-compact-media.stage15-empty-media{display:none!important}
-      body.recovery-easy #dropZone.stage15-compact-media #mediaPreview{min-height:0!important;max-height:160px!important;overflow:hidden!important}
+      body.recovery-easy #dropZone.stage15-compact-media #mediaPreview{min-height:0!important;max-height:180px!important;overflow:hidden!important}
       body.recovery-easy #dropZone.stage15-compact-media #mediaPreview img,
       body.recovery-easy #dropZone.stage15-compact-media #mediaPreview video{
-        width:100%!important;max-height:160px!important;object-fit:contain!important;display:block!important;background:#06090d!important
+        width:100%!important;max-height:180px!important;object-fit:contain!important;display:block!important;background:#06090d!important
       }
-      body.recovery-easy #stage15MediaCard #mediaActions{margin-top:8px!important;justify-content:flex-end!important}
+      body.recovery-easy #comicBlastStudio #mediaActions{margin:0 0 10px!important;justify-content:flex-end!important}
 
       body.recovery-easy #stage15HelperGroup{margin:0 0 12px;padding:12px;border-radius:16px;border:1px solid rgba(145,116,255,.22);background:#0d121a}
+      body.recovery-easy .stage15-section-title{font-size:17px;font-weight:900;color:#f2f5f9;margin-bottom:9px}
       body.recovery-easy #stage15HelperGroup .stage15-section-title{margin-bottom:8px}
       body.recovery-easy #stage15HelperGroup #maxReachCard,
       body.recovery-easy #stage15HelperGroup #recoveryShowHelper{margin:7px 0 0!important;padding:0!important;border:0!important;background:transparent!important}
@@ -60,48 +58,42 @@
     drop.classList.toggle('stage15-empty-media', !mediaIsSelected());
   }
 
-  function buildMediaCard(composer) {
-    let card = q('#stage15MediaCard');
+  function consolidateMediaIntoChooser() {
+    const comic = q('#comicBlastStudio');
+    const inner = q('.comic-studio-inner', comic);
     const drop = q('#dropZone');
-    if (!drop) return null;
+    if (!comic || !inner || !drop) return null;
 
-    if (!card) {
-      card = document.createElement('div');
-      card.id = 'stage15MediaCard';
-      card.className = 'card compact-card';
-      card.innerHTML = `
-        <div class="stage15-section-title">Choose Media</div>
-        <select id="stage15MediaSource" aria-label="Choose media source">
-          <option value="">Choose where to get it…</option>
-          <option value="library">Use media already in the app</option>
-          <option value="phone">Choose photo or video from my phone</option>
-        </select>`;
-      composer.insertBefore(card, drop);
-
-      q('#stage15MediaSource',card)?.addEventListener('change', event => {
-        const choice = event.target.value;
-        event.target.value = '';
-        if (choice === 'phone') {
-          q('#mediaInput')?.click();
-          return;
-        }
-        if (choice === 'library') {
-          q('.nav-item[data-view="media"]')?.click();
-        }
+    let upload = q('#stage15UploadMediaBtn');
+    if (!upload) {
+      upload = document.createElement('button');
+      upload.id = 'stage15UploadMediaBtn';
+      upload.className = 'button secondary full';
+      upload.type = 'button';
+      upload.textContent = 'Upload a Photo or Video';
+      upload.addEventListener('click', () => {
+        comic.open = true;
+        q('#mediaInput')?.click();
       });
     }
 
-    if (drop.parentElement !== card) card.appendChild(drop);
+    if (upload.parentElement !== inner) inner.insertBefore(upload, inner.firstElementChild);
+    if (drop.parentElement !== inner) upload.after(drop);
+
     const actions = q('#mediaActions');
-    if (actions && actions.parentElement !== card) card.appendChild(actions);
+    if (actions && actions.parentElement !== inner) drop.after(actions);
+
+    const oldCard = q('#stage15MediaCard');
+    if (oldCard) oldCard.remove();
+
     refreshMediaPreview();
-    return card;
+    return comic;
   }
 
   function renameAndTrim() {
     const comic = q('#comicBlastStudio');
     const summary = comic?.querySelector(':scope > summary');
-    if (summary && summary.textContent.trim() !== '🖼 Pick a Background') summary.textContent = '🖼 Pick a Background';
+    if (summary && summary.textContent.trim() !== '🖼 Choose Media') summary.textContent = '🖼 Choose Media';
 
     const captionCard = q('#caption')?.closest('.card');
     if (captionCard) {
@@ -120,17 +112,13 @@
     const composer = q('#view-create .composer');
     if (!composer) return;
 
-    const comic = q('#comicBlastStudio');
-    const mediaCard = buildMediaCard(composer);
+    const comic = consolidateMediaIntoChooser();
     const captionCard = q('#caption')?.closest('.card');
     const maxReach = q('#maxReachCard');
     const showHelper = q('#recoveryShowHelper');
 
     if (comic && composer.firstElementChild !== comic) composer.insertBefore(comic, composer.firstElementChild);
-    if (mediaCard && comic && comic.nextElementSibling !== mediaCard) comic.after(mediaCard);
-    else if (mediaCard && !comic && composer.firstElementChild !== mediaCard) composer.insertBefore(mediaCard, composer.firstElementChild);
-
-    if (captionCard && mediaCard && mediaCard.nextElementSibling !== captionCard) mediaCard.after(captionCard);
+    if (captionCard && comic && comic.nextElementSibling !== captionCard) comic.after(captionCard);
 
     let tools = q('#stage15HelperGroup');
     if ((maxReach || showHelper) && !tools) {
@@ -169,7 +157,11 @@
     apply();
     const composer = q('#view-create .composer');
     if (composer) new MutationObserver(schedule).observe(composer,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
-    q('#mediaInput')?.addEventListener('change',() => setTimeout(schedule,40));
+    q('#mediaInput')?.addEventListener('change',() => {
+      const comic = q('#comicBlastStudio');
+      if (comic) comic.open = true;
+      setTimeout(schedule,40);
+    });
     q('#removeMediaBtn')?.addEventListener('click',() => setTimeout(schedule,40));
     q('.nav-item[data-view="create"]')?.addEventListener('click',() => setTimeout(schedule,80));
   }
