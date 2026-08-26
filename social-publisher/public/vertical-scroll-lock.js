@@ -1,32 +1,57 @@
-// Keep the app from drifting/rubber-banding sideways on iPhone while preserving vertical scroll and pinch zoom.
+// Keep the app locked to vertical page scrolling on iPhone/Safari and disable page zoom.
 (() => {
-  if (document.querySelector('#verticalScrollLockStyles')) return;
-  const style = document.createElement('style');
-  style.id = 'verticalScrollLockStyles';
-  style.textContent = `
-    html,body{
-      width:100%;
-      max-width:100%;
-      overflow-x:hidden!important;
-      overscroll-behavior-x:none!important;
-    }
-    body{
-      position:relative;
-      touch-action:pan-y pinch-zoom;
-    }
-    .app-shell,.main,.view{
-      width:100%;
-      max-width:100%;
-      min-width:0;
-      overflow-x:hidden!important;
-    }
-    .composer,.card,.page-row,.media-library,#mediaLibrary{
-      max-width:100%;
-      min-width:0;
-    }
-    img,video,canvas{
-      max-width:100%;
-    }
-  `;
-  document.head.appendChild(style);
+  const viewport = document.querySelector('meta[name="viewport"]');
+  if (viewport) {
+    viewport.setAttribute('content','width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover');
+  }
+
+  if (!document.querySelector('#verticalScrollLockStyles')) {
+    const style = document.createElement('style');
+    style.id = 'verticalScrollLockStyles';
+    style.textContent = `
+      html,body{
+        width:100%;
+        max-width:100%;
+        overflow-x:hidden!important;
+        overscroll-behavior-x:none!important;
+        touch-action:pan-y!important;
+      }
+      body{
+        position:relative;
+      }
+      .app-shell,.main,.view{
+        width:100%;
+        max-width:100%;
+        min-width:0;
+        overflow-x:hidden!important;
+        touch-action:pan-y!important;
+      }
+      .composer,.card,.page-row,.media-library,#mediaLibrary{
+        max-width:100%;
+        min-width:0;
+      }
+      button,a,label,input,textarea,select{
+        touch-action:manipulation!important;
+      }
+      input,textarea,select{
+        font-size:16px!important;
+      }
+      img,video,canvas{
+        max-width:100%;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  if (window.__socialPublisherZoomLockInstalled) return;
+  window.__socialPublisherZoomLockInstalled = true;
+
+  const stopZoom = event => event.preventDefault();
+  for (const type of ['gesturestart','gesturechange','gestureend']) {
+    document.addEventListener(type,stopZoom,{passive:false});
+  }
+
+  document.addEventListener('touchmove',event => {
+    if (event.touches && event.touches.length > 1) event.preventDefault();
+  },{passive:false});
 })();

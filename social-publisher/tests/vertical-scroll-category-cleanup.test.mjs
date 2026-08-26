@@ -18,11 +18,15 @@ test('retired People Talking category is filtered from stored category lists', (
   assert.match(source,/REMOVED_CATEGORIES\.has\(key\)/);
 });
 
-test('app shell is locked to vertical page panning while preserving pinch zoom', () => {
+test('app shell is locked to vertical page panning and page zoom is disabled', () => {
   const script = read('public/vertical-scroll-lock.js');
   assert.match(script,/overflow-x:hidden!important/);
   assert.match(script,/overscroll-behavior-x:none!important/);
-  assert.match(script,/touch-action:pan-y pinch-zoom/);
+  assert.match(script,/touch-action:pan-y!important/);
+  assert.match(script,/maximum-scale=1/);
+  assert.match(script,/user-scalable=no/);
+  assert.match(script,/gesturestart/);
+  assert.match(script,/touches\.length > 1/);
   assert.match(script,/\.app-shell,\.main,\.view/);
   assert.match(script,/max-width:100%/);
 });
