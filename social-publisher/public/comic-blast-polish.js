@@ -68,22 +68,31 @@
     });
   }
 
+  function loadMediaBackgroundLibrary() {
+    if (document.querySelector('script[data-media-background-library]')) return;
+    const script = document.createElement('script');
+    script.src = '/media-background-library.js';
+    script.dataset.mediaBackgroundLibrary = '1';
+    document.body.appendChild(script);
+  }
+
   async function boot() {
     try {
       const response = await fetch('/api/comic-templates',{cache:'no-store'});
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) return;
-      templates = Array.isArray(data.templates) ? data.templates : [];
-      setTimeout(() => {
-        chooseInitialPopulatedCategory();
-        refreshLabelsSoon();
-      },120);
+      if (response.ok) templates = Array.isArray(data.templates) ? data.templates : [];
     } catch {}
+
+    setTimeout(() => {
+      chooseInitialPopulatedCategory();
+      refreshLabelsSoon();
+    },120);
 
     q('#comicCategoryPicker')?.addEventListener('change',refreshLabelsSoon);
     q('#comicFormatPicker')?.addEventListener('change',refreshLabelsSoon);
     q('#comicManagerCategory')?.addEventListener('change',refreshLabelsSoon);
     q('#comicBlastStudio')?.addEventListener('toggle',refreshLabelsSoon);
+    loadMediaBackgroundLibrary();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',boot,{once:true});
