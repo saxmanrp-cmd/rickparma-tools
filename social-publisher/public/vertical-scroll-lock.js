@@ -1,4 +1,4 @@
-// Keep the app locked to vertical page scrolling on iPhone/Safari and disable page zoom.
+// Keep the app locked to vertical page scrolling on iPhone/Safari, allow native carousel swipes, and disable page zoom.
 (() => {
   const viewport = document.querySelector('meta[name="viewport"]');
   if (viewport) {
@@ -14,7 +14,7 @@
         max-width:100%;
         overflow-x:hidden!important;
         overscroll-behavior-x:none!important;
-        touch-action:pan-y!important;
+        touch-action:manipulation!important;
       }
       body{
         position:relative;
@@ -24,11 +24,15 @@
         max-width:100%;
         min-width:0;
         overflow-x:hidden!important;
-        touch-action:pan-y!important;
+        touch-action:manipulation!important;
       }
       .composer,.card,.page-row,.media-library,#mediaLibrary{
         max-width:100%;
         min-width:0;
+      }
+      #previewSheet .destination-preview-track{
+        touch-action:pan-x!important;
+        overscroll-behavior-x:contain!important;
       }
       button,a,label,input,textarea,select{
         touch-action:manipulation!important;

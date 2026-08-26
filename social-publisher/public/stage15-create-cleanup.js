@@ -22,8 +22,9 @@
         background:#090e15!important;overflow:hidden!important
       }
       body.recovery-easy #dropZone.stage15-compact-media.stage15-empty-media{display:none!important}
-      body.recovery-easy.stage15-comic-generated-media #comicBlastStudio #dropZone.stage15-compact-media,
-      body.recovery-easy.stage15-comic-generated-media #comicBlastStudio #mediaActions{display:none!important}
+      body.recovery-easy.stage15-comic-generated-media #dropZone.stage15-compact-media,
+      body.recovery-easy.stage15-comic-generated-media #mediaPreview,
+      body.recovery-easy.stage15-comic-generated-media #mediaActions{display:none!important}
       body.recovery-easy #dropZone.stage15-compact-media #mediaPreview{min-height:0!important;max-height:180px!important;overflow:hidden!important}
       body.recovery-easy #dropZone.stage15-compact-media #mediaPreview img,
       body.recovery-easy #dropZone.stage15-compact-media #mediaPreview video{
@@ -106,11 +107,12 @@
       if (!button) return;
 
       const savedY = window.scrollY;
-      const preview = q('#mediaPreview');
-      const before = preview?.innerHTML || '';
       const drop = q('#dropZone');
       let originalScrollIntoView = null;
 
+      // Once a comic is generated, the inline comic preview is the authoritative preview.
+      // Keep the redundant compact selected-media preview hidden until the user manually
+      // uploads/removes media.
       suppressGeneratedPreview(true);
 
       if (drop && typeof drop.scrollIntoView === 'function') {
@@ -130,9 +132,6 @@
         if (drop && originalScrollIntoView) {
           try { drop.scrollIntoView = originalScrollIntoView; } catch {}
         }
-
-        const after = q('#mediaPreview')?.innerHTML || '';
-        if (after === before) suppressGeneratedPreview(false);
 
         requestAnimationFrame(() => {
           window.scrollTo({ top:savedY, left:0, behavior:'auto' });

@@ -1,19 +1,18 @@
-// Destination-aware post preview carousel for Create.
+// Destination-aware, aspect-ratio-accurate preview carousel for Create.
 (() => {
   const q = (selector, root=document) => root.querySelector(selector);
   const qa = (selector, root=document) => [...root.querySelectorAll(selector)];
   let currentIndex = 0;
-  let touch = null;
   let scrollFrame = 0;
 
   const DESTINATIONS = {
-    instagram_post:{platform:'instagram',type:'post',label:'Instagram Post',short:'IG Post',tone:'instagram'},
-    instagram_story:{platform:'instagram',type:'story',label:'Instagram Story',short:'IG Story',tone:'instagram'},
-    instagram_reel:{platform:'instagram',type:'reel',label:'Instagram Reel',short:'IG Reel',tone:'instagram'},
-    facebook_post:{platform:'facebook',type:'post',label:'Facebook Post / Video',short:'Facebook',tone:'facebook'},
-    facebook_reel:{platform:'facebook',type:'reel',label:'Facebook Reel',short:'FB Reel',tone:'facebook'},
-    tiktok:{platform:'tiktok',type:'video',label:'TikTok',short:'TikTok',tone:'tiktok'},
-    threads:{platform:'threads',type:'post',label:'Threads',short:'Threads',tone:'threads'},
+    instagram_post:{platform:'instagram',type:'post',label:'Instagram Post',short:'IG Post',ratio:'4:5',layout:'feed'},
+    instagram_story:{platform:'instagram',type:'story',label:'Instagram Story',short:'IG Story',ratio:'9:16',layout:'vertical'},
+    instagram_reel:{platform:'instagram',type:'reel',label:'Instagram Reel',short:'IG Reel',ratio:'9:16',layout:'vertical'},
+    facebook_post:{platform:'facebook',type:'post',label:'Facebook Post / Video',short:'Facebook',ratio:'4:5',layout:'feed'},
+    facebook_reel:{platform:'facebook',type:'reel',label:'Facebook Reel',short:'FB Reel',ratio:'9:16',layout:'vertical'},
+    tiktok:{platform:'tiktok',type:'video',label:'TikTok',short:'TikTok',ratio:'9:16',layout:'vertical'},
+    threads:{platform:'threads',type:'post',label:'Threads',short:'Threads',ratio:'4:5',layout:'thread'},
   };
 
   function injectStyles() {
@@ -27,19 +26,21 @@
       #previewSheet .destination-preview-intro{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 16px 8px;color:#9da8b8;font-size:13px}
       #previewSheet .destination-preview-intro strong{color:#fff;font-size:14px}
       #previewSheet .destination-preview-nav{display:flex;align-items:center;gap:8px}
-      #previewSheet .destination-preview-nav button{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:#151b25;color:#fff;font-size:22px;font-weight:800;padding:0;display:grid;place-items:center}
-      #previewSheet .destination-preview-track{display:flex;gap:14px;width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;padding:6px 20px 12px;box-sizing:border-box;scroll-snap-type:x mandatory;scroll-padding:20px;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none}
+      #previewSheet .destination-preview-nav button{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:#151b25;color:#fff;font-size:22px;font-weight:800;padding:0;display:grid;place-items:center;touch-action:manipulation!important}
+      #previewSheet .destination-preview-nav button:disabled{opacity:.35}
+      #previewSheet .destination-preview-track{display:flex;gap:12px;width:100%;max-width:100%;overflow-x:auto!important;overflow-y:hidden;padding:6px 18px 12px;box-sizing:border-box;scroll-snap-type:x mandatory;scroll-padding:18px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none;touch-action:pan-x!important;contain:layout paint}
       #previewSheet .destination-preview-track::-webkit-scrollbar{display:none}
-      #previewSheet .destination-preview-slide{flex:0 0 calc(100% - 40px);max-width:390px;min-width:0;scroll-snap-align:center;scroll-snap-stop:always}
+      #previewSheet .destination-preview-slide{flex:0 0 calc(100% - 36px);max-width:390px;min-width:0;scroll-snap-align:center;scroll-snap-stop:always;contain:layout paint style;transform:translateZ(0)}
       #previewSheet .destination-preview-label{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 8px;color:#fff;font-weight:900;font-size:15px}
-      #previewSheet .destination-preview-label span:last-child{font-size:11px;color:#96a2b4;font-weight:750;letter-spacing:.04em;text-transform:uppercase}
-      #previewSheet .destination-device{position:relative;width:100%;overflow:hidden;border:1px solid rgba(255,255,255,.12);border-radius:24px;background:#05070a;color:#fff;box-shadow:0 14px 38px rgba(0,0,0,.28)}
+      #previewSheet .destination-preview-label span:last-child{font-size:11px;color:#b9c3d2;font-weight:850;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+      #previewSheet .destination-device{position:relative;width:100%;overflow:hidden;border:1px solid rgba(255,255,255,.12);border-radius:22px;background:#05070a;color:#fff;box-shadow:0 12px 30px rgba(0,0,0,.24);contain:layout paint}
       #previewSheet .destination-device.feed{background:#0b0d12}
-      #previewSheet .destination-device.vertical{height:min(60vh,560px);min-height:430px;background:#000}
+      #previewSheet .destination-device.vertical{aspect-ratio:9/16;width:min(100%,calc(68vh * 9 / 16));max-height:68vh;margin:0 auto;background:#000}
       #previewSheet .destination-media-box{position:relative;width:100%;overflow:hidden;background:#111}
       #previewSheet .destination-device.feed .destination-media-box{aspect-ratio:4/5}
-      #previewSheet .destination-device.vertical .destination-media-box{position:absolute;inset:0;height:100%}
-      #previewSheet .destination-media-box img,#previewSheet .destination-media-box video{width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;display:block;object-fit:cover!important;background:#111}
+      #previewSheet .destination-device.vertical .destination-media-box{position:absolute;inset:0;width:100%;height:100%}
+      #previewSheet .destination-media-box img,#previewSheet .destination-media-box video{width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;display:block;object-fit:cover!important;object-position:center!important;background:#111}
+      #previewSheet .destination-preview-media-node{transform:translateZ(0);backface-visibility:hidden}
       #previewSheet .destination-media-placeholder{width:100%;height:100%;min-height:220px;display:grid;place-items:center;background:linear-gradient(145deg,#121721,#090c12);color:#7f8b9d;font-weight:800}
       #previewSheet .destination-profile{display:flex;align-items:center;gap:9px;padding:11px 12px;position:relative;z-index:3}
       #previewSheet .destination-avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#6d5df1,#a56cf6);font-size:12px;font-weight:950;color:#fff;flex:0 0 34px}
@@ -72,13 +73,14 @@
       #previewSheet .destination-threads{padding:13px;background:#0b0c0f}
       #previewSheet .destination-threads-row{display:grid;grid-template-columns:40px 1fr;gap:10px}
       #previewSheet .destination-threads-content{min-width:0}
-      #previewSheet .destination-threads-head{display:flex;align-items:center;gap:7px;font-size:13px}.destination-threads-head strong{flex:1}
+      #previewSheet .destination-threads-head{display:flex;align-items:center;gap:7px;font-size:13px}
+      #previewSheet .destination-threads-head strong{flex:1}
       #previewSheet .destination-threads-caption{margin:7px 0 10px;font-size:13px;line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere;color:#f2f3f5}
       #previewSheet .destination-threads-media{border-radius:13px;overflow:hidden;aspect-ratio:4/5;background:#111}
-      #previewSheet .destination-threads-media img,#previewSheet .destination-threads-media video{width:100%!important;height:100%!important;object-fit:cover!important;display:block}
+      #previewSheet .destination-threads-media img,#previewSheet .destination-threads-media video{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center!important;display:block}
       #previewSheet .destination-threads-actions{display:flex;gap:18px;margin-top:11px;color:#d1d5dc;font-size:17px}
       #previewSheet .destination-preview-dots{display:flex;justify-content:center;gap:7px;padding:0 16px 5px}
-      #previewSheet .destination-preview-dots button{width:8px;height:8px;border:0;border-radius:50%;padding:0;background:#475061}
+      #previewSheet .destination-preview-dots button{width:8px;height:8px;border:0;border-radius:50%;padding:0;background:#475061;touch-action:manipulation!important}
       #previewSheet .destination-preview-dots button.active{width:20px;border-radius:8px;background:#9b84ff}
       #previewSheet .destination-preview-empty{margin:12px 18px 18px;padding:18px;border-radius:16px;border:1px solid rgba(255,255,255,.1);background:#0d121a;color:#aab4c2;text-align:center;line-height:1.45}
     `;
@@ -97,10 +99,8 @@
       const type = q('input[name="fbType"]:checked')?.value || 'post';
       result.push(DESTINATIONS[`facebook_${type}`] || DESTINATIONS.facebook_post);
     }
-    const tiktok = q('.platform-chip[data-platform="tiktok"] input');
-    if (tiktok?.checked) result.push(DESTINATIONS.tiktok);
-    const threads = q('.platform-chip[data-platform="threads"] input');
-    if (threads?.checked) result.push(DESTINATIONS.threads);
+    if (q('.platform-chip[data-platform="tiktok"] input')?.checked) result.push(DESTINATIONS.tiktok);
+    if (q('.platform-chip[data-platform="threads"] input')?.checked) result.push(DESTINATIONS.threads);
     return result;
   }
 
@@ -109,7 +109,10 @@
   }
 
   function sourceMedia() {
-    return q('#previewMedia img, #previewMedia video') || q('#mediaPreview img, #mediaPreview video') || q('#comicPreviewImg');
+    if (document.body.classList.contains('stage15-comic-generated-media')) {
+      return q('#comicPreviewImg') || q('#mediaPreview img, #mediaPreview video') || q('#previewMedia img, #previewMedia video');
+    }
+    return q('#mediaPreview img, #mediaPreview video') || q('#comicPreviewImg') || q('#previewMedia img, #previewMedia video');
   }
 
   function makeMediaBox(className='destination-media-box') {
@@ -127,12 +130,16 @@
     media.removeAttribute('id');
     media.removeAttribute('style');
     media.className = 'destination-preview-media-node';
-    if (media.tagName === 'VIDEO') {
+    if (media.tagName === 'IMG') {
+      media.decoding = 'async';
+      media.loading = 'eager';
+      media.draggable = false;
+    } else if (media.tagName === 'VIDEO') {
       media.autoplay = false;
       media.muted = true;
       media.playsInline = true;
       media.preload = 'metadata';
-      media.controls = true;
+      media.controls = false;
     }
     box.appendChild(media);
     return box;
@@ -145,7 +152,7 @@
     return el;
   }
 
-  function profileHeader(subtitle='Sponsored preview') {
+  function profileHeader(subtitle='Preview') {
     const row = document.createElement('div');
     row.className = 'destination-profile';
     row.appendChild(avatar());
@@ -217,12 +224,14 @@
       const head = document.createElement('div');
       head.className = 'destination-vertical-head';
       head.appendChild(avatar());
-      const name = document.createElement('strong'); name.textContent = 'rickparma · now';
-      const more = document.createElement('span'); more.textContent = '•••';
+      const name = document.createElement('strong');
+      name.textContent = 'rickparma · now';
+      const more = document.createElement('span');
+      more.textContent = '•••';
       head.append(name,more);
       const note = document.createElement('div');
       note.className = 'destination-story-note';
-      note.textContent = text ? 'Story captions are not displayed like feed captions.' : '';
+      note.textContent = text ? 'Story captions do not display like feed captions.' : '';
       const reply = document.createElement('div');
       reply.className = 'destination-story-reply';
       reply.textContent = 'Send message';
@@ -241,7 +250,8 @@
       head.appendChild(avatar());
       const name = document.createElement('strong');
       name.textContent = kind === 'facebook-reel' ? 'Rick Parma · Facebook Reels' : 'rickparma · Instagram Reels';
-      const more = document.createElement('span'); more.textContent = '•••';
+      const more = document.createElement('span');
+      more.textContent = '•••';
       head.append(name,more);
       device.appendChild(head);
     }
@@ -274,9 +284,12 @@
     content.className = 'destination-threads-content';
     const head = document.createElement('div');
     head.className = 'destination-threads-head';
-    const name = document.createElement('strong'); name.textContent = 'rickparma';
-    const age = document.createElement('span'); age.textContent = 'now';
-    const more = document.createElement('span'); more.textContent = '•••';
+    const name = document.createElement('strong');
+    name.textContent = 'rickparma';
+    const age = document.createElement('span');
+    age.textContent = 'now';
+    const more = document.createElement('span');
+    more.textContent = '•••';
     head.append(name,age,more);
     const caption = document.createElement('div');
     caption.className = 'destination-threads-caption';
@@ -345,11 +358,15 @@
     const center = track.scrollLeft + track.clientWidth/2;
     let best = 0;
     let distance = Infinity;
-    slides.forEach((slide,index) => {
+    for (let index=0; index<slides.length; index += 1) {
+      const slide = slides[index];
       const candidate = slide.offsetLeft + slide.clientWidth/2;
       const delta = Math.abs(candidate-center);
-      if (delta < distance) { distance = delta; best = index; }
-    });
+      if (delta < distance) {
+        distance = delta;
+        best = index;
+      }
+    }
     return best;
   }
 
@@ -377,36 +394,13 @@
     track?.addEventListener('scroll',() => {
       cancelAnimationFrame(scrollFrame);
       scrollFrame = requestAnimationFrame(() => {
-        currentIndex = nearestIndex();
-        updateCarouselState();
+        const next = nearestIndex();
+        if (next !== currentIndex) {
+          currentIndex = next;
+          updateCarouselState();
+        }
       });
     },{passive:true});
-
-    // The app intentionally locks page gestures to vertical. Handle horizontal swipes
-    // inside this one carousel ourselves without re-enabling horizontal page movement.
-    track?.addEventListener('touchstart',event => {
-      if (event.touches.length !== 1) return;
-      const point = event.touches[0];
-      touch = {x:point.clientX,y:point.clientY,scrollLeft:track.scrollLeft,horizontal:false};
-    },{passive:true});
-    track?.addEventListener('touchmove',event => {
-      if (!touch || event.touches.length !== 1) return;
-      const point = event.touches[0];
-      const dx = point.clientX-touch.x;
-      const dy = point.clientY-touch.y;
-      if (!touch.horizontal && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)*1.15) touch.horizontal = true;
-      if (!touch.horizontal) return;
-      event.preventDefault();
-      track.scrollLeft = touch.scrollLeft-dx;
-    },{passive:false});
-    const finishTouch = () => {
-      if (!touch) return;
-      const wasHorizontal = touch.horizontal;
-      touch = null;
-      if (wasHorizontal) slideTo(nearestIndex());
-    };
-    track?.addEventListener('touchend',finishTouch,{passive:true});
-    track?.addEventListener('touchcancel',finishTouch,{passive:true});
   }
 
   function renderDestinationPreviews() {
@@ -415,8 +409,8 @@
     const track = q('#destinationPreviewTrack',wrap);
     const dots = q('#destinationPreviewDots',wrap);
     if (!track || !dots) return;
-    track.innerHTML = '';
-    dots.innerHTML = '';
+    track.replaceChildren();
+    dots.replaceChildren();
     const destinations = selectedDestinations();
     const text = currentCaption();
 
@@ -427,29 +421,38 @@
       track.appendChild(empty);
       const counter = q('#destinationPreviewCounter');
       if (counter) counter.textContent = 'No destinations selected';
-      q('#destinationPreviewPrev').disabled = true;
-      q('#destinationPreviewNext').disabled = true;
+      const prev = q('#destinationPreviewPrev');
+      const next = q('#destinationPreviewNext');
+      if (prev) prev.disabled = true;
+      if (next) next.disabled = true;
       return;
     }
 
+    const slideFragment = document.createDocumentFragment();
+    const dotFragment = document.createDocumentFragment();
     destinations.forEach((destination,index) => {
       const slide = document.createElement('article');
       slide.className = 'destination-preview-slide';
       slide.dataset.label = destination.short;
+      slide.dataset.ratio = destination.ratio;
       const label = document.createElement('div');
       label.className = 'destination-preview-label';
-      const name = document.createElement('span'); name.textContent = destination.label;
-      const hint = document.createElement('span'); hint.textContent = index === 0 ? 'Swipe left / right' : 'Destination preview';
+      const name = document.createElement('span');
+      name.textContent = destination.label;
+      const hint = document.createElement('span');
+      hint.textContent = `${destination.ratio} · ${destination.layout}`;
       label.append(name,hint);
       slide.append(label,deviceFor(destination,text));
-      track.appendChild(slide);
+      slideFragment.appendChild(slide);
 
       const dot = document.createElement('button');
       dot.type = 'button';
       dot.dataset.previewIndex = String(index);
       dot.setAttribute('aria-label',`Show ${destination.label}`);
-      dots.appendChild(dot);
+      dotFragment.appendChild(dot);
     });
+    track.appendChild(slideFragment);
+    dots.appendChild(dotFragment);
 
     currentIndex = 0;
     requestAnimationFrame(() => {
@@ -458,11 +461,26 @@
     });
   }
 
+  function refreshCaptionOnly() {
+    const text = currentCaption() || 'Your caption will appear here.';
+    qa('.destination-caption').forEach(node => {
+      const strong = node.querySelector('strong');
+      if (strong) node.replaceChildren(strong,document.createTextNode(text));
+    });
+    qa('.destination-facebook-caption,.destination-threads-caption,.destination-vertical-caption').forEach(node => {
+      node.textContent = text;
+    });
+  }
+
   function liveRefresh(event) {
     const sheet = q('#previewSheet');
     if (!sheet || sheet.classList.contains('hidden')) return;
     const target = event?.target;
-    if (target && !target.matches?.('#caption,.platform-chip input,input[name="igType"],input[name="fbType"],#mediaInput')) return;
+    if (target?.matches?.('#caption')) {
+      refreshCaptionOnly();
+      return;
+    }
+    if (target && !target.matches?.('.platform-chip input,input[name="igType"],input[name="fbType"],#mediaInput')) return;
     renderDestinationPreviews();
   }
 

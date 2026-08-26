@@ -16,13 +16,16 @@ test('Create cleanup consolidates media upload into the Choose Media section', (
   assert.doesNotMatch(code, /Choose photo or video from my phone/);
 });
 
-test('Create cleanup keeps generated comic in place and hides redundant compact preview', () => {
+test('Create cleanup keeps generated comic in place and always hides redundant compact preview', () => {
   assert.match(code, /stage15-comic-generated-media/);
   assert.match(code, /#comicMakeBtn/);
   assert.match(code, /savedY = window\.scrollY/);
   assert.match(code, /drop\.scrollIntoView = \(\) => \{\}/);
   assert.match(code, /window\.scrollTo\(\{ top:savedY/);
-  assert.match(code, /after === before/);
+  assert.match(code, /stage15-comic-generated-media #dropZone\.stage15-compact-media/);
+  assert.match(code, /stage15-comic-generated-media #mediaPreview/);
+  assert.match(code, /stage15-comic-generated-media #mediaActions/);
+  assert.doesNotMatch(code, /after === before/);
 });
 
 test('manual media upload restores the normal selected-media preview', () => {

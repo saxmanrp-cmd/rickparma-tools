@@ -11,7 +11,6 @@ test('Preview becomes a destination-aware horizontal carousel', () => {
   assert.match(code, /Destination Previews/);
   assert.match(code, /destination-preview-track/);
   assert.match(code, /scroll-snap-type:x mandatory/);
-  assert.match(code, /Swipe left \/ right/);
   assert.match(code, /instagram_post/);
   assert.match(code, /instagram_story/);
   assert.match(code, /instagram_reel/);
@@ -31,15 +30,36 @@ test('Carousel reads the destinations selected by the recommendation/help flow',
   assert.match(code, /\.platform-chip\[data-platform="threads"\]/);
 });
 
-test('Carousel supports iPhone horizontal swipes without unlocking horizontal page scrolling', () => {
+test('Destination previews use the real 4:5 feed and 9:16 vertical aspect ratios', () => {
+  const code = read('public/destination-preview-carousel.js');
+  assert.match(code, /instagram_post:.*ratio:'4:5'/);
+  assert.match(code, /instagram_story:.*ratio:'9:16'/);
+  assert.match(code, /instagram_reel:.*ratio:'9:16'/);
+  assert.match(code, /facebook_reel:.*ratio:'9:16'/);
+  assert.match(code, /tiktok:.*ratio:'9:16'/);
+  assert.match(code, /threads:.*ratio:'4:5'/);
+  assert.match(code, /aspect-ratio:9\/16/);
+  assert.match(code, /aspect-ratio:4\/5/);
+});
+
+test('Carousel uses native iPhone horizontal scrolling instead of manual touchmove work', () => {
   const code = read('public/destination-preview-carousel.js');
   const verticalLock = read('public/vertical-scroll-lock.js');
-  assert.match(code, /touchstart/);
-  assert.match(code, /touchmove/);
-  assert.match(code, /event\.preventDefault\(\)/);
-  assert.match(code, /track\.scrollLeft = touch\.scrollLeft-dx/);
+  assert.match(code, /-webkit-overflow-scrolling:touch/);
+  assert.match(code, /touch-action:pan-x!important/);
+  assert.match(code, /scroll-behavior:smooth/);
+  assert.doesNotMatch(code, /track\.scrollLeft = touch\.scrollLeft-dx/);
+  assert.doesNotMatch(code, /touchmove/);
   assert.match(verticalLock, /overflow-x:hidden!important/);
-  assert.match(verticalLock, /touch-action:pan-y!important/);
+  assert.match(verticalLock, /#previewSheet \.destination-preview-track/);
+  assert.match(verticalLock, /touch-action:pan-x!important/);
+});
+
+test('Caption edits refresh preview copy without rebuilding every destination card', () => {
+  const code = read('public/destination-preview-carousel.js');
+  assert.match(code, /function refreshCaptionOnly/);
+  assert.match(code, /target\?\.matches\?\.\('#caption'\)/);
+  assert.match(code, /refreshCaptionOnly\(\)/);
 });
 
 test('Create flow loads the destination preview carousel', () => {
