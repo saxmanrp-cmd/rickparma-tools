@@ -38,6 +38,14 @@
     document.body.appendChild(script);
   }
 
+  function loadCreateShareImage() {
+    if (document.querySelector('script[data-create-share-image]')) return;
+    const script = document.createElement('script');
+    script.src = '/create-share-image.js';
+    script.dataset.createShareImage = '1';
+    document.body.appendChild(script);
+  }
+
   function loadSmartRatioPeopleReach() {
     if (document.querySelector('script[data-smart-ratio-people-reach]')) {
       loadCreateFlowHingesFix();
@@ -90,5 +98,6 @@
   window.retireComicFullscreenEditor = retireComicFullscreenEditor;
   retireComicFullscreenEditor();
   loadSmartScheduleAwareness();
+  loadCreateShareImage();
   loadDestinationPreviewCarousel();
 })();
