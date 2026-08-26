@@ -22,11 +22,23 @@
     overlay?.remove();
   }
 
+  function loadDestinationPreviewPolish() {
+    if (document.querySelector('script[data-destination-preview-polish]')) return;
+    const script = document.createElement('script');
+    script.src = '/destination-preview-polish.js';
+    script.dataset.destinationPreviewPolish = '1';
+    document.body.appendChild(script);
+  }
+
   function loadDestinationPreviewCarousel() {
-    if (document.querySelector('script[data-destination-preview-carousel]')) return;
+    if (document.querySelector('script[data-destination-preview-carousel]')) {
+      loadDestinationPreviewPolish();
+      return;
+    }
     const script = document.createElement('script');
     script.src = '/destination-preview-carousel.js';
     script.dataset.destinationPreviewCarousel = '1';
+    script.addEventListener('load',loadDestinationPreviewPolish,{once:true});
     document.body.appendChild(script);
   }
 
