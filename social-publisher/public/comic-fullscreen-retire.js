@@ -22,11 +22,23 @@
     overlay?.remove();
   }
 
+  function loadCreateFlowControls() {
+    if (document.querySelector('script[data-create-flow-controls-v2]')) return;
+    const script = document.createElement('script');
+    script.src = '/create-flow-controls-v2.js';
+    script.dataset.createFlowControlsV2 = '1';
+    document.body.appendChild(script);
+  }
+
   function loadDestinationPreviewPolish() {
-    if (document.querySelector('script[data-destination-preview-polish]')) return;
+    if (document.querySelector('script[data-destination-preview-polish]')) {
+      loadCreateFlowControls();
+      return;
+    }
     const script = document.createElement('script');
     script.src = '/destination-preview-polish.js';
     script.dataset.destinationPreviewPolish = '1';
+    script.addEventListener('load',loadCreateFlowControls,{once:true});
     document.body.appendChild(script);
   }
 
