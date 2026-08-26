@@ -68,6 +68,22 @@
     });
   }
 
+  function loadVerticalScrollLock() {
+    if (document.querySelector('script[data-vertical-scroll-lock]')) return;
+    const script = document.createElement('script');
+    script.src = '/vertical-scroll-lock.js';
+    script.dataset.verticalScrollLock = '1';
+    document.body.appendChild(script);
+  }
+
+  function loadPeopleTalkingCategoryCleanup() {
+    if (document.querySelector('script[data-people-talking-category-cleanup]')) return;
+    const script = document.createElement('script');
+    script.src = '/people-talking-category-cleanup.js';
+    script.dataset.peopleTalkingCategoryCleanup = '1';
+    document.body.appendChild(script);
+  }
+
   function loadLegacyMediaPurge() {
     if (document.querySelector('script[data-legacy-media-purge]')) return;
     const script = document.createElement('script');
@@ -141,8 +157,9 @@
   }
 
   async function boot() {
-    // Media is now a Background Library. Suppress the old gallery, install auto-mapping,
-    // then start the real Background Library before any naming/migration fetches.
+    // Lock the app to vertical panning, retire the duplicate category, then start Media.
+    loadVerticalScrollLock();
+    loadPeopleTalkingCategoryCleanup();
     loadLegacyMediaPurge();
     loadAutoBubbleMap();
     loadMediaBackgroundLibrary();
