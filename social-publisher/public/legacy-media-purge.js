@@ -1,5 +1,5 @@
 // The Media tab is now owned by the Background Library.
-// Remove the old prototype Media gallery so it cannot flash back in during refresh/sync.
+// Clear old prototype media and stop the old renderer WITHOUT removing the shared mount container.
 (() => {
   const STORAGE_KEY = 'socialPublisherV3';
 
@@ -14,13 +14,6 @@
     } catch {}
   }
 
-  function removeLegacyMediaDom() {
-    const view = document.querySelector('#view-media');
-    if (!view) return;
-    view.querySelector(':scope > .page-row')?.remove();
-    view.querySelector(':scope > #mediaLibrary')?.remove();
-  }
-
   function disableLegacyRenderer() {
     try {
       if (typeof window.renderMediaLibrary === 'function') {
@@ -29,18 +22,27 @@
     } catch {}
   }
 
+  function hideLegacyTiles() {
+    const media = document.querySelector('#mediaLibrary');
+    if (!media || media.querySelector('.bg-media-shell')) return;
+    media.querySelectorAll(':scope > .media-tile').forEach(node => node.remove());
+    if (!media.children.length) {
+      media.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div><strong>Loading backgrounds…</strong></div></div>';
+    }
+  }
+
   function installGuard() {
-    const view = document.querySelector('#view-media');
-    if (!view || view.dataset.legacyMediaGuard === '1') return;
-    view.dataset.legacyMediaGuard = '1';
-    const observer = new MutationObserver(() => removeLegacyMediaDom());
-    observer.observe(view, { childList: true });
+    const media = document.querySelector('#mediaLibrary');
+    if (!media || media.dataset.legacyMediaGuard === '1') return;
+    media.dataset.legacyMediaGuard = '1';
+    const observer = new MutationObserver(() => hideLegacyTiles());
+    observer.observe(media, { childList: true });
   }
 
   function boot() {
     clearPrototypeMedia();
     disableLegacyRenderer();
-    removeLegacyMediaDom();
+    hideLegacyTiles();
     installGuard();
   }
 
