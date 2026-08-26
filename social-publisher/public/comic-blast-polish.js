@@ -68,11 +68,25 @@
     });
   }
 
+  function loadMediaBackgroundLibraryFix() {
+    if (document.querySelector('script[data-media-background-library-fix]')) return;
+    const fix = document.createElement('script');
+    fix.src = '/media-background-library-fix.js';
+    fix.dataset.mediaBackgroundLibraryFix = '1';
+    document.body.appendChild(fix);
+  }
+
   function loadMediaBackgroundLibrary() {
-    if (document.querySelector('script[data-media-background-library]')) return;
+    const existing = document.querySelector('script[data-media-background-library]');
+    if (existing) {
+      if (document.querySelector('.bg-media-shell')) loadMediaBackgroundLibraryFix();
+      else existing.addEventListener('load',loadMediaBackgroundLibraryFix,{once:true});
+      return;
+    }
     const script = document.createElement('script');
     script.src = '/media-background-library.js';
     script.dataset.mediaBackgroundLibrary = '1';
+    script.addEventListener('load',loadMediaBackgroundLibraryFix,{once:true});
     document.body.appendChild(script);
   }
 
