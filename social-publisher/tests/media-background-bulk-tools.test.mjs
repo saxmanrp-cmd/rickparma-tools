@@ -16,7 +16,8 @@ test('Media background library supports stable multi-select category moves', () 
 });
 
 test('stable selection avoids observer feedback loops and full-grid work per tap', () => {
-  assert.doesNotMatch(stable,/MutationObserver/);
+  assert.doesNotMatch(stable,/new\s+MutationObserver/);
+  assert.doesNotMatch(stable,/\.observe\(/);
   assert.match(stable,/card\.classList\.toggle\('bulk-selected',active\)/);
   assert.match(stable,/loading = 'lazy'/);
   assert.match(stable,/decoding = 'async'/);
