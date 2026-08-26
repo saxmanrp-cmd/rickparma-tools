@@ -152,7 +152,12 @@
   }
 
   async function boot() {
+    // Media is now a Background Library. Suppress the old gallery, install auto-mapping,
+    // then start the real Background Library before any naming/migration fetches.
     loadLegacyMediaPurge();
+    loadAutoBubbleMap();
+    loadMediaBackgroundLibrary();
+
     try {
       const response = await fetch('/api/comic-templates',{cache:'no-store'});
       const data = await response.json().catch(() => ({}));
@@ -168,8 +173,6 @@
     q('#comicFormatPicker')?.addEventListener('change',refreshLabelsSoon);
     q('#comicManagerCategory')?.addEventListener('change',refreshLabelsSoon);
     q('#comicBlastStudio')?.addEventListener('toggle',refreshLabelsSoon);
-    loadAutoBubbleMap();
-    loadMediaBackgroundLibrary();
     loadMovieBackgroundAutoNames();
     loadRickParmaBackgroundAutoNames();
   }
