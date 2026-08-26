@@ -5,25 +5,29 @@ import fs from 'node:fs';
 const code = fs.readFileSync(new URL('../public/stage15-create-cleanup.js', import.meta.url), 'utf8');
 const loader = fs.readFileSync(new URL('../public/recovery-text-blast.js', import.meta.url), 'utf8');
 
-test('Create cleanup uses a compact media source picker', () => {
-  assert.match(code, /Choose Media/);
-  assert.match(code, /Use media already in the app/);
-  assert.match(code, /Choose photo or video from my phone/);
-  assert.match(code, /nav-item\[data-view=\\?"media\\?"\]/);
+test('Create cleanup consolidates media upload into the Choose Media section', () => {
+  assert.match(code, /🖼 Choose Media/);
+  assert.match(code, /Upload a Photo or Video/);
+  assert.match(code, /stage15UploadMediaBtn/);
+  assert.match(code, /comic-studio-inner/);
   assert.match(code, /mediaInput/);
+  assert.doesNotMatch(code, /stage15MediaSource/);
+  assert.doesNotMatch(code, /Use media already in the app/);
+  assert.doesNotMatch(code, /Choose photo or video from my phone/);
 });
 
-test('Create cleanup orders caption before helper tools', () => {
-  assert.match(code, /mediaCard\.after\(captionCard\)/);
+test('Create cleanup orders caption immediately after Choose Media and before helper tools', () => {
+  assert.match(code, /comic\.after\(captionCard\)/);
   assert.match(code, /captionCard\.after\(tools\)/);
   assert.match(code, /Make It Easy/);
   assert.match(code, /Use My Suggestions/);
 });
 
-test('Create cleanup trims extra copy and renames Comic Blast', () => {
+test('Create cleanup removes the separate legacy media card and trims extra copy', () => {
   assert.match(code, /#easyCreateIntro/);
   assert.match(code, /comic-studio-copy/);
-  assert.match(code, /Pick a Background/);
+  assert.match(code, /stage15MediaCard/);
+  assert.match(code, /oldCard\.remove\(\)/);
 });
 
 test('recovery loader boots Stage 15 after Comic Blast polish', () => {
