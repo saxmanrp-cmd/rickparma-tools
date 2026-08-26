@@ -68,6 +68,14 @@
     });
   }
 
+  function loadLegacyMediaPurge() {
+    if (document.querySelector('script[data-legacy-media-purge]')) return;
+    const script = document.createElement('script');
+    script.src = '/legacy-media-purge.js';
+    script.dataset.legacyMediaPurge = '1';
+    document.body.appendChild(script);
+  }
+
   function loadMediaBackgroundLibraryFix() {
     if (document.querySelector('script[data-media-background-library-fix]')) return;
     const fix = document.createElement('script');
@@ -144,6 +152,7 @@
   }
 
   async function boot() {
+    loadLegacyMediaPurge();
     try {
       const response = await fetch('/api/comic-templates',{cache:'no-store'});
       const data = await response.json().catch(() => ({}));
