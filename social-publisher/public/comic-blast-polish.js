@@ -152,7 +152,10 @@
   }
 
   async function boot() {
+    // Media is now a Background Library. Start that UI immediately, before any naming/migration fetches.
     loadLegacyMediaPurge();
+    loadMediaBackgroundLibrary();
+
     try {
       const response = await fetch('/api/comic-templates',{cache:'no-store'});
       const data = await response.json().catch(() => ({}));
@@ -169,7 +172,6 @@
     q('#comicManagerCategory')?.addEventListener('change',refreshLabelsSoon);
     q('#comicBlastStudio')?.addEventListener('toggle',refreshLabelsSoon);
     loadAutoBubbleMap();
-    loadMediaBackgroundLibrary();
     loadMovieBackgroundAutoNames();
     loadRickParmaBackgroundAutoNames();
   }
