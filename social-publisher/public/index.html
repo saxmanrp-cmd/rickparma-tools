@@ -154,7 +154,9 @@
   <div id="loginOverlay" class="login-overlay hidden"><form id="loginForm" class="login-card"><div class="login-logo">RP</div><h2>Social Publisher</h2><input id="appPassword" type="password" autocomplete="current-password" placeholder="Password" required /><button class="button primary full" type="submit">Open App</button><div id="loginError" class="login-error hidden">Wrong password</div></form></div>
   <div id="toast" class="toast" role="status"></div>
 
+  <script src="/media-boot-guard.js"></script>
   <script src="/app.js"></script>
+  <script>window.__lockLegacyMedia?.();</script>
   <script src="/reach-intelligence.js"></script>
   <script src="/gig-campaign.js"></script>
   <script src="/calendar-sync.js"></script>
