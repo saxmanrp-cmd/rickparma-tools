@@ -22,6 +22,8 @@
         background:#090e15!important;overflow:hidden!important
       }
       body.recovery-easy #dropZone.stage15-compact-media.stage15-empty-media{display:none!important}
+      body.recovery-easy.stage15-comic-generated-media #comicBlastStudio #dropZone.stage15-compact-media,
+      body.recovery-easy.stage15-comic-generated-media #comicBlastStudio #mediaActions{display:none!important}
       body.recovery-easy #dropZone.stage15-compact-media #mediaPreview{min-height:0!important;max-height:180px!important;overflow:hidden!important}
       body.recovery-easy #dropZone.stage15-compact-media #mediaPreview img,
       body.recovery-easy #dropZone.stage15-compact-media #mediaPreview video{
@@ -51,6 +53,10 @@
     return Boolean(preview && !preview.classList.contains('hidden') && preview.children.length);
   }
 
+  function suppressGeneratedPreview(value) {
+    document.body.classList.toggle('stage15-comic-generated-media', Boolean(value));
+  }
+
   function refreshMediaPreview() {
     const drop = q('#dropZone');
     if (!drop) return;
@@ -72,6 +78,7 @@
       upload.type = 'button';
       upload.textContent = 'Upload a Photo or Video';
       upload.addEventListener('click', () => {
+        suppressGeneratedPreview(false);
         comic.open = true;
         q('#mediaInput')?.click();
       });
@@ -88,6 +95,52 @@
 
     refreshMediaPreview();
     return comic;
+  }
+
+  function installComicMakeGuard() {
+    if (document.documentElement.dataset.stage15ComicMakeGuard === '1') return;
+    document.documentElement.dataset.stage15ComicMakeGuard = '1';
+
+    document.addEventListener('click', event => {
+      const button = event.target.closest?.('#comicMakeBtn');
+      if (!button) return;
+
+      const savedY = window.scrollY;
+      const preview = q('#mediaPreview');
+      const before = preview?.innerHTML || '';
+      const drop = q('#dropZone');
+      let originalScrollIntoView = null;
+
+      suppressGeneratedPreview(true);
+
+      if (drop && typeof drop.scrollIntoView === 'function') {
+        originalScrollIntoView = drop.scrollIntoView;
+        try { drop.scrollIntoView = () => {}; } catch {}
+      }
+
+      let checks = 0;
+      const finish = () => {
+        checks += 1;
+        const stillMaking = button.disabled || /making graphic/i.test(button.textContent || '');
+        if (stillMaking && checks < 240) {
+          setTimeout(finish, 50);
+          return;
+        }
+
+        if (drop && originalScrollIntoView) {
+          try { drop.scrollIntoView = originalScrollIntoView; } catch {}
+        }
+
+        const after = q('#mediaPreview')?.innerHTML || '';
+        if (after === before) suppressGeneratedPreview(false);
+
+        requestAnimationFrame(() => {
+          window.scrollTo({ top:savedY, left:0, behavior:'auto' });
+        });
+      };
+
+      setTimeout(finish, 50);
+    }, { capture:true });
   }
 
   function renameAndTrim() {
@@ -155,14 +208,19 @@
 
   function boot() {
     apply();
+    installComicMakeGuard();
     const composer = q('#view-create .composer');
     if (composer) new MutationObserver(schedule).observe(composer,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
     q('#mediaInput')?.addEventListener('change',() => {
+      suppressGeneratedPreview(false);
       const comic = q('#comicBlastStudio');
       if (comic) comic.open = true;
       setTimeout(schedule,40);
     });
-    q('#removeMediaBtn')?.addEventListener('click',() => setTimeout(schedule,40));
+    q('#removeMediaBtn')?.addEventListener('click',() => {
+      suppressGeneratedPreview(false);
+      setTimeout(schedule,40);
+    });
     q('.nav-item[data-view="create"]')?.addEventListener('click',() => setTimeout(schedule,80));
   }
 
