@@ -20,21 +20,33 @@ test('Text Blast is moved to the main caption workflow', () => {
   assert.match(code, /Speech Bubble Text/);
 });
 
-test('Stage 13 keeps typed bubble text before the exact make handler runs', () => {
+test('Comic polish keeps typed bubble text before the exact make handler runs', () => {
   assert.match(fix, /window\.addEventListener\('click',preserveBubbleTextBeforeMake,true\)/);
   assert.match(fix, /#comicMakeBtn,#comicFullscreenMake/);
   assert.match(fix, /full\.innerText = value/);
   assert.match(fix, /area\.value = value/);
 });
 
-test('Stage 13 removes the visible size sliders but keeps button sizing controls', () => {
+test('Comic polish removes sliders and plus-minus buttons so Fit to Bubble is the sizing control', () => {
   assert.match(fix, /#comicFontRange/);
+  assert.match(fix, /#comicFontDown/);
+  assert.match(fix, /#comicFontUp/);
   assert.match(fix, /#comicFullscreenRange/);
+  assert.match(fix, /#comicFullscreenDown/);
+  assert.match(fix, /#comicFullscreenUp/);
+  assert.match(fix, /comic-font-row/);
+  assert.match(fix, /comic-fullscreen-font/);
   assert.match(fix, /display:none!important/);
-  assert.match(fix, /comic-font-row\{grid-template-columns:1fr 1fr/);
 });
 
-test('recovery loader boots exact editor then Stage 13 polish', () => {
+test('Comic polish exposes a clear Pull From Text Blast button in the caption area', () => {
+  assert.match(fix, /comicCaptionPullBtn/);
+  assert.match(fix, /Pull From Text Blast/);
+  assert.match(fix, /comicCaptionBlastPicker/);
+  assert.match(fix, /block\.classList\.toggle\('is-open'/);
+});
+
+test('recovery loader boots exact editor then Comic polish', () => {
   assert.match(loader, /comic-blast-wysiwyg\.js/);
   assert.match(loader, /data-comic-blast-wysiwyg/);
   assert.match(loader, /comic-blast-stage13-fix\.js/);
