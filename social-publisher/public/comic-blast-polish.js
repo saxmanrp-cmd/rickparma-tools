@@ -90,6 +90,14 @@
     document.body.appendChild(script);
   }
 
+  function loadMovieBackgroundAutoNames() {
+    if (document.querySelector('script[data-movie-background-auto-names]')) return;
+    const script = document.createElement('script');
+    script.src = '/movie-background-auto-names.js';
+    script.dataset.movieBackgroundAutoNames = '1';
+    document.body.appendChild(script);
+  }
+
   async function boot() {
     try {
       const response = await fetch('/api/comic-templates',{cache:'no-store'});
@@ -107,6 +115,7 @@
     q('#comicManagerCategory')?.addEventListener('change',refreshLabelsSoon);
     q('#comicBlastStudio')?.addEventListener('toggle',refreshLabelsSoon);
     loadMediaBackgroundLibrary();
+    loadMovieBackgroundAutoNames();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',boot,{once:true});
