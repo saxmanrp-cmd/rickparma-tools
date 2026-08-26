@@ -22,11 +22,23 @@
     overlay?.remove();
   }
 
+  function loadSmartRatioPeopleReach() {
+    if (document.querySelector('script[data-smart-ratio-people-reach]')) return;
+    const script = document.createElement('script');
+    script.src = '/smart-ratio-people-reach.js';
+    script.dataset.smartRatioPeopleReach = '1';
+    document.body.appendChild(script);
+  }
+
   function loadCreateFlowControls() {
-    if (document.querySelector('script[data-create-flow-controls-v2]')) return;
+    if (document.querySelector('script[data-create-flow-controls-v2]')) {
+      loadSmartRatioPeopleReach();
+      return;
+    }
     const script = document.createElement('script');
     script.src = '/create-flow-controls-v2.js';
     script.dataset.createFlowControlsV2 = '1';
+    script.addEventListener('load',loadSmartRatioPeopleReach,{once:true});
     document.body.appendChild(script);
   }
 
