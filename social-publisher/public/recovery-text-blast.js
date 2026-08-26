@@ -34,16 +34,29 @@
     document.body.appendChild(exact);
   }
 
+  function loadComicTextStyle() {
+    const existing = document.querySelector('script[data-comic-text-style]');
+    if (existing) {
+      loadWysiwyg();
+      return;
+    }
+    const style = document.createElement('script');
+    style.src = '/comic-text-style.js';
+    style.dataset.comicTextStyle = '1';
+    style.addEventListener('load',loadWysiwyg,{once:true});
+    document.body.appendChild(style);
+  }
+
   function loadShowHelper() {
     const existing = document.querySelector('script[data-recovery-show-helper]');
     if (existing) {
-      loadWysiwyg();
+      loadComicTextStyle();
       return;
     }
     const helper = document.createElement('script');
     helper.src = '/recovery-show-helper.js';
     helper.dataset.recoveryShowHelper = '1';
-    helper.addEventListener('load',loadWysiwyg,{once:true});
+    helper.addEventListener('load',loadComicTextStyle,{once:true});
     document.body.appendChild(helper);
   }
 
