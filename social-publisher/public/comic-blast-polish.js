@@ -84,19 +84,11 @@
     document.body.appendChild(fix);
   }
 
-  function loadMediaBackgroundBulkTools() {
-    if (document.querySelector('script[data-media-background-bulk-tools]')) return;
+  function loadMediaBackgroundBulkStable() {
+    if (document.querySelector('script[data-media-background-bulk-stable]')) return;
     const script = document.createElement('script');
-    script.src = '/media-background-bulk-tools.js';
-    script.dataset.mediaBackgroundBulkTools = '1';
-    document.body.appendChild(script);
-  }
-
-  function loadMediaBackgroundBulkFix() {
-    if (document.querySelector('script[data-media-background-bulk-fix]')) return;
-    const script = document.createElement('script');
-    script.src = '/media-background-bulk-fix.js';
-    script.dataset.mediaBackgroundBulkFix = '1';
+    script.src = '/media-background-bulk-stable.js';
+    script.dataset.mediaBackgroundBulkStable = '1';
     document.body.appendChild(script);
   }
 
@@ -105,13 +97,11 @@
     if (existing) {
       if (document.querySelector('.bg-media-shell')) {
         loadMediaBackgroundLibraryFix();
-        loadMediaBackgroundBulkTools();
-        loadMediaBackgroundBulkFix();
+        loadMediaBackgroundBulkStable();
       } else {
         existing.addEventListener('load',() => {
           loadMediaBackgroundLibraryFix();
-          loadMediaBackgroundBulkTools();
-          loadMediaBackgroundBulkFix();
+          loadMediaBackgroundBulkStable();
         },{once:true});
       }
       return;
@@ -121,8 +111,7 @@
     script.dataset.mediaBackgroundLibrary = '1';
     script.addEventListener('load',() => {
       loadMediaBackgroundLibraryFix();
-      loadMediaBackgroundBulkTools();
-      loadMediaBackgroundBulkFix();
+      loadMediaBackgroundBulkStable();
     },{once:true});
     document.body.appendChild(script);
   }
