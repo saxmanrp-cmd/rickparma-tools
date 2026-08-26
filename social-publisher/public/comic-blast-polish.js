@@ -152,8 +152,10 @@
   }
 
   async function boot() {
-    // Media is now a Background Library. Start that UI immediately, before any naming/migration fetches.
+    // Media is now a Background Library. Suppress the old gallery, install auto-mapping,
+    // then start the real Background Library before any naming/migration fetches.
     loadLegacyMediaPurge();
+    loadAutoBubbleMap();
     loadMediaBackgroundLibrary();
 
     try {
@@ -171,7 +173,6 @@
     q('#comicFormatPicker')?.addEventListener('change',refreshLabelsSoon);
     q('#comicManagerCategory')?.addEventListener('change',refreshLabelsSoon);
     q('#comicBlastStudio')?.addEventListener('toggle',refreshLabelsSoon);
-    loadAutoBubbleMap();
     loadMovieBackgroundAutoNames();
     loadRickParmaBackgroundAutoNames();
   }
