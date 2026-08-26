@@ -98,6 +98,22 @@
     document.body.appendChild(script);
   }
 
+  function loadRickParmaBackgroundAutoNames() {
+    if (document.querySelector('script[data-rick-parma-background-auto-names]')) return;
+    const script = document.createElement('script');
+    script.src = '/rick-parma-background-auto-names.js';
+    script.dataset.rickParmaBackgroundAutoNames = '1';
+    document.body.appendChild(script);
+  }
+
+  function loadAutoBubbleMap() {
+    if (document.querySelector('script[data-auto-bubble-map]')) return;
+    const script = document.createElement('script');
+    script.src = '/auto-bubble-map.js';
+    script.dataset.autoBubbleMap = '1';
+    document.body.appendChild(script);
+  }
+
   async function boot() {
     try {
       const response = await fetch('/api/comic-templates',{cache:'no-store'});
@@ -114,8 +130,10 @@
     q('#comicFormatPicker')?.addEventListener('change',refreshLabelsSoon);
     q('#comicManagerCategory')?.addEventListener('change',refreshLabelsSoon);
     q('#comicBlastStudio')?.addEventListener('toggle',refreshLabelsSoon);
+    loadAutoBubbleMap();
     loadMediaBackgroundLibrary();
     loadMovieBackgroundAutoNames();
+    loadRickParmaBackgroundAutoNames();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',boot,{once:true});
