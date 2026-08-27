@@ -40,8 +40,22 @@
     } catch {}
   }
 
+  function loadRecoveryFeature(src, marker) {
+    if (document.querySelector(`script[data-recovery-feature="${marker}"]`)) return;
+    const script = document.createElement('script');
+    script.src = `${src}?v=20260826-faceid`;
+    script.async = false;
+    script.dataset.recoveryFeature = marker;
+    document.body.appendChild(script);
+  }
+
   clearLocalPrototypeMedia();
   addEarlyStyle();
   window.__lockLegacyMedia = lockLegacyRenderer;
   lockLegacyRenderer();
+
+  // These two features are intentionally small and independent of the old disabled feature chain.
+  // Home Screen icon metadata is safe at boot, and passkeys preserve password login as fallback.
+  loadRecoveryFeature('/app-icons.js','app-icons');
+  loadRecoveryFeature('/passkeys.js','passkeys');
 })();
