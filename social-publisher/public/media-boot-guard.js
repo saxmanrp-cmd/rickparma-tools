@@ -40,8 +40,32 @@
     } catch {}
   }
 
+  function loadRecoveryFeature(src, marker) {
+    if (document.querySelector(`script[data-recovery-feature="${marker}"]`)) return;
+    const script = document.createElement('script');
+    script.src = `${src}?v=20260826-faceid`;
+    script.async = false;
+    script.dataset.recoveryFeature = marker;
+    document.body.appendChild(script);
+  }
+
+  function blockLegacySmartPlanAutoload() {
+    if (document.querySelector('script[data-smart-plan]')) return;
+    const marker = document.createElement('script');
+    marker.type = 'application/json';
+    marker.dataset.smartPlan = 'recovery-disabled';
+    marker.textContent = '{}';
+    document.body.appendChild(marker);
+  }
+
   clearLocalPrototypeMedia();
   addEarlyStyle();
   window.__lockLegacyMedia = lockLegacyRenderer;
   lockLegacyRenderer();
+
+  // Re-enable Face ID/passkeys without re-enabling the older disabled feature chain.
+  // Password login remains the fallback at all times.
+  blockLegacySmartPlanAutoload();
+  loadRecoveryFeature('/app-icons.js','app-icons');
+  loadRecoveryFeature('/passkeys.js','passkeys');
 })();

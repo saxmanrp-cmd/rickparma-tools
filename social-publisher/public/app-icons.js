@@ -16,13 +16,9 @@
     head.appendChild(link);
   };
 
-  // Apple still prefers explicit touch-icon declarations for Home Screen installs.
-  ensureLink('apple-touch-icon','/icons/icon-120.png','120x120');
-  ensureLink('apple-touch-icon','/icons/icon-152.png','152x152');
-  ensureLink('apple-touch-icon','/icons/icon-167.png','167x167');
+  // These are the three actual icon assets needed by the current iPhone/PWA install flow.
+  // The existing 180px asset is the original Social Publisher icon artwork used by iOS.
   ensureLink('apple-touch-icon','/icons/icon-180.png','180x180');
-
-  // Browser/PWA fallbacks.
   ensureLink('icon','/icons/icon-192.png','192x192');
   ensureLink('icon','/icons/icon-512.png','512x512');
 })();
