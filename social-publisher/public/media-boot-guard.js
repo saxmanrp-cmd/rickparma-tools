@@ -49,13 +49,23 @@
     document.body.appendChild(script);
   }
 
+  function blockLegacySmartPlanAutoload() {
+    if (document.querySelector('script[data-smart-plan]')) return;
+    const marker = document.createElement('script');
+    marker.type = 'application/json';
+    marker.dataset.smartPlan = 'recovery-disabled';
+    marker.textContent = '{}';
+    document.body.appendChild(marker);
+  }
+
   clearLocalPrototypeMedia();
   addEarlyStyle();
   window.__lockLegacyMedia = lockLegacyRenderer;
   lockLegacyRenderer();
 
-  // These two features are intentionally small and independent of the old disabled feature chain.
-  // Home Screen icon metadata is safe at boot, and passkeys preserve password login as fallback.
+  // Re-enable Face ID/passkeys without re-enabling the older disabled feature chain.
+  // Password login remains the fallback at all times.
+  blockLegacySmartPlanAutoload();
   loadRecoveryFeature('/app-icons.js','app-icons');
   loadRecoveryFeature('/passkeys.js','passkeys');
 })();
