@@ -48,12 +48,16 @@
   function currentTemplateFromImage(){
     const src=q('#bgEditImage')?.getAttribute('src')||'';
     if(!src) return null;
-    return state.templates.find(t=>t.url===src || new URL(t.url,location.origin).href===new URL(src,location.origin).href) || null;
+    try {
+      return state.templates.find(t=>t.url===src || new URL(t.url,location.origin).href===new URL(src,location.origin).href) || null;
+    } catch {
+      return state.templates.find(t=>t.url===src) || null;
+    }
   }
 
   function render(){
     const preview=q('#bgMapPreview');
-    if(!preview) return;
+    if(!preview || q('#bgEditPanel')?.classList.contains('hidden')) return;
     qa('.bg-multi-map-box',preview).forEach(el=>el.remove());
     const old=q('#bgMapBox',preview); if(old) old.style.display='none';
     state.areas.forEach((a,index)=>{
@@ -70,8 +74,14 @@
 
   function wireBox(box,index,preview){
     let mode='',sx=0,sy=0,start=null;
-    const begin=(e,m)=>{e.preventDefault();state.active=index;mode=m;sx=e.clientX;sy=e.clientY;start={...state.areas[index]};box.setPointerCapture?.(e.pointerId);render();};
-    box.addEventListener('pointerdown',e=>begin(e,e.target.classList.contains('bg-multi-map-handle')?'resize':'move'));
+    box.addEventListener('pointerdown',e=>{
+      e.preventDefault();
+      state.active=index;
+      mode=e.target.classList.contains('bg-multi-map-handle')?'resize':'move';
+      sx=e.clientX; sy=e.clientY; start={...state.areas[index]};
+      box.setPointerCapture?.(e.pointerId);
+      qa('.bg-multi-map-box',preview).forEach((el,i)=>el.classList.toggle('active',i===index));
+    });
     box.addEventListener('pointermove',e=>{
       if(!mode||!start||index!==state.active)return;
       e.preventDefault(); const r=preview.getBoundingClientRect(); if(!r.width||!r.height)return;
@@ -79,7 +89,8 @@
       if(mode==='move'){a.x=clamp(start.x+dx,0,1-start.width);a.y=clamp(start.y+dy,0,1-start.height);}else{a.width=clamp(start.width+dx,.08,1-start.x);a.height=clamp(start.height+dy,.06,1-start.y);}
       box.style.left=`${a.x*100}%`;box.style.top=`${a.y*100}%`;box.style.width=`${a.width*100}%`;box.style.height=`${a.height*100}%`;
     });
-    const stop=()=>{mode='';start=null;}; box.addEventListener('pointerup',stop); box.addEventListener('pointercancel',stop);
+    const stop=()=>{mode='';start=null;};
+    box.addEventListener('pointerup',stop); box.addEventListener('pointercancel',stop);
   }
 
   function installControls(){
@@ -118,9 +129,9 @@
   }
 
   ensureStyles();
-  const observer=new MutationObserver(()=>{installControls();syncEditor();});
-  observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','src']});
-  document.addEventListener('click',e=>{if(e.target.closest?.('[data-bg-edit]')) setTimeout(syncEditor,80);});
-  window.addEventListener('focus',()=>setTimeout(syncEditor,60));
-  setTimeout(()=>{installControls();syncEditor();},300);
+  document.addEventListener('click',e=>{
+    if(e.target.closest?.('[data-bg-edit]')) setTimeout(syncEditor,60);
+  });
+  window.addEventListener('focus',()=>setTimeout(syncEditor,80));
+  setTimeout(()=>installControls(),350);
 })();
