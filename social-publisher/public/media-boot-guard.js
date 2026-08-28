@@ -43,7 +43,7 @@
   function loadRecoveryFeature(src, marker) {
     if (document.querySelector(`script[data-recovery-feature="${marker}"]`)) return;
     const script = document.createElement('script');
-    script.src = `${src}?v=20260826-faceid`;
+    script.src = `${src}?v=20260828-multitext`;
     script.async = false;
     script.dataset.recoveryFeature = marker;
     document.body.appendChild(script);
@@ -68,4 +68,5 @@
   blockLegacySmartPlanAutoload();
   loadRecoveryFeature('/app-icons.js','app-icons');
   loadRecoveryFeature('/passkeys.js','passkeys');
+  loadRecoveryFeature('/comic-multi-text.js','comic-multi-text');
 })();

@@ -3,6 +3,7 @@ const CATEGORY_KEY = `${PREFIX}_categories.json`;
 const DEFAULT_CATEGORY = 'Rick Parma Comics';
 const REMOVED_CATEGORIES = new Set(['people talking']);
 const MAX_BYTES = 30 * 1024 * 1024;
+const MAX_TEXT_AREAS = 12;
 
 const json = (data, init = {}) => new Response(JSON.stringify(data), {
   ...init,
@@ -44,6 +45,35 @@ function numberMeta(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return '';
   return String(Math.max(0, Math.min(1, n)));
+}
+
+function normalizeTextArea(value={}) {
+  const x = Math.max(0, Math.min(.95, Number(value.x) || 0));
+  const y = Math.max(0, Math.min(.95, Number(value.y) || 0));
+  const width = Math.max(.08, Math.min(1 - x, Number(value.width) || .25));
+  const height = Math.max(.06, Math.min(1 - y, Number(value.height) || .12));
+  return {x,y,width,height};
+}
+
+function normalizeTextAreas(values=[]) {
+  if (!Array.isArray(values)) return [];
+  return values.slice(0,MAX_TEXT_AREAS).map(normalizeTextArea);
+}
+
+function parseTextAreas(meta={}) {
+  try {
+    const parsed = JSON.parse(String(meta.textAreas || '[]'));
+    const areas = normalizeTextAreas(parsed);
+    if (areas.length) return areas;
+  } catch {}
+  const legacy = {
+    x:Number(meta.bubbleX || 0),
+    y:Number(meta.bubbleY || 0),
+    width:Number(meta.bubbleWidth || 0),
+    height:Number(meta.bubbleHeight || 0),
+  };
+  if (legacy.width > .08 && legacy.height > .06) return [normalizeTextArea(legacy)];
+  return [];
 }
 
 function publicMediaUrl(key) {
@@ -96,6 +126,13 @@ async function ensureCategory(env, raw) {
 function toTemplate(object) {
   const meta = object.customMetadata || {};
   const id = object.key.startsWith(PREFIX) ? object.key.slice(PREFIX.length) : object.key;
+  const textAreas = parseTextAreas(meta);
+  const first = textAreas[0] || {
+    x:Number(meta.bubbleX || 0),
+    y:Number(meta.bubbleY || 0),
+    width:Number(meta.bubbleWidth || 0),
+    height:Number(meta.bubbleHeight || 0),
+  };
   return {
     id,
     key:object.key,
@@ -106,25 +143,32 @@ function toTemplate(object) {
     format:inferFormat(id, meta.format),
     size:Number(object.size || 0),
     uploadedAt:object.uploaded ? new Date(object.uploaded).toISOString() : null,
-    bubble:{
-      x:Number(meta.bubbleX || 0),
-      y:Number(meta.bubbleY || 0),
-      width:Number(meta.bubbleWidth || 0),
-      height:Number(meta.bubbleHeight || 0),
-    },
+    bubble:{x:Number(first.x||0),y:Number(first.y||0),width:Number(first.width||0),height:Number(first.height||0)},
+    textAreas,
   };
 }
 
 function customMetadataFromHeaders(request, id, format, category) {
+  const bubble = {
+    x:Number(request.headers.get('x-bubble-x') || 0),
+    y:Number(request.headers.get('x-bubble-y') || 0),
+    width:Number(request.headers.get('x-bubble-width') || 0),
+    height:Number(request.headers.get('x-bubble-height') || 0),
+  };
+  let textAreas = [];
+  try { textAreas = normalizeTextAreas(JSON.parse(request.headers.get('x-text-areas') || '[]')); } catch {}
+  if (!textAreas.length && bubble.width > .08 && bubble.height > .06) textAreas = [normalizeTextArea(bubble)];
+  const first = textAreas[0] || bubble;
   return {
     name:safeMeta(request.headers.get('x-template-name') || id.replace(/\.[^.]+$/,'')),
     category,
     pairId:safeMeta(request.headers.get('x-template-pair') || ''),
     format,
-    bubbleX:numberMeta(request.headers.get('x-bubble-x')),
-    bubbleY:numberMeta(request.headers.get('x-bubble-y')),
-    bubbleWidth:numberMeta(request.headers.get('x-bubble-width')),
-    bubbleHeight:numberMeta(request.headers.get('x-bubble-height')),
+    bubbleX:numberMeta(first.x),
+    bubbleY:numberMeta(first.y),
+    bubbleWidth:numberMeta(first.width),
+    bubbleHeight:numberMeta(first.height),
+    textAreas:textAreas.length ? JSON.stringify(textAreas) : '',
   };
 }
 
@@ -197,16 +241,22 @@ export async function handleComicTemplateRequest(request, env={}) {
     const old = existing.customMetadata || {};
     const category = body.category !== undefined ? await ensureCategory(env, body.category) : (old.category || DEFAULT_CATEGORY);
     const format = body.format !== undefined ? inferFormat(id, body.format) : inferFormat(id, old.format);
-    const bubble = body.bubble && typeof body.bubble === 'object' ? body.bubble : {};
+
+    let textAreas = parseTextAreas(old);
+    if (Array.isArray(body.textAreas)) textAreas = normalizeTextAreas(body.textAreas);
+    else if (body.bubble && typeof body.bubble === 'object') textAreas = [normalizeTextArea(body.bubble)];
+    const first = textAreas[0] || {};
+
     const customMetadata = {
       name:body.name !== undefined ? safeMeta(body.name) : (old.name || id.replace(/\.[^.]+$/,'')),
       category,
       pairId:body.pairId !== undefined ? safeMeta(body.pairId) : (old.pairId || ''),
       format,
-      bubbleX:bubble.x !== undefined ? numberMeta(bubble.x) : (old.bubbleX || ''),
-      bubbleY:bubble.y !== undefined ? numberMeta(bubble.y) : (old.bubbleY || ''),
-      bubbleWidth:bubble.width !== undefined ? numberMeta(bubble.width) : (old.bubbleWidth || ''),
-      bubbleHeight:bubble.height !== undefined ? numberMeta(bubble.height) : (old.bubbleHeight || ''),
+      bubbleX:first.x !== undefined ? numberMeta(first.x) : (old.bubbleX || ''),
+      bubbleY:first.y !== undefined ? numberMeta(first.y) : (old.bubbleY || ''),
+      bubbleWidth:first.width !== undefined ? numberMeta(first.width) : (old.bubbleWidth || ''),
+      bubbleHeight:first.height !== undefined ? numberMeta(first.height) : (old.bubbleHeight || ''),
+      textAreas:textAreas.length ? JSON.stringify(textAreas) : (old.textAreas || ''),
     };
     const httpMetadata = existing.httpMetadata || { contentType:'application/octet-stream' };
     await env.MEDIA.put(key, existing.body, { httpMetadata, customMetadata });
