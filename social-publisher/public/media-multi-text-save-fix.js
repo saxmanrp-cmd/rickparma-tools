@@ -13,12 +13,24 @@
     return Number.isFinite(n) ? Math.max(0,Math.min(1,n/100)) : 0;
   }
 
+  function number(value,fallback=0) {
+    const n=Number(value);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
   function mappedAreas() {
     return qa('#bgMapPreview .bg-multi-map-box').map(box => ({
       x:percent(box.style.left),
       y:percent(box.style.top),
       width:percent(box.style.width),
       height:percent(box.style.height),
+      shape:box.dataset.shape === 'circle' ? 'circle' : 'box',
+      fillColor:box.dataset.fillColor || '#FFFFFF',
+      fillOpacity:number(box.dataset.fillOpacity,0),
+      borderColor:box.dataset.borderColor || '#FFFFFF',
+      borderOpacity:number(box.dataset.borderOpacity,1),
+      borderWidth:number(box.dataset.borderWidth,0),
+      cornerRadius:number(box.dataset.cornerRadius,12),
     })).filter(area => area.width > .08 && area.height > .06).slice(0,12);
   }
 
