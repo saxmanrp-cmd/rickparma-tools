@@ -43,7 +43,7 @@
   function loadRecoveryFeature(src, marker) {
     if (document.querySelector(`script[data-recovery-feature="${marker}"]`)) return;
     const script = document.createElement('script');
-    script.src = `${src}?v=20260828-media-multitext`;
+    script.src = `${src}?v=20260828-all-sizes-stability`;
     script.async = false;
     script.dataset.recoveryFeature = marker;
     document.body.appendChild(script);
@@ -70,4 +70,5 @@
   loadRecoveryFeature('/passkeys.js','passkeys');
   loadRecoveryFeature('/comic-multi-text.js','comic-multi-text');
   loadRecoveryFeature('/media-multi-text-mapping.js','media-multi-text-mapping');
+  loadRecoveryFeature('/all-sizes-scene-stability.js','all-sizes-scene-stability');
 })();
