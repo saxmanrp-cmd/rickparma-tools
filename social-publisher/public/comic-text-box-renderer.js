@@ -54,11 +54,6 @@
     return areas.map(normalize);
   }
 
-  function hasCustomStyle(area){
-    const s=normalize(area);
-    return s.shape==='circle'||s.fillOpacity>0||s.borderWidth>0||s.cornerRadius!==12;
-  }
-
   function previewEditors(){
     const primary=q('#comicBubbleText');
     const extras=qa('#comicPreview .comic-multi-edit-text');
@@ -126,11 +121,6 @@
   }
 
   async function renderStyledPost(event){
-    await loadTemplates(true);
-    const template=selectedTemplate(); if(!template) return;
-    const areas=areasFor(template);
-    if(!areas.some(hasCustomStyle)) return;
-
     event.preventDefault();
     event.stopImmediatePropagation();
     const button=q('#comicMakeBtn');
@@ -138,6 +128,13 @@
     if(button){button.disabled=true;button.textContent='Making graphic…';}
 
     try{
+      await loadTemplates(true);
+      const template=selectedTemplate();
+      if(!template) throw new Error('Choose a background first.');
+      const areas=areasFor(template);
+      const texts=textValues(areas.length);
+      if(!texts.some(value=>value.trim())) throw new Error('Type some text first.');
+
       await syncPreview(false);
       const image=await loadImage(template.url);
       const canvas=document.createElement('canvas');
@@ -147,7 +144,6 @@
       const previewWidth=Math.max(1,preview?.clientWidth||440);
       const scale=canvas.width/previewWidth;
       const editors=previewEditors();
-      const texts=textValues(areas.length);
 
       for(let i=0;i<areas.length;i++){
         const area=areas[i],text=texts[i]||'';
@@ -174,9 +170,9 @@
       if(typeof window.handleMedia==='function') await window.handleMedia(file); else throw new Error('The media uploader is not ready.');
       const caption=q('#caption'); const primary=String(q('#comicMessage')?.value||'').trim();
       if(caption&&!caption.value.trim()&&primary){caption.value=primary;caption.dispatchEvent(new Event('input',{bubbles:true}));}
-      if(typeof window.toast==='function') window.toast('Styled graphic is ready.');
+      if(typeof window.toast==='function') window.toast('Graphic is ready.');
       q('#dropZone')?.scrollIntoView({behavior:'smooth',block:'center'});
-    }catch(error){if(typeof window.toast==='function') window.toast(error.message||'Could not make the styled graphic.');}
+    }catch(error){if(typeof window.toast==='function') window.toast(error.message||'Could not make the graphic.');}
     finally{if(button){button.disabled=false;button.textContent=old;}}
   }
 
