@@ -1,0 +1,55 @@
+name: Fuel Tracker Deploy
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'fuel-tracker/**'
+      - 'nutrition-tracker.html'
+      - '.github/workflows/fuel-tracker-deploy.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'fuel-tracker/**'
+      - 'nutrition-tracker.html'
+      - '.github/workflows/fuel-tracker-deploy.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuel-tracker-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fuel-tracker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npm test
+
+  deploy:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fuel-tracker
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npm run deploy
