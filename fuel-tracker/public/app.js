@@ -39,7 +39,7 @@ function render(){
   $('proGoal').textContent=s.pro;
   $('calLeft').textContent=Math.max(0,Math.round(s.cal-t.cal));
   $('proLeft').textContent=Math.max(0,Math.round(s.pro-t.p));
-  $('meals').innerHTML=a.length?a.slice().reverse().map(x=>`<div class="meal"><div><b>${esc(x.name)}</b><br><small>${esc(x.time||'')} · ${esc(x.source||'logged')} · <button class="danger del" data-id="${x.id}">delete</button></small></div><div class="mealnums"><b>${Math.round(x.cal)} cal</b><small>${Math.round(x.p)}P · ${Math.round(x.c)}C · ${Math.round(x.f)}F</small></div></div>`).join(''):'<div class="muted">Nothing logged yet.</div>';
+  $('meals').innerHTML=a.length?a.slice().reverse().map(x=>`<div class="meal"><div><b>${esc(x.name)}</b><br><small>${esc(x.time||'')} · ${esc(x.source||'logged')} · <button class="secondary editMeal" data-id="${x.id}" style="padding:3px 7px;font-size:11px">edit</button> <button class="danger del" data-id="${x.id}" style="padding:3px 7px;font-size:11px">delete</button></small></div><div class="mealnums"><b>${Math.round(x.cal)} cal</b><small>${Math.round(x.p)}P · ${Math.round(x.c)}C · ${Math.round(x.f)}F</small></div></div>`).join(''):'<div class="muted">Nothing logged yet.</div>';
   $('sCal').value=s.cal;$('sPro').value=s.pro;
 }
 
@@ -50,11 +50,53 @@ function addMeal(o){
   a.push(o);setMeals(a);render();showPage('home');
 }
 
+function ensurePortionBar(){
+  let bar=$('portionBar');
+  if(bar)return bar;
+  bar=document.createElement('div');
+  bar.id='portionBar';
+  bar.style.display='none';
+  bar.style.margin='0 0 12px';
+  bar.innerHTML='<div class="note" style="margin-bottom:7px">How much did you actually eat?</div><div class="row"><button class="secondary portionBtn" data-frac="0.25">¼</button><button class="secondary portionBtn" data-frac="0.5">½</button><button class="secondary portionBtn" data-frac="0.75">¾</button><button class="secondary portionBtn" data-frac="1">Full</button></div>';
+  $('reviewItems').parentNode.insertBefore(bar,$('reviewItems'));
+  bar.querySelectorAll('.portionBtn').forEach(btn=>btn.addEventListener('click',()=>applyPortion(+btn.dataset.frac)));
+  return bar;
+}
+
+function applyPortion(frac){
+  if(!draft||!draft.baseMacros)return;
+  const row=$('reviewItems').querySelector('.reviewItem');
+  if(!row)return;
+  row.querySelector('.rCal').value=Math.round(draft.baseMacros.cal*frac);
+  row.querySelector('.rPro').value=Math.round(draft.baseMacros.p*frac*10)/10;
+  row.querySelector('.rCarb').value=Math.round(draft.baseMacros.c*frac*10)/10;
+  row.querySelector('.rFat').value=Math.round(draft.baseMacros.f*frac*10)/10;
+  const amt=row.querySelector('.rAmt');
+  amt.value=frac===1?'full serving':frac===0.5?'half serving':frac===0.25?'quarter serving':frac===0.75?'three-quarter serving':`${Math.round(frac*100)}% serving`;
+  updateReviewTotals();
+}
+
+function editMeal(id){
+  const x=meals().find(m=>String(m.id)===String(id));
+  if(!x)return;
+  openReview({
+    editingMealId:x.id,
+    source:x.source||'edited',
+    originalTime:x.time,
+    baseMacros:{cal:+x.cal||0,p:+x.p||0,c:+x.c||0,f:+x.f||0},
+    items:[{name:x.name,amount:'',calories:+x.cal||0,protein:+x.p||0,carbs:+x.c||0,fat:+x.f||0}],
+    note:'Edit the food or tap a portion button. Example: tap ½ if you only ate half.'
+  });
+}
+
 function openReview(data){
   draft=data;
   if(!draft||!Array.isArray(draft.items)||!draft.items.length)return;
   $('reviewItems').innerHTML=draft.items.map((x,i)=>`<div class="reviewItem" data-i="${i}"><input class="rName" value="${esc(x.name||'Food')}"><input class="rAmt" value="${esc(x.amount||'')}" placeholder="Amount"><div class="macrogrid"><label>Cal<input class="rCal" type="number" value="${x.calories||0}"></label><label>Protein<input class="rPro" type="number" value="${x.protein||0}"></label><label>Carbs<input class="rCarb" type="number" value="${x.carbs||0}"></label><label>Fat<input class="rFat" type="number" value="${x.fat||0}"></label></div></div>`).join('');
   $('reviewNote').textContent=draft.note||'Review the estimate before saving.';
+  const bar=ensurePortionBar();
+  bar.style.display=draft.editingMealId?'block':'none';
+  $('saveAi').textContent=draft.editingMealId?'Save changes':'Save meal';
   updateReviewTotals();
   $('review').classList.add('open');
 }
@@ -69,6 +111,27 @@ function readReview(){
 function updateReviewTotals(){
   const t=readReview().reduce((a,x)=>({cal:a.cal+x.calories,p:a.p+x.protein,c:a.c+x.carbs,f:a.f+x.fat}),{cal:0,p:0,c:0,f:0});
   $('reviewTotals').textContent=`${Math.round(t.cal)} cal · ${Math.round(t.p)}P · ${Math.round(t.c)}C · ${Math.round(t.f)}F`;
+}
+
+function saveReview(){
+  const items=readReview();
+  const t=items.reduce((a,x)=>({cal:a.cal+x.calories,p:a.p+x.protein,c:a.c+x.carbs,f:a.f+x.fat}),{cal:0,p:0,c:0,f:0});
+  const name=items.map(x=>x.amount?`${x.amount} ${x.name}`:x.name).join(', ');
+  if(draft?.editingMealId){
+    const a=meals();
+    const i=a.findIndex(x=>String(x.id)===String(draft.editingMealId));
+    if(i>=0){
+      a[i]={...a[i],name,cal:t.cal,p:t.p,c:t.c,f:t.f,source:a[i].source||draft.source||'edited'};
+      setMeals(a);render();showPage('home');
+    }
+  }else{
+    addMeal({name,cal:t.cal,p:t.p,c:t.c,f:t.f,source:draft?.source||'AI/review'});
+  }
+  $('review').classList.remove('open');
+  $('saveAi').textContent='Save meal';
+  if($('foodText'))$('foodText').value='';
+  if($('photo'))$('photo').value='';
+  draft=null;
 }
 
 async function requestAnalysis(text,file){
@@ -153,6 +216,7 @@ function init(){
   $('quick').innerHTML=fav.map((x,i)=>`<button data-fav="${i}"><b>${x[0]}</b><small>${x[1]} cal · ${x[2]}P</small></button>`).join('');
   document.addEventListener('click',e=>{
     const favBtn=e.target.closest('[data-fav]');if(favBtn){const x=fav[+favBtn.dataset.fav];addMeal({name:x[0].replace(/^\S+\s/,''),cal:x[1],p:x[2],c:x[3],f:x[4],source:'quick add'});return}
+    const edit=e.target.closest('.editMeal');if(edit){editMeal(edit.dataset.id);return}
     const del=e.target.closest('.del');if(del){setMeals(meals().filter(x=>String(x.id)!==del.dataset.id));render();return}
     const go=e.target.closest('[data-go]');if(go){showPage(go.dataset.go);return}
   });
@@ -161,9 +225,9 @@ function init(){
   $('manualAdd').addEventListener('click',()=>{const name=$('mName').value.trim();if(!name)return;addMeal({name,cal:+$('mCal').value||0,p:+$('mPro').value||0,c:+$('mCarb').value||0,f:+$('mFat').value||0,source:'manual'});});
   $('saveCheck').addEventListener('click',()=>{safeSet('fuel-checkin-'+day(),{weight:$('weight').value,waist:$('waist').value,miles:$('miles').value,activeCal:$('activeCal').value});$('saveCheck').textContent='Saved ✓';setTimeout(()=>$('saveCheck').textContent='Save check-in',1200)});
   const ci=safeGet('fuel-checkin-'+day(),{});['weight','waist','miles','activeCal'].forEach(k=>{if(ci[k]!=null)$(k).value=ci[k]});
-  $('closeReview').addEventListener('click',()=>$('review').classList.remove('open'));
+  $('closeReview').addEventListener('click',()=>{$('review').classList.remove('open');$('saveAi').textContent='Save meal';draft=null});
   $('reviewItems').addEventListener('input',updateReviewTotals);
-  $('saveAi').addEventListener('click',()=>{const items=readReview();const t=items.reduce((a,x)=>({cal:a.cal+x.calories,p:a.p+x.protein,c:a.c+x.carbs,f:a.f+x.fat}),{cal:0,p:0,c:0,f:0});addMeal({name:items.map(x=>x.amount?`${x.amount} ${x.name}`:x.name).join(', '),cal:t.cal,p:t.p,c:t.c,f:t.f,source:draft?.source||'AI/review'});$('review').classList.remove('open');$('foodText').value='';$('photo').value='';});
+  $('saveAi').addEventListener('click',saveReview);
   $('barcodeLookup').addEventListener('click',()=>lookupBarcode($('barcodeCode').value));
   document.querySelectorAll('#barcodeScan').forEach(x=>x.addEventListener('click',startScanner));
   $('stopScanner').addEventListener('click',stopScanner);
