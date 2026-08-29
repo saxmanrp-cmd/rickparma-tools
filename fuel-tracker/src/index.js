@@ -6,15 +6,98 @@ const json = (data, init = {}) => new Response(JSON.stringify(data), {
   headers: { 'content-type':'application/json; charset=utf-8', ...(init.headers || {}) },
 });
 
+const IOS_PHOTO_GUARD = String.raw`<script>
+(() => {
+  const photoIds = new Set(['cameraInput','libraryInput']);
+  let preparing = false;
+
+  function setPhotoStatus(message, type='') {
+    const box = document.getElementById('analyzeStatus');
+    if (!box) return;
+    box.textContent = message;
+    box.className = 'status ' + type;
+    box.style.display = 'block';
+  }
+
+  async function decodeImage(file) {
+    if ('createImageBitmap' in window) {
+      try { return await createImageBitmap(file, { imageOrientation:'from-image' }); } catch {}
+    }
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      img.decoding = 'async';
+      await new Promise((resolve,reject)=>{ img.onload=resolve; img.onerror=reject; img.src=url; });
+      return img;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  async function shrinkPhoto(file) {
+    const image = await decodeImage(file);
+    const width = image.width || image.naturalWidth;
+    const height = image.height || image.naturalHeight;
+    if (!width || !height) throw new Error('Could not read that photo.');
+    const maxSide = 1280;
+    const scale = Math.min(1, maxSide / Math.max(width,height));
+    const w = Math.max(1, Math.round(width * scale));
+    const h = Math.max(1, Math.round(height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d', { alpha:false });
+    ctx.drawImage(image, 0, 0, w, h);
+    if (typeof image.close === 'function') image.close();
+    const blob = await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Could not resize photo.')),'image/jpeg',0.76));
+    const thumbCanvas = document.createElement('canvas');
+    const thumbScale = Math.min(1, 360 / Math.max(w,h));
+    thumbCanvas.width = Math.max(1,Math.round(w*thumbScale));
+    thumbCanvas.height = Math.max(1,Math.round(h*thumbScale));
+    thumbCanvas.getContext('2d',{alpha:false}).drawImage(canvas,0,0,thumbCanvas.width,thumbCanvas.height);
+    const thumb = thumbCanvas.toDataURL('image/jpeg',0.62);
+    return { blob, thumb };
+  }
+
+  document.addEventListener('change', async (event) => {
+    const input = event.target;
+    if (!input || !photoIds.has(input.id)) return;
+    event.stopImmediatePropagation();
+    const file = input.files && input.files[0];
+    if (!file || preparing) return;
+    preparing = true;
+    input.disabled = true;
+    setPhotoStatus('Preparing photo for fast analysis…');
+    try {
+      const { blob, thumb } = await shrinkPhoto(file);
+      pendingPhoto = new File([blob], 'meal.jpg', { type:'image/jpeg', lastModified:Date.now() });
+      pendingThumb = thumb;
+      const preview = document.getElementById('photoPreview');
+      if (preview) { preview.src = thumb; preview.style.display = 'block'; }
+      setPhotoStatus('Photo ready · ' + Math.max(1,Math.round(blob.size/1024)) + ' KB','good');
+    } catch (error) {
+      pendingPhoto = null;
+      pendingThumb = null;
+      setPhotoStatus((error && error.message) || 'Could not prepare that photo. Try another one.','bad');
+    } finally {
+      preparing = false;
+      input.disabled = false;
+    }
+  }, true);
+})();
+</script>`;
+
 async function serveApp(request) {
   try {
-    const upstream = await fetch(APP_SOURCE, { cf:{ cacheTtl:120, cacheEverything:true } });
+    const upstream = await fetch(APP_SOURCE, { cf:{ cacheTtl:60, cacheEverything:true } });
     if (!upstream.ok) return new Response('Fuel Tracker is temporarily unavailable.', { status:502 });
     const headers = new Headers(upstream.headers);
     headers.set('content-type','text/html; charset=utf-8');
-    headers.set('cache-control','public, max-age=120');
+    headers.set('cache-control','no-store');
     headers.set('x-content-type-options','nosniff');
-    return new Response(request.method === 'HEAD' ? null : upstream.body, { status:200, headers });
+    if (request.method === 'HEAD') return new Response(null,{status:200,headers});
+    let html = await upstream.text();
+    html = html.includes('</body>') ? html.replace('</body>', `${IOS_PHOTO_GUARD}</body>`) : html + IOS_PHOTO_GUARD;
+    return new Response(html, { status:200, headers });
   } catch {
     return new Response('Fuel Tracker is temporarily unavailable.', { status:502 });
   }
@@ -114,7 +197,7 @@ async function analyze(request,env) {
 export default {
   async fetch(request,env) {
     const url = new URL(request.url);
-    if (url.pathname === '/api/health' && request.method === 'GET') return json({ok:true,service:'rick-fuel-tracker',version:'1.0.0'});
+    if (url.pathname === '/api/health' && request.method === 'GET') return json({ok:true,service:'rick-fuel-tracker',version:'1.0.1'});
     if (url.pathname === '/api/fuel/analyze' && request.method === 'POST') return analyze(request,env);
     if ((request.method === 'GET' || request.method === 'HEAD') && (url.pathname === '/' || url.pathname === '/fuel' || url.pathname === '/fuel/')) return serveApp(request);
     return new Response('Not found',{status:404});
