@@ -5,6 +5,10 @@ const json = (data, init = {}) => new Response(JSON.stringify(data), {
   headers: { 'content-type':'application/json; charset=utf-8', ...(init.headers || {}) },
 });
 
+const SIMPLE_TRACKING_STYLE = `<style id="fuel-simple-tracking">
+#modeLabel,.modeBtn,label:has(#sMode),label:has(#sCarb){display:none!important}
+</style>`;
+
 function readAiText(result) {
   return result?.choices?.[0]?.message?.content || result?.response || result?.result || '';
 }
@@ -96,12 +100,23 @@ async function analyze(request,env) {
   }
 }
 
+async function serveAsset(request,env) {
+  if (!env.ASSETS) return new Response('Fuel Tracker assets unavailable',{status:503});
+  const response = await env.ASSETS.fetch(request);
+  const type = response.headers.get('content-type') || '';
+  if (!type.includes('text/html') || request.method === 'HEAD') return response;
+  const html = await response.text();
+  const updated = html.includes('</head>') ? html.replace('</head>', `${SIMPLE_TRACKING_STYLE}</head>`) : SIMPLE_TRACKING_STYLE + html;
+  const headers = new Headers(response.headers);
+  headers.set('cache-control','no-store');
+  return new Response(updated,{status:response.status,statusText:response.statusText,headers});
+}
+
 export default {
   async fetch(request,env) {
     const url = new URL(request.url);
-    if (url.pathname === '/api/health' && request.method === 'GET') return json({ok:true,service:'rick-fuel-tracker',version:'1.1.0'});
+    if (url.pathname === '/api/health' && request.method === 'GET') return json({ok:true,service:'rick-fuel-tracker',version:'1.1.1'});
     if (url.pathname === '/api/fuel/analyze' && request.method === 'POST') return analyze(request,env);
-    if (env.ASSETS) return env.ASSETS.fetch(request);
-    return new Response('Fuel Tracker assets unavailable',{status:503});
+    return serveAsset(request,env);
   },
 };
