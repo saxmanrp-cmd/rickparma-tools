@@ -53,3 +53,19 @@ jobs:
           node-version: '22'
       - run: npm install
       - run: npm run deploy
+      - name: Live health smoke test
+        run: |
+          curl --fail --silent --show-error --max-time 15 \
+            https://rick-fuel-tracker.saxmanrp.workers.dev/api/health | tee /tmp/fuel-health.json
+          grep -q '"ok":true' /tmp/fuel-health.json
+      - name: Live typed meal AI test
+        run: |
+          START=$(date +%s)
+          curl --fail --silent --show-error --max-time 45 \
+            -F 'text=8 oz ribeye, 3 eggs, 2 slices bacon' \
+            https://rick-fuel-tracker.saxmanrp.workers.dev/api/fuel/analyze \
+            -o /tmp/fuel-ai.json
+          END=$(date +%s)
+          cat /tmp/fuel-ai.json
+          echo "AI response time: $((END-START)) seconds"
+          grep -q '"ok":true' /tmp/fuel-ai.json
