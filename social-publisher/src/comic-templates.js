@@ -47,12 +47,36 @@ function numberMeta(value) {
   return String(Math.max(0, Math.min(1, n)));
 }
 
+function safeColor(value, fallback='#ffffff') {
+  const color = String(value || '').trim();
+  return /^#[0-9a-f]{6}$/i.test(color) ? color.toUpperCase() : fallback;
+}
+
+function safeUnit(value, fallback=0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : fallback;
+}
+
+function safeRange(value, min, max, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback;
+}
+
 function normalizeTextArea(value={}) {
   const x = Math.max(0, Math.min(.95, Number(value.x) || 0));
   const y = Math.max(0, Math.min(.95, Number(value.y) || 0));
   const width = Math.max(.08, Math.min(1 - x, Number(value.width) || .25));
   const height = Math.max(.06, Math.min(1 - y, Number(value.height) || .12));
-  return {x,y,width,height};
+  return {
+    x,y,width,height,
+    shape:String(value.shape || '').toLowerCase() === 'circle' ? 'circle' : 'box',
+    fillColor:safeColor(value.fillColor, '#FFFFFF'),
+    fillOpacity:safeUnit(value.fillOpacity, 0),
+    borderColor:safeColor(value.borderColor, '#FFFFFF'),
+    borderOpacity:safeUnit(value.borderOpacity, 1),
+    borderWidth:safeRange(value.borderWidth, 0, 12, 0),
+    cornerRadius:safeRange(value.cornerRadius, 0, 48, 12),
+  };
 }
 
 function normalizeTextAreas(values=[]) {
