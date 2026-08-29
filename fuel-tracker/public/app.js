@@ -165,7 +165,8 @@ function init(){
   $('reviewItems').addEventListener('input',updateReviewTotals);
   $('saveAi').addEventListener('click',()=>{const items=readReview();const t=items.reduce((a,x)=>({cal:a.cal+x.calories,p:a.p+x.protein,c:a.c+x.carbs,f:a.f+x.fat}),{cal:0,p:0,c:0,f:0});addMeal({name:items.map(x=>x.amount?`${x.amount} ${x.name}`:x.name).join(', '),cal:t.cal,p:t.p,c:t.c,f:t.f,source:draft?.source||'AI/review'});$('review').classList.remove('open');$('foodText').value='';$('photo').value='';});
   $('barcodeLookup').addEventListener('click',()=>lookupBarcode($('barcodeCode').value));
-  $('barcodeScan').addEventListener('click',startScanner);$('stopScanner').addEventListener('click',stopScanner);
+  document.querySelectorAll('#barcodeScan').forEach(x=>x.addEventListener('click',startScanner));
+  $('stopScanner').addEventListener('click',stopScanner);
   $('restaurantSearch').addEventListener('click',searchRestaurant);$('restaurantQuery').addEventListener('keydown',e=>{if(e.key==='Enter')searchRestaurant()});
   $('receiptScan').addEventListener('click',scanReceipt);$('receiptAnalyze').addEventListener('click',analyzeReceiptSelection);
   $('saveScan').addEventListener('click',()=>{const a=safeGet('fuel-scans',[]);a.push({date:$('scanDate').value||day(),weight:$('scanWeight').value,bf:$('scanBf').value,mm:$('scanMm').value});safeSet('fuel-scans',a);renderScans()});
