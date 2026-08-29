@@ -15,6 +15,7 @@ import { handleComicTemplateRequest } from './comic-templates.js';
 
 const VERSION = '0.7.6';
 const COMIC_MEDIA_PREFIX = 'comic-templates/';
+const FUEL_TRACKER_SOURCE = 'https://raw.githubusercontent.com/saxmanrp-cmd/rickparma-tools/main/nutrition-tracker.html';
 
 const json = (data, init = {}) => new Response(JSON.stringify(data), {
   ...init,
@@ -26,6 +27,22 @@ async function requireAppLogin(request, env) {
   if (!configured) return json({ error:'App login is not configured.' }, { status:503 });
   if (!await isLegacySessionAuthenticated(request, env)) return json({ error:'Authentication required.' }, { status:401 });
   return null;
+}
+
+async function serveFuelTracker(request) {
+  try {
+    const upstream = await fetch(FUEL_TRACKER_SOURCE, {
+      cf: { cacheTtl: 300, cacheEverything: true },
+    });
+    if (!upstream.ok) return new Response('Fuel Tracker is temporarily unavailable.', { status:502 });
+    const headers = new Headers(upstream.headers);
+    headers.set('content-type', 'text/html; charset=utf-8');
+    headers.set('cache-control', 'public, max-age=300');
+    headers.set('x-content-type-options', 'nosniff');
+    return new Response(request.method === 'HEAD' ? null : upstream.body, { status:200, headers });
+  } catch {
+    return new Response('Fuel Tracker is temporarily unavailable.', { status:502 });
+  }
 }
 
 function comicMediaKey(url) {
@@ -56,6 +73,10 @@ async function serveComicMedia(request, url, env) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    if ((request.method === 'GET' || request.method === 'HEAD') && (url.pathname === '/fuel' || url.pathname === '/fuel/' || url.pathname === '/nutrition-tracker.html')) {
+      return serveFuelTracker(request);
+    }
 
     if ((request.method === 'GET' || request.method === 'HEAD') && url.pathname.startsWith('/media/comic-templates')) {
       return serveComicMedia(request, url, env);
