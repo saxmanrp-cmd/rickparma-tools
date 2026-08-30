@@ -41,8 +41,10 @@ function open(mode){
   $('fcAnswer').textContent='';if(scan)run('scan');else setTimeout(()=>$('fcQuestion').focus(),100);
 }
 function install(){
-  setup();const host=document.querySelector('#today .card')||document.querySelector('main .card')||document.querySelector('main');
-  if(!host||host.querySelector('.fcBar'))return;
+  setup();
+  const home=$('home');
+  const host=home?.querySelector('.card');
+  if(!host||home.querySelector('.fcBar'))return;
   const b=document.createElement('div');b.className='fcBar';b.innerHTML='<button class="fcBtn">💬 Ask Fuel Coach</button><button class="fcBtn">✨ Analyze My Day</button>';
   host.appendChild(b);b.children[0].onclick=()=>open('question');b.children[1].onclick=()=>open('scan');
 }
