@@ -75,6 +75,17 @@ async function fallbackBarcode(code, env){
   return null;
 }
 
+async function withQuickAddExtension(response){
+  const type=response.headers.get('content-type')||'';
+  if(!type.includes('text/html')) return response;
+  const html=await response.text();
+  if(html.includes('/quick-add.js')) return new Response(html,response);
+  const injected=html.replace('</body>','<script src="/quick-add.js?v=1"></script></body>');
+  const headers=new Headers(response.headers);
+  headers.set('cache-control','no-store');
+  return new Response(injected,{status:response.status,statusText:response.statusText,headers});
+}
+
 export default {
   async fetch(request, env, ctx){
     const url=new URL(request.url);
@@ -87,6 +98,10 @@ export default {
       if(fallback) return fallback;
       return primary;
     }
-    return baseWorker.fetch(request,env,ctx);
+    const response=await baseWorker.fetch(request,env,ctx);
+    if(request.method==='GET' && (url.pathname==='/' || url.pathname==='/index.html')){
+      return withQuickAddExtension(response);
+    }
+    return response;
   }
 };
