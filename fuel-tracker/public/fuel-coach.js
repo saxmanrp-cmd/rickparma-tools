@@ -82,3 +82,5 @@ function install(){
 }
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',install):install();setTimeout(install,700);
 })();
+import('/portion-editor.js?v=1').catch(()=>{});
+import('/fuel-voice-quality.js?v=1').catch(()=>{});
