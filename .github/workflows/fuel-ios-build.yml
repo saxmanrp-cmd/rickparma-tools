@@ -1,0 +1,28 @@
+name: Fuel iOS Build
+
+on:
+  pull_request:
+    paths:
+      - 'fuel-tracker/ios/**'
+      - 'fuel-tracker/public/health-bridge.js'
+      - '.github/workflows/fuel-ios-build.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'fuel-tracker/ios/**'
+      - 'fuel-tracker/public/health-bridge.js'
+      - '.github/workflows/fuel-ios-build.yml'
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        working-directory: fuel-tracker/ios
+        run: xcodegen generate
+      - name: Compile for iPhone simulator
+        working-directory: fuel-tracker/ios
+        run: xcodebuild -project Fuel.xcodeproj -scheme Fuel -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
