@@ -17,9 +17,31 @@ function outputText(data){
 
 function json(data,status=200){return Response.json(data,{status,headers:{'cache-control':'no-store'}})}
 
+async function tts(body,env){
+  const text=String(body?.text||'').trim().slice(0,5000);
+  if(!text)return json({ok:false,error:'Nothing to speak.'},400);
+  if(!env.OPENAI_API_KEY)return json({ok:false,error:'Natural voice is not configured yet.'},503);
+  try{
+    const r=await fetch('https://api.openai.com/v1/audio/speech',{
+      method:'POST',
+      headers:{authorization:`Bearer ${env.OPENAI_API_KEY}`,'content-type':'application/json'},
+      body:JSON.stringify({
+        model:'gpt-4o-mini-tts',
+        voice:env.FUEL_COACH_VOICE||'nova',
+        input:text,
+        instructions:'Speak like a warm, relaxed, confident personal nutrition coach having a real conversation. Natural pacing, friendly American English, no announcer voice, no robotic cadence.',
+        response_format:'mp3'
+      })
+    });
+    if(!r.ok)return json({ok:false,error:'Natural voice is temporarily unavailable.'},502);
+    return new Response(await r.arrayBuffer(),{status:200,headers:{'content-type':'audio/mpeg','cache-control':'no-store'}});
+  }catch{return json({ok:false,error:'Natural voice is temporarily unavailable.'},502)}
+}
+
 export async function fuelCoach(request,env){
   let body;
   try{body=await request.json()}catch{return json({ok:false,error:'Invalid request.'},400)}
+  if(body?.mode==='tts')return tts(body,env);
   if(body?.mode!=='scan'&&body?.mode!=='question')return json({ok:false,error:'Unknown Fuel Coach request.'},400);
   if(body.mode==='question'&&!String(body?.question||'').trim())return json({ok:false,error:'Ask Fuel Coach a question first.'},400);
   const input=prompt(body);
