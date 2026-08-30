@@ -43,7 +43,7 @@ final class HealthKitManager {
             throw NSError(domain: "FuelHealth", code: 1, userInfo: [NSLocalizedDescriptionKey: "Apple Health is not available on this device."])
         }
         return try await withCheckedThrowingContinuation { continuation in
-            store.requestAuthorization(toShare: [], read: readTypes) { success, error in
+            store.requestAuthorization(toShare: Set<HKSampleType>(), read: readTypes) { success, error in
                 if let error { continuation.resume(throwing: error) }
                 else { continuation.resume(returning: success) }
             }
@@ -62,13 +62,14 @@ final class HealthKitManager {
         async let resting = mostRecent(.restingHeartRate, unit: HKUnit.count().unitDivided(by: .minute()))
         async let weight = mostRecent(.bodyMass, unit: .pound())
         async let sleep = sleepHours()
-        return try await HealthSnapshot(
-            steps: steps,
-            activeCalories: energy,
-            distanceMiles: distance,
-            restingHeartRate: resting,
-            sleepHours: sleep,
-            weightLb: weight
+        let values = try await (steps, energy, distance, resting, sleep, weight)
+        return HealthSnapshot(
+            steps: values.0,
+            activeCalories: values.1,
+            distanceMiles: values.2,
+            restingHeartRate: values.3,
+            sleepHours: values.4,
+            weightLb: values.5
         )
     }
 
