@@ -8,6 +8,10 @@ struct HealthSnapshot {
     var restingHeartRate: Double?
     var sleepHours: Double?
     var weightLb: Double?
+    var bodyFatPercent: Double?
+    var leanBodyMassLb: Double?
+    var bmi: Double?
+    var waistInches: Double?
 
     var dictionary: [String: Any] {
         var out: [String: Any] = [:]
@@ -17,6 +21,15 @@ struct HealthSnapshot {
         if let restingHeartRate { out["restingHeartRate"] = restingHeartRate }
         if let sleepHours { out["sleepHours"] = sleepHours }
         if let weightLb { out["weightLb"] = weightLb }
+        if let bodyFatPercent { out["bodyFatPercent"] = bodyFatPercent }
+        if let leanBodyMassLb { out["leanBodyMassLb"] = leanBodyMassLb }
+        if let bmi { out["bmi"] = bmi }
+        if let waistInches { out["waistInches"] = waistInches }
+        if let weightLb, let bodyFatPercent {
+            let fatMass = weightLb * bodyFatPercent / 100.0
+            out["fatMassLb"] = fatMass
+            out["fatFreeMassLb"] = weightLb - fatMass
+        }
         return out
     }
 }
@@ -33,6 +46,10 @@ final class HealthKitManager {
             HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning),
             HKQuantityType.quantityType(forIdentifier: .restingHeartRate),
             HKQuantityType.quantityType(forIdentifier: .bodyMass),
+            HKQuantityType.quantityType(forIdentifier: .bodyFatPercentage),
+            HKQuantityType.quantityType(forIdentifier: .leanBodyMass),
+            HKQuantityType.quantityType(forIdentifier: .bodyMassIndex),
+            HKQuantityType.quantityType(forIdentifier: .waistCircumference),
             HKCategoryType.categoryType(forIdentifier: .sleepAnalysis)
         ].compactMap { $0 }.forEach { set.insert($0) }
         return set
@@ -61,15 +78,23 @@ final class HealthKitManager {
         async let distance = cumulative(.distanceWalkingRunning, unit: .mile(), start: start, end: end)
         async let resting = mostRecent(.restingHeartRate, unit: HKUnit.count().unitDivided(by: .minute()))
         async let weight = mostRecent(.bodyMass, unit: .pound())
+        async let bodyFat = mostRecent(.bodyFatPercentage, unit: .percent())
+        async let leanMass = mostRecent(.leanBodyMass, unit: .pound())
+        async let bmi = mostRecent(.bodyMassIndex, unit: .count())
+        async let waist = mostRecent(.waistCircumference, unit: .inch())
         async let sleep = sleepHours()
-        let values = try await (steps, energy, distance, resting, sleep, weight)
+        let values = try await (steps, energy, distance, resting, sleep, weight, bodyFat, leanMass, bmi, waist)
         return HealthSnapshot(
             steps: values.0,
             activeCalories: values.1,
             distanceMiles: values.2,
             restingHeartRate: values.3,
             sleepHours: values.4,
-            weightLb: values.5
+            weightLb: values.5,
+            bodyFatPercent: values.6.map { $0 * 100.0 },
+            leanBodyMassLb: values.7,
+            bmi: values.8,
+            waistInches: values.9
         )
     }
 
