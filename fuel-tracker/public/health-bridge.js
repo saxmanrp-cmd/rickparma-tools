@@ -12,7 +12,7 @@ function install(){
   const card=cards.find(c=>c.querySelector('h2')?.textContent.trim()==='Apple Health');
   if(!card)return;
   card.innerHTML=`<div class="sectiontitle"><h2>Apple Health</h2><span id="healthState" class="pill">${hasNative()?'available':'iPhone app required'}</span></div>
-    <p id="healthNote" class="note" style="margin-top:0">${hasNative()?'Connect Fuel to Apple Health to import activity and smart-ring data.':'Apple Health access works through the native Fuel iPhone app. Your web tracker still works normally.'}</p>
+    <p id="healthNote" class="note" style="margin-top:0">${hasNative()?'Apple Health is Fuel’s main health-data source.':'Apple Health access works through the native Fuel iPhone app. Your web tracker still works normally.'}</p>
     <div id="healthMetrics" class="grid" style="display:none;margin:10px 0"></div>
     <div class="row"><button id="healthConnect" class="primary" ${hasNative()?'':'disabled'}>${hasNative()?' Connect Apple Health':' Apple Health — native app required'}</button><button id="healthSync" class="secondary" style="display:none">Sync now</button></div>
     <div id="healthStatus" class="status"></div>`;
@@ -41,15 +41,22 @@ async function sync(silent){
 }
 function render(d){
   const grid=$('healthMetrics');if(!grid)return;grid.style.display='grid';
+  const extra=[];
+  if(Number.isFinite(Number(d.bodyFatPercent)))extra.push(`<div class="metric"><b>${fmt(d.bodyFatPercent,1)}%</b><small>body fat</small></div>`);
+  if(Number.isFinite(Number(d.leanBodyMassLb)))extra.push(`<div class="metric"><b>${fmt(d.leanBodyMassLb,1)}</b><small>lean body mass lb</small></div>`);
+  if(Number.isFinite(Number(d.bmi)))extra.push(`<div class="metric"><b>${fmt(d.bmi,1)}</b><small>BMI</small></div>`);
+  if(Number.isFinite(Number(d.waistInches)))extra.push(`<div class="metric"><b>${fmt(d.waistInches,1)}</b><small>waist in</small></div>`);
+  if(Number.isFinite(Number(d.fatMassLb)))extra.push(`<div class="metric"><b>${fmt(d.fatMassLb,1)}</b><small>fat mass lb</small></div>`);
+  if(Number.isFinite(Number(d.fatFreeMassLb)))extra.push(`<div class="metric"><b>${fmt(d.fatFreeMassLb,1)}</b><small>fat-free mass lb</small></div>`);
   grid.innerHTML=`<div class="metric"><b>${fmt(d.steps)}</b><small>steps today</small></div>
     <div class="metric"><b>${fmt(d.activeCalories)}</b><small>active calories</small></div>
     <div class="metric"><b>${fmt(d.distanceMiles,1)}</b><small>walking/running mi</small></div>
     <div class="metric"><b>${fmt(d.restingHeartRate)}</b><small>resting HR bpm</small></div>
     <div class="metric"><b>${fmt(d.sleepHours,1)}</b><small>sleep hours</small></div>
-    <div class="metric"><b>${fmt(d.weightLb,1)}</b><small>latest weight lb</small></div>`;
+    <div class="metric"><b>${fmt(d.weightLb,1)}</b><small>latest weight lb</small></div>${extra.join('')}`;
   $('healthSync').style.display=hasNative()?'block':'none';
   if(hasNative()){$('healthState').textContent='connected';$('healthConnect').textContent='Health connected'}
-  if(d.syncedAt)$('healthNote').textContent='Last sync '+new Date(d.syncedAt).toLocaleString()+'. Data comes from Apple Health, including compatible smart-ring sources.';
+  if(d.syncedAt)$('healthNote').textContent='Last sync '+new Date(d.syncedAt).toLocaleString()+'. Fuel reads compatible data written to Apple Health by connected devices and apps.';
   window.dispatchEvent(new CustomEvent('fuel-health-synced',{detail:d}));
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
