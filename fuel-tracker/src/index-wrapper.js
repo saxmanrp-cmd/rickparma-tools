@@ -84,7 +84,7 @@ async function withUiExtensions(response){
   if(!html.includes('/quick-add.js')) scripts.push('<script src="/quick-add.js?v=1"></script>');
   if(!html.includes('/body-scan.js')) scripts.push('<script src="/body-scan.js?v=1"></script>');
   if(!html.includes('/health-bridge.js')) scripts.push('<script src="/health-bridge.js?v=1"></script>');
-  if(!html.includes('/fuel-coach.js')) scripts.push('<script src="/fuel-coach.js?v=3"></script>');
+  if(!html.includes('/fuel-coach.js')) scripts.push('<script src="/fuel-coach.js?v=4"></script>');
   if(scripts.length) html=html.replace('</body>',scripts.join('')+'</body>');
   const headers=new Headers(response.headers);
   headers.set('cache-control','no-store');
