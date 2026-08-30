@@ -9,8 +9,8 @@
 <title>Rick's Fuel Tracker</title>
 <style>
 :root{--bg:#08111f;--card:#121c31;--line:#2a3b5d;--text:#f7fbff;--muted:#9aaac3;--green:#47d7a2;--blue:#69adff;--red:#ff8090}
-*{box-sizing:border-box}body{margin:0;background:linear-gradient(#08111f,#0b1424);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.app{max-width:760px;margin:auto;padding:18px 14px 98px}.brand{font-size:28px;font-weight:900;margin:4px 0 14px}.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px;margin:12px 0}.row{display:flex;gap:9px}.row>*{flex:1}.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.metric{background:#0c1628;border-radius:16px;padding:12px}.metric b{display:block;font-size:23px}.metric small,.muted{color:var(--muted)}button,.btn{border:0;border-radius:14px;padding:13px;font-weight:800;font-size:15px}.primary{background:linear-gradient(135deg,var(--green),var(--blue));color:#06111b}.secondary{background:#202e49;color:#fff;border:1px solid #3a4d70}.danger{background:#411d25;color:#ffd9df;padding:3px 7px;font-size:11px}.ghost{background:#0c1628;color:white;border:1px solid var(--line)}textarea,input,select{width:100%;border:1px solid var(--line);border-radius:14px;background:#091220;color:white;padding:12px;font-size:16px}textarea{min-height:105px}.quick{display:grid;grid-template-columns:1fr 1fr;gap:8px}.quick button{background:#0c1628;color:white;border:1px solid var(--line);text-align:left}.quick small{display:block;color:var(--muted);margin-top:3px}.meal{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid var(--line)}.meal:first-child{border-top:0}.meal small{color:var(--muted)}.mealnums{text-align:right;min-width:90px}.mealnums small{display:block}.status{display:none;margin-top:10px;padding:10px;border-radius:12px;background:#0c1628;color:#dce9ff}.tabs{position:fixed;left:0;right:0;bottom:0;background:#08111ff2;border-top:1px solid var(--line);padding:8px calc(8px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left));z-index:10}.tabs div{max-width:760px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.tabs button{background:transparent;color:#95a5bd;padding:8px 2px;font-size:12px}.tabs button.active{background:#192844;color:#fff}.page{display:none}.page.active{display:block}.review,.scannerWrap{display:none;position:fixed;inset:0;background:#000d;z-index:30;overflow:auto;padding:20px 12px}.review.open,.scannerWrap.open{display:block}.reviewbox,.scannerBox{max-width:700px;margin:auto;background:#121c31;border:1px solid var(--line);border-radius:22px;padding:16px}.reviewItem{border-top:1px solid var(--line);padding:10px 0}.reviewItem:first-child{border-top:0}.macrogrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}.macrogrid input{padding:8px;font-size:14px}.macrogrid label{font-size:11px;color:var(--muted)}.pill{display:inline-block;background:#183058;border:1px solid #31528d;border-radius:99px;padding:5px 8px;font-size:12px;color:#dce9ff}.sectiontitle{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}.sectiontitle h2{margin:0;font-size:18px}.note{font-size:12px;color:var(--muted);line-height:1.45}.spacer{height:8px}.logActions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.logAction{background:#0c1628;border:1px solid var(--line);border-radius:16px;padding:14px;color:#fff;text-align:left}.logAction b{display:block}.logAction small{display:block;color:var(--muted);margin-top:4px}.resultBtn{width:100%;display:block;text-align:left;background:#0c1628;color:#fff;border:1px solid var(--line);margin-top:8px}.resultBtn small{display:block;color:var(--muted);margin-top:4px}.receiptItem{display:flex;align-items:center;gap:10px;padding:10px;border-top:1px solid var(--line)}.receiptItem input{width:auto}.receiptItem span{display:block}.receiptItem small{display:block;color:var(--muted)}.scanrow{padding:7px 0;border-top:1px solid var(--line)}#reader{width:100%;min-height:280px;background:#000;border-radius:16px;overflow:hidden}
-@media(min-width:620px){.grid{grid-template-columns:repeat(4,1fr)}.quick{grid-template-columns:repeat(4,1fr)}.logActions{grid-template-columns:repeat(4,1fr)}}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(#08111f,#0b1424);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.app{max-width:760px;margin:auto;padding:18px 14px 98px}.brand{font-size:28px;font-weight:900;margin:4px 0 14px}.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px;margin:12px 0}.row{display:flex;gap:9px}.row>*{flex:1}.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.metric{background:#0c1628;border-radius:16px;padding:12px}.metric b{display:block;font-size:23px}.metric small,.muted{color:var(--muted)}button,.btn{border:0;border-radius:14px;padding:13px;font-weight:800;font-size:15px}.primary{background:linear-gradient(135deg,var(--green),var(--blue));color:#06111b}.secondary{background:#202e49;color:#fff;border:1px solid #3a4d70}.danger{background:#411d25;color:#ffd9df;padding:3px 7px;font-size:11px}.ghost{background:#0c1628;color:white;border:1px solid var(--line)}textarea,input,select{width:100%;border:1px solid var(--line);border-radius:14px;background:#091220;color:white;padding:12px;font-size:16px}textarea{min-height:105px}.quick{display:grid;grid-template-columns:1fr 1fr;gap:8px}.quick button{background:#0c1628;color:white;border:1px solid var(--line);text-align:left}.quick small{display:block;color:var(--muted);margin-top:3px}.meal{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid var(--line)}.meal:first-child{border-top:0}.meal small{color:var(--muted)}.mealnums{text-align:right;min-width:90px}.mealnums small{display:block}.status{display:none;margin-top:10px;padding:10px;border-radius:12px;background:#0c1628;color:#dce9ff}.tabs{position:fixed;left:0;right:0;bottom:0;background:#08111ff2;border-top:1px solid var(--line);padding:8px calc(8px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left));z-index:10}.tabs div{max-width:760px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.tabs button{background:transparent;color:#95a5bd;padding:8px 2px;font-size:12px}.tabs button.active{background:#192844;color:#fff}.page{display:none}.page.active{display:block}.review,.scannerWrap{display:none;position:fixed;inset:0;background:#000d;z-index:30;overflow:auto;padding:20px 12px}.review.open,.scannerWrap.open{display:block}.reviewbox,.scannerBox{max-width:700px;margin:auto;background:#121c31;border:1px solid var(--line);border-radius:22px;padding:16px}.reviewItem{border-top:1px solid var(--line);padding:10px 0}.reviewItem:first-child{border-top:0}.macrogrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}.macrogrid input{padding:8px;font-size:14px}.macrogrid label{font-size:11px;color:var(--muted)}.pill{display:inline-block;background:#183058;border:1px solid #31528d;border-radius:99px;padding:5px 8px;font-size:12px;color:#dce9ff}.sectiontitle{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}.sectiontitle h2{margin:0;font-size:18px}.note{font-size:12px;color:var(--muted);line-height:1.45}.spacer{height:8px}.logActions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.logAction{background:#0c1628;border:1px solid var(--line);border-radius:16px;padding:16px;color:#fff;text-align:left;min-height:92px}.logAction b{display:block;font-size:16px}.logAction small{display:block;color:var(--muted);margin-top:5px}.toolPanel{display:none}.toolPanel.open{display:block}.resultBtn{width:100%;display:block;text-align:left;background:#0c1628;color:#fff;border:1px solid var(--line);margin-top:8px}.resultBtn small{display:block;color:var(--muted);margin-top:4px}.receiptItem{display:flex;align-items:center;gap:10px;padding:10px;border-top:1px solid var(--line)}.receiptItem input{width:auto}.receiptItem span{display:block}.receiptItem small{display:block;color:var(--muted)}.scanrow{padding:7px 0;border-top:1px solid var(--line)}#reader{width:100%;min-height:280px;background:#000;border-radius:16px;overflow:hidden}
+@media(min-width:620px){.grid{grid-template-columns:repeat(4,1fr)}.quick{grid-template-columns:repeat(4,1fr)}.logActions{grid-template-columns:repeat(5,1fr)}}
 </style>
 </head>
 <body>
@@ -35,45 +35,49 @@
 
   <section id="log" class="page">
     <div class="card">
-      <div class="sectiontitle"><h2>How do you want to log it?</h2><span class="pill">pick one</span></div>
+      <div class="sectiontitle"><h2>Log food</h2><span class="pill">choose a tool</span></div>
       <div class="logActions">
-        <button class="logAction" onclick="document.getElementById('foodText').focus()"><b>✍️ Type / photo</b><small>Describe a meal or snap the plate.</small></button>
-        <button class="logAction" id="barcodeScan"><b>▥ Barcode</b><small>Scan a packaged food UPC.</small></button>
-        <button class="logAction" onclick="document.getElementById('restaurantQuery').focus()"><b>🍔 Restaurant</b><small>Search chain and branded foods.</small></button>
-        <button class="logAction" onclick="document.getElementById('receiptPhoto').click()"><b>🧾 Receipt</b><small>Read a restaurant or grocery receipt.</small></button>
+        <button class="logAction" onclick="openLogTool('typeTool')"><b>✍️ Type / photo</b><small>Describe it or snap the plate.</small></button>
+        <button class="logAction" onclick="openLogTool('barcodeTool')"><b>▥ Barcode</b><small>Scan a packaged food.</small></button>
+        <button class="logAction" onclick="openLogTool('restaurantTool')"><b>🍔 Restaurant</b><small>Search a menu item.</small></button>
+        <button class="logAction" onclick="openLogTool('receiptTool')"><b>🧾 Receipt</b><small>Scan a receipt.</small></button>
+        <button class="logAction" onclick="openLogTool('manualTool')"><b>⌨️ Manual</b><small>Enter macros yourself.</small></button>
       </div>
     </div>
 
-    <div class="card">
-      <div class="sectiontitle"><h2>Type or photograph a meal</h2><span class="pill">AI estimate</span></div>
+    <div id="typeTool" class="card toolPanel">
+      <div class="sectiontitle"><h2>Type or photograph a meal</h2><button class="secondary" onclick="closeLogTools()">Close</button></div>
       <textarea id="foodText" placeholder="Example: 8 oz ribeye, 3 eggs, 2 slices bacon"></textarea><div class="spacer"></div>
       <div class="row"><label class="btn secondary" style="text-align:center">📷 Take meal photo<input id="photo" type="file" accept="image/*" capture="environment" hidden></label><button id="analyze" class="primary">✨ Analyze meal</button></div>
       <div id="status" class="status"></div>
     </div>
 
-    <div class="card">
-      <div class="sectiontitle"><h2>Barcode lookup</h2><span class="pill">packaged food</span></div>
+    <div id="barcodeTool" class="card toolPanel">
+      <div class="sectiontitle"><h2>Barcode lookup</h2><button class="secondary" onclick="closeLogTools()">Close</button></div>
       <input id="barcodeCode" inputmode="numeric" placeholder="Scan or type UPC / EAN number"><div class="spacer"></div>
       <div class="row"><button id="barcodeScan" class="secondary">📷 Scan barcode</button><button id="barcodeLookup" class="primary">Look up</button></div>
       <div id="barcodeStatus" class="status"></div>
     </div>
 
-    <div class="card">
-      <div class="sectiontitle"><h2>Restaurant search</h2><span class="pill">menu nutrition</span></div>
+    <div id="restaurantTool" class="card toolPanel">
+      <div class="sectiontitle"><h2>Restaurant search</h2><button class="secondary" onclick="closeLogTools()">Close</button></div>
       <input id="restaurantQuery" placeholder="Example: McDonald's 4 piece Chicken McNuggets"><div class="spacer"></div>
       <button id="restaurantSearch" class="primary" style="width:100%">🔎 Search restaurant food</button>
       <div id="restaurantStatus" class="status"></div><div id="restaurantResults"></div>
     </div>
 
-    <div class="card">
-      <div class="sectiontitle"><h2>Receipt scanner</h2><span class="pill">choose what you ate</span></div>
+    <div id="receiptTool" class="card toolPanel">
+      <div class="sectiontitle"><h2>Receipt scanner</h2><button class="secondary" onclick="closeLogTools()">Close</button></div>
       <label class="btn secondary" style="display:block;text-align:center">🧾 Take receipt photo<input id="receiptPhoto" type="file" accept="image/*" capture="environment" hidden></label><div class="spacer"></div>
       <button id="receiptScan" class="primary" style="width:100%">🧾 Read receipt</button>
       <div id="receiptStatus" class="status"></div><div id="receiptItems"></div>
       <button id="receiptAnalyze" class="secondary" style="width:100%;display:none;margin-top:10px">✨ Analyze selected items</button>
     </div>
 
-    <div class="card"><div class="sectiontitle"><h2>Manual macros</h2><span class="pill">backup</span></div><input id="mName" placeholder="Meal name"><div class="grid" style="margin-top:9px"><input id="mCal" type="number" placeholder="Calories"><input id="mPro" type="number" placeholder="Protein"><input id="mCarb" type="number" placeholder="Carbs"><input id="mFat" type="number" placeholder="Fat"></div><div class="spacer"></div><button id="manualAdd" class="secondary" style="width:100%">Add manually</button></div>
+    <div id="manualTool" class="card toolPanel">
+      <div class="sectiontitle"><h2>Manual macros</h2><button class="secondary" onclick="closeLogTools()">Close</button></div>
+      <input id="mName" placeholder="Meal name"><div class="grid" style="margin-top:9px"><input id="mCal" type="number" placeholder="Calories"><input id="mPro" type="number" placeholder="Protein"><input id="mCarb" type="number" placeholder="Carbs"><input id="mFat" type="number" placeholder="Fat"></div><div class="spacer"></div><button id="manualAdd" class="secondary" style="width:100%">Add manually</button>
+    </div>
   </section>
 
   <section id="progress" class="page">
@@ -93,7 +97,11 @@
 
 <div id="scannerWrap" class="scannerWrap"><div class="scannerBox"><div class="sectiontitle"><h2>Scan barcode</h2><button id="stopScanner" class="secondary">Close</button></div><div id="reader"></div><div id="scannerMsg" class="status"></div><p class="note">Point the rear camera at the UPC/EAN barcode. If camera scanning is unavailable, close this and type the number manually.</p></div></div>
 
+<script>
+function closeLogTools(){document.querySelectorAll('.toolPanel').forEach(x=>x.classList.remove('open'))}
+function openLogTool(id){closeLogTools();const el=document.getElementById(id);if(!el)return;el.classList.add('open');setTimeout(()=>{el.scrollIntoView({behavior:'smooth',block:'start'});const input=el.querySelector('textarea,input:not([type=file])');if(input)input.focus({preventScroll:true})},50)}
+</script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="/app.js?v=2"></script>
+<script src="/app.js?v=3"></script>
 </body>
 </html>
