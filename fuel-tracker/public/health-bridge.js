@@ -4,6 +4,32 @@ const $=id=>document.getElementById(id);
 const STORAGE_KEY='fuel-apple-health-latest';
 const hasNative=()=>!!window.webkit?.messageHandlers?.healthKit;
 function fmt(v,d=0){const n=Number(v);return Number.isFinite(n)?n.toFixed(d).replace(/\.0$/,''):'—'}
+function findCard(title){return [...document.querySelectorAll('#progress .card')].find(c=>c.querySelector('h2')?.textContent.trim()===title)}
+function makeHealthPrimary(){
+  const manual=findCard('Add / update scan');if(!manual||manual.dataset.healthBackup)return;
+  manual.dataset.healthBackup='1';manual.style.display='none';
+  const history=findCard('Scan history');
+  if(history){
+    const h=history.querySelector('h2');if(h)h.textContent='Manual backup history';
+    const toggle=document.createElement('button');toggle.className='secondary';toggle.style.cssText='width:100%;margin-top:10px';toggle.textContent='Add measurement manually';
+    toggle.onclick=()=>{const hidden=manual.style.display==='none';manual.style.display=hidden?'block':'none';toggle.textContent=hidden?'Hide manual entry':'Add measurement manually'};
+    history.appendChild(toggle);
+  }
+}
+function applyBodyComposition(d){
+  const card=findCard('Body composition');if(!card||!d)return;
+  const hasComp=[d.weightLb,d.bodyFatPercent,d.leanBodyMassLb,d.bmi,d.waistInches].some(v=>Number.isFinite(Number(v)));if(!hasComp)return;
+  const grid=card.querySelector('#bsLatestGrid'),date=card.querySelector('#bsLatestDate'),more=card.querySelector('#bsLatestMore'),change=card.querySelector('#bsChange');if(!grid)return;
+  if(date)date.textContent='Apple Health · latest';
+  grid.innerHTML=`<div class="metric"><b>${fmt(d.weightLb,1)}</b><small>weight lb</small></div>
+    <div class="metric"><b>${fmt(d.bodyFatPercent,1)}${Number.isFinite(Number(d.bodyFatPercent))?'%':''}</b><small>body fat</small></div>
+    <div class="metric"><b>${fmt(d.leanBodyMassLb,1)}</b><small>lean body mass lb</small></div>
+    <div class="metric"><b>${fmt(d.bmi,1)}</b><small>BMI</small></div>`;
+  const bits=[];if(Number.isFinite(Number(d.fatMassLb)))bits.push(`Fat mass ${fmt(d.fatMassLb,1)} lb`);if(Number.isFinite(Number(d.fatFreeMassLb)))bits.push(`Fat-free mass ${fmt(d.fatFreeMassLb,1)} lb`);if(Number.isFinite(Number(d.waistInches)))bits.push(`Waist ${fmt(d.waistInches,1)} in`);
+  if(more)more.textContent=bits.length?bits.join(' · '):'Body composition is synced from Apple Health when a connected app or device writes it.';
+  if(change)change.innerHTML='<span class="note">Apple Health is now the primary body-composition source. Manual InBody entry is kept only as a backup.</span>';
+  makeHealthPrimary();
+}
 function install(){
   const section=$('progress');
   if(!section||section.dataset.healthBridge)return;
@@ -57,6 +83,7 @@ function render(d){
   $('healthSync').style.display=hasNative()?'block':'none';
   if(hasNative()){$('healthState').textContent='connected';$('healthConnect').textContent='Health connected'}
   if(d.syncedAt)$('healthNote').textContent='Last sync '+new Date(d.syncedAt).toLocaleString()+'. Fuel reads compatible data written to Apple Health by connected devices and apps.';
+  applyBodyComposition(d);
   window.dispatchEvent(new CustomEvent('fuel-health-synced',{detail:d}));
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
