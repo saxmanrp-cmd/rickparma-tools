@@ -1,4 +1,5 @@
 import baseWorker from './index.js';
+import { fuelCoach } from './fuel-coach-api.js';
 
 const knownProducts = {
   '081950001415': {
@@ -83,6 +84,7 @@ async function withUiExtensions(response){
   if(!html.includes('/quick-add.js')) scripts.push('<script src="/quick-add.js?v=1"></script>');
   if(!html.includes('/body-scan.js')) scripts.push('<script src="/body-scan.js?v=1"></script>');
   if(!html.includes('/health-bridge.js')) scripts.push('<script src="/health-bridge.js?v=1"></script>');
+  if(!html.includes('/fuel-coach.js')) scripts.push('<script src="/fuel-coach.js?v=2"></script>');
   if(scripts.length) html=html.replace('</body>',scripts.join('')+'</body>');
   const headers=new Headers(response.headers);
   headers.set('cache-control','no-store');
@@ -92,6 +94,9 @@ async function withUiExtensions(response){
 export default {
   async fetch(request, env, ctx){
     const url=new URL(request.url);
+    if(url.pathname==='/api/fuel/coach' && request.method==='POST'){
+      return fuelCoach(request,env);
+    }
     if(url.pathname==='/api/fuel/barcode' && request.method==='GET'){
       const code=cleanCode(url);
       if(knownProducts[code]) return fallbackBarcode(code, env);
