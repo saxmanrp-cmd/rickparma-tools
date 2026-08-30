@@ -1,0 +1,25 @@
+name: Fuel
+options:
+  bundleIdPrefix: com.rickparma
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  Fuel:
+    type: application
+    platform: iOS
+    sources:
+      - Fuel
+    info:
+      path: Fuel/Info.plist
+      properties:
+        CFBundleDisplayName: Fuel
+        UILaunchScreen: {}
+        NSHealthShareUsageDescription: Fuel reads activity, sleep, heart rate, and weight from Apple Health so your nutrition and progress dashboard can stay up to date.
+    entitlements:
+      path: Fuel/Fuel.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rickparma.fuel
+        SWIFT_VERSION: 5.0
+        TARGETED_DEVICE_FAMILY: 1
+        SUPPORTS_MACCATALYST: NO
