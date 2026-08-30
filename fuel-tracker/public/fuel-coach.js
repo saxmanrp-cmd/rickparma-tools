@@ -5,14 +5,21 @@ const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||'null')??f}cat
 const localDay=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 let recognition=null,listening=false,lastSpoken='';
 function totals(foods=[]){return foods.reduce((a,x)=>({cal:a.cal+(+x.cal||0),p:a.p+(+x.p||0),c:a.c+(+x.c||0),f:a.f+(+x.f||0)}),{cal:0,p:0,c:0,f:0})}
+function healthBodyComposition(h){
+  if(!h)return null;
+  const out={source:'Apple Health',syncedAt:h.syncedAt||null};
+  ['weightLb','bodyFatPercent','leanBodyMassLb','bmi','waistIn','fatMassLb','fatFreeMassLb'].forEach(k=>{if(Number.isFinite(Number(h[k])))out[k]=Number(h[k])});
+  return Object.keys(out).length>2?out:null;
+}
 function context(){
   const raw=read('fuel-settings',{}),targets={cal:Number(raw.cal)||1900,pro:Number(raw.pro)||150};
   const days=[];
   for(let i=0;i<7;i++){
     const d=new Date();d.setDate(d.getDate()-i);const date=localDay(d),foods=read(`fuel-meals-${date}`,[]);
-    days.push({date,foods,totals:totals(foods),checkin:read(`fuel-checkin-${date}`,null)});
+    days.push({date,foodLogStatus:foods.length?'logged':'no_entries',foodEntryCount:foods.length,foods,totals:foods.length?totals(foods):null,checkin:read(`fuel-checkin-${date}`,null)});
   }
-  return {generatedAt:new Date().toISOString(),targets,days,bodyScans:read('fuel-body-scans-v2',[]).slice(-5),appleHealth:read('fuel-apple-health-latest',null)};
+  const appleHealth=read('fuel-apple-health-latest',null);
+  return {generatedAt:new Date().toISOString(),targets,days,bodyScans:read('fuel-body-scans-v2',[]).slice(-5),appleHealth,appleHealthBodyComposition:healthBodyComposition(appleHealth)};
 }
 function setup(){
   if($('fuelCoachModal'))return;
