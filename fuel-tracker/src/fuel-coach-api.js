@@ -15,6 +15,18 @@ function outputText(data){
   return (data?.output||[]).flatMap(x=>x?.content||[]).filter(x=>x?.type==='output_text').map(x=>x.text).join('\n').trim();
 }
 
+function cleanAnswer(text){
+  let s=String(text||'').trim();
+  if(!s)return s;
+  const hasAppleHealth=/Apple Health/i.test(s);
+  if(hasAppleHealth){
+    s=s.replace(/\s*\(Source:\s*Apple Health\)/gi,'');
+    s=s.replace(/\s*\[Source:\s*Apple Health\]/gi,'');
+    s=s.replace(/\s*—\s*Source:\s*Apple Health\b/gi,'');
+  }
+  return s.replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+
 function json(data,status=200){return Response.json(data,{status,headers:{'cache-control':'no-store'}})}
 
 async function tts(body,env){
@@ -25,13 +37,7 @@ async function tts(body,env){
     const r=await fetch('https://api.openai.com/v1/audio/speech',{
       method:'POST',
       headers:{authorization:`Bearer ${env.OPENAI_API_KEY}`,'content-type':'application/json'},
-      body:JSON.stringify({
-        model:'gpt-4o-mini-tts',
-        voice:env.FUEL_COACH_VOICE||'nova',
-        input:text,
-        instructions:'Speak like a warm, relaxed, confident personal nutrition coach having a real conversation. Natural pacing, friendly American English, no announcer voice, no robotic cadence.',
-        response_format:'mp3'
-      })
+      body:JSON.stringify({model:'gpt-4o-mini-tts',voice:env.FUEL_COACH_VOICE||'nova',input:text,instructions:'Speak like a warm, relaxed, confident personal nutrition coach having a real conversation. Natural pacing, friendly American English, no announcer voice, no robotic cadence.',response_format:'mp3'})
     });
     if(!r.ok)return json({ok:false,error:'Natural voice is temporarily unavailable.'},502);
     return new Response(await r.arrayBuffer(),{status:200,headers:{'content-type':'audio/mpeg','cache-control':'no-store'}});
@@ -48,24 +54,17 @@ export async function fuelCoach(request,env){
 
   if(env.OPENAI_API_KEY){
     try{
-      const r=await fetch('https://api.openai.com/v1/responses',{
-        method:'POST',
-        headers:{authorization:`Bearer ${env.OPENAI_API_KEY}`,'content-type':'application/json'},
-        body:JSON.stringify({model:env.FUEL_COACH_MODEL||'gpt-5.4-mini',instructions:system,input,max_output_tokens:1400})
-      });
+      const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{authorization:`Bearer ${env.OPENAI_API_KEY}`,'content-type':'application/json'},body:JSON.stringify({model:env.FUEL_COACH_MODEL||'gpt-5.4-mini',instructions:system,input,max_output_tokens:1400})});
       const d=await r.json();
-      if(r.ok){const answer=outputText(d);if(answer)return json({ok:true,provider:'openai',answer})}
+      if(r.ok){const answer=cleanAnswer(outputText(d));if(answer)return json({ok:true,provider:'openai',answer})}
     }catch{}
   }
 
   if(env.AI){
     try{
-      const result=await env.AI.run('@cf/google/gemma-4-26b-a4b-it',{
-        messages:[{role:'system',content:system},{role:'user',content:input}],
-        temperature:0.2,max_completion_tokens:1400,chat_template_kwargs:{enable_thinking:false}
-      });
-      const answer=result?.choices?.[0]?.message?.content||result?.response||result?.result;
-      if(answer)return json({ok:true,provider:'cloudflare',answer:String(answer).trim()});
+      const result=await env.AI.run('@cf/google/gemma-4-26b-a4b-it',{messages:[{role:'system',content:system},{role:'user',content:input}],temperature:0.2,max_completion_tokens:1400,chat_template_kwargs:{enable_thinking:false}});
+      const answer=cleanAnswer(result?.choices?.[0]?.message?.content||result?.response||result?.result);
+      if(answer)return json({ok:true,provider:'cloudflare',answer});
     }catch{}
   }
   return json({ok:false,error:'Fuel Coach is ready, but its AI connection is not available right now.'},503);
