@@ -2,6 +2,7 @@ import SwiftUI
 import WebKit
 import UIKit
 import AVFoundation
+import Speech
 
 struct ContentView: View {
     var body: some View {
@@ -18,6 +19,7 @@ struct FuelWebView: UIViewRepresentable {
         config.defaultWebpagePreferences.allowsContentJavaScript = true
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "healthKit")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "fuelSpeech")
+        config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "fuelRecognition")
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -37,6 +39,10 @@ struct FuelWebView: UIViewRepresentable {
         weak var webView: WKWebView?
         private let health = HealthKitManager()
         private let speech = AVSpeechSynthesizer()
+        private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
+        private let audioEngine = AVAudioEngine()
+        private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+        private var recognitionTask: SFSpeechRecognitionTask?
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             guard let url = navigationAction.request.url else { decisionHandler(.cancel); return }
@@ -75,6 +81,26 @@ struct FuelWebView: UIViewRepresentable {
                 return
             }
 
+            if message.name == "fuelRecognition" {
+                Task { @MainActor in
+                    switch action {
+                    case "transcribe":
+                        do {
+                            let text = try await transcribeOnce()
+                            replyHandler(["ok": true, "text": text], nil)
+                        } catch {
+                            replyHandler(["ok": false, "error": error.localizedDescription], nil)
+                        }
+                    case "stop":
+                        stopRecognition()
+                        replyHandler(["ok": true], nil)
+                    default:
+                        replyHandler(["ok": false, "error": "Unknown recognition action."], nil)
+                    }
+                }
+                return
+            }
+
             Task {
                 do {
                     switch action {
@@ -91,6 +117,111 @@ struct FuelWebView: UIViewRepresentable {
                     replyHandler(["ok": false, "error": error.localizedDescription], nil)
                 }
             }
+        }
+
+        @MainActor
+        private func transcribeOnce() async throws -> String {
+            stopRecognition()
+
+            let speechStatus = await withCheckedContinuation { continuation in
+                SFSpeechRecognizer.requestAuthorization { status in
+                    continuation.resume(returning: status)
+                }
+            }
+            guard speechStatus == .authorized else {
+                throw NSError(domain: "FuelSpeechRecognition", code: 1, userInfo: [NSLocalizedDescriptionKey: "Speech recognition permission is required."])
+            }
+
+            let micGranted = await withCheckedContinuation { continuation in
+                AVAudioApplication.requestRecordPermission { granted in
+                    continuation.resume(returning: granted)
+                }
+            }
+            guard micGranted else {
+                throw NSError(domain: "FuelSpeechRecognition", code: 2, userInfo: [NSLocalizedDescriptionKey: "Microphone permission is required."])
+            }
+            guard let speechRecognizer, speechRecognizer.isAvailable else {
+                throw NSError(domain: "FuelSpeechRecognition", code: 3, userInfo: [NSLocalizedDescriptionKey: "Speech recognition is not available right now."])
+            }
+
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.record, mode: .measurement, options: [.duckOthers])
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+
+            let request = SFSpeechAudioBufferRecognitionRequest()
+            request.shouldReportPartialResults = true
+            recognitionRequest = request
+
+            let inputNode = audioEngine.inputNode
+            let format = inputNode.outputFormat(forBus: 0)
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+                request.append(buffer)
+            }
+            audioEngine.prepare()
+            try audioEngine.start()
+
+            return try await withCheckedThrowingContinuation { continuation in
+                var resumed = false
+                var latestText = ""
+                var revision = 0
+
+                @MainActor
+                func finish(_ text: String?, error: Error? = nil) {
+                    guard !resumed else { return }
+                    resumed = true
+                    self.stopRecognition()
+                    if let error {
+                        continuation.resume(throwing: error)
+                    } else if let text, !text.isEmpty {
+                        continuation.resume(returning: text)
+                    } else {
+                        continuation.resume(throwing: NSError(domain: "FuelSpeechRecognition", code: 4, userInfo: [NSLocalizedDescriptionKey: "I couldn't hear that clearly. Try again and speak after tapping the microphone."]))
+                    }
+                }
+
+                recognitionTask = speechRecognizer.recognitionTask(with: request) { result, error in
+                    DispatchQueue.main.async {
+                        if let error {
+                            finish(nil, error: error)
+                            return
+                        }
+                        guard let result else { return }
+                        let text = result.bestTranscription.formattedString.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !text.isEmpty {
+                            latestText = text
+                            revision += 1
+                            let capturedRevision = revision
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.15) {
+                                if !resumed && capturedRevision == revision {
+                                    finish(latestText)
+                                }
+                            }
+                        }
+                        if result.isFinal {
+                            finish(text)
+                        }
+                    }
+                }
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+                    if !resumed {
+                        finish(latestText)
+                    }
+                }
+            }
+        }
+
+        @MainActor
+        private func stopRecognition() {
+            if audioEngine.isRunning {
+                audioEngine.stop()
+            }
+            audioEngine.inputNode.removeTap(onBus: 0)
+            recognitionRequest?.endAudio()
+            recognitionTask?.cancel()
+            recognitionTask = nil
+            recognitionRequest = nil
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         }
 
         @MainActor
