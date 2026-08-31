@@ -18,6 +18,7 @@ targets:
         NSHealthShareUsageDescription: Fuel reads activity, sleep, heart rate, weight, and body composition from Apple Health so your nutrition and progress dashboard can stay up to date.
         NSMicrophoneUsageDescription: Fuel uses the microphone when you tap Talk to Fuel Coach so it can hear your question.
         NSSpeechRecognitionUsageDescription: Fuel converts your spoken Fuel Coach questions into text so the coach can answer them.
+        NSCameraUsageDescription: Fuel uses the camera when you photograph meals, receipts, or barcodes.
     entitlements:
       path: Fuel/Fuel.entitlements
     settings:
