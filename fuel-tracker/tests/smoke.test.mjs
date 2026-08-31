@@ -101,8 +101,8 @@ test('Fuel removes instructional fine print while preserving data labels',()=>{
   assert.match(cleanup,/font-size:13px/);
 });
 
-test('Coach notifications are AI-assisted fasting-aware and native',()=>{
-  assert.match(maintenance,/coach-notifications\.js\?v=1/);
+test('Coach notifications are AI-assisted fasting-aware native and testable',()=>{
+  assert.match(maintenance,/coach-notifications\.js\?v=2/);
   assert.match(notifications,/function recentMealPattern/);
   assert.match(notifications,/estimatedFastingHours/);
   assert.match(notifications,/mode:'notification'/);
@@ -110,6 +110,9 @@ test('Coach notifications are AI-assisted fasting-aware and native',()=>{
   assert.match(notifications,/fuelNotifications/);
   assert.match(notifications,/fuel-health-synced/);
   assert.match(notifications,/fuel-app-active/);
+  assert.match(notifications,/function testNotification/);
+  assert.match(notifications,/Date\.now\(\)\+30000/);
+  assert.match(notifications,/Send test notification/);
   assert.match(coachApi,/mode===['"]notification['"]/);
   assert.match(coachApi,/Avoid nagging/);
   assert.match(swift,/name: "fuelNotifications"/);
