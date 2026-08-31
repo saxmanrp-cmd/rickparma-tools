@@ -27,7 +27,7 @@ function enhanceReview(){
     const hint=document.createElement('div');hint.className='peHint';hint.textContent='Change the amount or measurement and Save will re-analyze the nutrition before logging it.';row.insertBefore(hint,grid);
     row.dataset.peDirty='0';
   });
-  const save=$('saveAi');if(save&&$('review')?.classList.contains('open')) save.textContent='Re-analyze & save';
+  const save=$('saveAi');if(save&&$('review')?.classList.contains('open')&&save.textContent!=='Re-analyze & save') save.textContent='Re-analyze & save';
 }
 function enhanceReceipt(){
   const btn=$('receiptAnalyze');if(!btn)return;
