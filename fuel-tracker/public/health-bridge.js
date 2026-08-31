@@ -3,6 +3,7 @@
 const $=id=>document.getElementById(id);
 const STORAGE_KEY='fuel-apple-health-latest';
 const hasNative=()=>!!window.webkit?.messageHandlers?.healthKit;
+let foregroundSyncBusy=false;
 function fmt(v,d=0){const n=Number(v);return Number.isFinite(n)?n.toFixed(d).replace(/\.0$/,''):'—'}
 function findCard(title){return [...document.querySelectorAll('#progress .card')].find(c=>c.querySelector('h2')?.textContent.trim()===title)}
 function makeHealthPrimary(){
@@ -38,7 +39,7 @@ function install(){
   const card=cards.find(c=>c.querySelector('h2')?.textContent.trim()==='Apple Health');
   if(!card)return;
   card.innerHTML=`<div class="sectiontitle"><h2>Apple Health</h2><span id="healthState" class="pill">${hasNative()?'available':'iPhone app required'}</span></div>
-    <p id="healthNote" class="note" style="margin-top:0">${hasNative()?'Apple Health is Fuel’s main health-data source.':'Apple Health access works through the native Fuel iPhone app. Your web tracker still works normally.'}</p>
+    <p id="healthNote" class="note" style="margin-top:0">${hasNative()?'Apple Health is Fuel’s main health-data source. It refreshes when Fuel opens.':'Apple Health access works through the native Fuel iPhone app. Your web tracker still works normally.'}</p>
     <div id="healthMetrics" class="grid" style="display:none;margin:10px 0"></div>
     <div class="row"><button id="healthConnect" class="primary" ${hasNative()?'':'disabled'}>${hasNative()?' Connect Apple Health':' Apple Health — native app required'}</button><button id="healthSync" class="secondary" style="display:none">Sync now</button></div>
     <div id="healthStatus" class="status"></div>`;
@@ -65,6 +66,11 @@ async function sync(silent){
   if(!silent)status('Syncing Apple Health…');
   try{const r=await call('today');if(!r?.ok)throw new Error(r?.error||'Apple Health sync failed.');const data={...r.data,syncedAt:new Date().toISOString()};save(data);render(data);if(!silent)status('Apple Health synced.')}catch(e){if(!silent)status(e.message||'Apple Health sync failed.')}
 }
+async function syncOnForeground(){
+  if(!hasNative()||foregroundSyncBusy)return;
+  foregroundSyncBusy=true;
+  try{await sync(true)}finally{foregroundSyncBusy=false}
+}
 function render(d){
   const grid=$('healthMetrics');if(!grid)return;grid.style.display='grid';
   const extra=[];
@@ -82,9 +88,10 @@ function render(d){
     <div class="metric"><b>${fmt(d.weightLb,1)}</b><small>latest weight lb</small></div>${extra.join('')}`;
   $('healthSync').style.display=hasNative()?'block':'none';
   if(hasNative()){$('healthState').textContent='connected';$('healthConnect').textContent='Health connected'}
-  if(d.syncedAt)$('healthNote').textContent='Last sync '+new Date(d.syncedAt).toLocaleString()+'. Fuel reads compatible data written to Apple Health by connected devices and apps.';
+  if(d.syncedAt)$('healthNote').textContent='Last sync '+new Date(d.syncedAt).toLocaleString()+'. Fuel refreshes Apple Health when the app opens and also supports manual Sync now.';
   applyBodyComposition(d);
   window.dispatchEvent(new CustomEvent('fuel-health-synced',{detail:d}));
 }
+window.addEventListener('fuel-app-active',syncOnForeground);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
 })();
