@@ -8,6 +8,7 @@ const app=await readFile(new URL('../public/index.html',import.meta.url),'utf8')
 const client=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
 const portions=await readFile(new URL('../public/portion-editor.js',import.meta.url),'utf8');
 const coach=await readFile(new URL('../public/fuel-coach.js',import.meta.url),'utf8');
+const coachApi=await readFile(new URL('../src/fuel-coach-api.js',import.meta.url),'utf8');
 const voice=await readFile(new URL('../public/fuel-voice-quality.js',import.meta.url),'utf8');
 const swift=await readFile(new URL('../ios/Fuel/ContentView.swift',import.meta.url),'utf8');
 const info=await readFile(new URL('../ios/Fuel/Info.plist',import.meta.url),'utf8');
@@ -53,6 +54,14 @@ test('Fuel Tracker client has simple tracking plus barcode restaurant and receip
 test('portion editor does not create a MutationObserver feedback loop',()=>{
   assert.match(portions,/save\.textContent!==['"]Re-analyze & save['"]/);
   assert.match(portions,/new MutationObserver/);
+});
+
+test('Fuel Coach treats the first local log day as authoritative today',()=>{
+  assert.match(coachApi,/function normalizeContext/);
+  assert.match(coachApi,/localDate:today\?\.date/);
+  assert.match(coachApi,/today:context\.today\|\|today/);
+  assert.match(coachApi,/NEVER use generatedAt to decide which calendar date is today/);
+  assert.match(coachApi,/TRACKER DATA\.today as the authoritative local-day record/);
 });
 
 test('native Fuel contains all required privacy and bundle metadata',()=>{
