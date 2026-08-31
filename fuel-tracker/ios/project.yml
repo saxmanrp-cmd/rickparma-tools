@@ -13,8 +13,11 @@ targets:
       path: Fuel/Info.plist
       properties:
         CFBundleDisplayName: Fuel
+        CFBundleExecutable: $(EXECUTABLE_NAME)
         UILaunchScreen: {}
         NSHealthShareUsageDescription: Fuel reads activity, sleep, heart rate, weight, and body composition from Apple Health so your nutrition and progress dashboard can stay up to date.
+        NSMicrophoneUsageDescription: Fuel uses the microphone when you tap Talk to Fuel Coach so it can hear your question.
+        NSSpeechRecognitionUsageDescription: Fuel converts your spoken Fuel Coach questions into text so the coach can answer them.
     entitlements:
       path: Fuel/Fuel.entitlements
     settings:
