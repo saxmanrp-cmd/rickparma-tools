@@ -27,6 +27,7 @@ struct FuelWebView: UIViewRepresentable {
         webView.allowsBackForwardNavigationGestures = false
         webView.scrollView.contentInsetAdjustmentBehavior = .automatic
         context.coordinator.webView = webView
+        context.coordinator.startAppActiveObserver()
 
         if let url = URL(string: "https://rick-fuel-tracker.saxmanrp.workers.dev/?native=1") {
             webView.load(URLRequest(url: url, cachePolicy: .reloadRevalidatingCacheData))
@@ -45,6 +46,24 @@ struct FuelWebView: UIViewRepresentable {
         private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
         private var recognitionTask: SFSpeechRecognitionTask?
         private var coachAudioPlayer: AVAudioPlayer?
+        private var appActiveObserver: NSObjectProtocol?
+
+        deinit {
+            if let appActiveObserver {
+                NotificationCenter.default.removeObserver(appActiveObserver)
+            }
+        }
+
+        func startAppActiveObserver() {
+            guard appActiveObserver == nil else { return }
+            appActiveObserver = NotificationCenter.default.addObserver(
+                forName: UIApplication.didBecomeActiveNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.webView?.evaluateJavaScript("window.dispatchEvent(new CustomEvent('fuel-app-active'))")
+            }
+        }
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             guard let url = navigationAction.request.url else { decisionHandler(.cancel); return }
