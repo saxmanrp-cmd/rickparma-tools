@@ -250,7 +250,7 @@ struct FuelWebView: UIViewRepresentable {
                             latestText = text
                             revision += 1
                             let capturedRevision = revision
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.15) {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.25) {
                                 if !resumed && capturedRevision == revision {
                                     finish(latestText)
                                 }
@@ -262,7 +262,7 @@ struct FuelWebView: UIViewRepresentable {
                     }
                 }
 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 20) {
                     if !resumed {
                         finish(latestText)
                     }
