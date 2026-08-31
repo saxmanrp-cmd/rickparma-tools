@@ -9,6 +9,7 @@ const client=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
 const portions=await readFile(new URL('../public/portion-editor.js',import.meta.url),'utf8');
 const coach=await readFile(new URL('../public/fuel-coach.js',import.meta.url),'utf8');
 const coachApi=await readFile(new URL('../src/fuel-coach-api.js',import.meta.url),'utf8');
+const maintenance=await readFile(new URL('../public/maintenance.js',import.meta.url),'utf8');
 const healthBridge=await readFile(new URL('../public/health-bridge.js',import.meta.url),'utf8');
 const voice=await readFile(new URL('../public/fuel-voice-quality.js',import.meta.url),'utf8');
 const swift=await readFile(new URL('../ios/Fuel/ContentView.swift',import.meta.url),'utf8');
@@ -49,6 +50,7 @@ test('Fuel Tracker client has simple tracking plus barcode restaurant and receip
   assert.doesNotThrow(()=>new Function(client));
   assert.doesNotThrow(()=>new Function(portions));
   assert.doesNotThrow(()=>new Function(coach));
+  assert.doesNotThrow(()=>new Function(maintenance));
   assert.doesNotThrow(()=>new Function(healthBridge));
   assert.doesNotThrow(()=>new Function(voice));
 });
@@ -71,6 +73,19 @@ test('Fuel Coach uses one talk button and low reasoning for normal questions',()
   assert.doesNotMatch(coach,/Analyze My Day/);
   assert.match(coachApi,/body\.mode===['"]scan['"]\?['"]medium['"]:['"]low['"]/);
   assert.match(coachApi,/max_output_tokens:1000/);
+});
+
+test('Fuel tracks maintenance and deficit as first-class data',()=>{
+  assert.match(maintenance,/DEFAULT_TDEE=2400/);
+  assert.match(maintenance,/Calorie deficit/);
+  assert.match(maintenance,/estimated maintenance/);
+  assert.match(maintenance,/planned deficit/);
+  assert.match(coach,/estimatedTdee:maintenance/);
+  assert.match(coach,/estimatedDeficitVsMaintenance/);
+  assert.match(coach,/maintenance\.js\?v=1/);
+  assert.match(coachApi,/function directAnswer/);
+  assert.match(coachApi,/provider:'local-math'/);
+  assert.match(coachApi,/maintenance\.estimatedTdee/);
 });
 
 test('Apple Health refreshes when native Fuel returns to foreground',()=>{
