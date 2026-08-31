@@ -32,16 +32,29 @@ function json(data,status=200){return Response.json(data,{status,headers:{'cache
 async function tts(body,env){
   const text=String(body?.text||'').trim().slice(0,5000);
   if(!text)return json({ok:false,error:'Nothing to speak.'},400);
-  if(!env.OPENAI_API_KEY)return json({ok:false,error:'Natural voice is not configured yet.'},503);
+  if(!env.OPENAI_API_KEY)return json({ok:false,error:'OpenAI key missing from Worker.'},503);
   try{
     const r=await fetch('https://api.openai.com/v1/audio/speech',{
       method:'POST',
       headers:{authorization:`Bearer ${env.OPENAI_API_KEY}`,'content-type':'application/json'},
       body:JSON.stringify({model:'gpt-4o-mini-tts',voice:env.FUEL_COACH_VOICE||'nova',input:text,instructions:'Speak like a warm, relaxed, confident personal nutrition coach having a real conversation. Natural pacing, friendly American English, no announcer voice, no robotic cadence.',response_format:'mp3'})
     });
-    if(!r.ok)return json({ok:false,error:'Natural voice is temporarily unavailable.'},502);
-    return new Response(await r.arrayBuffer(),{status:200,headers:{'content-type':'audio/mpeg','cache-control':'no-store'}});
-  }catch{return json({ok:false,error:'Natural voice is temporarily unavailable.'},502)}
+    if(!r.ok){
+      let upstreamCode='';
+      let upstreamMessage='';
+      try{
+        const d=await r.json();
+        upstreamCode=String(d?.error?.code||d?.error?.type||'').slice(0,100);
+        upstreamMessage=String(d?.error?.message||'').slice(0,220);
+      }catch{}
+      return json({ok:false,error:'OpenAI TTS request failed.',upstreamStatus:r.status,upstreamCode,upstreamMessage},502);
+    }
+    const bytes=await r.arrayBuffer();
+    if(!bytes.byteLength)return json({ok:false,error:'OpenAI returned empty audio.'},502);
+    return new Response(bytes,{status:200,headers:{'content-type':'audio/mpeg','cache-control':'no-store','x-fuel-voice-provider':'openai'}});
+  }catch(err){
+    return json({ok:false,error:'OpenAI TTS network request failed.',detail:String(err?.message||'network error').slice(0,180)},502);
+  }
 }
 
 export async function fuelCoach(request,env){
