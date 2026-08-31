@@ -162,33 +162,49 @@ struct FuelWebView: UIViewRepresentable {
 
             return try await withCheckedThrowingContinuation { continuation in
                 var resumed = false
-                recognitionTask = speechRecognizer.recognitionTask(with: request) { [weak self] result, error in
-                    guard let self else { return }
-                    if let result, result.isFinal, !resumed {
-                        resumed = true
-                        let text = result.bestTranscription.formattedString.trimmingCharacters(in: .whitespacesAndNewlines)
-                        self.stopRecognition()
-                        if text.isEmpty {
-                            continuation.resume(throwing: NSError(domain: "FuelSpeechRecognition", code: 4, userInfo: [NSLocalizedDescriptionKey: "I couldn't hear a question clearly."]))
-                        } else {
-                            continuation.resume(returning: text)
-                        }
-                        return
-                    }
-                    if let error, !resumed {
-                        resumed = true
-                        self.stopRecognition()
+                var latestText = ""
+                var revision = 0
+
+                func finish(_ text: String?, error: Error? = nil) {
+                    guard !resumed else { return }
+                    resumed = true
+                    self.stopRecognition()
+                    if let error {
                         continuation.resume(throwing: error)
+                    } else if let text, !text.isEmpty {
+                        continuation.resume(returning: text)
+                    } else {
+                        continuation.resume(throwing: NSError(domain: "FuelSpeechRecognition", code: 4, userInfo: [NSLocalizedDescriptionKey: "I couldn't hear that clearly. Try again and speak after tapping the microphone."]))
                     }
                 }
 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
-                    guard let self, !resumed else { return }
-                    resumed = true
-                    let text = self.recognitionTask == nil ? "" : ""
-                    self.stopRecognition()
-                    if text.isEmpty {
-                        continuation.resume(throwing: NSError(domain: "FuelSpeechRecognition", code: 5, userInfo: [NSLocalizedDescriptionKey: "I couldn't hear that clearly. Try again and speak after tapping the microphone."]))
+                recognitionTask = speechRecognizer.recognitionTask(with: request) { result, error in
+                    DispatchQueue.main.async {
+                        if let error {
+                            finish(nil, error: error)
+                            return
+                        }
+                        guard let result else { return }
+                        let text = result.bestTranscription.formattedString.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !text.isEmpty {
+                            latestText = text
+                            revision += 1
+                            let capturedRevision = revision
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.15) {
+                                if !resumed && capturedRevision == revision {
+                                    finish(latestText)
+                                }
+                            }
+                        }
+                        if result.isFinal {
+                            finish(text)
+                        }
+                    }
+                }
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+                    if !resumed {
+                        finish(latestText)
                     }
                 }
             }
