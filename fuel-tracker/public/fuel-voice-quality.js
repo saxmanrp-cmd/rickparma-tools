@@ -1,5 +1,7 @@
 (()=>{
 'use strict';
+if(window.__fuelVoiceQualityActive)return;
+window.__fuelVoiceQualityActive=true;
 let audio=null,last='';
 function cleanForSpeech(text){
   return String(text||'')
@@ -12,10 +14,13 @@ function cleanForSpeech(text){
     .trim();
 }
 function nativeSpeech(){return window.webkit?.messageHandlers?.fuelSpeech}
-function stopAll(){
+function stopSystemSpeech(){
   try{speechSynthesis.cancel()}catch{}
-  try{if(audio){audio.pause();audio.src='';audio=null}}catch{}
   try{nativeSpeech()?.postMessage({action:'stop'})}catch{}
+}
+function stopAll(){
+  stopSystemSpeech();
+  try{if(audio){audio.pause();audio.src='';audio=null}}catch{}
 }
 function setVoiceStatus(text,ok=false){
   try{
@@ -44,31 +49,29 @@ async function speakNatural(text){
     }
     const blob=await r.blob();
     if(!blob.size)throw Error('empty audio response');
-    audio=new Audio(URL.createObjectURL(blob));audio.playsInline=true;await audio.play();
+    stopSystemSpeech();
+    audio=new Audio(URL.createObjectURL(blob));
+    audio.playsInline=true;
+    await audio.play();
+    stopSystemSpeech();
+    setTimeout(stopSystemSpeech,120);
+    setTimeout(stopSystemSpeech,450);
     setVoiceStatus('Voice: OpenAI natural voice',true);
     return;
   }catch(err){
-    setVoiceStatus(`Voice: iPhone fallback — ${err?.message||'OpenAI TTS unavailable'}`,false);
+    stopSystemSpeech();
+    setVoiceStatus(`Voice: OpenAI unavailable — ${err?.message||'TTS unavailable'}`,false);
   }
-  try{
-    const bridge=nativeSpeech();
-    if(bridge){
-      const result=await bridge.postMessage({action:'speak',text});
-      if(result?.ok)return;
-    }
-  }catch{}
-  try{
-    if(!('speechSynthesis' in window))return;
-    const u=new SpeechSynthesisUtterance(text);u.rate=.97;u.pitch=1;u.volume=1;
-    const voices=speechSynthesis.getVoices();
-    const v=voices.find(x=>/^en-US/i.test(x.lang)&&/Samantha|Ava|Evan|Aaron|Daniel|Alex/i.test(x.name))||voices.find(x=>/^en-US/i.test(x.lang));if(v)u.voice=v;speechSynthesis.speak(u);
-  }catch{}
 }
 function install(){
   const answer=document.getElementById('fcAnswer');if(!answer)return false;
-  const mo=new MutationObserver(()=>{const t=answer.textContent.trim();if(t)speakNatural(t)});mo.observe(answer,{childList:true,subtree:true,characterData:true});
+  const mo=new MutationObserver(()=>{const t=answer.textContent.trim();if(t)speakNatural(t)});
+  mo.observe(answer,{childList:true,subtree:true,characterData:true});
   document.addEventListener('click',e=>{if(e.target.closest('#fcClose'))stopAll()});
   return true;
 }
-if(!install()){const mo=new MutationObserver(()=>{if(install())mo.disconnect()});mo.observe(document.body,{childList:true,subtree:true})}
+if(!install()){
+  const mo=new MutationObserver(()=>{if(install())mo.disconnect()});
+  mo.observe(document.body,{childList:true,subtree:true});
+}
 })();
