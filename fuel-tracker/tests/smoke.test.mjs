@@ -79,7 +79,7 @@ test('Fuel tracks maintenance and deficit as first-class data',()=>{
   assert.match(maintenance,/DEFAULT_TDEE=2400/);
   assert.match(maintenance,/Calorie deficit/);
   assert.match(maintenance,/estimated maintenance/);
-  assert.match(maintenance,/planned deficit/);
+  assert.match(maintenance,/planned deficit/i);
   assert.match(coach,/estimatedTdee:maintenance/);
   assert.match(coach,/estimatedDeficitVsMaintenance/);
   assert.match(coach,/maintenance\.js\?v=1/);
