@@ -18,3 +18,4 @@ document.addEventListener('click',e=>{if(e.target.closest('#saveAi,#manualAdd,.q
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{renderAll();setTimeout(renderAll,800)});else{renderAll();setTimeout(renderAll,800)}
 window.FuelMaintenance={get:()=>settings().tdee,summary:()=>{const s=settings(),eaten=calories();return {estimatedMaintenance:s.tdee,calorieTarget:s.cal,plannedDeficit:s.tdee-s.cal,caloriesEatenToday:eaten,estimatedDeficitVsMaintenance:s.tdee-eaten}}};
 })();
+import('/coach-notifications.js?v=1').catch(()=>{});

@@ -21,6 +21,7 @@ struct FuelWebView: UIViewRepresentable {
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "fuelSpeech")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "fuelRecognition")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "fuelAudio")
+        config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "fuelNotifications")
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -40,6 +41,7 @@ struct FuelWebView: UIViewRepresentable {
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandlerWithReply, AVAudioPlayerDelegate {
         weak var webView: WKWebView?
         private let health = HealthKitManager()
+        private let notifications = FuelNotificationManager()
         private let speech = AVSpeechSynthesizer()
         private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
         private let audioEngine = AVAudioEngine()
@@ -78,6 +80,32 @@ struct FuelWebView: UIViewRepresentable {
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
             guard let body = message.body as? [String: Any], let action = body["action"] as? String else {
                 replyHandler(["ok": false, "error": "Invalid native request."], nil)
+                return
+            }
+
+            if message.name == "fuelNotifications" {
+                Task {
+                    switch action {
+                    case "authorize":
+                        let ok = await notifications.authorize()
+                        replyHandler(["ok": ok, "status": await notifications.status()], nil)
+                    case "replace":
+                        let items = body["notifications"] as? [[String: Any]] ?? []
+                        do {
+                            let count = try await notifications.replace(items)
+                            replyHandler(["ok": true, "scheduled": count, "status": await notifications.status()], nil)
+                        } catch {
+                            replyHandler(["ok": false, "error": error.localizedDescription, "status": await notifications.status()], nil)
+                        }
+                    case "cancelAll":
+                        await notifications.cancelAll()
+                        replyHandler(["ok": true], nil)
+                    case "status":
+                        replyHandler(["ok": true, "status": await notifications.status()], nil)
+                    default:
+                        replyHandler(["ok": false, "error": "Unknown notification action."], nil)
+                    }
+                }
                 return
             }
 

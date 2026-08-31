@@ -10,10 +10,12 @@ const portions=await readFile(new URL('../public/portion-editor.js',import.meta.
 const coach=await readFile(new URL('../public/fuel-coach.js',import.meta.url),'utf8');
 const coachApi=await readFile(new URL('../src/fuel-coach-api.js',import.meta.url),'utf8');
 const maintenance=await readFile(new URL('../public/maintenance.js',import.meta.url),'utf8');
+const notifications=await readFile(new URL('../public/coach-notifications.js',import.meta.url),'utf8');
 const cleanup=await readFile(new URL('../public/ui-cleanup.js',import.meta.url),'utf8');
 const healthBridge=await readFile(new URL('../public/health-bridge.js',import.meta.url),'utf8');
 const voice=await readFile(new URL('../public/fuel-voice-quality.js',import.meta.url),'utf8');
 const swift=await readFile(new URL('../ios/Fuel/ContentView.swift',import.meta.url),'utf8');
+const notifySwift=await readFile(new URL('../ios/Fuel/FuelNotificationManager.swift',import.meta.url),'utf8');
 const info=await readFile(new URL('../ios/Fuel/Info.plist',import.meta.url),'utf8');
 const entitlements=await readFile(new URL('../ios/Fuel/Fuel.entitlements',import.meta.url),'utf8');
 const project=await readFile(new URL('../ios/project.yml',import.meta.url),'utf8');
@@ -48,6 +50,7 @@ test('Fuel Tracker client scripts parse cleanly',()=>{
   assert.doesNotThrow(()=>new Function(portions));
   assert.doesNotThrow(()=>new Function(coach));
   assert.doesNotThrow(()=>new Function(maintenance));
+  assert.doesNotThrow(()=>new Function(notifications));
   assert.doesNotThrow(()=>new Function(cleanup));
   assert.doesNotThrow(()=>new Function(healthBridge));
   assert.doesNotThrow(()=>new Function(voice));
@@ -73,7 +76,7 @@ test('Fuel Coach stays low reasoning and sends less data for ordinary questions'
   assert.match(coach,/dayCount=full\?7:3/);
   assert.match(coach,/context\(question\)/);
   assert.match(coachApi,/body\.mode===['"]scan['"]\?['"]medium['"]:['"]low['"]/);
-  assert.match(coachApi,/max_output_tokens:650/);
+  assert.match(coachApi,/max_output_tokens:notification\?180:650/);
   assert.match(coachApi,/slice\(0,24000\)/);
 });
 
@@ -96,6 +99,24 @@ test('Fuel removes instructional fine print while preserving data labels',()=>{
   assert.match(cleanup,/#healthNote/);
   assert.match(cleanup,/choose a tool/);
   assert.match(cleanup,/font-size:13px/);
+});
+
+test('Coach notifications are AI-assisted fasting-aware and native',()=>{
+  assert.match(maintenance,/coach-notifications\.js\?v=1/);
+  assert.match(notifications,/function recentMealPattern/);
+  assert.match(notifications,/estimatedFastingHours/);
+  assert.match(notifications,/mode:'notification'/);
+  assert.match(notifications,/SEND\\\|/);
+  assert.match(notifications,/fuelNotifications/);
+  assert.match(notifications,/fuel-health-synced/);
+  assert.match(notifications,/fuel-app-active/);
+  assert.match(coachApi,/mode===['"]notification['"]/);
+  assert.match(coachApi,/Avoid nagging/);
+  assert.match(swift,/name: "fuelNotifications"/);
+  assert.match(swift,/FuelNotificationManager/);
+  assert.match(notifySwift,/UNUserNotificationCenter/);
+  assert.match(notifySwift,/requestAuthorization/);
+  assert.match(notifySwift,/removePendingNotificationRequests/);
 });
 
 test('Apple Health refreshes when native Fuel returns to foreground',()=>{
