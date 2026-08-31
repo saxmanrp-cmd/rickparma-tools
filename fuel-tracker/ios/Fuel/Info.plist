@@ -22,5 +22,7 @@
   <string>Fuel uses the microphone when you tap Talk to Fuel Coach so it can hear your question.</string>
   <key>NSSpeechRecognitionUsageDescription</key>
   <string>Fuel converts your spoken Fuel Coach questions into text so the coach can answer them.</string>
+  <key>NSCameraUsageDescription</key>
+  <string>Fuel uses the camera when you photograph meals, receipts, or barcodes.</string>
 </dict>
 </plist>
