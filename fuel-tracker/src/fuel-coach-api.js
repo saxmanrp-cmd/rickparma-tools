@@ -37,7 +37,7 @@ async function tts(body,env){
     const r=await fetch('https://api.openai.com/v1/audio/speech',{
       method:'POST',
       headers:{authorization:`Bearer ${env.OPENAI_API_KEY}`,'content-type':'application/json'},
-      body:JSON.stringify({model:'gpt-4o-mini-tts',voice:env.FUEL_COACH_VOICE||'nova',input:text,instructions:'Speak like a warm, relaxed, confident personal nutrition coach having a real conversation. Natural pacing, friendly American English, no announcer voice, no robotic cadence.',response_format:'mp3'})
+      body:JSON.stringify({model:'gpt-4o-mini-tts',voice:env.FUEL_COACH_VOICE||'cedar',input:text,instructions:'Use a composed, direct, calm voice with the feel of a confident one-on-one coach. Speak naturally and conversationally in American English. Keep the delivery grounded, measured, low-drama, and clear. Avoid announcer energy, exaggerated friendliness, sing-song cadence, or robotic pacing.',response_format:'mp3'})
     });
     if(!r.ok){
       let upstreamCode='';
@@ -67,9 +67,10 @@ export async function fuelCoach(request,env){
 
   if(env.OPENAI_API_KEY){
     try{
-      const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{authorization:`Bearer ${env.OPENAI_API_KEY}`,'content-type':'application/json'},body:JSON.stringify({model:env.FUEL_COACH_MODEL||'gpt-5.4-mini',instructions:system,input,max_output_tokens:1400})});
+      const reasoningEffort=body.mode==='scan'?'high':'medium';
+      const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{authorization:`Bearer ${env.OPENAI_API_KEY}`,'content-type':'application/json'},body:JSON.stringify({model:env.FUEL_COACH_MODEL||'gpt-5.6-terra',instructions:system,input,reasoning:{effort:reasoningEffort},max_output_tokens:1400})});
       const d=await r.json();
-      if(r.ok){const answer=cleanAnswer(outputText(d));if(answer)return json({ok:true,provider:'openai',answer})}
+      if(r.ok){const answer=cleanAnswer(outputText(d));if(answer)return json({ok:true,provider:'openai',reasoningEffort,answer})}
     }catch{}
   }
 
