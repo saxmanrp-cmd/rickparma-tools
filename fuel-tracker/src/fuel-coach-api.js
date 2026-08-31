@@ -74,8 +74,8 @@ export async function fuelCoach(request,env){
 
   if(env.OPENAI_API_KEY){
     try{
-      const reasoningEffort=body.mode==='scan'?'high':'medium';
-      const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{authorization:`Bearer ${env.OPENAI_API_KEY}`,'content-type':'application/json'},body:JSON.stringify({model:env.FUEL_COACH_MODEL||'gpt-5.6-terra',instructions:system,input,reasoning:{effort:reasoningEffort},max_output_tokens:1400})});
+      const reasoningEffort=body.mode==='scan'?'medium':'low';
+      const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{authorization:`Bearer ${env.OPENAI_API_KEY}`,'content-type':'application/json'},body:JSON.stringify({model:env.FUEL_COACH_MODEL||'gpt-5.6-terra',instructions:system,input,reasoning:{effort:reasoningEffort},max_output_tokens:1000})});
       const d=await r.json();
       if(r.ok){const answer=cleanAnswer(outputText(d));if(answer)return json({ok:true,provider:'openai',reasoningEffort,answer})}
     }catch{}
@@ -83,7 +83,7 @@ export async function fuelCoach(request,env){
 
   if(env.AI){
     try{
-      const result=await env.AI.run('@cf/google/gemma-4-26b-a4b-it',{messages:[{role:'system',content:system},{role:'user',content:input}],temperature:0.2,max_completion_tokens:1400,chat_template_kwargs:{enable_thinking:false}});
+      const result=await env.AI.run('@cf/google/gemma-4-26b-a4b-it',{messages:[{role:'system',content:system},{role:'user',content:input}],temperature:0.2,max_completion_tokens:1000,chat_template_kwargs:{enable_thinking:false}});
       const answer=cleanAnswer(result?.choices?.[0]?.message?.content||result?.response||result?.result);
       if(answer)return json({ok:true,provider:'cloudflare',answer});
     }catch{}
