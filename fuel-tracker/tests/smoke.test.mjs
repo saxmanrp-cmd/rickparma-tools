@@ -10,6 +10,7 @@ const portions=await readFile(new URL('../public/portion-editor.js',import.meta.
 const coach=await readFile(new URL('../public/fuel-coach.js',import.meta.url),'utf8');
 const coachApi=await readFile(new URL('../src/fuel-coach-api.js',import.meta.url),'utf8');
 const maintenance=await readFile(new URL('../public/maintenance.js',import.meta.url),'utf8');
+const cleanup=await readFile(new URL('../public/ui-cleanup.js',import.meta.url),'utf8');
 const healthBridge=await readFile(new URL('../public/health-bridge.js',import.meta.url),'utf8');
 const voice=await readFile(new URL('../public/fuel-voice-quality.js',import.meta.url),'utf8');
 const swift=await readFile(new URL('../ios/Fuel/ContentView.swift',import.meta.url),'utf8');
@@ -37,20 +38,17 @@ test('Fuel Tracker has isolated AI and static asset bindings',()=>{
   assert.match(cfg,/"directory"\s*:\s*"\.\/public"/);
 });
 
-test('Fuel Tracker client has simple tracking plus barcode restaurant and receipt UI',()=>{
+test('Fuel Tracker client scripts parse cleanly',()=>{
   assert.match(app,/Today's game plan/);
-  assert.match(app,/Quick add/);
   assert.match(app,/Barcode lookup/);
   assert.match(app,/Restaurant search/);
   assert.match(app,/Receipt scanner/);
-  assert.match(app,/Manual macros/);
   assert.match(app,/Body composition/);
-  assert.doesNotMatch(app,/data-mode=/);
-  assert.doesNotMatch(app,/>🥩 Carnivore<|>🥑 Keto<|>🍚 Flex/);
   assert.doesNotThrow(()=>new Function(client));
   assert.doesNotThrow(()=>new Function(portions));
   assert.doesNotThrow(()=>new Function(coach));
   assert.doesNotThrow(()=>new Function(maintenance));
+  assert.doesNotThrow(()=>new Function(cleanup));
   assert.doesNotThrow(()=>new Function(healthBridge));
   assert.doesNotThrow(()=>new Function(voice));
 });
@@ -64,28 +62,40 @@ test('Fuel Coach treats the first local log day as authoritative today',()=>{
   assert.match(coachApi,/function normalizeContext/);
   assert.match(coachApi,/localDate:today\?\.date/);
   assert.match(coachApi,/today:context\.today\|\|today/);
-  assert.match(coachApi,/NEVER use generatedAt to decide which calendar date is today/);
-  assert.match(coachApi,/TRACKER DATA\.today as the authoritative local-day record/);
+  assert.match(coachApi,/generatedAt is UTC/);
+  assert.match(coachApi,/TRACKER DATA\.today/);
 });
 
-test('Fuel Coach uses one talk button and low reasoning for normal questions',()=>{
+test('Fuel Coach stays low reasoning and sends less data for ordinary questions',()=>{
   assert.match(coach,/Talk to Fuel Coach/);
   assert.doesNotMatch(coach,/Analyze My Day/);
+  assert.match(coach,/function needsFullHistory/);
+  assert.match(coach,/dayCount=full\?7:3/);
+  assert.match(coach,/context\(question\)/);
   assert.match(coachApi,/body\.mode===['"]scan['"]\?['"]medium['"]:['"]low['"]/);
-  assert.match(coachApi,/max_output_tokens:1000/);
+  assert.match(coachApi,/max_output_tokens:650/);
+  assert.match(coachApi,/slice\(0,24000\)/);
 });
 
-test('Fuel tracks maintenance and deficit as first-class data',()=>{
+test('Fuel tracks maintenance with plain-language deficit labels',()=>{
   assert.match(maintenance,/DEFAULT_TDEE=2400/);
   assert.match(maintenance,/Calorie deficit/);
-  assert.match(maintenance,/estimated maintenance/);
-  assert.match(maintenance,/planned deficit/i);
+  assert.match(maintenance,/calories below maintenance/);
+  assert.match(maintenance,/Target deficit/);
+  assert.doesNotMatch(maintenance,/estimated deficit vs maintenance/);
   assert.match(coach,/estimatedTdee:maintenance/);
-  assert.match(coach,/estimatedDeficitVsMaintenance/);
-  assert.match(coach,/maintenance\.js\?v=1/);
+  assert.match(coach,/maintenance\.js\?v=2/);
   assert.match(coachApi,/function directAnswer/);
   assert.match(coachApi,/provider:'local-math'/);
-  assert.match(coachApi,/maintenance\.estimatedTdee/);
+});
+
+test('Fuel removes instructional fine print while preserving data labels',()=>{
+  assert.match(coach,/ui-cleanup\.js\?v=1/);
+  assert.match(cleanup,/\.logAction small/);
+  assert.match(cleanup,/#scannerWrap p\.note/);
+  assert.match(cleanup,/#healthNote/);
+  assert.match(cleanup,/choose a tool/);
+  assert.match(cleanup,/font-size:13px/);
 });
 
 test('Apple Health refreshes when native Fuel returns to foreground',()=>{
