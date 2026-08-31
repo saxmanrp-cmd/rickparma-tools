@@ -20,6 +20,7 @@ struct FuelWebView: UIViewRepresentable {
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "healthKit")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "fuelSpeech")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "fuelRecognition")
+        config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "fuelAudio")
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -35,7 +36,7 @@ struct FuelWebView: UIViewRepresentable {
 
     func updateUIView(_ webView: WKWebView, context: Context) {}
 
-    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandlerWithReply {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandlerWithReply, AVAudioPlayerDelegate {
         weak var webView: WKWebView?
         private let health = HealthKitManager()
         private let speech = AVSpeechSynthesizer()
@@ -43,6 +44,7 @@ struct FuelWebView: UIViewRepresentable {
         private let audioEngine = AVAudioEngine()
         private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
         private var recognitionTask: SFSpeechRecognitionTask?
+        private var coachAudioPlayer: AVAudioPlayer?
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             guard let url = navigationAction.request.url else { decisionHandler(.cancel); return }
@@ -57,6 +59,31 @@ struct FuelWebView: UIViewRepresentable {
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
             guard let body = message.body as? [String: Any], let action = body["action"] as? String else {
                 replyHandler(["ok": false, "error": "Invalid native request."], nil)
+                return
+            }
+
+            if message.name == "fuelAudio" {
+                Task { @MainActor in
+                    switch action {
+                    case "play":
+                        let base64 = body["base64"] as? String ?? ""
+                        guard let data = Data(base64Encoded: base64), !data.isEmpty else {
+                            replyHandler(["ok": false, "error": "Invalid audio data."], nil)
+                            return
+                        }
+                        do {
+                            try playCoachAudio(data)
+                            replyHandler(["ok": true, "provider": "ios-native-audio"], nil)
+                        } catch {
+                            replyHandler(["ok": false, "error": error.localizedDescription], nil)
+                        }
+                    case "stop":
+                        stopCoachAudio()
+                        replyHandler(["ok": true], nil)
+                    default:
+                        replyHandler(["ok": false, "error": "Unknown audio action."], nil)
+                    }
+                }
                 return
             }
 
@@ -115,6 +142,38 @@ struct FuelWebView: UIViewRepresentable {
                     }
                 } catch {
                     replyHandler(["ok": false, "error": error.localizedDescription], nil)
+                }
+            }
+        }
+
+        @MainActor
+        private func playCoachAudio(_ data: Data) throws {
+            speech.stopSpeaking(at: .immediate)
+            stopCoachAudio()
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
+            try session.setActive(true, options: [])
+            let player = try AVAudioPlayer(data: data)
+            player.delegate = self
+            player.prepareToPlay()
+            guard player.play() else {
+                throw NSError(domain: "FuelAudio", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not start Fuel Coach audio."])
+            }
+            coachAudioPlayer = player
+        }
+
+        @MainActor
+        private func stopCoachAudio() {
+            coachAudioPlayer?.stop()
+            coachAudioPlayer = nil
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
+
+        func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+            Task { @MainActor in
+                if self.coachAudioPlayer === player {
+                    self.coachAudioPlayer = nil
+                    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
                 }
             }
         }

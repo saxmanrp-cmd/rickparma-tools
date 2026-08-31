@@ -23,7 +23,7 @@ function setup(){
   $('fcClose').onclick=()=>closeCoach();$('fuelCoachModal').onclick=e=>{if(e.target===$('fuelCoachModal'))closeCoach()};$('fcSend').onclick=()=>run('question',$('fcQuestion').value);$('fcTalk').onclick=toggleListen;installHistory()
 }
 function setState(t){if($('fcState'))$('fcState').textContent=t||''}
-function stopSpeaking(){try{speechSynthesis.cancel()}catch{};try{window.webkit?.messageHandlers?.fuelSpeech?.postMessage({action:'stop'})}catch{};window.dispatchEvent(new CustomEvent('fuelCoachStop'))}
+function stopSpeaking(){try{speechSynthesis.cancel()}catch{};try{window.webkit?.messageHandlers?.fuelSpeech?.postMessage({action:'stop'})}catch{};try{window.webkit?.messageHandlers?.fuelAudio?.postMessage({action:'stop'})}catch{};window.dispatchEvent(new CustomEvent('fuelCoachStop'))}
 function nativeRecognition(){return window.webkit?.messageHandlers?.fuelRecognition}
 function setListening(on){listening=on;const b=$('fcTalk');if(!b)return;b.classList.toggle('listening',on);b.textContent=on?'Listening…':'🎙️ Tap to talk'}
 async function nativeListen(){const bridge=nativeRecognition();if(!bridge)return false;stopSpeaking();$('fcQuestion').value='';setListening(true);setState('Listening…');try{const result=await bridge.postMessage({action:'transcribe'});setListening(false);if(!result?.ok){setState(result?.error||'I could not hear that clearly. Tap the microphone and try again.');return true}const text=String(result.text||'').trim();if(!text){setState('I could not hear that clearly. Tap the microphone and try again.');return true}$('fcQuestion').value=text;setState('');await run('question',text);return true}catch(e){setListening(false);setState(e?.message||'I could not hear that clearly. Tap the microphone and try again.');return true}}
@@ -37,4 +37,4 @@ function install(){setup();const home=$('home'),host=home?.querySelector('.card'
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',install):install();setTimeout(install,700);
 })();
 import('/portion-editor.js?v=1').catch(()=>{});
-import('/fuel-voice-quality.js?v=5').catch(()=>{});
+import('/fuel-voice-quality.js?v=6').catch(()=>{});
