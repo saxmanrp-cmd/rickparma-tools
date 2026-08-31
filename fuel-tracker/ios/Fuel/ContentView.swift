@@ -165,6 +165,7 @@ struct FuelWebView: UIViewRepresentable {
                 var latestText = ""
                 var revision = 0
 
+                @MainActor
                 func finish(_ text: String?, error: Error? = nil) {
                     guard !resumed else { return }
                     resumed = true
