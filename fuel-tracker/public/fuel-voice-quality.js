@@ -17,18 +17,39 @@ function stopAll(){
   try{if(audio){audio.pause();audio.src='';audio=null}}catch{}
   try{nativeSpeech()?.postMessage({action:'stop'})}catch{}
 }
+function setVoiceStatus(text,ok=false){
+  try{
+    let el=document.getElementById('fuelVoiceStatus');
+    if(!el){
+      el=document.createElement('div');
+      el.id='fuelVoiceStatus';
+      el.style.cssText='margin-top:8px;font-size:12px;line-height:1.35;opacity:.8;';
+      const answer=document.getElementById('fcAnswer');
+      if(answer?.parentNode)answer.parentNode.insertBefore(el,answer.nextSibling);
+    }
+    if(el){el.textContent=text;el.dataset.ok=ok?'1':'0'}
+    localStorage.setItem('fuel-voice-status-v1',JSON.stringify({text,ok,at:new Date().toISOString()}));
+  }catch{}
+}
 async function speakNatural(text){
   text=cleanForSpeech(text);
   if(!text||text===last||/^Thinking|^Analyzing today/i.test(text))return;
   last=text;stopAll();
   try{
     const r=await fetch('/api/fuel/coach',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode:'tts',text})});
-    if(!r.ok)throw Error('tts unavailable');
+    if(!r.ok){
+      let detail=`HTTP ${r.status}`;
+      try{const d=await r.json();if(d?.error)detail=d.error;if(d?.upstreamStatus)detail+=` (${d.upstreamStatus})`;if(d?.upstreamCode)detail+=` ${d.upstreamCode}`}catch{}
+      throw Error(detail);
+    }
     const blob=await r.blob();
-    if(!blob.size)throw Error('empty tts');
+    if(!blob.size)throw Error('empty audio response');
     audio=new Audio(URL.createObjectURL(blob));audio.playsInline=true;await audio.play();
+    setVoiceStatus('Voice: OpenAI natural voice',true);
     return;
-  }catch{}
+  }catch(err){
+    setVoiceStatus(`Voice: iPhone fallback — ${err?.message||'OpenAI TTS unavailable'}`,false);
+  }
   try{
     const bridge=nativeSpeech();
     if(bridge){
