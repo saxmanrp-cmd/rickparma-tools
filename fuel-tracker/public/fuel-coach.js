@@ -3,7 +3,7 @@
 const $=id=>document.getElementById(id);
 const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||'null')??f}catch{return f}};
 const localDay=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-let recognition=null,listening=false,lastSpoken='';
+let recognition=null,listening=false;
 function totals(foods=[]){return foods.reduce((a,x)=>({cal:a.cal+(+x.cal||0),p:a.p+(+x.p||0),c:a.c+(+x.c||0),f:a.f+(+x.f||0)}),{cal:0,p:0,c:0,f:0})}
 function healthBodyComposition(h){
   if(!h)return null;
@@ -33,16 +33,9 @@ function setup(){
   $('fcTalk').onclick=toggleListen;
   [...document.querySelectorAll('.fcChip')].forEach(b=>b.onclick=()=>{$('fcQuestion').value=b.textContent;run('question',b.textContent)});
 }
-function stopSpeaking(){try{speechSynthesis.cancel()}catch{}}
-function speak(text){
-  if(!('speechSynthesis' in window)||!text)return;
-  stopSpeaking();lastSpoken=text;
-  const u=new SpeechSynthesisUtterance(text.replace(/\n+/g,'. '));
-  u.rate=1.02;u.pitch=1;u.volume=1;
-  const voices=speechSynthesis.getVoices();
-  const preferred=voices.find(v=>/^en-US/i.test(v.lang)&&/Samantha|Evan|Aaron|Daniel|Alex/i.test(v.name))||voices.find(v=>/^en-US/i.test(v.lang));
-  if(preferred)u.voice=preferred;
-  speechSynthesis.speak(u);
+function stopSpeaking(){
+  try{speechSynthesis.cancel()}catch{}
+  try{window.webkit?.messageHandlers?.fuelSpeech?.postMessage({action:'stop'})}catch{}
 }
 function speechCtor(){return window.SpeechRecognition||window.webkitSpeechRecognition}
 function ensureRecognition(){
@@ -69,8 +62,7 @@ async function run(mode,question=''){
     const r=await fetch('/api/fuel/coach',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode,question:String(question).trim(),context:context()})});
     const d=await r.json();if(!d.ok)throw Error(d.error||'Unable to answer');
     out.textContent=d.answer+(d.provider==='openai'?'\n\nFuel Coach · OpenAI':'');
-    speak(d.answer);
-  }catch(e){out.textContent=e.message||'Fuel Coach could not answer right now.';speak(out.textContent)}
+  }catch(e){out.textContent=e.message||'Fuel Coach could not answer right now.'}
 }
 function closeCoach(){
   try{if(recognition&&listening)recognition.abort()}catch{};stopSpeaking();$('fuelCoachModal')?.classList.remove('open');
@@ -90,4 +82,4 @@ function install(){
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',install):install();setTimeout(install,700);
 })();
 import('/portion-editor.js?v=1').catch(()=>{});
-import('/fuel-voice-quality.js?v=1').catch(()=>{});
+import('/fuel-voice-quality.js?v=2').catch(()=>{});
