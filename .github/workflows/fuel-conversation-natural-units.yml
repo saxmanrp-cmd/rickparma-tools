@@ -1,4 +1,4 @@
-name: Fuel Flat Food Log Upgrade
+name: Fuel Meal Mode Upgrade
 
 on:
   push:
@@ -19,10 +19,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Make Fuel a flat food log
-        run: |
-          python .github/scripts/fuel_flat_food_log_upgrade.py
-          python .github/scripts/fuel_flat_food_log_test_fix.py
+      - name: Add individual or meal logging
+        run: python .github/scripts/fuel_meal_mode_upgrade.py
       - name: Check Fuel JavaScript
         working-directory: fuel-tracker
         run: |
@@ -34,12 +32,12 @@ jobs:
       - name: Run Fuel tests
         working-directory: fuel-tracker
         run: npm test
-      - name: Commit Fuel flat-log upgrade
+      - name: Commit Fuel meal mode upgrade
         run: |
           git config user.name 'Fuel Build Bot'
           git config user.email 'actions@users.noreply.github.com'
           git add fuel-tracker
           git diff --cached --check
           git diff --cached --quiet && exit 0
-          git commit -m 'Store distinct foods as separate Fuel entries'
+          git commit -m 'Add individual or meal logging to Fuel'
           git push origin HEAD:main
