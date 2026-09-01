@@ -20,6 +20,11 @@ body{min-height:100dvh;width:100%;overflow-x:hidden;overscroll-behavior:none;bac
 input,textarea,select{font-size:16px!important;touch-action:manipulation}
 .macrogrid input{font-size:16px!important}
 button,.btn,[role="button"]{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+/* Fuel native-feel debug pass: keep tabs stable and never expose a light canvas. */
+html,body{background-color:#08111f!important}
+.app{padding-bottom:calc(98px + env(safe-area-inset-bottom))!important}
+.tabs{background:#08111f!important;transform:none!important;-webkit-transform:none!important;will-change:auto!important;contain:none!important;isolation:isolate}
+body.fuel-keyboard-open .tabs{visibility:hidden!important;pointer-events:none!important}
 </style>
 </head>
 <body>
@@ -108,7 +113,7 @@ button,.btn,[role="button"]{touch-action:manipulation;-webkit-tap-highlight-colo
 
 <script>
 function closeLogTools(){document.querySelectorAll('.toolPanel').forEach(x=>x.classList.remove('open'))}
-function openLogTool(id){closeLogTools();const el=document.getElementById(id);if(!el)return;el.classList.add('open');setTimeout(()=>{el.scrollIntoView({behavior:'smooth',block:'start'});const input=el.querySelector('textarea,input:not([type=file])');if(input)input.focus({preventScroll:true})},50)}
+function openLogTool(id){closeLogTools();const el=document.getElementById(id);if(!el)return;el.classList.add('open');requestAnimationFrame(()=>{const top=Math.max(0,el.getBoundingClientRect().top+window.scrollY-12);window.scrollTo({top,behavior:'smooth'})})}
 </script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="/app.js?v=5"></script>
@@ -121,6 +126,42 @@ function openLogTool(id){closeLogTools();const el=document.getElementById(id);if
   if(meta) meta.setAttribute('content','width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover');
   const stopGesture=e=>e.preventDefault();
   ['gesturestart','gesturechange','gestureend'].forEach(name=>document.addEventListener(name,stopGesture,{passive:false}));
+})();
+</script>
+<script id="fuelNativeFeelLock">
+(()=>{
+  // WKWebView can still smart-zoom on a rapid double tap even when pinch zoom
+  // is disabled. Suppress only a second tap on the exact same target.
+  let lastTapAt=0;
+  let lastTapTarget=null;
+  document.addEventListener('touchend',e=>{
+    const now=Date.now();
+    if(e.changedTouches&&e.changedTouches.length===1&&lastTapTarget===e.target&&now-lastTapAt<300){
+      e.preventDefault();
+      lastTapAt=0;
+      lastTapTarget=null;
+      return;
+    }
+    lastTapAt=now;
+    lastTapTarget=e.target;
+  },{passive:false});
+  document.addEventListener('touchmove',e=>{
+    if(e.touches&&e.touches.length>1)e.preventDefault();
+  },{passive:false});
+
+  // A fixed web tab bar rides upward with iOS's visual viewport when the
+  // keyboard appears. A native tab bar would sit behind the keyboard, so hide
+  // the web tabs for that short interval instead of letting them jump upward.
+  const vv=window.visualViewport;
+  let baseHeight=vv?vv.height:window.innerHeight;
+  const syncKeyboard=()=>{
+    const h=vv?vv.height:window.innerHeight;
+    if(h>baseHeight)baseHeight=h;
+    const keyboardOpen=baseHeight-h>120;
+    document.body.classList.toggle('fuel-keyboard-open',keyboardOpen);
+  };
+  if(vv){vv.addEventListener('resize',syncKeyboard);vv.addEventListener('scroll',syncKeyboard)}
+  window.addEventListener('orientationchange',()=>setTimeout(()=>{baseHeight=vv?vv.height:window.innerHeight;syncKeyboard()},300));
 })();
 </script>
 </body>

@@ -39,7 +39,11 @@ struct FuelWebView: UIViewRepresentable {
         let fuelBackground = UIColor(red: 8.0 / 255.0, green: 17.0 / 255.0, blue: 31.0 / 255.0, alpha: 1.0)
         webView.isOpaque = false
         webView.backgroundColor = fuelBackground
+        if #available(iOS 15.0, *) {
+            webView.underPageBackgroundColor = fuelBackground
+        }
         webView.scrollView.backgroundColor = fuelBackground
+        webView.scrollView.clipsToBounds = true
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.scrollView.automaticallyAdjustsScrollIndicatorInsets = false
         webView.scrollView.contentInset = .zero
@@ -51,7 +55,10 @@ struct FuelWebView: UIViewRepresentable {
         webView.scrollView.keyboardDismissMode = .interactive
         webView.scrollView.minimumZoomScale = 1.0
         webView.scrollView.maximumZoomScale = 1.0
+        webView.scrollView.zoomScale = 1.0
+        webView.pageZoom = 1.0
         webView.scrollView.pinchGestureRecognizer?.isEnabled = false
+        context.coordinator.disableWebZoomGestures(in: webView)
 
         context.coordinator.webView = webView
         context.coordinator.startAppActiveObserver()
@@ -92,6 +99,27 @@ struct FuelWebView: UIViewRepresentable {
             ) { [weak self] _ in
                 self?.webView?.evaluateJavaScript("window.dispatchEvent(new CustomEvent('fuel-app-active'))")
             }
+        }
+
+        func disableWebZoomGestures(in view: UIView) {
+            for recognizer in view.gestureRecognizers ?? [] {
+                if recognizer is UIPinchGestureRecognizer {
+                    recognizer.isEnabled = false
+                } else if let tap = recognizer as? UITapGestureRecognizer, tap.numberOfTapsRequired > 1 {
+                    recognizer.isEnabled = false
+                }
+            }
+            for child in view.subviews {
+                disableWebZoomGestures(in: child)
+            }
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            webView.pageZoom = 1.0
+            webView.scrollView.minimumZoomScale = 1.0
+            webView.scrollView.maximumZoomScale = 1.0
+            webView.scrollView.setZoomScale(1.0, animated: false)
+            disableWebZoomGestures(in: webView)
         }
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
