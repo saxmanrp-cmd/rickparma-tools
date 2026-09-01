@@ -19,8 +19,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Fix native Today navigation state sync
-        run: python .github/scripts/fuel_native_today_nav_fix.py
+      - name: Fix native Fuel navigation bridge
+        run: python .github/scripts/fuel_native_direct_nav_fix.py
       - name: Check Fuel JavaScript
         working-directory: fuel-tracker
         run: |
@@ -32,14 +32,14 @@ jobs:
       - name: Run Fuel tests
         working-directory: fuel-tracker
         run: npm test
-      - name: Commit Fuel Today navigation fix
+      - name: Commit direct native navigation bridge
         run: |
           git config user.name 'Fuel Build Bot'
           git config user.email 'actions@users.noreply.github.com'
           git add fuel-tracker
           git diff --cached --check
           git diff --cached --quiet && exit 0
-          git commit -m 'Fix Fuel native Today navigation state sync'
+          git commit -m 'Route Fuel native tabs directly to web pages'
           git push origin HEAD:main
 
-# Every native tab tap emits a navigation pulse, and the regression suite now expects the navigation revision input.
+# Native tabs call FuelShowPage directly; hidden web-tab clicks are fallback only.
