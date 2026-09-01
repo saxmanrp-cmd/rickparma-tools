@@ -102,7 +102,7 @@ function closeLogTools(){document.querySelectorAll('.toolPanel').forEach(x=>x.cl
 function openLogTool(id){closeLogTools();const el=document.getElementById(id);if(!el)return;el.classList.add('open');setTimeout(()=>{el.scrollIntoView({behavior:'smooth',block:'start'});const input=el.querySelector('textarea,input:not([type=file])');if(input)input.focus({preventScroll:true})},50)}
 </script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="/app.js?v=3"></script>
+<script src="/app.js?v=4"></script>
 <script src="/quick-add.js?v=2"></script>
 <script src="/barcode-bridge.js?v=1"></script>
 <script src="/portion-editor.js?v=5"></script>

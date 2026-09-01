@@ -65,6 +65,8 @@ test('portion editor uses label math and keeps review simple',()=>{
   assert.doesNotMatch(portions,/\/api\/fuel\/analyze/);
   assert.match(portions,/new MutationObserver/);
   assert.match(coach,/portion-editor\.js\?v=5/);
+  assert.match(client,/function addFoods/);
+  assert.match(client,/FuelAddCoachFoods/);
 });
 
 test('Fuel Coach treats the first local log day as authoritative today',()=>{
@@ -155,4 +157,17 @@ test('native Fuel registers HealthKit speech recognition speech stop and OpenAI 
   assert.match(swift,/name: "fuelAudio"/);
   assert.match(swift,/AVAudioPlayer/);
   assert.match(swift,/SFSpeechRecognizer/);
+});
+
+
+test('Fuel stores distinct foods as separate Today entries',()=>{
+  assert.match(client,/draft\.items\.length>1\?'Save foods':'Save food'/);
+  assert.match(client,/else addFoods\(items,draft\?\.source\|\|'AI\/review'\)/);
+  assert.doesNotMatch(client,/items\.map\(x=>x\.amount\?`\$\{x\.amount\} \$\{x\.name\}`:x\.name\)\.join/);
+  assert.match(coachApi,/structured foods array/);
+  assert.match(coachApi,/MUST return two food objects/);
+  assert.match(coachApi,/foods:parsedAnswer\.foods/);
+  assert.match(coach,/pendingFoods/);
+  assert.match(coach,/FuelAddCoachFoods/);
+  assert.match(src,/Do not combine distinct foods into one item/);
 });

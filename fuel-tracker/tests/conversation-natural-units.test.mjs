@@ -31,20 +31,20 @@ test('coach keeps recent conversation and a 24 hour pending food',()=>{
   assert.match(coach,/CONVERSATION_MS=7\*24/);
   assert.match(coach,/PENDING_MS=24\*60/);
   assert.match(coach,/recentConversation/);
-  assert.match(coach,/pendingFood/);
+  assert.match(coach,/pendingFoods/);
   assert.match(coach,/isAddCommand/);
-  assert.match(coach,/FuelAddCoachFood/);
+  assert.match(coach,/FuelAddCoachFoods/);
   assert.doesNotThrow(()=>new Function(coach));
 });
 test('coach api returns structured loggable food and sees conversation',()=>{
   assert.match(coachApi,/RECENT CONVERSATION/);
-  assert.match(coachApi,/PENDING FOOD/);
+  assert.match(coachApi,/PENDING FOODS/);
   assert.match(coachApi,/normalizeFood/);
   assert.match(coachApi,/St\. Louis ribs/);
   assert.match(coachApi,/use exactly 1 oz/);
 });
 test('app exposes a coach logging bridge and cache busts coach',()=>{
   assert.match(app,/FuelAddCoachFood/);
-  assert.match(wrapper,/fuel-coach\.js\?v=5/);
+  assert.match(wrapper,/fuel-coach\.js\?v=6/);
   assert.doesNotThrow(()=>new Function(app));
 });
