@@ -70,4 +70,4 @@ jobs:
           echo "AI response time: $((END-START)) seconds"
           grep -q '"ok":true' /tmp/fuel-ai.json
 
-# Release trigger: individual-or-meal logging with editable breakdowns.
+# Release trigger: native-feeling scroll, dark overscroll canvas, and zoom lock.
