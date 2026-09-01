@@ -1,4 +1,4 @@
-name: Fuel App Shell Upgrade
+name: Fuel Coach Turn-Taking + Components
 
 on:
   push:
@@ -19,8 +19,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Restore Today touch handling
-        run: python .github/scripts/fuel_restore_today_taps.py
+      - name: Upgrade Coach conversation UX and component labels
+        run: python .github/scripts/fuel_coach_turntaking_components.py
       - name: Check Fuel JavaScript
         working-directory: fuel-tracker
         run: |
@@ -28,18 +28,19 @@ jobs:
           node --check src/fuel-coach-api.js
           node --check public/app.js
           node --check public/fuel-coach.js
+          node --check public/fuel-voice-quality.js
           node --check public/portion-editor.js
       - name: Run Fuel tests
         working-directory: fuel-tracker
         run: npm test
-      - name: Commit Today touch recovery
+      - name: Commit Coach turn-taking and component repair
         run: |
           git config user.name 'Fuel Build Bot'
           git config user.email 'actions@users.noreply.github.com'
           git add fuel-tracker
           git diff --cached --check
           git diff --cached --quiet && exit 0
-          git commit -m 'Restore Fuel Today touch interactions'
+          git commit -m 'Clarify Fuel Coach listening and repair meal components'
           git push origin HEAD:main
 
-# Native WKWebView owns zoom prevention; web content must not intercept normal taps. Guardrail updated.
+# Voice lifecycle is explicit; assembled foods keep meaningful ingredient names.
