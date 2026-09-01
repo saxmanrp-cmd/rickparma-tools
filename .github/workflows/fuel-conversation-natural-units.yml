@@ -1,4 +1,4 @@
-name: Fuel Meal Mode Upgrade
+name: Fuel App Shell Upgrade
 
 on:
   push:
@@ -19,10 +19,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Add individual or meal logging
-        run: |
-          python .github/scripts/fuel_meal_mode_upgrade.py
-          python .github/scripts/fuel_meal_mode_test_fix.py
+      - name: Harden Fuel scrolling and zoom
+        run: python .github/scripts/fuel_app_shell_upgrade.py
       - name: Check Fuel JavaScript
         working-directory: fuel-tracker
         run: |
@@ -34,12 +32,12 @@ jobs:
       - name: Run Fuel tests
         working-directory: fuel-tracker
         run: npm test
-      - name: Commit Fuel meal mode upgrade
+      - name: Commit Fuel app-shell upgrade
         run: |
           git config user.name 'Fuel Build Bot'
           git config user.email 'actions@users.noreply.github.com'
           git add fuel-tracker
           git diff --cached --check
           git diff --cached --quiet && exit 0
-          git commit -m 'Add individual or meal logging to Fuel'
+          git commit -m 'Harden Fuel iPhone scrolling and disable zoom'
           git push origin HEAD:main
