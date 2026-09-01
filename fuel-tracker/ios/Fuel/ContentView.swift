@@ -447,16 +447,23 @@ private enum FuelBarcodeScannerError: LocalizedError {
     }
 }
 
+private final class FuelBarcodePreviewView: UIView {
+    override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+
+    var previewLayer: AVCaptureVideoPreviewLayer {
+        layer as! AVCaptureVideoPreviewLayer
+    }
+}
+
 private final class FuelBarcodeScannerOverlay: UIView, AVCaptureMetadataOutputObjectsDelegate {
     private let session = AVCaptureSession()
     private let sessionQueue = DispatchQueue(label: "com.rickparma.fuel.barcode.session")
     private let card = UIView()
-    private let previewHost = UIView()
+    private let previewHost = FuelBarcodePreviewView()
     private let guide = UIView()
     private let titleLabel = UILabel()
     private let helpLabel = UILabel()
     private let cancelButton = UIButton(type: .system)
-    private var previewLayer: AVCaptureVideoPreviewLayer?
     private var completion: ((Result<String, Error>) -> Void)?
     private var completed = false
 
@@ -617,11 +624,11 @@ private final class FuelBarcodeScannerOverlay: UIView, AVCaptureMetadataOutputOb
         ]
         output.metadataObjectTypes = wanted.filter { output.availableMetadataObjectTypes.contains($0) }
 
-        let layer = AVCaptureVideoPreviewLayer(session: session)
+        let layer = previewHost.previewLayer
+        layer.session = session
         layer.videoGravity = .resizeAspectFill
-        previewHost.layer.insertSublayer(layer, at: 0)
-        previewLayer = layer
-        setNeedsLayout()
+        previewHost.setNeedsLayout()
+        previewHost.layoutIfNeeded()
     }
 
     @objc private func cancelTapped() {
