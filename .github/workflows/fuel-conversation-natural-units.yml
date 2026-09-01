@@ -19,8 +19,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Fix native Fuel navigation bridge
-        run: python .github/scripts/fuel_native_direct_nav_fix.py
+      - name: Restore Today touch handling
+        run: python .github/scripts/fuel_restore_today_taps.py
       - name: Check Fuel JavaScript
         working-directory: fuel-tracker
         run: |
@@ -32,14 +32,14 @@ jobs:
       - name: Run Fuel tests
         working-directory: fuel-tracker
         run: npm test
-      - name: Commit direct native navigation bridge
+      - name: Commit Today touch recovery
         run: |
           git config user.name 'Fuel Build Bot'
           git config user.email 'actions@users.noreply.github.com'
           git add fuel-tracker
           git diff --cached --check
           git diff --cached --quiet && exit 0
-          git commit -m 'Route Fuel native tabs directly to web pages'
+          git commit -m 'Restore Fuel Today touch interactions'
           git push origin HEAD:main
 
-# Native tabs call FuelShowPage directly; regression harness fixed.
+# Native WKWebView owns zoom prevention; web content must not intercept normal taps.
