@@ -17,11 +17,14 @@ struct FuelWebView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.defaultWebpagePreferences.allowsContentJavaScript = true
+        config.allowsInlineMediaPlayback = true
+        config.mediaTypesRequiringUserActionForPlayback = []
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "healthKit")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "fuelSpeech")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "fuelRecognition")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "fuelAudio")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "fuelNotifications")
+        config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "fuelBarcode")
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -49,6 +52,7 @@ struct FuelWebView: UIViewRepresentable {
         private var recognitionTask: SFSpeechRecognitionTask?
         private var coachAudioPlayer: AVAudioPlayer?
         private var appActiveObserver: NSObjectProtocol?
+        private weak var barcodeOverlay: FuelBarcodeScannerOverlay?
 
         deinit {
             if let appActiveObserver {
@@ -80,6 +84,28 @@ struct FuelWebView: UIViewRepresentable {
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
             guard let body = message.body as? [String: Any], let action = body["action"] as? String else {
                 replyHandler(["ok": false, "error": "Invalid native request."], nil)
+                return
+            }
+
+            if message.name == "fuelBarcode" {
+                Task { @MainActor in
+                    switch action {
+                    case "scan":
+                        do {
+                            let code = try await scanBarcode()
+                            replyHandler(["ok": true, "code": code, "provider": "ios-native-avfoundation"], nil)
+                        } catch FuelBarcodeScannerError.cancelled {
+                            replyHandler(["ok": false, "cancelled": true], nil)
+                        } catch {
+                            replyHandler(["ok": false, "error": error.localizedDescription], nil)
+                        }
+                    case "cancel":
+                        barcodeOverlay?.cancel()
+                        replyHandler(["ok": true], nil)
+                    default:
+                        replyHandler(["ok": false, "error": "Unknown barcode action."], nil)
+                    }
+                }
                 return
             }
 
@@ -190,6 +216,47 @@ struct FuelWebView: UIViewRepresentable {
                 } catch {
                     replyHandler(["ok": false, "error": error.localizedDescription], nil)
                 }
+            }
+        }
+
+        @MainActor
+        private func scanBarcode() async throws -> String {
+            guard let webView else {
+                throw FuelBarcodeScannerError.cameraUnavailable
+            }
+
+            let permission = await cameraPermissionGranted()
+            guard permission else {
+                throw FuelBarcodeScannerError.permissionDenied
+            }
+
+            barcodeOverlay?.cancel()
+
+            return try await withCheckedThrowingContinuation { continuation in
+                let overlay = FuelBarcodeScannerOverlay(frame: webView.bounds) { [weak self] result in
+                    self?.barcodeOverlay = nil
+                    continuation.resume(with: result)
+                }
+                overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                barcodeOverlay = overlay
+                webView.addSubview(overlay)
+                overlay.start()
+            }
+        }
+
+        @MainActor
+        private func cameraPermissionGranted() async -> Bool {
+            switch AVCaptureDevice.authorizationStatus(for: .video) {
+            case .authorized:
+                return true
+            case .notDetermined:
+                return await withCheckedContinuation { continuation in
+                    AVCaptureDevice.requestAccess(for: .video) { granted in
+                        continuation.resume(returning: granted)
+                    }
+                }
+            default:
+                return false
             }
         }
 
@@ -357,5 +424,232 @@ struct FuelWebView: UIViewRepresentable {
             if let enhanced = englishUS.first(where: { $0.quality == .enhanced }) { return enhanced }
             return AVSpeechSynthesisVoice(language: "en-US")
         }
+    }
+}
+
+private enum FuelBarcodeScannerError: LocalizedError {
+    case cancelled
+    case permissionDenied
+    case cameraUnavailable
+    case setupFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .cancelled:
+            return "Barcode scan cancelled."
+        case .permissionDenied:
+            return "Camera permission is required to scan barcodes."
+        case .cameraUnavailable:
+            return "The rear camera is not available."
+        case .setupFailed:
+            return "Fuel could not start the barcode camera."
+        }
+    }
+}
+
+private final class FuelBarcodeScannerOverlay: UIView, AVCaptureMetadataOutputObjectsDelegate {
+    private let session = AVCaptureSession()
+    private let sessionQueue = DispatchQueue(label: "com.rickparma.fuel.barcode.session")
+    private let card = UIView()
+    private let previewHost = UIView()
+    private let guide = UIView()
+    private let titleLabel = UILabel()
+    private let helpLabel = UILabel()
+    private let cancelButton = UIButton(type: .system)
+    private var previewLayer: AVCaptureVideoPreviewLayer?
+    private var completion: ((Result<String, Error>) -> Void)?
+    private var completed = false
+
+    init(frame: CGRect, completion: @escaping (Result<String, Error>) -> Void) {
+        self.completion = completion
+        super.init(frame: frame)
+        buildUI()
+    }
+
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        previewLayer?.frame = previewHost.bounds
+    }
+
+    func start() {
+        do {
+            try configureSession()
+        } catch {
+            finish(.failure(error))
+            return
+        }
+
+        sessionQueue.async { [weak self] in
+            guard let self, !self.session.isRunning else { return }
+            self.session.startRunning()
+        }
+    }
+
+    func cancel() {
+        finish(.failure(FuelBarcodeScannerError.cancelled))
+    }
+
+    private func buildUI() {
+        backgroundColor = UIColor.black.withAlphaComponent(0.72)
+
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.backgroundColor = UIColor(red: 0.071, green: 0.110, blue: 0.192, alpha: 1)
+        card.layer.cornerRadius = 22
+        card.layer.borderWidth = 1
+        card.layer.borderColor = UIColor(red: 0.165, green: 0.231, blue: 0.365, alpha: 1).cgColor
+        addSubview(card)
+
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.text = "Scan barcode"
+        titleLabel.textColor = .white
+        titleLabel.font = .systemFont(ofSize: 20, weight: .bold)
+
+        cancelButton.translatesAutoresizingMaskIntoConstraints = false
+        cancelButton.setTitle("Close", for: .normal)
+        cancelButton.setTitleColor(.white, for: .normal)
+        cancelButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .bold)
+        cancelButton.backgroundColor = UIColor(red: 0.125, green: 0.180, blue: 0.286, alpha: 1)
+        cancelButton.layer.cornerRadius = 12
+        cancelButton.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
+
+        previewHost.translatesAutoresizingMaskIntoConstraints = false
+        previewHost.backgroundColor = .black
+        previewHost.layer.cornerRadius = 16
+        previewHost.clipsToBounds = true
+
+        guide.translatesAutoresizingMaskIntoConstraints = false
+        guide.backgroundColor = .clear
+        guide.layer.cornerRadius = 10
+        guide.layer.borderWidth = 2
+        guide.layer.borderColor = UIColor.systemGreen.cgColor
+        previewHost.addSubview(guide)
+
+        helpLabel.translatesAutoresizingMaskIntoConstraints = false
+        helpLabel.text = "Hold the whole UPC/EAN barcode inside the green box. Fuel will grab it automatically."
+        helpLabel.textColor = UIColor(red: 0.70, green: 0.77, blue: 0.88, alpha: 1)
+        helpLabel.font = .systemFont(ofSize: 14, weight: .semibold)
+        helpLabel.numberOfLines = 0
+        helpLabel.textAlignment = .center
+
+        card.addSubview(titleLabel)
+        card.addSubview(cancelButton)
+        card.addSubview(previewHost)
+        card.addSubview(helpLabel)
+
+        NSLayoutConstraint.activate([
+            card.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 16),
+            card.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -16),
+            card.centerXAnchor.constraint(equalTo: centerXAnchor),
+            card.centerYAnchor.constraint(equalTo: centerYAnchor),
+            card.widthAnchor.constraint(lessThanOrEqualToConstant: 430),
+            card.widthAnchor.constraint(equalTo: widthAnchor, constant: -32),
+
+            titleLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
+            titleLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+
+            cancelButton.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
+            cancelButton.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+            cancelButton.widthAnchor.constraint(equalToConstant: 84),
+            cancelButton.heightAnchor.constraint(equalToConstant: 44),
+
+            previewHost.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 18),
+            previewHost.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+            previewHost.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+            previewHost.heightAnchor.constraint(equalToConstant: 250),
+
+            guide.leadingAnchor.constraint(equalTo: previewHost.leadingAnchor, constant: 24),
+            guide.trailingAnchor.constraint(equalTo: previewHost.trailingAnchor, constant: -24),
+            guide.centerYAnchor.constraint(equalTo: previewHost.centerYAnchor),
+            guide.heightAnchor.constraint(equalToConstant: 100),
+
+            helpLabel.topAnchor.constraint(equalTo: previewHost.bottomAnchor, constant: 12),
+            helpLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
+            helpLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
+            helpLabel.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16)
+        ])
+    }
+
+    private func configureSession() throws {
+        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
+            ?? AVCaptureDevice.default(for: .video) else {
+            throw FuelBarcodeScannerError.cameraUnavailable
+        }
+
+        do {
+            try device.lockForConfiguration()
+            if device.isFocusModeSupported(.continuousAutoFocus) {
+                device.focusMode = .continuousAutoFocus
+            }
+            if device.isExposureModeSupported(.continuousAutoExposure) {
+                device.exposureMode = .continuousAutoExposure
+            }
+            if device.isFocusPointOfInterestSupported {
+                device.focusPointOfInterest = CGPoint(x: 0.5, y: 0.5)
+            }
+            device.unlockForConfiguration()
+        } catch {
+            // The scanner can still work with the camera's default focus settings.
+        }
+
+        session.beginConfiguration()
+        defer { session.commitConfiguration() }
+        session.sessionPreset = .high
+
+        let input = try AVCaptureDeviceInput(device: device)
+        guard session.canAddInput(input) else {
+            throw FuelBarcodeScannerError.setupFailed
+        }
+        session.addInput(input)
+
+        let output = AVCaptureMetadataOutput()
+        guard session.canAddOutput(output) else {
+            throw FuelBarcodeScannerError.setupFailed
+        }
+        session.addOutput(output)
+        output.setMetadataObjectsDelegate(self, queue: .main)
+
+        let wanted: [AVMetadataObject.ObjectType] = [
+            .ean13, .ean8, .upce, .code128, .code39, .code93, .itf14
+        ]
+        output.metadataObjectTypes = wanted.filter { output.availableMetadataObjectTypes.contains($0) }
+
+        let layer = AVCaptureVideoPreviewLayer(session: session)
+        layer.videoGravity = .resizeAspectFill
+        previewHost.layer.insertSublayer(layer, at: 0)
+        previewLayer = layer
+        setNeedsLayout()
+    }
+
+    @objc private func cancelTapped() {
+        cancel()
+    }
+
+    func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
+        guard !completed else { return }
+        guard let codeObject = metadataObjects.compactMap({ $0 as? AVMetadataMachineReadableCodeObject })
+            .first(where: { !($0.stringValue ?? "").isEmpty }),
+              let code = codeObject.stringValue else { return }
+
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        finish(.success(code))
+    }
+
+    private func finish(_ result: Result<String, Error>) {
+        guard !completed else { return }
+        completed = true
+
+        sessionQueue.async { [weak self] in
+            guard let self, self.session.isRunning else { return }
+            self.session.stopRunning()
+        }
+
+        let callback = completion
+        completion = nil
+        removeFromSuperview()
+        callback?(result)
     }
 }
