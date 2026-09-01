@@ -42,4 +42,4 @@ jobs:
           git commit -m 'Restore Fuel Today touch interactions'
           git push origin HEAD:main
 
-# Native WKWebView owns zoom prevention; web content must not intercept normal taps.
+# Native WKWebView owns zoom prevention; web content must not intercept normal taps. Guardrail updated.
