@@ -69,3 +69,5 @@ jobs:
           cat /tmp/fuel-ai.json
           echo "AI response time: $((END-START)) seconds"
           grep -q '"ok":true' /tmp/fuel-ai.json
+
+# Release trigger: natural units and conversational Coach memory.
