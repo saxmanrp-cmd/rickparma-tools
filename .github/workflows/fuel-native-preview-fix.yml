@@ -1,0 +1,78 @@
+name: Fuel Native Preview Fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fuel-native-preview-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Patch native barcode camera preview
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('fuel-tracker/ios/Fuel/ContentView.swift')
+          s = p.read_text()
+
+          marker = 'private final class FuelBarcodeScannerOverlay: UIView, AVCaptureMetadataOutputObjectsDelegate {'
+          preview_class = '''private final class FuelBarcodePreviewView: UIView {
+              override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+
+              var previewLayer: AVCaptureVideoPreviewLayer {
+                  layer as! AVCaptureVideoPreviewLayer
+              }
+          }
+
+          '''
+          if preview_class.strip() not in s:
+              if marker not in s:
+                  raise SystemExit('Scanner overlay marker not found')
+              s = s.replace(marker, preview_class + marker, 1)
+
+          s = s.replace('    private let previewHost = UIView()\n', '    private let previewHost = FuelBarcodePreviewView()\n', 1)
+          s = s.replace('    private var previewLayer: AVCaptureVideoPreviewLayer?\n', '', 1)
+
+          old_layout = '''    override func layoutSubviews() {
+              super.layoutSubviews()
+              previewLayer?.frame = previewHost.bounds
+          }
+
+          '''
+          s = s.replace(old_layout, '', 1)
+
+          old_layer = '''        let layer = AVCaptureVideoPreviewLayer(session: session)
+                  layer.videoGravity = .resizeAspectFill
+                  previewHost.layer.insertSublayer(layer, at: 0)
+                  previewLayer = layer
+                  setNeedsLayout()
+          '''
+          new_layer = '''        let layer = previewHost.previewLayer
+                  layer.session = session
+                  layer.videoGravity = .resizeAspectFill
+                  previewHost.setNeedsLayout()
+                  previewHost.layoutIfNeeded()
+          '''
+          if old_layer not in s:
+              raise SystemExit('Old preview-layer block not found')
+          s = s.replace(old_layer, new_layer, 1)
+
+          p.write_text(s)
+          PY
+      - name: Commit preview repair
+        run: |
+          git config user.name 'Fuel Build Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add fuel-tracker/ios/Fuel/ContentView.swift
+          git diff --cached --check
+          git diff --cached --quiet && exit 0
+          git commit -m 'Fix native Fuel barcode camera preview'
+          git push origin HEAD:main
