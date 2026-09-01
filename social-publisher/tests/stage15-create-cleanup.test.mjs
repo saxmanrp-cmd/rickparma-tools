@@ -48,7 +48,10 @@ test('Create cleanup removes the separate legacy media card and trims extra copy
   assert.match(code, /oldCard\.remove\(\)/);
 });
 
-test('recovery loader boots Stage 15 after Comic Blast polish', () => {
-  assert.match(loader, /stage15-create-cleanup\.js/);
-  assert.match(loader, /data-stage15-create-cleanup/);
+test('recovery loader temporarily leaves Stage 15 cleanup disabled so comic controls stay visible', () => {
+  assert.doesNotMatch(loader, /cleanup\.src = '\/stage15-create-cleanup\.js'/);
+  assert.doesNotMatch(loader, /dataset\.stage15CreateCleanup/);
+  assert.match(loader, /comic-text-style\.js/);
+  assert.match(loader, /comic-blast-wysiwyg\.js/);
+  assert.match(loader, /comic-blast-stage13-fix\.js/);
 });
