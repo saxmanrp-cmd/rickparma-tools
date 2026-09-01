@@ -1,4 +1,4 @@
-// Stage 15: simplify the Create page, consolidate media picking, and reorder caption/help tools.
+// Stage 16: keep Comic Blast visible, separate media picking, and preserve the cleaner Create order.
 (() => {
   const q = (selector, root=document) => root.querySelector(selector);
 
@@ -13,11 +13,20 @@
       body.recovery-easy #uploadPrompt,
       body.recovery-easy #comicBlastStudio .comic-studio-copy{display:none!important}
 
-      body.recovery-easy #comicBlastStudio #stage15UploadMediaBtn{
-        width:100%!important;min-height:50px!important;margin:0 0 10px!important;font-size:16px!important;font-weight:900!important
-      }
+      body.recovery-easy #comicBlastStudio{margin-bottom:10px!important}
+      body.recovery-easy #comicBlastStudio>summary{padding:14px 16px!important;font-size:18px!important}
+
+      body.recovery-easy #stage15MediaChooser{margin:0 0 12px;border:1px solid rgba(255,255,255,.09);border-radius:15px;background:#0d121a;overflow:hidden}
+      body.recovery-easy #stage15MediaChooser>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;font-size:16px;font-weight:900;color:#f2f5f9}
+      body.recovery-easy #stage15MediaChooser>summary::-webkit-details-marker{display:none}
+      body.recovery-easy #stage15MediaChooser>summary::after{content:'＋';font-size:20px;color:#9d8cff}
+      body.recovery-easy #stage15MediaChooser[open]>summary::after{content:'−'}
+      body.recovery-easy .stage15-media-inner{padding:0 12px 12px}
+      body.recovery-easy .stage15-media-source-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+      body.recovery-easy .stage15-media-source-grid .button{min-height:48px!important;margin:0!important;font-size:15px!important}
+
       body.recovery-easy #dropZone.stage15-compact-media{
-        min-height:0!important;height:auto!important;margin:0 0 10px!important;padding:0!important;
+        min-height:0!important;height:auto!important;margin:10px 0 0!important;padding:0!important;
         border:1px solid rgba(255,255,255,.10)!important;border-radius:13px!important;
         background:#090e15!important;overflow:hidden!important
       }
@@ -30,7 +39,7 @@
       body.recovery-easy #dropZone.stage15-compact-media #mediaPreview video{
         width:100%!important;max-height:180px!important;object-fit:contain!important;display:block!important;background:#06090d!important
       }
-      body.recovery-easy #comicBlastStudio #mediaActions{margin:0 0 10px!important;justify-content:flex-end!important}
+      body.recovery-easy #stage15MediaChooser #mediaActions{margin:8px 0 0!important;justify-content:flex-end!important}
 
       body.recovery-easy #stage15HelperGroup{margin:0 0 12px;padding:12px;border-radius:16px;border:1px solid rgba(145,116,255,.22);background:#0d121a}
       body.recovery-easy .stage15-section-title{font-size:17px;font-weight:900;color:#f2f5f9;margin-bottom:9px}
@@ -42,9 +51,9 @@
       body.recovery-easy #stage15HelperGroup #applyMaxReachBtn,
       body.recovery-easy #stage15HelperGroup #showHelperBtn{width:100%!important;min-height:50px!important;margin:0!important}
 
-      body.recovery-easy #comicBlastStudio>summary{padding:14px 16px!important;font-size:18px!important}
       body.recovery-easy #caption{min-height:120px!important}
       body.recovery-easy #captionStage15Card{margin-bottom:12px!important}
+      @media(max-width:430px){body.recovery-easy .stage15-media-source-grid{grid-template-columns:1fr}}
     `;
     document.head.appendChild(style);
   }
@@ -65,37 +74,50 @@
     drop.classList.toggle('stage15-empty-media', !mediaIsSelected());
   }
 
-  function consolidateMediaIntoChooser() {
+  function buildCompactMediaChooser() {
+    const composer = q('#view-create .composer');
     const comic = q('#comicBlastStudio');
-    const inner = q('.comic-studio-inner', comic);
     const drop = q('#dropZone');
-    if (!comic || !inner || !drop) return null;
+    if (!composer || !comic || !drop) return null;
 
-    let upload = q('#stage15UploadMediaBtn');
-    if (!upload) {
-      upload = document.createElement('button');
-      upload.id = 'stage15UploadMediaBtn';
-      upload.className = 'button secondary full';
-      upload.type = 'button';
-      upload.textContent = 'Upload a Photo or Video';
-      upload.addEventListener('click', () => {
+    q('#stage15UploadMediaBtn',comic)?.remove();
+
+    let chooser = q('#stage15MediaChooser');
+    if (!chooser) {
+      chooser = document.createElement('details');
+      chooser.id = 'stage15MediaChooser';
+      chooser.innerHTML = `
+        <summary>Choose Photo or Video</summary>
+        <div class="stage15-media-inner">
+          <div class="stage15-media-source-grid">
+            <button id="stage15UseAppLibraryBtn" class="button secondary" type="button">App Library</button>
+            <button id="stage15UploadMediaBtn" class="button secondary" type="button">My Phone</button>
+          </div>
+        </div>`;
+      comic.after(chooser);
+
+      q('#stage15UseAppLibraryBtn',chooser)?.addEventListener('click',() => {
         suppressGeneratedPreview(false);
-        comic.open = true;
+        if (typeof navigate === 'function') navigate('media');
+        else q('.nav-item[data-view="media"]')?.click();
+      });
+      q('#stage15UploadMediaBtn',chooser)?.addEventListener('click',() => {
+        suppressGeneratedPreview(false);
         q('#mediaInput')?.click();
       });
     }
 
-    if (upload.parentElement !== inner) inner.insertBefore(upload, inner.firstElementChild);
-    if (drop.parentElement !== inner) upload.after(drop);
+    const inner = q('.stage15-media-inner',chooser);
+    if (inner && drop.parentElement !== inner) inner.appendChild(drop);
 
     const actions = q('#mediaActions');
-    if (actions && actions.parentElement !== inner) drop.after(actions);
+    if (inner && actions && actions.parentElement !== inner) inner.appendChild(actions);
 
     const oldCard = q('#stage15MediaCard');
     if (oldCard) oldCard.remove();
 
     refreshMediaPreview();
-    return comic;
+    return chooser;
   }
 
   function installComicMakeGuard() {
@@ -110,9 +132,6 @@
       const drop = q('#dropZone');
       let originalScrollIntoView = null;
 
-      // Once a comic is generated, the inline comic preview is the authoritative preview.
-      // Keep the redundant compact selected-media preview hidden until the user manually
-      // uploads/removes media.
       suppressGeneratedPreview(true);
 
       if (drop && typeof drop.scrollIntoView === 'function') {
@@ -145,7 +164,12 @@
   function renameAndTrim() {
     const comic = q('#comicBlastStudio');
     const summary = comic?.querySelector(':scope > summary');
-    if (summary && summary.textContent.trim() !== '🖼 Choose Media') summary.textContent = '🖼 Choose Media';
+    if (summary) summary.textContent = '🖼 Pick a Background';
+
+    if (comic && comic.dataset.stage16InitialOpen !== '1') {
+      comic.dataset.stage16InitialOpen = '1';
+      comic.open = true;
+    }
 
     const captionCard = q('#caption')?.closest('.card');
     if (captionCard) {
@@ -164,13 +188,15 @@
     const composer = q('#view-create .composer');
     if (!composer) return;
 
-    const comic = consolidateMediaIntoChooser();
+    const comic = q('#comicBlastStudio');
+    const chooser = buildCompactMediaChooser();
     const captionCard = q('#caption')?.closest('.card');
     const maxReach = q('#maxReachCard');
     const showHelper = q('#recoveryShowHelper');
 
     if (comic && composer.firstElementChild !== comic) composer.insertBefore(comic, composer.firstElementChild);
-    if (captionCard && comic && comic.nextElementSibling !== captionCard) comic.after(captionCard);
+    if (chooser && comic && comic.nextElementSibling !== chooser) comic.after(chooser);
+    if (captionCard && chooser && chooser.nextElementSibling !== captionCard) chooser.after(captionCard);
 
     let tools = q('#stage15HelperGroup');
     if ((maxReach || showHelper) && !tools) {
@@ -192,7 +218,7 @@
     renameAndTrim();
     reorderCreate();
     const footer = q('.version-footer');
-    if (footer) footer.textContent = 'Social Publisher v0.7.6 · Clean Create Flow';
+    if (footer) footer.textContent = 'Social Publisher v0.7.6 · Restored Create Flow';
   }
 
   let queued = false;
@@ -212,8 +238,8 @@
     if (composer) new MutationObserver(schedule).observe(composer,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
     q('#mediaInput')?.addEventListener('change',() => {
       suppressGeneratedPreview(false);
-      const comic = q('#comicBlastStudio');
-      if (comic) comic.open = true;
+      const chooser = q('#stage15MediaChooser');
+      if (chooser) chooser.open = true;
       setTimeout(schedule,40);
     });
     q('#removeMediaBtn')?.addEventListener('click',() => {
