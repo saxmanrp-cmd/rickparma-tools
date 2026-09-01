@@ -41,3 +41,5 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m 'Harden Fuel iPhone scrolling and disable zoom'
           git push origin HEAD:main
+
+# Rerun after focus-zoom guard cleanup.
