@@ -28,9 +28,15 @@ if "typeof window.FuelShowPage === 'function'" not in swift:
     swift_path.write_text(swift)
 
 test = test_path.read_text()
-block = '''\n\ntest('native Fuel calls the web page router directly',()=>{\n  assert.match(app,/window\\.FuelShowPage=showPage/);\n  assert.match(swift,/typeof window\\.FuelShowPage === 'function'/);\n  assert.match(swift,/window\\.FuelShowPage/);\n});\n'''
+if "const appJs=fs.readFileSync(new URL('../public/app.js', import.meta.url),'utf8');" not in test:
+    marker = "const swift=fs.readFileSync(new URL('../ios/Fuel/ContentView.swift', import.meta.url),'utf8');\n"
+    if marker not in test:
+        raise SystemExit('Could not find Swift test fixture declaration')
+    test = test.replace(marker, marker + "const appJs=fs.readFileSync(new URL('../public/app.js', import.meta.url),'utf8');\n", 1)
+
+block = '''\n\ntest('native Fuel calls the web page router directly',()=>{\n  assert.match(appJs,/window\\.FuelShowPage=showPage/);\n  assert.match(swift,/typeof window\\.FuelShowPage === 'function'/);\n  assert.match(swift,/window\\.FuelShowPage/);\n});\n'''
 if 'native Fuel calls the web page router directly' not in test:
     test += block
-    test_path.write_text(test)
 
+test_path.write_text(test)
 print('Fuel direct native navigation bridge applied')
