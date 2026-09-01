@@ -20,6 +20,12 @@ html = replace_once(
     '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">',
     'viewport lock',
 )
+html = replace_once(
+    html,
+    '.macrogrid input{padding:8px;font-size:14px}',
+    '.macrogrid input{padding:8px;font-size:16px}',
+    'review input focus zoom',
+)
 
 hardening_css = r'''
 /* Fuel native app-shell hardening: no white overscroll, no page zoom, stable bottom tabs. */
