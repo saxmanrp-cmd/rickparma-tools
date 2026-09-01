@@ -42,4 +42,4 @@ jobs:
           git commit -m 'Route Fuel native tabs directly to web pages'
           git push origin HEAD:main
 
-# Native tabs call FuelShowPage directly; hardened patcher run.
+# Native tabs call FuelShowPage directly; regression harness fixed.
