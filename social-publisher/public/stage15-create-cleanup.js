@@ -1,6 +1,14 @@
-// Stage 15: simplify the Create page, consolidate media picking, and reorder caption/help tools.
+// Safe Create cleanup: keep Comic/background controls intact while simplifying the page.
 (() => {
   const q = (selector, root=document) => root.querySelector(selector);
+  const esc = value => String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let libraryLoaded = false;
+  let libraryBusy = false;
+
+  function toastSafe(message) {
+    if (typeof window.toast === 'function') window.toast(message);
+    else if (typeof toast === 'function') toast(message);
+  }
 
   function injectStyles() {
     if (q('#stage15CreateCleanupStyles')) return;
@@ -13,38 +21,48 @@
       body.recovery-easy #uploadPrompt,
       body.recovery-easy #comicBlastStudio .comic-studio-copy{display:none!important}
 
-      body.recovery-easy #comicBlastStudio #stage15UploadMediaBtn{
-        width:100%!important;min-height:50px!important;margin:0 0 10px!important;font-size:16px!important;font-weight:900!important
-      }
-      body.recovery-easy #dropZone.stage15-compact-media{
-        min-height:0!important;height:auto!important;margin:0 0 10px!important;padding:0!important;
-        border:1px solid rgba(255,255,255,.10)!important;border-radius:13px!important;
-        background:#090e15!important;overflow:hidden!important
-      }
-      body.recovery-easy #dropZone.stage15-compact-media.stage15-empty-media{display:none!important}
-      body.recovery-easy.stage15-comic-generated-media #dropZone.stage15-compact-media,
-      body.recovery-easy.stage15-comic-generated-media #mediaPreview,
-      body.recovery-easy.stage15-comic-generated-media #mediaActions{display:none!important}
-      body.recovery-easy #dropZone.stage15-compact-media #mediaPreview{min-height:0!important;max-height:180px!important;overflow:hidden!important}
-      body.recovery-easy #dropZone.stage15-compact-media #mediaPreview img,
-      body.recovery-easy #dropZone.stage15-compact-media #mediaPreview video{
-        width:100%!important;max-height:180px!important;object-fit:contain!important;display:block!important;background:#06090d!important
-      }
-      body.recovery-easy #comicBlastStudio #mediaActions{margin:0 0 10px!important;justify-content:flex-end!important}
+      body.recovery-easy #comicBlastStudio{margin:0 0 12px!important}
+      body.recovery-easy #comicBlastStudio>summary{padding:14px 16px!important;font-size:18px!important}
+
+      body.recovery-easy #stage15MediaPicker{margin:0 0 12px;border:1px solid rgba(255,255,255,.10);border-radius:16px;background:#0d121a;overflow:hidden}
+      body.recovery-easy #stage15MediaPicker>summary{list-style:none;cursor:pointer;padding:14px 16px;font-size:17px;font-weight:900;color:#f2f5f9}
+      body.recovery-easy #stage15MediaPicker>summary::-webkit-details-marker{display:none}
+      body.recovery-easy #stage15MediaPicker>summary::after{content:'＋';float:right;color:#9d8cff}
+      body.recovery-easy #stage15MediaPicker[open]>summary::after{content:'−'}
+      body.recovery-easy .stage15-media-inner{padding:0 12px 12px}
+      body.recovery-easy .stage15-media-source-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+      body.recovery-easy .stage15-media-source-row button{min-height:48px!important;font-size:14px!important}
+      body.recovery-easy #stage15LibraryStatus{margin:9px 1px 0;color:#96a2b3;font-size:12px;line-height:1.4}
+      body.recovery-easy #stage15LibraryGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+      body.recovery-easy #stage15LibraryGrid.hidden{display:none!important}
+      body.recovery-easy .stage15-library-tile{position:relative;aspect-ratio:4/5;padding:0;border:1px solid rgba(255,255,255,.10);border-radius:11px;overflow:hidden;background:#070b11}
+      body.recovery-easy .stage15-library-tile img,body.recovery-easy .stage15-library-tile video{width:100%;height:100%;display:block;object-fit:cover;background:#070b11}
+      body.recovery-easy .stage15-library-tile span{position:absolute;left:5px;right:5px;bottom:5px;padding:5px;border-radius:8px;background:rgba(5,8,13,.82);color:#fff;font-size:11px;font-weight:900;text-align:center}
+
+      body.recovery-easy #stage15MediaPicker #dropZone{min-height:0!important;height:auto!important;margin:10px 0 0!important;padding:0!important;border:0!important;border-radius:12px!important;background:#070b11!important;overflow:hidden!important}
+      body.recovery-easy #stage15MediaPicker #dropZone.stage15-empty-media{display:none!important}
+      body.recovery-easy #stage15MediaPicker #mediaPreview{min-height:0!important;max-height:150px!important;overflow:hidden!important}
+      body.recovery-easy #stage15MediaPicker #mediaPreview img,
+      body.recovery-easy #stage15MediaPicker #mediaPreview video{width:100%!important;max-height:150px!important;object-fit:contain!important;display:block!important;background:#06090d!important}
+      body.recovery-easy #stage15MediaPicker #mediaActions{margin:7px 0 0!important;justify-content:flex-end!important}
+
+      body.recovery-easy #captionStage15Card{margin:0 0 12px!important}
+      body.recovery-easy #captionStage15Card #caption{min-height:120px!important}
 
       body.recovery-easy #stage15HelperGroup{margin:0 0 12px;padding:12px;border-radius:16px;border:1px solid rgba(145,116,255,.22);background:#0d121a}
-      body.recovery-easy .stage15-section-title{font-size:17px;font-weight:900;color:#f2f5f9;margin-bottom:9px}
-      body.recovery-easy #stage15HelperGroup .stage15-section-title{margin-bottom:8px}
+      body.recovery-easy .stage15-section-title{font-size:17px;font-weight:900;color:#f2f5f9;margin-bottom:8px}
       body.recovery-easy #stage15HelperGroup #maxReachCard,
       body.recovery-easy #stage15HelperGroup #recoveryShowHelper{margin:7px 0 0!important;padding:0!important;border:0!important;background:transparent!important}
       body.recovery-easy #stage15HelperGroup #maxReachCard>:not(#applyMaxReachBtn),
-      body.recovery-easy #stage15HelperGroup #recoveryShowHelper>:not(#showHelperBtn){display:none!important}
+      body.recovery-easy #stage15HelperGroup #recoveryShowHelper>:not(#showHelperBtn):not(#showHelperResult){display:none!important}
       body.recovery-easy #stage15HelperGroup #applyMaxReachBtn,
       body.recovery-easy #stage15HelperGroup #showHelperBtn{width:100%!important;min-height:50px!important;margin:0!important}
+      body.recovery-easy #stage15HelperGroup #showHelperResult{margin-top:8px!important}
 
-      body.recovery-easy #comicBlastStudio>summary{padding:14px 16px!important;font-size:18px!important}
-      body.recovery-easy #caption{min-height:120px!important}
-      body.recovery-easy #captionStage15Card{margin-bottom:12px!important}
+      @media(max-width:430px){
+        body.recovery-easy .stage15-media-source-row{grid-template-columns:1fr}
+        body.recovery-easy #stage15LibraryGrid{grid-template-columns:repeat(2,1fr)}
+      }
     `;
     document.head.appendChild(style);
   }
@@ -54,106 +72,147 @@
     return Boolean(preview && !preview.classList.contains('hidden') && preview.children.length);
   }
 
-  function suppressGeneratedPreview(value) {
-    document.body.classList.toggle('stage15-comic-generated-media', Boolean(value));
-  }
-
   function refreshMediaPreview() {
     const drop = q('#dropZone');
     if (!drop) return;
-    drop.classList.add('stage15-compact-media');
     drop.classList.toggle('stage15-empty-media', !mediaIsSelected());
   }
 
-  function consolidateMediaIntoChooser() {
+  function ensureMediaPicker() {
+    const composer = q('#view-create .composer');
     const comic = q('#comicBlastStudio');
-    const inner = q('.comic-studio-inner', comic);
     const drop = q('#dropZone');
-    if (!comic || !inner || !drop) return null;
+    if (!composer || !comic || !drop) return null;
 
-    let upload = q('#stage15UploadMediaBtn');
-    if (!upload) {
-      upload = document.createElement('button');
-      upload.id = 'stage15UploadMediaBtn';
-      upload.className = 'button secondary full';
-      upload.type = 'button';
-      upload.textContent = 'Upload a Photo or Video';
-      upload.addEventListener('click', () => {
-        suppressGeneratedPreview(false);
-        comic.open = true;
-        q('#mediaInput')?.click();
-      });
+    let picker = q('#stage15MediaPicker');
+    if (!picker) {
+      picker = document.createElement('details');
+      picker.id = 'stage15MediaPicker';
+      picker.innerHTML = `
+        <summary>📷 Choose Photo or Video</summary>
+        <div class="stage15-media-inner">
+          <div class="stage15-media-source-row">
+            <button id="stage15UseLibraryBtn" class="button secondary" type="button">Use Uploaded Media</button>
+            <button id="stage15UsePhoneBtn" class="button secondary" type="button">From My Phone</button>
+          </div>
+          <div id="stage15LibraryStatus"></div>
+          <div id="stage15LibraryGrid" class="hidden"></div>
+        </div>`;
     }
 
-    if (upload.parentElement !== inner) inner.insertBefore(upload, inner.firstElementChild);
-    if (drop.parentElement !== inner) upload.after(drop);
-
+    if (picker.parentElement !== composer) comic.after(picker);
+    const inner = q('.stage15-media-inner', picker);
+    if (drop.parentElement !== inner) inner.appendChild(drop);
     const actions = q('#mediaActions');
-    if (actions && actions.parentElement !== inner) drop.after(actions);
+    if (actions && actions.parentElement !== inner) inner.appendChild(actions);
 
-    const oldCard = q('#stage15MediaCard');
-    if (oldCard) oldCard.remove();
-
+    q('#stage15UsePhoneBtn')?.addEventListener('click', choosePhone, {once:true});
+    q('#stage15UseLibraryBtn')?.addEventListener('click', toggleLibrary, {once:true});
+    q('#stage15LibraryGrid')?.addEventListener('click', chooseLibraryItem, {once:true});
     refreshMediaPreview();
-    return comic;
+    return picker;
   }
 
-  function installComicMakeGuard() {
-    if (document.documentElement.dataset.stage15ComicMakeGuard === '1') return;
-    document.documentElement.dataset.stage15ComicMakeGuard = '1';
+  function choosePhone() {
+    const picker = q('#stage15MediaPicker');
+    if (picker) picker.open = true;
+    q('#mediaInput')?.click();
+  }
 
-    document.addEventListener('click', event => {
-      const button = event.target.closest?.('#comicMakeBtn');
-      if (!button) return;
+  async function toggleLibrary() {
+    const grid = q('#stage15LibraryGrid');
+    if (!grid) return;
+    if (!grid.classList.contains('hidden')) {
+      grid.classList.add('hidden');
+      return;
+    }
+    grid.classList.remove('hidden');
+    if (!libraryLoaded) await loadLibrary();
+  }
 
-      const savedY = window.scrollY;
-      const drop = q('#dropZone');
-      let originalScrollIntoView = null;
-
-      // Once a comic is generated, the inline comic preview is the authoritative preview.
-      // Keep the redundant compact selected-media preview hidden until the user manually
-      // uploads/removes media.
-      suppressGeneratedPreview(true);
-
-      if (drop && typeof drop.scrollIntoView === 'function') {
-        originalScrollIntoView = drop.scrollIntoView;
-        try { drop.scrollIntoView = () => {}; } catch {}
+  async function loadLibrary() {
+    if (libraryBusy) return;
+    libraryBusy = true;
+    const grid = q('#stage15LibraryGrid');
+    const status = q('#stage15LibraryStatus');
+    if (status) status.textContent = 'Loading uploaded media…';
+    try {
+      const response = await fetch('/api/posts', {headers:{accept:'application/json'},cache:'no-store'});
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Could not load uploaded media.');
+      const posts = Array.isArray(data.posts) ? data.posts : [];
+      const unique = [];
+      const seen = new Set();
+      for (const post of posts) {
+        const key = String(post.media_key || '').trim();
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        unique.push({key,type:String(post.media_type || 'image/jpeg')});
+        if (unique.length >= 18) break;
       }
+      if (!unique.length) {
+        if (grid) grid.innerHTML = '';
+        if (status) status.textContent = 'No previously uploaded post media yet.';
+        libraryLoaded = true;
+        return;
+      }
+      if (grid) grid.innerHTML = unique.map((item,index) => {
+        const url = `/media/${encodeURIComponent(item.key)}`;
+        const visual = item.type.startsWith('video/')
+          ? `<video src="${esc(url)}" muted playsinline preload="metadata"></video>`
+          : `<img src="${esc(url)}" alt="Uploaded media ${index+1}" loading="lazy" />`;
+        return `<button class="stage15-library-tile" type="button" data-stage15-media-key="${esc(item.key)}" data-stage15-media-type="${esc(item.type)}">${visual}<span>Use</span></button>`;
+      }).join('');
+      if (status) status.textContent = 'Tap a thumbnail to use it in this post.';
+      libraryLoaded = true;
+    } catch (error) {
+      if (status) status.textContent = error.message || 'Could not load uploaded media.';
+    } finally {
+      libraryBusy = false;
+    }
+  }
 
-      let checks = 0;
-      const finish = () => {
-        checks += 1;
-        const stillMaking = button.disabled || /making graphic/i.test(button.textContent || '');
-        if (stillMaking && checks < 240) {
-          setTimeout(finish, 50);
-          return;
-        }
-
-        if (drop && originalScrollIntoView) {
-          try { drop.scrollIntoView = originalScrollIntoView; } catch {}
-        }
-
-        requestAnimationFrame(() => {
-          window.scrollTo({ top:savedY, left:0, behavior:'auto' });
-        });
-      };
-
-      setTimeout(finish, 50);
-    }, { capture:true });
+  async function chooseLibraryItem(event) {
+    const tile = event.target.closest?.('[data-stage15-media-key]');
+    if (!tile) return;
+    const key = tile.dataset.stage15MediaKey || '';
+    const type = tile.dataset.stage15MediaType || 'image/jpeg';
+    if (!key) return;
+    const status = q('#stage15LibraryStatus');
+    tile.disabled = true;
+    if (status) status.textContent = 'Adding media…';
+    try {
+      const response = await fetch(`/media/${encodeURIComponent(key)}`);
+      if (!response.ok) throw new Error('Could not load that media.');
+      const blob = await response.blob();
+      const name = key.split('/').pop() || `media-${Date.now()}`;
+      const file = new File([blob], name, {type:blob.type || type,lastModified:Date.now()});
+      if (typeof handleMedia !== 'function') throw new Error('Media picker is not ready yet.');
+      await handleMedia(file);
+      const picker = q('#stage15MediaPicker');
+      if (picker) picker.open = true;
+      q('#stage15LibraryGrid')?.classList.add('hidden');
+      if (status) status.textContent = 'Media added.';
+      setTimeout(refreshMediaPreview,60);
+    } catch (error) {
+      if (status) status.textContent = error.message || 'Could not add that media.';
+      toastSafe(error.message || 'Could not add that media.');
+    } finally {
+      tile.disabled = false;
+    }
   }
 
   function renameAndTrim() {
     const comic = q('#comicBlastStudio');
     const summary = comic?.querySelector(':scope > summary');
-    if (summary && summary.textContent.trim() !== '🖼 Choose Media') summary.textContent = '🖼 Choose Media';
+    if (summary) summary.textContent = '🖼 Pick a Background';
 
     const captionCard = q('#caption')?.closest('.card');
     if (captionCard) {
       captionCard.id = 'captionStage15Card';
-      const label = captionCard.querySelector('.caption-topline label');
+      const label = q('.caption-topline label', captionCard);
       if (label) label.textContent = 'Caption';
     }
-
     const apply = q('#applyMaxReachBtn');
     if (apply) apply.textContent = 'Use My Suggestions';
     const helper = q('#showHelperBtn');
@@ -162,15 +221,16 @@
 
   function reorderCreate() {
     const composer = q('#view-create .composer');
-    if (!composer) return;
-
-    const comic = consolidateMediaIntoChooser();
+    const comic = q('#comicBlastStudio');
+    if (!composer || !comic) return;
+    const mediaPicker = ensureMediaPicker();
     const captionCard = q('#caption')?.closest('.card');
     const maxReach = q('#maxReachCard');
     const showHelper = q('#recoveryShowHelper');
 
-    if (comic && composer.firstElementChild !== comic) composer.insertBefore(comic, composer.firstElementChild);
-    if (captionCard && comic && comic.nextElementSibling !== captionCard) comic.after(captionCard);
+    if (composer.firstElementChild !== comic) composer.insertBefore(comic, composer.firstElementChild);
+    if (mediaPicker && comic.nextElementSibling !== mediaPicker) comic.after(mediaPicker);
+    if (captionCard && mediaPicker && mediaPicker.nextElementSibling !== captionCard) mediaPicker.after(captionCard);
 
     let tools = q('#stage15HelperGroup');
     if ((maxReach || showHelper) && !tools) {
@@ -183,7 +243,6 @@
       if (showHelper && showHelper.parentElement !== tools) tools.appendChild(showHelper);
       if (captionCard && captionCard.nextElementSibling !== tools) captionCard.after(tools);
     }
-
     refreshMediaPreview();
   }
 
@@ -195,32 +254,16 @@
     if (footer) footer.textContent = 'Social Publisher v0.7.6 · Clean Create Flow';
   }
 
-  let queued = false;
-  const schedule = () => {
-    if (queued) return;
-    queued = true;
-    requestAnimationFrame(() => {
-      queued = false;
-      apply();
-    });
-  };
-
   function boot() {
     apply();
-    installComicMakeGuard();
-    const composer = q('#view-create .composer');
-    if (composer) new MutationObserver(schedule).observe(composer,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
     q('#mediaInput')?.addEventListener('change',() => {
-      suppressGeneratedPreview(false);
-      const comic = q('#comicBlastStudio');
-      if (comic) comic.open = true;
-      setTimeout(schedule,40);
+      const picker = q('#stage15MediaPicker');
+      if (picker) picker.open = true;
+      setTimeout(refreshMediaPreview,50);
     });
-    q('#removeMediaBtn')?.addEventListener('click',() => {
-      suppressGeneratedPreview(false);
-      setTimeout(schedule,40);
-    });
-    q('.nav-item[data-view="create"]')?.addEventListener('click',() => setTimeout(schedule,80));
+    q('#removeMediaBtn')?.addEventListener('click',() => setTimeout(refreshMediaPreview,50));
+    q('.nav-item[data-view="create"]')?.addEventListener('click',() => setTimeout(apply,80));
+    [120,350,800,1500].forEach(delay => setTimeout(apply,delay));
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',boot,{once:true});
