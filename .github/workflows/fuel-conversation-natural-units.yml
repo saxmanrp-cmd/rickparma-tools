@@ -20,7 +20,9 @@ jobs:
         with:
           node-version: '22'
       - name: Harden Fuel scrolling and zoom
-        run: python .github/scripts/fuel_app_shell_upgrade.py
+        run: |
+          python .github/scripts/fuel_app_shell_upgrade.py
+          python .github/scripts/fuel_native_feel_debug.py
       - name: Check Fuel JavaScript
         working-directory: fuel-tracker
         run: |
@@ -39,7 +41,7 @@ jobs:
           git add fuel-tracker
           git diff --cached --check
           git diff --cached --quiet && exit 0
-          git commit -m 'Harden Fuel iPhone scrolling and disable zoom'
+          git commit -m 'Finish Fuel native feel scrolling zoom and tab fixes'
           git push origin HEAD:main
 
-# Rerun after focus-zoom guard cleanup.
+# Debug pass: remove forced focus zoom, stabilize tabs, darken WebKit under-page canvas.
