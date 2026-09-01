@@ -24,3 +24,14 @@ test('native WKWebView cannot reveal white under-page areas or smart zoom',()=>{
   assert.match(swift,/numberOfTapsRequired > 1/);
   assert.match(swift,/setZoomScale\(1\.0, animated: false\)/);
 });
+
+
+test('native iPhone shell owns bottom navigation instead of WKWebView',()=>{
+  assert.match(swift,/FuelWebView\(selectedPage: selectedPage\)/);
+  assert.match(swift,/fuelTab\(page: "home"/);
+  assert.match(swift,/fuelTab\(page: "settings"/);
+  assert.match(swift,/ignoresSafeArea\(\.keyboard, edges: \.bottom\)/);
+  assert.match(swift,/fuel-native-shell-style/);
+  assert.match(swift,/\.tabs\{display:none!important\}/);
+  assert.match(swift,/func selectPage\(_ page: String/);
+});

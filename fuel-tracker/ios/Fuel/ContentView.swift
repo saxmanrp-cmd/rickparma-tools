@@ -5,21 +5,62 @@ import AVFoundation
 import Speech
 
 struct ContentView: View {
+    @State private var selectedPage = "home"
     private let fuelBackground = Color(red: 8.0 / 255.0, green: 17.0 / 255.0, blue: 31.0 / 255.0)
+    private let activeTab = Color(red: 25.0 / 255.0, green: 40.0 / 255.0, blue: 68.0 / 255.0)
+    private let inactiveText = Color(red: 149.0 / 255.0, green: 165.0 / 255.0, blue: 189.0 / 255.0)
 
     var body: some View {
-        ZStack {
-            fuelBackground.ignoresSafeArea()
-            FuelWebView()
-                .ignoresSafeArea(.container, edges: .bottom)
+        VStack(spacing: 0) {
+            FuelWebView(selectedPage: selectedPage)
+                .background(fuelBackground)
+
+            Rectangle()
+                .fill(Color(red: 42.0 / 255.0, green: 59.0 / 255.0, blue: 93.0 / 255.0))
+                .frame(height: 1)
+
+            HStack(spacing: 5) {
+                fuelTab(page: "home", icon: "🏠", label: "Today")
+                fuelTab(page: "log", icon: "＋", label: "Log")
+                fuelTab(page: "progress", icon: "📈", label: "Progress")
+                fuelTab(page: "settings", icon: "⚙️", label: "Settings")
+            }
+            .padding(.horizontal, 8)
+            .padding(.top, 7)
+            .padding(.bottom, 4)
+            .background(fuelBackground)
         }
+        .background(fuelBackground.ignoresSafeArea())
+        .ignoresSafeArea(.keyboard, edges: .bottom)
+    }
+
+    @ViewBuilder
+    private func fuelTab(page: String, icon: String, label: String) -> some View {
+        Button {
+            selectedPage = page
+        } label: {
+            VStack(spacing: 2) {
+                Text(icon)
+                    .font(.system(size: 19))
+                Text(label)
+                    .font(.system(size: 12, weight: .bold))
+            }
+            .foregroundStyle(selectedPage == page ? Color.white : inactiveText)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 7)
+            .background(selectedPage == page ? activeTab : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 }
 
 struct FuelWebView: UIViewRepresentable {
+    let selectedPage: String
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeUIView(context: Context) -> WKWebView {
+        context.coordinator.currentPage = selectedPage
         let config = WKWebViewConfiguration()
         config.defaultWebpagePreferences.allowsContentJavaScript = true
         config.allowsInlineMediaPlayback = true
@@ -30,6 +71,15 @@ struct FuelWebView: UIViewRepresentable {
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "fuelAudio")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "fuelNotifications")
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "fuelBarcode")
+
+        let nativeShellSource = """
+        document.documentElement.classList.add('fuel-native-shell');
+        const fuelNativeStyle = document.createElement('style');
+        fuelNativeStyle.id = 'fuel-native-shell-style';
+        fuelNativeStyle.textContent = '.tabs{display:none!important}.app{padding-bottom:18px!important}html,body{background:#08111f!important}';
+        document.head.appendChild(fuelNativeStyle);
+        """
+        config.userContentController.addUserScript(WKUserScript(source: nativeShellSource, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -69,10 +119,15 @@ struct FuelWebView: UIViewRepresentable {
         return webView
     }
 
-    func updateUIView(_ webView: WKWebView, context: Context) {}
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        context.coordinator.currentPage = selectedPage
+        context.coordinator.selectPage(selectedPage, in: webView)
+    }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandlerWithReply, AVAudioPlayerDelegate {
         weak var webView: WKWebView?
+        var currentPage = "home"
+        private var lastSelectedPage: String?
         private let health = HealthKitManager()
         private let notifications = FuelNotificationManager()
         private let speech = AVSpeechSynthesizer()
@@ -114,12 +169,23 @@ struct FuelWebView: UIViewRepresentable {
             }
         }
 
+        func selectPage(_ page: String, in webView: WKWebView, force: Bool = false) {
+            let allowed = ["home", "log", "progress", "settings"]
+            guard allowed.contains(page) else { return }
+            guard force || lastSelectedPage != page else { return }
+            lastSelectedPage = page
+            let js = "document.querySelector('.tab[data-page=\"\(page)\"]')?.click(); window.scrollTo({top:0,left:0,behavior:'instant'});"
+            webView.evaluateJavaScript(js)
+        }
+
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             webView.pageZoom = 1.0
             webView.scrollView.minimumZoomScale = 1.0
             webView.scrollView.maximumZoomScale = 1.0
             webView.scrollView.setZoomScale(1.0, animated: false)
             disableWebZoomGestures(in: webView)
+            lastSelectedPage = nil
+            selectPage(currentPage, in: webView, force: true)
         }
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
