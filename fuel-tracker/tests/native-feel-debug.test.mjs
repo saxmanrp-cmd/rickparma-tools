@@ -27,11 +27,19 @@ test('native WKWebView cannot reveal white under-page areas or smart zoom',()=>{
 
 
 test('native iPhone shell owns bottom navigation instead of WKWebView',()=>{
-  assert.match(swift,/FuelWebView\(selectedPage: selectedPage\)/);
+  assert.match(swift,/FuelWebView\(selectedPage: selectedPage, navigationRevision: navigationRevision\)/);
   assert.match(swift,/fuelTab\(page: "home"/);
   assert.match(swift,/fuelTab\(page: "settings"/);
   assert.match(swift,/ignoresSafeArea\(\.keyboard, edges: \.bottom\)/);
   assert.match(swift,/fuel-native-shell-style/);
   assert.match(swift,/\.tabs\{display:none!important\}/);
   assert.match(swift,/func selectPage\(_ page: String/);
+});
+
+
+test('native tabs always send navigation even when Today is already selected in SwiftUI',()=>{
+  assert.match(swift,/@State private var navigationRevision = 0/);
+  assert.match(swift,/navigationRevision &\+= 1/);
+  assert.match(swift,/FuelWebView\(selectedPage: selectedPage, navigationRevision: navigationRevision\)/);
+  assert.match(swift,/selectPage\(selectedPage, in: webView, force: true\)/);
 });

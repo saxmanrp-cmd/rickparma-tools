@@ -6,13 +6,14 @@ import Speech
 
 struct ContentView: View {
     @State private var selectedPage = "home"
+    @State private var navigationRevision = 0
     private let fuelBackground = Color(red: 8.0 / 255.0, green: 17.0 / 255.0, blue: 31.0 / 255.0)
     private let activeTab = Color(red: 25.0 / 255.0, green: 40.0 / 255.0, blue: 68.0 / 255.0)
     private let inactiveText = Color(red: 149.0 / 255.0, green: 165.0 / 255.0, blue: 189.0 / 255.0)
 
     var body: some View {
         VStack(spacing: 0) {
-            FuelWebView(selectedPage: selectedPage)
+            FuelWebView(selectedPage: selectedPage, navigationRevision: navigationRevision)
                 .background(fuelBackground)
 
             Rectangle()
@@ -38,6 +39,7 @@ struct ContentView: View {
     private func fuelTab(page: String, icon: String, label: String) -> some View {
         Button {
             selectedPage = page
+            navigationRevision &+= 1
         } label: {
             VStack(spacing: 2) {
                 Text(icon)
@@ -57,6 +59,7 @@ struct ContentView: View {
 
 struct FuelWebView: UIViewRepresentable {
     let selectedPage: String
+    let navigationRevision: Int
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -121,7 +124,7 @@ struct FuelWebView: UIViewRepresentable {
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         context.coordinator.currentPage = selectedPage
-        context.coordinator.selectPage(selectedPage, in: webView)
+        context.coordinator.selectPage(selectedPage, in: webView, force: true)
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandlerWithReply, AVAudioPlayerDelegate {
