@@ -70,4 +70,4 @@ jobs:
           echo "AI response time: $((END-START)) seconds"
           grep -q '"ok":true' /tmp/fuel-ai.json
 
-# Release trigger: native-feeling scroll, dark overscroll canvas, and zoom lock.
+# Release trigger: second-stage native feel debug for focus zoom, tab jump, and WebKit under-page background.
