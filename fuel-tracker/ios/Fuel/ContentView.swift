@@ -477,11 +477,6 @@ private final class FuelBarcodeScannerOverlay: UIView, AVCaptureMetadataOutputOb
         nil
     }
 
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        previewLayer?.frame = previewHost.bounds
-    }
-
     func start() {
         do {
             try configureSession()
