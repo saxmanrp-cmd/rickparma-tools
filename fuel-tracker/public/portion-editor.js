@@ -23,10 +23,10 @@ function parseServing(text=''){
   return null;
 }
 function family(u){if(u in WEIGHT_TO_G)return 'weight';if(u in VOLUME_TO_TSP)return 'volume';if(['piece','slice','wing','corner'].includes(u))return 'count';if(u==='serving')return 'serving';return 'other'}
-function compatibleUnits(base){const f=family(base);if(f==='weight')return ['oz','g','lb'];if(f==='volume')return ['cup','tbsp','tsp'];if(f==='count')return [base];return ['serving']}
+function compatibleUnits(base){const f=family(base);if(f==='weight')return ['oz','g','lb','serving'];if(f==='volume')return ['cup','tbsp','tsp','serving'];if(f==='count')return [base,'serving'];return ['serving']}
 function snapServing(n,u){if(!Number.isFinite(n)||n<=0)return n;if(u==='g')return Math.round(n*10)/10;const common=[0.125,0.25,0.333,0.5,0.75,1,1.5,2,2.5,3,4,5,6,8,10,12,16];let best=n,delta=Infinity;for(const c of common){const d=Math.abs(n-c)/Math.max(c,.001);if(d<delta){delta=d;best=c}}return delta<=0.02?best:Math.round(n*100)/100}
 function convert(n,from,to){if(from===to)return n;const f=family(from);if(f!==family(to))return NaN;if(f==='weight')return n*WEIGHT_TO_G[from]/WEIGHT_TO_G[to];if(f==='volume')return n*VOLUME_TO_TSP[from]/VOLUME_TO_TSP[to];return NaN}
-function servingQtyIn(state,targetUnit){if(targetUnit===state.base.unit)return state.base.qty;const n=convert(state.base.qty,state.base.unit,targetUnit);return snapServing(n,targetUnit)}
+function servingQtyIn(state,targetUnit){if(targetUnit==='serving')return 1;if(targetUnit===state.base.unit)return state.base.qty;const n=convert(state.base.qty,state.base.unit,targetUnit);return snapServing(n,targetUnit)}
 function preferredUnit(base){if(family(base)==='weight')return 'oz';return base}
 function getMacros(row){return {cal:+row.querySelector('.rCal')?.value||0,p:+row.querySelector('.rPro')?.value||0,c:+row.querySelector('.rCarb')?.value||0,f:+row.querySelector('.rFat')?.value||0}}
 function setMacros(row,m){row.querySelector('.rCal').value=macro(m.cal);row.querySelector('.rPro').value=macro(m.p);row.querySelector('.rCarb').value=macro(m.c);row.querySelector('.rFat').value=macro(m.f)}
@@ -51,7 +51,7 @@ function recalcRow(row){
   const ratio=q/one,m=state.base.macros;
   const next={cal:m.cal*ratio,p:m.p*ratio,c:m.c*ratio,f:m.f*ratio};setMacros(row,next);
   const amt=row.querySelector('.rAmt');if(amt)amt.value=`${fmt(q)} ${u}`;
-  const out=row.querySelector('.peResult');if(out){out.classList.remove('peError');out.textContent=`${fmt(q)} ${u} = ${fmt(ratio)} serving${Math.abs(ratio-1)<.0001?'':'s'} → ${Math.round(next.cal)} cal · ${fmt(macro(next.p),1)}P · ${fmt(macro(next.c),1)}C · ${fmt(macro(next.f),1)}F`}
+  const out=row.querySelector('.peResult');if(out){out.classList.remove('peError');const unitText=u==='serving'?`serving${Math.abs(q-1)<.0001?'':'s'}`:u;out.textContent=`${fmt(q)} ${unitText} = ${fmt(ratio)} serving${Math.abs(ratio-1)<.0001?'':'s'} → ${Math.round(next.cal)} cal · ${fmt(macro(next.p),1)}P · ${fmt(macro(next.c),1)}C · ${fmt(macro(next.f),1)}F`}
   row.dataset.peDirty='0';updateTotals();return true;
 }
 function enhanceReview(){
@@ -59,6 +59,7 @@ function enhanceReview(){
   [...box.querySelectorAll('.reviewItem')].forEach(row=>{
     if(row.querySelector('.peSimple'))return;
     const state=buildState(row);if(!state)return;row._peState=state;
+    row.dataset.peBase=JSON.stringify({qty:state.base.qty,unit:state.base.unit,cal:state.base.macros.cal,p:state.base.macros.p,c:state.base.macros.c,f:state.base.macros.f});
     const wrap=document.createElement('div');wrap.className='peSimple';
     const units=compatibleUnits(state.base.unit);if(!units.includes(state.displayUnit))state.displayUnit=units[0];state.displayQty=servingQtyIn(state,state.displayUnit);
     wrap.innerHTML=`<div class="peServing">Label serving: <b>${esc(servingLabel(state))}</b> · <b>${Math.round(state.base.macros.cal)} cal</b> · ${fmt(macro(state.base.macros.p),1)}P · ${fmt(macro(state.base.macros.c),1)}C · ${fmt(macro(state.base.macros.f),1)}F</div><label class="peQuestion">How much did you eat?</label><div class="pePortion"><input class="peQty" inputmode="decimal" value="${esc(fmt(state.displayQty))}" aria-label="Amount eaten"><select class="peUnit" aria-label="Measurement">${optionHtml(units,state.displayUnit)}</select></div><div class="peResult"></div>`;
