@@ -70,4 +70,4 @@ jobs:
           echo "AI response time: $((END-START)) seconds"
           grep -q '"ok":true' /tmp/fuel-ai.json
 
-# Release trigger: flat Today food entries and separate Coach foods.
+# Release trigger: individual-or-meal logging with editable breakdowns.
