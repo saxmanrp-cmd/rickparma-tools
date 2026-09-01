@@ -20,7 +20,9 @@ jobs:
         with:
           node-version: '22'
       - name: Make Fuel a flat food log
-        run: python .github/scripts/fuel_flat_food_log_upgrade.py
+        run: |
+          python .github/scripts/fuel_flat_food_log_upgrade.py
+          python .github/scripts/fuel_flat_food_log_test_fix.py
       - name: Check Fuel JavaScript
         working-directory: fuel-tracker
         run: |
