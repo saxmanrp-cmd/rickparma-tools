@@ -1,12 +1,24 @@
 // Text Blast is handled inside the comic/background workflow and the main caption field.
-// The Stage 15 Create cleanup is intentionally not loaded here because it can swallow
-// the comic/background controls on iPhone. Keep the proven comic editor chain intact.
+// Stage 16 restores the cleaned Create-page layout without moving any Comic Blast internals.
 (() => {
+  function loadSafeCreateFlow() {
+    if (document.querySelector('script[data-stage16-create-flow]')) return;
+    const cleanup = document.createElement('script');
+    cleanup.src = '/stage16-create-flow-safe.js?v=20260901-safe-create';
+    cleanup.dataset.stage16CreateFlow = '1';
+    document.body.appendChild(cleanup);
+  }
+
   function loadStage13Polish() {
-    if (document.querySelector('script[data-comic-stage13-fix]')) return;
+    const existing = document.querySelector('script[data-comic-stage13-fix]');
+    if (existing) {
+      loadSafeCreateFlow();
+      return;
+    }
     const polish = document.createElement('script');
     polish.src = '/comic-blast-stage13-fix.js';
     polish.dataset.comicStage13Fix = '1';
+    polish.addEventListener('load',loadSafeCreateFlow,{once:true});
     document.body.appendChild(polish);
   }
 
