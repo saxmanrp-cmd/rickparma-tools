@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const html=fs.readFileSync(new URL('../public/index.html', import.meta.url),'utf8');
 const swift=fs.readFileSync(new URL('../ios/Fuel/ContentView.swift', import.meta.url),'utf8');
+const appJs=fs.readFileSync(new URL('../public/app.js', import.meta.url),'utf8');
 
 test('logging tools never auto-focus and trigger iOS visual zoom',()=>{
   assert.doesNotMatch(html,/input\)input\.focus\(/);
@@ -42,4 +43,11 @@ test('native tabs always send navigation even when Today is already selected in 
   assert.match(swift,/navigationRevision &\+= 1/);
   assert.match(swift,/FuelWebView\(selectedPage: selectedPage, navigationRevision: navigationRevision\)/);
   assert.match(swift,/selectPage\(selectedPage, in: webView, force: true\)/);
+});
+
+
+test('native Fuel calls the web page router directly',()=>{
+  assert.match(appJs,/window\.FuelShowPage=showPage/);
+  assert.match(swift,/typeof window\.FuelShowPage === 'function'/);
+  assert.match(swift,/window\.FuelShowPage/);
 });

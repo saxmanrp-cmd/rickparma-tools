@@ -177,7 +177,7 @@ struct FuelWebView: UIViewRepresentable {
             guard allowed.contains(page) else { return }
             guard force || lastSelectedPage != page else { return }
             lastSelectedPage = page
-            let js = "document.querySelector('.tab[data-page=\"\(page)\"]')?.click(); window.scrollTo({top:0,left:0,behavior:'instant'});"
+            let js = "if (typeof window.FuelShowPage === 'function') { window.FuelShowPage('\(page)'); } else { document.querySelector('.tab[data-page=\"\(page)\"]')?.click(); } window.scrollTo(0,0);"
             webView.evaluateJavaScript(js)
         }
 
