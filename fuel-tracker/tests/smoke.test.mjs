@@ -84,7 +84,7 @@ test('Fuel Coach stays low reasoning and sends less data for ordinary questions'
   assert.match(coach,/dayCount=full\?7:3/);
   assert.match(coach,/context\(question\)/);
   assert.match(coachApi,/body\.mode===['"]scan['"]\?['"]medium['"]:['"]low['"]/);
-  assert.match(coachApi,/max_output_tokens:notification\?180:650/);
+  assert.match(coachApi,/max_output_tokens:notification\?180:900/);
   assert.match(coachApi,/slice\(0,24000\)/);
 });
 
@@ -161,7 +161,8 @@ test('native Fuel registers HealthKit speech recognition speech stop and OpenAI 
 
 
 test('Fuel stores distinct foods as separate Today entries',()=>{
-  assert.match(client,/draft\.items\.length>1\?'Save foods':'Save food'/);
+  assert.match(client,/Log individually/);
+  assert.match(client,/Log as meal/);
   assert.match(client,/else addFoods\(items,draft\?\.source\|\|'AI\/review'\)/);
   assert.doesNotMatch(client,/items\.map\(x=>x\.amount\?`\$\{x\.amount\} \$\{x\.name\}`:x\.name\)\.join/);
   assert.match(coachApi,/structured foods array/);

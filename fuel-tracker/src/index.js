@@ -15,12 +15,19 @@ function parseJsonLoose(text){
 }
 function num(v,max=10000){const n=Number(v);return Number.isFinite(n)?Math.max(0,Math.min(max,n)):0}
 function round1(v){return Math.round(num(v,500)*10)/10}
-function normalize(data){
-  const items=Array.isArray(data?.items)?data.items.slice(0,20).map(item=>({
+function normalizeItem(item,depth=0){
+  if(!item||typeof item!=='object'||depth>2)return null;
+  const out={
     name:String(item?.name||'Food').slice(0,100),amount:String(item?.amount||'').slice(0,60),
     calories:Math.round(num(item?.calories,5000)),protein:round1(item?.protein),carbs:round1(item?.carbs),fat:round1(item?.fat),
     confidence:Math.max(0,Math.min(1,Number(item?.confidence)||0.6)),source:String(item?.source||'AI estimate').slice(0,80)
-  })):[];
+  };
+  const components=depth<2&&Array.isArray(item?.components)?item.components.slice(0,16).map(x=>normalizeItem(x,depth+1)).filter(Boolean):[];
+  if(components.length)out.components=components;
+  return out;
+}
+function normalize(data){
+  const items=Array.isArray(data?.items)?data.items.slice(0,20).map(item=>normalizeItem(item)).filter(Boolean):[];
   return {items,note:String(data?.note||'Nutrition is an estimate; review portions before saving.').slice(0,400)};
 }
 
@@ -42,7 +49,7 @@ async function analyze(request,env){
     const image=form.get('image');
     const imageDescription=await imageToText(image,env);
     if(!text&&!imageDescription)return json({error:'Type what you ate or take a food photo.'},{status:400});
-    const prompt=`Estimate nutrition for one meal from the information below. Be practical and conservative. Prefer exact known branded or restaurant nutrition when the user names a specific chain/menu item. Preserve any quantity or weight the user explicitly gives. Use the unit normal people naturally use for that food: meat, poultry and fish should normally be in ounces; countable foods such as ribs, wings, shrimp, eggs, meatballs and scallops should stay in counts when a count is given. If a photo clearly identifies a meat such as steak/ribeye but its total weight cannot be estimated confidently, DO NOT invent a whole-steak calorie total: return nutrition for exactly 1 oz and set amount to "1 oz" so the user can enter the ounces actually eaten. If the photo gives enough visual evidence to estimate total weight, show that estimated ounce amount. A shrimp size such as 16/20 means 16-20 shrimp per pound, so one shrimp is roughly 16 divided by the midpoint count in ounces (about 0.89 oz for 16/20). For "3 St. Louis ribs, no sauce", keep the amount as "3 ribs" and estimate three ribs without sauce; do not force it into ounces. Every item MUST have a non-empty amount and its calories/macros MUST correspond to that amount. If the user describes multiple distinct foods (for example 4 oz ribeye and 6 oz grilled chicken thighs), return them as separate item objects with separate amounts and separate macros. Do not combine distinct foods into one item. Keep a truly mixed or inseparable dish such as chili, stew, casserole, burrito, or sandwich as one item unless its components are explicitly being logged separately. Include sauces, butter, oils, breading, cheese and cooking fats when mentioned or clearly visible. Do not invent unsupported foods.
+    const prompt=`Estimate nutrition for one meal from the information below. Be practical and conservative. Prefer exact known branded or restaurant nutrition when the user names a specific chain/menu item. Preserve any quantity or weight the user explicitly gives. Use the unit normal people naturally use for that food: meat, poultry and fish should normally be in ounces; countable foods such as ribs, wings, shrimp, eggs, meatballs and scallops should stay in counts when a count is given. If a photo clearly identifies a meat such as steak/ribeye but its total weight cannot be estimated confidently, DO NOT invent a whole-steak calorie total: return nutrition for exactly 1 oz and set amount to "1 oz" so the user can enter the ounces actually eaten. If the photo gives enough visual evidence to estimate total weight, show that estimated ounce amount. A shrimp size such as 16/20 means 16-20 shrimp per pound, so one shrimp is roughly 16 divided by the midpoint count in ounces (about 0.89 oz for 16/20). For "3 St. Louis ribs, no sauce", keep the amount as "3 ribs" and estimate three ribs without sauce; do not force it into ounces. Every item MUST have a non-empty amount and its calories/macros MUST correspond to that amount. If the user describes multiple distinct foods (for example 4 oz ribeye and 6 oz grilled chicken thighs), return them as separate item objects with separate amounts and separate macros. Do not combine distinct foods into one item. Keep a truly mixed or inseparable dish such as chili, stew, casserole, burrito, burger, or sandwich as one top-level item. For a composite food whose parts are known from the user or a well-known menu build, also include an optional components array with nutritionally meaningful parts such as bun, meat patties, cheese, bacon, mayonnaise, ketchup, pickles, sauce, butter, oil, or breading. Component macros should add approximately to the parent item's macros; the parent total remains authoritative. This breakdown is for later editing and substitution decisions. Do not invent unsupported components.
 
 USER TEXT:
 ${text||'(none)'}
@@ -51,7 +58,7 @@ IMAGE DESCRIPTION:
 ${imageDescription||'(none)'}
 
 Return ONLY valid JSON:
-{"items":[{"name":"food","amount":"natural amount such as 12 oz, 3 ribs, or 10 shrimp","calories":0,"protein":0,"carbs":0,"fat":0,"confidence":0.0,"source":"official/known data or AI estimate"}],"note":"short uncertainty note"}`;
+{"items":[{"name":"food","amount":"natural amount such as 12 oz, 3 ribs, or 1 sandwich","calories":0,"protein":0,"carbs":0,"fat":0,"confidence":0.0,"source":"official/known data or AI estimate","components":[{"name":"bun or mayo or cheese","amount":"1 bun or 1 tbsp or 2 slices","calories":0,"protein":0,"carbs":0,"fat":0,"confidence":0.0,"source":"component estimate"}]}],"note":"short uncertainty note"}`;
     const result=await env.AI.run(AI_MODEL,{messages:[{role:'system',content:'You are a careful nutrition logging assistant. Output JSON only.'},{role:'user',content:prompt}],temperature:0.15,max_completion_tokens:1000,chat_template_kwargs:{enable_thinking:false}});
     let parsed=parseJsonLoose(readAiText(result));
     if(parsed&&Array.isArray(parsed.items)&&parsed.items.some(item=>!String(item?.amount||'').trim())){

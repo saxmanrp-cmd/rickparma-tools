@@ -45,6 +45,6 @@ test('coach api returns structured loggable food and sees conversation',()=>{
 });
 test('app exposes a coach logging bridge and cache busts coach',()=>{
   assert.match(app,/FuelAddCoachFood/);
-  assert.match(wrapper,/fuel-coach\.js\?v=6/);
+  assert.match(wrapper,/fuel-coach\.js\?v=7/);
   assert.doesNotThrow(()=>new Function(app));
 });
