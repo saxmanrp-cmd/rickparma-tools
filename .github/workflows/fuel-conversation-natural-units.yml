@@ -20,10 +20,7 @@ jobs:
         with:
           node-version: '22'
       - name: Rebuild Fuel native shell
-        run: |
-          python .github/scripts/fuel_app_shell_upgrade.py
-          python .github/scripts/fuel_native_feel_debug.py
-          python .github/scripts/fuel_native_shell_nav_upgrade.py
+        run: python .github/scripts/fuel_native_shell_nav_upgrade.py
       - name: Check Fuel JavaScript
         working-directory: fuel-tracker
         run: |
@@ -45,4 +42,4 @@ jobs:
           git commit -m 'Move Fuel iPhone navigation into native shell'
           git push origin HEAD:main
 
-# Architecture pass: SwiftUI owns the iPhone bottom bar and safe areas; WKWebView only renders scrolling content.
+# Native architecture pass only; older one-time patch scripts are intentionally not rerun.
