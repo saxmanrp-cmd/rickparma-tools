@@ -38,9 +38,14 @@ for old, new in replacements:
 swift_path.write_text(swift)
 
 test = test_path.read_text()
+test = test.replace(
+    "assert.match(swift,/FuelWebView\\(selectedPage: selectedPage\\)/);",
+    "assert.match(swift,/FuelWebView\\(selectedPage: selectedPage, navigationRevision: navigationRevision\\)/);"
+)
 block = '''\n\ntest('native tabs always send navigation even when Today is already selected in SwiftUI',()=>{\n  assert.match(swift,/@State private var navigationRevision = 0/);\n  assert.match(swift,/navigationRevision &\\+= 1/);\n  assert.match(swift,/FuelWebView\\(selectedPage: selectedPage, navigationRevision: navigationRevision\\)/);\n  assert.match(swift,/selectPage\\(selectedPage, in: webView, force: true\\)/);\n});\n'''
 if "native tabs always send navigation even when Today" not in test:
     test += block
-    test_path.write_text(test)
+
+test_path.write_text(test)
 
 print('Fuel native Today navigation fix applied')
