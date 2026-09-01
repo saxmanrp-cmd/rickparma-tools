@@ -1,4 +1,4 @@
-name: Fuel Natural Units and Coach Memory
+name: Fuel Flat Food Log Upgrade
 
 on:
   push:
@@ -19,8 +19,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Upgrade Fuel
-        run: python .github/scripts/fuel_natural_units_upgrade.py
+      - name: Make Fuel a flat food log
+        run: python .github/scripts/fuel_flat_food_log_upgrade.py
       - name: Check Fuel JavaScript
         working-directory: fuel-tracker
         run: |
@@ -29,16 +29,15 @@ jobs:
           node --check public/app.js
           node --check public/fuel-coach.js
           node --check public/portion-editor.js
-          node --check public/quick-add.js
       - name: Run Fuel tests
         working-directory: fuel-tracker
         run: npm test
-      - name: Commit Fuel upgrade
+      - name: Commit Fuel flat-log upgrade
         run: |
           git config user.name 'Fuel Build Bot'
           git config user.email 'actions@users.noreply.github.com'
           git add fuel-tracker
           git diff --cached --check
           git diff --cached --quiet && exit 0
-          git commit -m 'Make Fuel portions natural and Coach conversational'
+          git commit -m 'Store distinct foods as separate Fuel entries'
           git push origin HEAD:main
