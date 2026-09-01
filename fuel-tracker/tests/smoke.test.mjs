@@ -64,7 +64,7 @@ test('portion editor uses label math and keeps review simple',()=>{
   assert.match(portions,/#portionBar\{display:none!important\}/);
   assert.doesNotMatch(portions,/\/api\/fuel\/analyze/);
   assert.match(portions,/new MutationObserver/);
-  assert.match(coach,/portion-editor\.js\?v=4/);
+  assert.match(coach,/portion-editor\.js\?v=5/);
 });
 
 test('Fuel Coach treats the first local log day as authoritative today',()=>{

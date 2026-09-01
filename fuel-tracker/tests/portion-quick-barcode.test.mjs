@@ -40,5 +40,5 @@ test('barcode scan uses the native iPhone bridge and clears stale codes',()=>{
 test('new Fuel tools are cache-busted in the app shell',()=>{
   assert.match(app,/quick-add\.js\?v=2/);
   assert.match(app,/barcode-bridge\.js\?v=1/);
-  assert.match(app,/portion-editor\.js\?v=4/);
+  assert.match(app,/portion-editor\.js\?v=5/);
 });

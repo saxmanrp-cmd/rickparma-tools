@@ -1,11 +1,11 @@
 (()=>{
 'use strict';
 const $=id=>document.getElementById(id);
-const UNITS=['oz','g','lb','cup','tbsp','tsp','piece','slice','wing','corner','serving'];
+const UNITS=['oz','g','lb','cup','tbsp','tsp','piece','slice','wing','rib','shrimp','egg','meatball','scallop','corner','serving'];
 const WEIGHT_TO_G={oz:28.349523125,g:1,lb:453.59237};
 const VOLUME_TO_TSP={cup:48,tbsp:3,tsp:1};
-const UNIT_MAP={ounce:'oz',ounces:'oz',oz:'oz',gram:'g',grams:'g',g:'g',pound:'lb',pounds:'lb',lb:'lb',lbs:'lb',cup:'cup',cups:'cup',tablespoon:'tbsp',tablespoons:'tbsp',tbsp:'tbsp',teaspoon:'tsp',teaspoons:'tsp',tsp:'tsp',piece:'piece',pieces:'piece',slice:'slice',slices:'slice',wing:'wing',wings:'wing',corner:'corner',corners:'corner',serving:'serving',servings:'serving',portion:'serving',portions:'serving'};
-const UNIT_WORDS='oz|ounces?|g|grams?|lbs?|pounds?|cups?|tbsp|tablespoons?|tsp|teaspoons?|pieces?|slices?|wings?|corners?|servings?|portions?';
+const UNIT_MAP={ounce:'oz',ounces:'oz',oz:'oz',gram:'g',grams:'g',g:'g',pound:'lb',pounds:'lb',lb:'lb',lbs:'lb',cup:'cup',cups:'cup',tablespoon:'tbsp',tablespoons:'tbsp',tbsp:'tbsp',teaspoon:'tsp',teaspoons:'tsp',tsp:'tsp',piece:'piece',pieces:'piece',slice:'slice',slices:'slice',wing:'wing',wings:'wing',corner:'corner',corners:'corner',rib:'rib',ribs:'rib',shrimp:'shrimp',egg:'egg',eggs:'egg',meatball:'meatball',meatballs:'meatball',scallop:'scallop',scallops:'scallop',serving:'serving',servings:'serving',portion:'serving',portions:'serving'};
+const UNIT_WORDS='oz|ounces?|g|grams?|lbs?|pounds?|cups?|tbsp|tablespoons?|tsp|teaspoons?|pieces?|slices?|wings?|ribs?|shrimp|eggs?|meatballs?|scallops?|corners?|servings?|portions?';
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function numberValue(v){const s=String(v??'').trim();if(/^\d+\/\d+$/.test(s)){const [a,b]=s.split('/').map(Number);return b?a/b:NaN}const n=Number(s);return Number.isFinite(n)?n:NaN}
 function unit(v){return UNIT_MAP[String(v||'').toLowerCase()]||String(v||'').toLowerCase()}
@@ -22,7 +22,7 @@ function parseServing(text=''){
   if(direct)return {qty:numberValue(direct[1]),unit:unit(direct[2]),rest:direct[3].trim().replace(/^of\s+/i,''),raw:s};
   return null;
 }
-function family(u){if(u in WEIGHT_TO_G)return 'weight';if(u in VOLUME_TO_TSP)return 'volume';if(['piece','slice','wing','corner'].includes(u))return 'count';if(u==='serving')return 'serving';return 'other'}
+function family(u){if(u in WEIGHT_TO_G)return 'weight';if(u in VOLUME_TO_TSP)return 'volume';if(['piece','slice','wing','rib','shrimp','egg','meatball','scallop','corner'].includes(u))return 'count';if(u==='serving')return 'serving';return 'other'}
 function compatibleUnits(base){const f=family(base);if(f==='weight')return ['oz','g','lb','serving'];if(f==='volume')return ['cup','tbsp','tsp','serving'];if(f==='count')return [base,'serving'];return ['serving']}
 function snapServing(n,u){if(!Number.isFinite(n)||n<=0)return n;if(u==='g')return Math.round(n*10)/10;const common=[0.125,0.25,0.333,0.5,0.75,1,1.5,2,2.5,3,4,5,6,8,10,12,16];let best=n,delta=Infinity;for(const c of common){const d=Math.abs(n-c)/Math.max(c,.001);if(d<delta){delta=d;best=c}}return delta<=0.02?best:Math.round(n*100)/100}
 function convert(n,from,to){if(from===to)return n;const f=family(from);if(f!==family(to))return NaN;if(f==='weight')return n*WEIGHT_TO_G[from]/WEIGHT_TO_G[to];if(f==='volume')return n*VOLUME_TO_TSP[from]/VOLUME_TO_TSP[to];return NaN}

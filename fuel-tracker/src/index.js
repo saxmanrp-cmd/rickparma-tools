@@ -42,11 +42,38 @@ async function analyze(request,env){
     const image=form.get('image');
     const imageDescription=await imageToText(image,env);
     if(!text&&!imageDescription)return json({error:'Type what you ate or take a food photo.'},{status:400});
-    const prompt=`Estimate nutrition for one meal from the information below. Be practical and conservative. Prefer exact known branded or restaurant nutrition when the user names a specific chain/menu item; otherwise estimate common cooked portions. Include sauces, butter, oils, breading, cheese and cooking fats when mentioned or clearly visible. Do not invent unsupported foods.\n\nUSER TEXT:\n${text||'(none)'}\n\nIMAGE DESCRIPTION:\n${imageDescription||'(none)'}\n\nReturn ONLY valid JSON:\n{"items":[{"name":"food","amount":"amount","calories":0,"protein":0,"carbs":0,"fat":0,"confidence":0.0,"source":"official/known data or AI estimate"}],"note":"short uncertainty note"}`;
+    const prompt=`Estimate nutrition for one meal from the information below. Be practical and conservative. Prefer exact known branded or restaurant nutrition when the user names a specific chain/menu item. Preserve any quantity or weight the user explicitly gives. Use the unit normal people naturally use for that food: meat, poultry and fish should normally be in ounces; countable foods such as ribs, wings, shrimp, eggs, meatballs and scallops should stay in counts when a count is given. If a photo clearly identifies a meat such as steak/ribeye but its total weight cannot be estimated confidently, DO NOT invent a whole-steak calorie total: return nutrition for exactly 1 oz and set amount to "1 oz" so the user can enter the ounces actually eaten. If the photo gives enough visual evidence to estimate total weight, show that estimated ounce amount. A shrimp size such as 16/20 means 16-20 shrimp per pound, so one shrimp is roughly 16 divided by the midpoint count in ounces (about 0.89 oz for 16/20). For "3 St. Louis ribs, no sauce", keep the amount as "3 ribs" and estimate three ribs without sauce; do not force it into ounces. Every item MUST have a non-empty amount and its calories/macros MUST correspond to that amount. Include sauces, butter, oils, breading, cheese and cooking fats when mentioned or clearly visible. Do not invent unsupported foods.
+
+USER TEXT:
+${text||'(none)'}
+
+IMAGE DESCRIPTION:
+${imageDescription||'(none)'}
+
+Return ONLY valid JSON:
+{"items":[{"name":"food","amount":"natural amount such as 12 oz, 3 ribs, or 10 shrimp","calories":0,"protein":0,"carbs":0,"fat":0,"confidence":0.0,"source":"official/known data or AI estimate"}],"note":"short uncertainty note"}`;
     const result=await env.AI.run(AI_MODEL,{messages:[{role:'system',content:'You are a careful nutrition logging assistant. Output JSON only.'},{role:'user',content:prompt}],temperature:0.15,max_completion_tokens:1000,chat_template_kwargs:{enable_thinking:false}});
-    const parsed=parseJsonLoose(readAiText(result));
+    let parsed=parseJsonLoose(readAiText(result));
+    if(parsed&&Array.isArray(parsed.items)&&parsed.items.some(item=>!String(item?.amount||'').trim())){
+      const repairPrompt=`The previous nutrition result identified the food but omitted an amount. Repair it using the same evidence. Every item must have a natural human amount and the macros must match that amount. Preserve explicit user quantities. For meat/poultry/fish use ounces. If a meat is identified but total size cannot be estimated confidently, normalize that item to exactly 1 oz and recalculate calories/protein/carbs/fat for 1 oz. Preserve counts for ribs, wings, shrimp, eggs, meatballs and scallops. Return ONLY the complete repaired JSON object.
+
+USER TEXT:
+${text||'(none)'}
+
+IMAGE DESCRIPTION:
+${imageDescription||'(none)'}
+
+PREVIOUS RESULT:
+${JSON.stringify(parsed).slice(0,6000)}`;
+      try{
+        const repairedResult=await env.AI.run(AI_MODEL,{messages:[{role:'system',content:'You repair nutrition logging JSON. Output JSON only.'},{role:'user',content:repairPrompt}],temperature:0,max_completion_tokens:1000,chat_template_kwargs:{enable_thinking:false}});
+        const repaired=parseJsonLoose(readAiText(repairedResult));
+        if(repaired&&Array.isArray(repaired.items)&&repaired.items.length)parsed=repaired;
+      }catch(error){console.warn('portion repair failed',error)}
+    }
     if(!parsed)return json({error:'I could not read that meal clearly. Add portion sizes and try again.'},{status:422});
     const out=normalize(parsed);if(!out.items.length)return json({error:'I could not identify enough food to calculate.'},{status:422});
+    if(out.items.some(item=>!String(item.amount||'').trim()))return json({error:'I identified the food, but I need an amount to calculate it safely. Enter a count or ounces and try again.'},{status:422});
     return json({ok:true,...out,source:'AI/review'});
   }catch(error){console.error('fuel analyze error',error);return json({error:error?.message||'Food analysis had a hiccup.'},{status:500})}
 }
