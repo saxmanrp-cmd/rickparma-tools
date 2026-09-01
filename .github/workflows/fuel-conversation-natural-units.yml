@@ -20,7 +20,9 @@ jobs:
         with:
           node-version: '22'
       - name: Add individual or meal logging
-        run: python .github/scripts/fuel_meal_mode_upgrade.py
+        run: |
+          python .github/scripts/fuel_meal_mode_upgrade.py
+          python .github/scripts/fuel_meal_mode_test_fix.py
       - name: Check Fuel JavaScript
         working-directory: fuel-tracker
         run: |
