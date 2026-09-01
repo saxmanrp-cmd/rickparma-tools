@@ -6,6 +6,7 @@ const app=await readFile(new URL('../public/index.html',import.meta.url),'utf8')
 const portions=await readFile(new URL('../public/portion-editor.js',import.meta.url),'utf8');
 const quick=await readFile(new URL('../public/quick-add.js',import.meta.url),'utf8');
 const barcode=await readFile(new URL('../public/barcode-bridge.js',import.meta.url),'utf8');
+const ios=await readFile(new URL('../ios/Fuel/ContentView.swift',import.meta.url),'utf8');
 
 test('simple portion selector includes servings and deterministic serving math',()=>{
   assert.match(portions,/\['oz','g','lb','serving'\]/);
@@ -22,11 +23,17 @@ test('Quick Add supports count-based foods such as shrimp',()=>{
   assert.doesNotThrow(()=>new Function(quick));
 });
 
-test('barcode scan clears stale codes and uses a full-frame focused scanner',()=>{
-  assert.match(barcode,/clearBarcode/);
-  assert.match(barcode,/focusMode:'continuous'/);
-  assert.match(barcode,/zoom:Math\.min\(1\.35/);
-  assert.match(barcode,/barcodeLookupPending/);
+test('barcode scan uses the native iPhone bridge and clears stale codes',()=>{
+  assert.match(barcode,/isNativeFuel/);
+  assert.match(barcode,/fuelBarcode/);
+  assert.match(barcode,/clearScanState/);
+  assert.match(barcode,/previous product can never contaminate the next scan/);
+  assert.match(barcode,/if\(isNativeFuel\)/);
+  assert.match(ios,/name: "fuelBarcode"/);
+  assert.match(ios,/AVCaptureMetadataOutputObjectsDelegate/);
+  assert.match(ios,/FuelBarcodeScannerOverlay/);
+  assert.match(ios,/\.ean13/);
+  assert.match(ios,/\.upce/);
   assert.doesNotThrow(()=>new Function(barcode));
 });
 
