@@ -37,7 +37,7 @@ function open(){setup();$('fuelCoachModal').classList.add('open');$('fcQuestion'
 function install(){setup();const home=$('home'),host=home?.querySelector('.card');if(!host||home.querySelector('.fcBar'))return;const b=document.createElement('div');b.className='fcBar';b.innerHTML='<button class="fcBtn">🎙️ Talk to Fuel Coach</button>';host.appendChild(b);b.children[0].onclick=open}
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',install):install();setTimeout(install,500);
 })();
-import('/portion-editor.js?v=2').catch(()=>{});
+import('/portion-editor.js?v=3').catch(()=>{});
 import('/fuel-voice-quality.js?v=6').catch(()=>{});
 import('/maintenance.js?v=2').catch(()=>{});
 import('/ui-cleanup.js?v=1').catch(()=>{});
