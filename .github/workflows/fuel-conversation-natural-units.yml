@@ -19,8 +19,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Rebuild Fuel native shell
-        run: python .github/scripts/fuel_native_shell_nav_upgrade.py
+      - name: Fix native Today navigation state sync
+        run: python .github/scripts/fuel_native_today_nav_fix.py
       - name: Check Fuel JavaScript
         working-directory: fuel-tracker
         run: |
@@ -32,14 +32,14 @@ jobs:
       - name: Run Fuel tests
         working-directory: fuel-tracker
         run: npm test
-      - name: Commit Fuel native shell rebuild
+      - name: Commit Fuel Today navigation fix
         run: |
           git config user.name 'Fuel Build Bot'
           git config user.email 'actions@users.noreply.github.com'
           git add fuel-tracker
           git diff --cached --check
           git diff --cached --quiet && exit 0
-          git commit -m 'Move Fuel iPhone navigation into native shell'
+          git commit -m 'Fix Fuel native Today navigation state sync'
           git push origin HEAD:main
 
-# Native architecture pass only; older one-time patch scripts are intentionally not rerun.
+# Every native tab tap now emits a navigation pulse, even when SwiftUI already thinks that tab is selected.
