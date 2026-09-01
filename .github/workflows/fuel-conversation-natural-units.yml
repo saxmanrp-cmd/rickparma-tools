@@ -42,4 +42,4 @@ jobs:
           git commit -m 'Fix Fuel native Today navigation state sync'
           git push origin HEAD:main
 
-# Every native tab tap now emits a navigation pulse, even when SwiftUI already thinks that tab is selected.
+# Every native tab tap emits a navigation pulse, and the regression suite now expects the navigation revision input.
