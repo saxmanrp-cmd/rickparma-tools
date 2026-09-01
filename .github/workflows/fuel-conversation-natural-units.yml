@@ -43,4 +43,4 @@ jobs:
           git commit -m 'Clarify Fuel Coach listening and repair meal components'
           git push origin HEAD:main
 
-# Voice lifecycle is explicit; assembled foods keep meaningful ingredient names.
+# Rerun with v8 cache assertions and turn-taking/component guardrails.
