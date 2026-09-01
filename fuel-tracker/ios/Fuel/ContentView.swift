@@ -5,9 +5,14 @@ import AVFoundation
 import Speech
 
 struct ContentView: View {
+    private let fuelBackground = Color(red: 8.0 / 255.0, green: 17.0 / 255.0, blue: 31.0 / 255.0)
+
     var body: some View {
-        FuelWebView()
-            .ignoresSafeArea(.container, edges: .bottom)
+        ZStack {
+            fuelBackground.ignoresSafeArea()
+            FuelWebView()
+                .ignoresSafeArea(.container, edges: .bottom)
+        }
     }
 }
 
@@ -29,7 +34,25 @@ struct FuelWebView: UIViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = false
-        webView.scrollView.contentInsetAdjustmentBehavior = .automatic
+        webView.allowsLinkPreview = false
+
+        let fuelBackground = UIColor(red: 8.0 / 255.0, green: 17.0 / 255.0, blue: 31.0 / 255.0, alpha: 1.0)
+        webView.isOpaque = false
+        webView.backgroundColor = fuelBackground
+        webView.scrollView.backgroundColor = fuelBackground
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
+        webView.scrollView.automaticallyAdjustsScrollIndicatorInsets = false
+        webView.scrollView.contentInset = .zero
+        webView.scrollView.scrollIndicatorInsets = .zero
+        webView.scrollView.bounces = false
+        webView.scrollView.alwaysBounceVertical = false
+        webView.scrollView.alwaysBounceHorizontal = false
+        webView.scrollView.showsHorizontalScrollIndicator = false
+        webView.scrollView.keyboardDismissMode = .interactive
+        webView.scrollView.minimumZoomScale = 1.0
+        webView.scrollView.maximumZoomScale = 1.0
+        webView.scrollView.pinchGestureRecognizer?.isEnabled = false
+
         context.coordinator.webView = webView
         context.coordinator.startAppActiveObserver()
 
