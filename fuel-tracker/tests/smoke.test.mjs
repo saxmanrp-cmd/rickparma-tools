@@ -56,9 +56,15 @@ test('Fuel Tracker client scripts parse cleanly',()=>{
   assert.doesNotThrow(()=>new Function(voice));
 });
 
-test('portion editor does not create a MutationObserver feedback loop',()=>{
-  assert.match(portions,/save\.textContent!==['"]Re-analyze & save['"]/);
+test('portion editor uses label math and keeps review simple',()=>{
+  assert.match(portions,/WEIGHT_TO_G/);
+  assert.match(portions,/function servingQtyIn/);
+  assert.match(portions,/Label serving:/);
+  assert.match(portions,/How much did you eat\?/);
+  assert.match(portions,/#portionBar\{display:none!important\}/);
+  assert.doesNotMatch(portions,/\/api\/fuel\/analyze/);
   assert.match(portions,/new MutationObserver/);
+  assert.match(coach,/portion-editor\.js\?v=3/);
 });
 
 test('Fuel Coach treats the first local log day as authoritative today',()=>{
