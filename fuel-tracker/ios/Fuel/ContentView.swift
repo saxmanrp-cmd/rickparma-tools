@@ -408,6 +408,7 @@ struct FuelWebView: UIViewRepresentable {
                 if self.coachAudioPlayer === player {
                     self.coachAudioPlayer = nil
                     try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+                    self.webView?.evaluateJavaScript("window.dispatchEvent(new CustomEvent('fuelCoachNativeAudioEnded'))")
                 }
             }
         }
