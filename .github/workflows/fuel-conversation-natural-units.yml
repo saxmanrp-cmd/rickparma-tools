@@ -1,4 +1,4 @@
-name: Fuel Coach Turn-Taking + Components
+name: Fuel Coach Handoff Polish
 
 on:
   push:
@@ -19,8 +19,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Upgrade Coach conversation UX and component labels
-        run: python .github/scripts/fuel_coach_turntaking_components.py
+      - name: Polish Coach reply handoff
+        run: python .github/scripts/fuel_coach_handoff_polish.py
       - name: Check Fuel JavaScript
         working-directory: fuel-tracker
         run: |
@@ -33,14 +33,14 @@ jobs:
       - name: Run Fuel tests
         working-directory: fuel-tracker
         run: npm test
-      - name: Commit Coach turn-taking and component repair
+      - name: Commit Coach handoff polish
         run: |
           git config user.name 'Fuel Build Bot'
           git config user.email 'actions@users.noreply.github.com'
           git add fuel-tracker
           git diff --cached --check
           git diff --cached --quiet && exit 0
-          git commit -m 'Clarify Fuel Coach listening and repair meal components'
+          git commit -m 'Polish Fuel Coach reply handoff'
           git push origin HEAD:main
 
-# Rerun with v8 cache assertions and turn-taking/component guardrails.
+# Natural log commands, slower mic handoff with retry, and raw JSON envelope defense.
