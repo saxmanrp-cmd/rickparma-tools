@@ -134,11 +134,16 @@
 <body>
 
 <header>
-  <div class="eyebrow">Admin Tool</div>
-  <h1>Song Manager</h1>
-  <div id="statusLine"></div>
-  <div id="setupBox"></div>
- <a href="song-requests.html" target="_blank" class="btn btn-outline" style="margin-top:10px; padding:8px 14px; font-size:13px; width:auto; display:inline-flex;">📥 View Song Requests</a></header><div class="section" id="heroSection"><div class="section-title">🎤 Site Hero Card</div><p style="font-size:12px;color:var(--dim);margin-bottom:8px;">Each button below can be shown or hidden independently on your homepage.</p><div style="font-weight:600;">Song Request Button</div><div id="songRequestStatusLine"></div><button class="btn btn-full" id="songRequestToggleBtn" onclick="toggleSongRequestLive()" style="margin-top:8px;"></button><div style="font-weight:600;margin-top:16px;">Fan Cam Button</div><div id="fanCamStatusLine"></div><button class="btn btn-full" id="fanCamToggleBtn" onclick="toggleFanCamLive()" style="margin-top:8px;"></button><div style="font-weight:600;margin-top:16px;">Spin Wheel</div><div id="spinStatusLine"></div><button class="btn btn-full" id="spinToggleBtn" onclick="toggleSpinEnabled()" style="margin-top:8px;"></button><div style="font-weight:600;margin-top:16px;">Song Request Text Alerts</div><div id="smsStatusLine"></div><button class="btn btn-full" id="smsToggleBtn" onclick="toggleSmsRequestsEnabled()" style="margin-top:8px;"></button></div>
+<h1>Song Manager</h1>
+<div id="statusLine"></div>
+<div id="setupBox"></div>
+<a href="song-requests.html" target="_blank" class="btn btn-outline btn-full" style="margin-top:12px;">Song Requests</a>
+</header><div class="section" id="heroSection">
+<button class="btn btn-full" id="songRequestToggleBtn" onclick="toggleSongRequestLive()"></button>
+<button class="btn btn-full" id="fanCamToggleBtn" onclick="toggleFanCamLive()" style="margin-top:8px;"></button>
+<button class="btn btn-full" id="spinToggleBtn" onclick="toggleSpinEnabled()" style="margin-top:8px;"></button>
+<button class="btn btn-full" id="smsToggleBtn" onclick="toggleSmsRequestsEnabled()" style="margin-top:8px;"></button>
+</div>
 
 <div class="section" id="pollSection" style="display:none;">
   <div class="section-title">🎤 Live Polls</div>
@@ -256,7 +261,11 @@ let sortMode = "title-asc";
 let editingId = null;
 let selectedTags = [];
 let polls = [];
-let activePollId = null; let songRequestLive = true; let fanCamLive = true; let spinEnabled = true; let smsRequestsEnabled = true; function renderHeroToggle(){ renderToggleRow('songRequestToggleBtn','songRequestStatusLine',songRequestLive); renderToggleRow('fanCamToggleBtn','fanCamStatusLine',fanCamLive); renderSpinToggle(); renderSmsToggle(); } function renderSpinToggle(){ var btn=document.getElementById('spinToggleBtn'); var status=document.getElementById('spinStatusLine'); if(!btn||!status) return; if(spinEnabled){ btn.textContent='Spin Wheel ON — tap to make Paid-Only'; btn.className='btn btn-hero-on btn-full'; status.innerHTML='<span class="pill pill-hero-on">Spinning enabled</span>'; } else { btn.textContent='Paid-Only — tap to re-enable spinning'; btn.className='btn btn-outline btn-full'; status.innerHTML='<span class="pill pill-hero-off">Paid-only (spin disabled)</span>'; } } function renderToggleRow(btnId,statusId,isLive){ var btn=document.getElementById(btnId); var status=document.getElementById(statusId); if(!btn||!status) return; if(isLive){ btn.textContent='LIVE on site — tap to hide'; btn.className='btn btn-hero-on btn-full'; status.innerHTML='<span class="pill pill-hero-on">Showing on rickparma.com</span>'; } else { btn.textContent='Hidden — tap to go live'; btn.className='btn btn-outline btn-full'; status.innerHTML='<span class="pill pill-hero-off">Hidden from the site</span>'; } } async function toggleSongRequestLive(){ var wasLive = songRequestLive; songRequestLive = !songRequestLive; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ songRequestLive = !songRequestLive; renderHeroToggle(); } else if(!wasLive && songRequestLive){ fetch(`${PROXY_BASE}/song-requests-log`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({requests:[]})}).catch(function(){}); } } async function toggleFanCamLive(){ fanCamLive = !fanCamLive; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ fanCamLive = !fanCamLive; renderHeroToggle(); } } async function toggleSpinEnabled(){ spinEnabled = !spinEnabled; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ spinEnabled = !spinEnabled; renderHeroToggle(); } } function renderSmsToggle(){ var btn=document.getElementById('smsToggleBtn'); var status=document.getElementById('smsStatusLine'); if(!btn||!status) return; if(smsRequestsEnabled){ btn.textContent='Text Alerts ON — tap to mute'; btn.className='btn btn-hero-on btn-full'; status.innerHTML='<span class="pill pill-hero-on">You\'ll get a text per request</span>'; } else { btn.textContent='Muted — tap to turn texts back on'; btn.className='btn btn-outline btn-full'; status.innerHTML='<span class="pill pill-hero-off">Texts muted (still logged below)</span>'; } } async function toggleSmsRequestsEnabled(){ smsRequestsEnabled = !smsRequestsEnabled; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ smsRequestsEnabled = !smsRequestsEnabled; renderHeroToggle(); } }
+let activePollId = null; let songRequestLive = true; let fanCamLive = true; let spinEnabled = true; let smsRequestsEnabled = true; function renderHeroToggle(){ renderToggleRow('songRequestToggleBtn','Song Requests',songRequestLive); renderToggleRow('fanCamToggleBtn','Fan Cam',fanCamLive); renderSpinToggle(); renderSmsToggle(); }
+function renderSpinToggle(){ var btn=document.getElementById('spinToggleBtn'); if(!btn) return; if(spinEnabled){ btn.textContent='Spin Wheel: ON'; btn.className='btn btn-hero-on btn-full'; } else { btn.textContent='Spin Wheel: Paid-Only'; btn.className='btn btn-outline btn-full'; } }
+function renderToggleRow(btnId,label,isLive){ var btn=document.getElementById(btnId); if(!btn) return; if(isLive){ btn.textContent=label+': LIVE'; btn.className='btn btn-hero-on btn-full'; } else { btn.textContent=label+': Hidden'; btn.className='btn btn-outline btn-full'; } }
+async function toggleSongRequestLive(){ var wasLive = songRequestLive; songRequestLive = !songRequestLive; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ songRequestLive = !songRequestLive; renderHeroToggle(); } else if(!wasLive && songRequestLive){ fetch(`${PROXY_BASE}/song-requests-log`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({requests:[]})}).catch(function(){}); } } async function toggleFanCamLive(){ fanCamLive = !fanCamLive; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ fanCamLive = !fanCamLive; renderHeroToggle(); } } async function toggleSpinEnabled(){ spinEnabled = !spinEnabled; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ spinEnabled = !spinEnabled; renderHeroToggle(); } } function renderSmsToggle(){ var btn=document.getElementById('smsToggleBtn'); if(!btn) return; if(smsRequestsEnabled){ btn.textContent='Text Alerts: ON'; btn.className='btn btn-hero-on btn-full'; } else { btn.textContent='Text Alerts: Muted'; btn.className='btn btn-outline btn-full'; } }
+async function toggleSmsRequestsEnabled(){ smsRequestsEnabled = !smsRequestsEnabled; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ smsRequestsEnabled = !smsRequestsEnabled; renderHeroToggle(); } }
 
 
 /* Seed data used only when creating a brand-new bin for the first time */
@@ -330,18 +339,7 @@ async function createCloudBin(seedWithExisting){
   }
 }
 
-function renderSetupBox(connected, errored){
-  const status = document.getElementById('statusLine');
-  const box = document.getElementById('setupBox');
-  if(connected){
-    status.innerHTML = `<span class="pill pill-ok">☁️ Synced with cloud storage</span>`;
-    box.innerHTML = '';
-    return;
-  }
-  status.innerHTML = errored
-    ? `<span class="pill pill-warn">⚠️ Couldn't reach cloud storage</span>`
-    : `<span class="pill pill-warn">⚠️ No cloud storage connected yet</span>`;
-  box.innerHTML = `
+function renderSetupBox(connected, errored){ const status = document.getElementById('statusLine'); const box = document.getElementById('setupBox'); if(connected){ status.innerHTML = ''; box.innerHTML = ''; return; } status.innerHTML = errored ? `<span class="pill pill-warn">⚠️ Couldn't reach cloud storage</span>` : `<span class="pill pill-warn">⚠️ No cloud storage connected yet</span>`; box.innerHTML = `
     <div class="setup-box">
       <p>Create the shared song database once. Both this manager and the public request page will read/write to it.</p>
       <button class="btn btn-primary btn-full" onclick="createCloudBin(true)">Create &amp; Import My Existing ${SEED_SONGS.length}-Song List</button>
