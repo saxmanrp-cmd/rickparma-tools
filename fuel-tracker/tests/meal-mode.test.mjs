@@ -39,5 +39,5 @@ test('Coach multi-food add goes through the logging choice',()=>{
 
 test('meal-mode scripts are cache busted',()=>{
   assert.match(html,/app\.js\?v=5/);
-  assert.match(wrapper,/fuel-coach\.js\?v=8/);
+  assert.match(wrapper,/fuel-coach\.js\?v=9/);
 });

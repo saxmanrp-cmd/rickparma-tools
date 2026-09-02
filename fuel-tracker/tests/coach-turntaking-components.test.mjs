@@ -26,7 +26,10 @@ test('native voice reports exact playback completion to Coach',()=>{
 });
 
 test('short speech-recognition variants still open pending food review',()=>{
-  assert.match(coach,/edit\|at it\|ad it\|added/);
+  assert.match(coach,/go ahead and/);
+  assert.match(coach,/today's/);
+  assert.match(coach,/retryAutoListen/);
+  assert.match(coach,/950/);
 });
 
 test('composite restaurant foods stay top-level while ingredients get real names',()=>{
@@ -39,7 +42,13 @@ test('composite restaurant foods stay top-level while ingredients get real names
   assert.match(app,/name:String\(x\.name\|\|'Ingredient'\)\.trim\(\)/);
 });
 
+test('raw Coach JSON is unwrapped and never shown as the answer',()=>{
+  assert.match(coach,/decodeCoachEnvelope/);
+  assert.match(api,/NEVER JSON-encode/);
+  assert.match(api,/structured food data did not finish cleanly/);
+});
+
 test('Coach cache is bumped for the new conversation UX',()=>{
-  assert.match(wrapper,/fuel-coach\.js\?v=8/);
+  assert.match(wrapper,/fuel-coach\.js\?v=9/);
   assert.match(coach,/fuel-voice-quality\.js\?v=7/);
 });
