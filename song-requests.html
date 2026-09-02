@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Song Requests — Rick Parma</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@500;600;700&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#130101;
+  --card-solid:#1c0808;
+  --accent:#8DB2E5;
+  --white:#F5F3F0;
+  --dim:#C9C2BC;
+  --line:rgba(245,243,240,0.12);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--white);font-family:'Lato',sans-serif;}
+body{background:linear-gradient(180deg, #130101 0%, #0c0000 100%); min-height:100vh; padding-bottom:60px;}
+h1,h2,h3{font-family:'Josefin Sans',sans-serif; margin:0;}
+header{padding:24px 20px 16px; border-bottom:1px solid var(--line); display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
+header .eyebrow{letter-spacing:2px; text-transform:uppercase; font-size:11px; color:var(--accent); font-weight:700; margin-bottom:6px;}
+header h1{font-size:24px;}
+.back-link{font-size:13px; color:var(--dim); text-decoration:none; border:1px solid var(--line); padding:8px 12px; border-radius:8px; white-space:nowrap; flex-shrink:0;}
+.section{padding:18px 20px;}
+#requestsStatusLine{color:var(--dim); font-size:13px; margin-bottom:10px;}
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:11px 16px; border-radius:10px; font-weight:700; font-size:14px; border:none; cursor:pointer; font-family:'Lato',sans-serif;}
+.btn-outline{background:transparent; border:1px solid var(--line); color:var(--white);}
+.btn-full{width:100%;}
+.song-row{display:flex; align-items:center; gap:10px; padding:13px 4px; border-bottom:1px solid var(--line);}
+.song-info{flex:1; min-width:0;}
+.song-title{font-size:15px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.song-meta{font-size:12px; color:var(--dim); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+</style>
+</head>
+<body>
+<header>
+<div>
+<div class="eyebrow">Admin Tool</div>
+<h1>Song Requests</h1>
+</div>
+<a class="back-link" href="song-manager.html">&larr; Song Manager</a>
+</header>
+<div class="section">
+<div id="requestsStatusLine"></div>
+<div id="requestsList"></div>
+<button class="btn btn-outline btn-full" style="margin-top:14px;" onclick="clearAllRequests()">Clear All</button>
+</div>
+<script>
+const PROXY_BASE = "https://rickparma-jsonbin-proxy.saxmanrp.workers.dev";
+let songRequests = [];
+
+function escapeHtml(str){
+  return (str||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+async function loadRequests(){
+  try{
+    const res = await fetch(`${PROXY_BASE}/song-requests-log`, {cache:'no-store'});
+    const data = await res.json();
+    songRequests = (data.record && data.record.requests) || [];
+    renderRequests();
+  }catch(e){}
+}
+
+function renderRequests(){
+  var el = document.getElementById('requestsList');
+  var status = document.getElementById('requestsStatusLine');
+  if(!songRequests.length){
+    el.innerHTML = '<div style="padding:20px 4px; color:var(--dim); font-size:14px;">No requests yet.</div>';
+    status.textContent = '';
+    return;
+  }
+  status.textContent = songRequests.length + ' request' + (songRequests.length===1?'':'s');
+  var sorted = songRequests.slice().sort(function(a,b){ return (b.ts||0) - (a.ts||0); });
+  el.innerHTML = sorted.map(function(r){
+    var when = r.ts ? new Date(r.ts).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) : '';
+    var songLabel = escapeHtml(r.song||'') + (r.artist ? ' — ' + escapeHtml(r.artist) : '');
+    return '<div class="song-row" data-id="'+escapeHtml(r.id||'')+'"><div class="song-info"><div class="song-title">'+escapeHtml(r.name||'Someone')+'</div><div class="song-meta">'+songLabel+' · '+escapeHtml(r.outcome||'')+' · '+when+'</div></div><button class="btn btn-outline" style="padding:8px 14px;" onclick="dismissRequest(\''+escapeHtml(r.id||'')+'\')">✓</button></div>';
+  }).join('');
+}
+
+async function dismissRequest(id){
+  songRequests = songRequests.filter(function(r){ return r.id !== id; });
+  renderRequests();
+  await saveRequestsToCloud();
+}
+
+async function saveRequestsToCloud(){
+  try{
+    await fetch(`${PROXY_BASE}/song-requests-log`, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ requests: songRequests })
+    });
+  }catch(e){}
+}
+
+async function clearAllRequests(){
+  if(!confirm('Clear all requests from the list?')) return;
+  songRequests = [];
+  renderRequests();
+  await saveRequestsToCloud();
+}
+
+loadRequests();
+setInterval(loadRequests, 5000);
+</script>
+</body>
+</html>
