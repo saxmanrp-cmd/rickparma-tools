@@ -17,29 +17,35 @@
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--white);font-family:'Lato',sans-serif;}
-body{background:linear-gradient(180deg, #130101 0%, #0c0000 100%); min-height:100vh; padding-bottom:60px;}
+body{background:linear-gradient(180deg, #130101 0%, #0c0000 100%); min-height:100vh; padding-bottom:40px;}
 h1,h2,h3{font-family:'Josefin Sans',sans-serif; margin:0;}
-header{padding:24px 20px 18px; border-bottom:1px solid var(--line); display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
-header .eyebrow{letter-spacing:2px; text-transform:uppercase; font-size:13px; color:var(--accent); font-weight:700; margin-bottom:7px;}
-header h1{font-size:30px; line-height:1.05;}
-.back-link{font-size:15px; color:var(--dim); text-decoration:none; border:1px solid var(--line); padding:10px 13px; border-radius:9px; white-space:nowrap; flex-shrink:0;}
-.section{padding:20px;}
-#requestsStatusLine{color:var(--dim); font-size:16px; font-weight:700; margin-bottom:12px;}
-.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:13px 17px; border-radius:10px; font-weight:700; font-size:16px; border:none; cursor:pointer; font-family:'Lato',sans-serif;}
+header{padding:16px 16px 13px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:10px;}
+header .eyebrow{letter-spacing:2px; text-transform:uppercase; font-size:14px; color:var(--accent); font-weight:700; margin-bottom:4px;}
+header h1{font-size:32px; line-height:1;}
+.back-link{font-size:16px; color:var(--dim); text-decoration:none; border:1px solid var(--line); padding:11px 12px; border-radius:9px; white-space:nowrap; flex-shrink:0;}
+.section{padding:10px 14px 24px;}
+#requestsStatusLine{color:var(--dim); font-size:20px; font-weight:900; padding:7px 2px 8px;}
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:16px 20px; border-radius:13px; font-weight:900; font-size:22px; border:none; cursor:pointer; font-family:'Lato',sans-serif;}
 .btn-outline{background:transparent; border:1px solid var(--line); color:var(--white);}
 .btn-full{width:100%;}
-.song-row{display:flex; align-items:center; gap:12px; padding:17px 4px; border-bottom:1px solid var(--line);}
+.song-row{display:flex; align-items:center; gap:14px; min-height:calc((100dvh - 165px)/3); padding:20px 2px; border-bottom:2px solid var(--line);}
 .song-info{flex:1; min-width:0;}
-.song-title{font-size:20px; line-height:1.2; font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-.song-meta{font-size:16px; line-height:1.35; color:var(--dim); margin-top:5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-.empty-state{padding:24px 4px; color:var(--dim); font-size:17px;}
+.song-title{font-size:40px; line-height:1.02; font-weight:900; letter-spacing:-0.6px; overflow-wrap:anywhere;}
+.song-meta{font-size:30px; line-height:1.16; color:var(--dim); margin-top:12px; font-weight:700; overflow-wrap:anywhere;}
+.dismiss-btn{width:66px; height:66px; min-width:66px; padding:0; border-radius:16px; font-size:34px;}
+.empty-state{padding:32px 4px; color:var(--dim); font-size:30px; font-weight:700;}
+.clear-btn{margin-top:22px; min-height:64px; font-size:22px;}
 @media (max-width:390px){
-  header{padding-left:16px; padding-right:16px;}
-  header h1{font-size:27px;}
-  .back-link{font-size:14px; padding:9px 10px;}
-  .section{padding-left:16px; padding-right:16px;}
-  .song-title{font-size:19px;}
-  .song-meta{font-size:15px;}
+  header{padding-left:12px; padding-right:12px;}
+  header .eyebrow{font-size:12px;}
+  header h1{font-size:28px;}
+  .back-link{font-size:14px; padding:10px 9px;}
+  .section{padding-left:12px; padding-right:12px;}
+  #requestsStatusLine{font-size:18px;}
+  .song-row{min-height:calc((100dvh - 155px)/3); gap:10px; padding:16px 0;}
+  .song-title{font-size:36px;}
+  .song-meta{font-size:27px; margin-top:10px;}
+  .dismiss-btn{width:60px; height:60px; min-width:60px; font-size:30px;}
 }
 </style>
 </head>
@@ -49,12 +55,12 @@ header h1{font-size:30px; line-height:1.05;}
 <div class="eyebrow">Admin Tool</div>
 <h1>Song Requests</h1>
 </div>
-<a class="back-link" href="song-manager.html">&larr; Song Manager</a>
+<a class="back-link" href="song-manager.html">&larr; Manager</a>
 </header>
 <div class="section">
 <div id="requestsStatusLine"></div>
 <div id="requestsList"></div>
-<button class="btn btn-outline btn-full" style="margin-top:14px;" onclick="clearAllRequests()">Clear All</button>
+<button class="btn btn-outline btn-full clear-btn" onclick="clearAllRequests()">Clear All</button>
 </div>
 <script>
 const PROXY_BASE = "https://rickparma-jsonbin-proxy.saxmanrp.workers.dev";
@@ -108,7 +114,7 @@ function renderRequests(){
   el.innerHTML = sorted.map(function(r){
     var when = r.ts ? new Date(r.ts).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) : '';
     var songLabel = escapeHtml(r.song||'') + (r.artist ? ' — ' + escapeHtml(r.artist) : '');
-    return '<div class="song-row" data-id="'+escapeHtml(r.id||'')+'"><div class="song-info"><div class="song-title">'+escapeHtml(r.name||'Someone')+'</div><div class="song-meta">'+songLabel+' · '+escapeHtml(r.outcome||'')+' · '+when+'</div></div><button class="btn btn-outline" style="padding:10px 15px;" onclick="dismissRequest(\''+escapeHtml(r.id||'')+'\')">✓</button></div>';
+    return '<div class="song-row" data-id="'+escapeHtml(r.id||'')+'"><div class="song-info"><div class="song-title">'+escapeHtml(r.name||'Someone')+'</div><div class="song-meta">'+songLabel+' · '+escapeHtml(r.outcome||'')+' · '+when+'</div></div><button class="btn btn-outline dismiss-btn" onclick="dismissRequest(\''+escapeHtml(r.id||'')+'\')">✓</button></div>';
   }).join('');
 }
 
