@@ -58,19 +58,41 @@ header h1{font-size:30px; line-height:1.05;}
 </div>
 <script>
 const PROXY_BASE = "https://rickparma-jsonbin-proxy.saxmanrp.workers.dev";
+const TEST_BOGO = new URLSearchParams(window.location.search).get('test') === 'bogo';
+let testBogoDismissed = false;
 let songRequests = [];
 
 function escapeHtml(str){
   return (str||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
+function addTestBogo(requests){
+  var list = Array.isArray(requests) ? requests.slice() : [];
+  if(TEST_BOGO && !testBogoDismissed){
+    list.unshift({
+      id:'test-bogo',
+      name:'BOGO',
+      song:'Test Song Request',
+      artist:'',
+      outcome:'TEST',
+      ts:Date.now()
+    });
+  }
+  return list;
+}
+
 async function loadRequests(){
   try{
     const res = await fetch(`${PROXY_BASE}/song-requests-log`, {cache:'no-store'});
     const data = await res.json();
-    songRequests = (data.record && data.record.requests) || [];
+    songRequests = addTestBogo((data.record && data.record.requests) || []);
     renderRequests();
-  }catch(e){}
+  }catch(e){
+    if(TEST_BOGO){
+      songRequests = addTestBogo([]);
+      renderRequests();
+    }
+  }
 }
 
 function renderRequests(){
@@ -91,6 +113,12 @@ function renderRequests(){
 }
 
 async function dismissRequest(id){
+  if(id === 'test-bogo'){
+    testBogoDismissed = true;
+    songRequests = songRequests.filter(function(r){ return r.id !== id; });
+    renderRequests();
+    return;
+  }
   songRequests = songRequests.filter(function(r){ return r.id !== id; });
   renderRequests();
   await saveRequestsToCloud();
@@ -98,10 +126,11 @@ async function dismissRequest(id){
 
 async function saveRequestsToCloud(){
   try{
+    var realRequests = songRequests.filter(function(r){ return r.id !== 'test-bogo'; });
     await fetch(`${PROXY_BASE}/song-requests-log`, {
       method:'PUT',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ requests: songRequests })
+      body: JSON.stringify({ requests: realRequests })
     });
   }catch(e){}
 }
@@ -109,6 +138,7 @@ async function saveRequestsToCloud(){
 async function clearAllRequests(){
   if(!confirm('Clear all requests from the list?')) return;
   songRequests = [];
+  testBogoDismissed = true;
   renderRequests();
   await saveRequestsToCloud();
 }
