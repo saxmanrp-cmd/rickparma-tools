@@ -19,19 +19,28 @@
 html,body{margin:0;padding:0;background:var(--bg);color:var(--white);font-family:'Lato',sans-serif;}
 body{background:linear-gradient(180deg, #130101 0%, #0c0000 100%); min-height:100vh; padding-bottom:60px;}
 h1,h2,h3{font-family:'Josefin Sans',sans-serif; margin:0;}
-header{padding:24px 20px 16px; border-bottom:1px solid var(--line); display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
-header .eyebrow{letter-spacing:2px; text-transform:uppercase; font-size:11px; color:var(--accent); font-weight:700; margin-bottom:6px;}
-header h1{font-size:24px;}
-.back-link{font-size:13px; color:var(--dim); text-decoration:none; border:1px solid var(--line); padding:8px 12px; border-radius:8px; white-space:nowrap; flex-shrink:0;}
-.section{padding:18px 20px;}
-#requestsStatusLine{color:var(--dim); font-size:13px; margin-bottom:10px;}
-.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:11px 16px; border-radius:10px; font-weight:700; font-size:14px; border:none; cursor:pointer; font-family:'Lato',sans-serif;}
+header{padding:24px 20px 18px; border-bottom:1px solid var(--line); display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
+header .eyebrow{letter-spacing:2px; text-transform:uppercase; font-size:13px; color:var(--accent); font-weight:700; margin-bottom:7px;}
+header h1{font-size:30px; line-height:1.05;}
+.back-link{font-size:15px; color:var(--dim); text-decoration:none; border:1px solid var(--line); padding:10px 13px; border-radius:9px; white-space:nowrap; flex-shrink:0;}
+.section{padding:20px;}
+#requestsStatusLine{color:var(--dim); font-size:16px; font-weight:700; margin-bottom:12px;}
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:13px 17px; border-radius:10px; font-weight:700; font-size:16px; border:none; cursor:pointer; font-family:'Lato',sans-serif;}
 .btn-outline{background:transparent; border:1px solid var(--line); color:var(--white);}
 .btn-full{width:100%;}
-.song-row{display:flex; align-items:center; gap:10px; padding:13px 4px; border-bottom:1px solid var(--line);}
+.song-row{display:flex; align-items:center; gap:12px; padding:17px 4px; border-bottom:1px solid var(--line);}
 .song-info{flex:1; min-width:0;}
-.song-title{font-size:15px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-.song-meta{font-size:12px; color:var(--dim); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.song-title{font-size:20px; line-height:1.2; font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.song-meta{font-size:16px; line-height:1.35; color:var(--dim); margin-top:5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.empty-state{padding:24px 4px; color:var(--dim); font-size:17px;}
+@media (max-width:390px){
+  header{padding-left:16px; padding-right:16px;}
+  header h1{font-size:27px;}
+  .back-link{font-size:14px; padding:9px 10px;}
+  .section{padding-left:16px; padding-right:16px;}
+  .song-title{font-size:19px;}
+  .song-meta{font-size:15px;}
+}
 </style>
 </head>
 <body>
@@ -68,7 +77,7 @@ function renderRequests(){
   var el = document.getElementById('requestsList');
   var status = document.getElementById('requestsStatusLine');
   if(!songRequests.length){
-    el.innerHTML = '<div style="padding:20px 4px; color:var(--dim); font-size:14px;">No requests yet.</div>';
+    el.innerHTML = '<div class="empty-state">No requests yet.</div>';
     status.textContent = '';
     return;
   }
@@ -77,7 +86,7 @@ function renderRequests(){
   el.innerHTML = sorted.map(function(r){
     var when = r.ts ? new Date(r.ts).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) : '';
     var songLabel = escapeHtml(r.song||'') + (r.artist ? ' — ' + escapeHtml(r.artist) : '');
-    return '<div class="song-row" data-id="'+escapeHtml(r.id||'')+'"><div class="song-info"><div class="song-title">'+escapeHtml(r.name||'Someone')+'</div><div class="song-meta">'+songLabel+' · '+escapeHtml(r.outcome||'')+' · '+when+'</div></div><button class="btn btn-outline" style="padding:8px 14px;" onclick="dismissRequest(\''+escapeHtml(r.id||'')+'\')">✓</button></div>';
+    return '<div class="song-row" data-id="'+escapeHtml(r.id||'')+'"><div class="song-info"><div class="song-title">'+escapeHtml(r.name||'Someone')+'</div><div class="song-meta">'+songLabel+' · '+escapeHtml(r.outcome||'')+' · '+when+'</div></div><button class="btn btn-outline" style="padding:10px 15px;" onclick="dismissRequest(\''+escapeHtml(r.id||'')+'\')">✓</button></div>';
   }).join('');
 }
 
