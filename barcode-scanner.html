@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Barcode Scanner — Rick Parma Tools</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root {
+    --bg: #130101;
+    --panel: #1e0808;
+    --accent: #8DB2E5;
+    --text: #ffffff;
+    --text-dim: #d8d8d8;
+    --danger: #e57373;
+    --good: #7FE08A;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Lato', -apple-system, sans-serif;
+    min-height: 100vh;
+    padding-bottom: 40px;
+  }
+  h1, h2, h3 {
+    font-family: 'Josefin Sans', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  header {
+    padding: 20px 16px 12px;
+    text-align: center;
+    border-bottom: 1px solid #2a1010;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--accent);
+  }
+  header p {
+    margin: 4px 0 0;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+  }
+  .container {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  #reader {
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid var(--accent);
+    background: #000;
+  }
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    margin-top: 12px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Josefin Sans', sans-serif;
+    cursor: pointer;
+    text-align: center;
+  }
+  .btn.secondary {
+    background: transparent;
+    color: var(--accent);
+    border: 2px solid var(--accent);
+  }
+  .btn.danger {
+    background: var(--danger);
+    color: #000;
+  }
+  input[type="text"] {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: 2px solid var(--accent);
+    background: var(--panel);
+    color: var(--text);
+    margin-top: 10px;
+  }
+  .manual-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .manual-row input { margin-top: 0; flex: 1; }
+  .manual-row button {
+    padding: 12px 16px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .status {
+    text-align: center;
+    color: var(--text-dim);
+    margin-top: 10px;
+    font-size: 0.9rem;
+    min-height: 1.2em;
+  }
+  .card {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+    border: 1px solid #2a1010;
+  }
+  .card img {
+    max-width: 100%;
+    border-radius: 8px;
+    display: block;
+    margin: 0 auto 12px;
+    background: #fff;
+  }
+  .card h3 {
+    margin: 0 0 4px;
+    color: var(--accent);
+  }
+  .card .brand {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+  }
+  .grade {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+  }
+  .grade.a, .grade.b { background: var(--good); color: #000; }
+  .grade.c { background: #e0c97f; color: #000; }
+  .grade.d, .grade.e { background: var(--danger); color: #000; }
+  .grade.unknown { background: #555; color: #fff; }
+  .field {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+  .field strong {
+    color: var(--text);
+    display: block;
+    margin-bottom: 2px;
+    font-family: 'Josefin Sans', sans-serif;
+  }
+  .history {
+    margin-top: 20px;
+  }
+  .history h2 {
+    font-size: 1.1rem;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--panel);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border: 1px solid #2a1010;
+    cursor: pointer;
+  }
+  .history-item .name {
+    font-size: 0.9rem;
+    color: var(--text);
+  }
+  .history-item .code {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Barcode Scanner</h1>
+  <p>Point your camera at a food package barcode</p>
+</header>
+
+<div class="container">
+
+  <div id="reader"></div>
+  <div class="status" id="status">Starting camera…</div>
+
+  <button class="btn secondary" id="toggleScanBtn">Pause Scanner</button>
+
+  <div class="manual-row">
+    <input type="text" id="manualCode" placeholder="Or type barcode number" inputmode="numeric">
+    <button id="manualLookupBtn">Look Up</button>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="history hidden" id="historyWrap">
+    <h2>Recent Scans</h2>
+    <div id="historyList"></div>
+    <button class="btn danger" id="clearHistoryBtn">Clear History</button>
+  </div>
+
+</div>
+
+<script>
+const statusEl = document.getElementById('status');
+const resultEl = document.getElementById('result');
+const historyWrap = document.getElementById('historyWrap');
+const historyList = document.getElementById('historyList');
+const toggleScanBtn = document.getElementById('toggleScanBtn');
+
+let isScanning = true;
+let lastCode = null;
+let lastLookupTime = 0;
+
+const HISTORY_KEY = 'barcode_scan_history';
+
+function loadHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveHistory(list) {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 20)));
+}
+
+function renderHistory() {
+  const list = loadHistory();
+  if (list.length === 0) {
+    historyWrap.classList.add('hidden');
+    return;
+  }
+  historyWrap.classList.remove('hidden');
+  historyList.innerHTML = list.map(item => `
+    <div class="history-item" data-code="${item.code}">
+      <div>
+        <div class="name">${item.name || 'Unknown product'}</div>
+        <div class="code">${item.code}</div>
+      </div>
+    </div>
+  `).join('');
+
+  historyList.querySelectorAll('.history-item').forEach(el => {
+    el.addEventListener('click', () => {
+      lookupBarcode(el.getAttribute('data-code'));
+    });
+  });
+}
+
+function addToHistory(code, name) {
+  const list = loadHistory().filter(i => i.code !== code);
+  list.unshift({ code, name, ts: Date.now() });
+  saveHistory(list);
+  renderHistory();
+}
+
+function gradeClass(grade) {
+  if (!grade) return 'unknown';
+  const g = grade.toLowerCase();
+  if (['a','b','c','d','e'].includes(g)) return g;
+  return 'unknown';
+}
+
+async function lookupBarcode(code) {
+  code = (code || '').trim();
+  if (!code) return;
+
+  const now = Date.now();
+  if (code === lastCode && now - lastLookupTime < 4000) return;
+  lastCode = code;
+  lastLookupTime = now;
+
+  statusEl.textContent = `Looking up ${code}…`;
+  resultEl.innerHTML = '';
+
+  try {
+    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json`);
+    const data = await res.json();
+
+    if (data.status !== 1 || !data.product) {
+      statusEl.textContent = `No product found for ${code}`;
+      resultEl.innerHTML = `
+        <div class="card">
+          <h3>Not Found</h3>
+          <div class="field">Barcode <strong style="display:inline">${code}</strong> isn't in the Open Food Facts database.</div>
+        </div>
+      `;
+      addToHistory(code, null);
+      return;
+    }
+
+    const p = data.product;
+    const name = p.product_name || p.generic_name || 'Unnamed product';
+    const brand = p.brands || '';
+    const image = p.image_front_url || p.image_url || '';
+    const grade = p.nutrition_grades || p.nutrition_grade_fr || '';
+    const ingredients = p.ingredients_text || 'Not listed';
+    const allergens = p.allergens_tags && p.allergens_tags.length
+      ? p.allergens_tags.map(a => a.replace('en:', '')).join(', ')
+      : 'None listed';
+    const calories = p.nutriments && p.nutriments['energy-kcal_100g']
+      ? `${p.nutriments['energy-kcal_100g']} kcal / 100g`
+      : 'Not listed';
+
+    statusEl.textContent = 'Product found';
+
+    resultEl.innerHTML = `
+      <div class="card">
+        ${image ? `<img src="${image}" alt="${name}">` : ''}
+        <h3>${name}</h3>
+        ${brand ? `<div class="brand">${brand}</div>` : ''}
+        ${grade ? `<div class="grade ${gradeClass(grade)}">Nutri-Score: ${grade.toUpperCase()}</div>` : ''}
+        <div class="field"><strong>Calories</strong>${calories}</div>
+        <div class="field"><strong>Allergens</strong>${allergens}</div>
+        <div class="field"><strong>Ingredients</strong>${ingredients}</div>
+        <div class="field"><strong>Barcode</strong>${code}</div>
+      </div>
+    `;
+
+    addToHistory(code, name);
+  } catch (err) {
+    statusEl.textContent = 'Lookup failed — check connection';
+    resultEl.innerHTML = `
+      <div class="card">
+        <h3>Error</h3>
+        <div class="field">Couldn't reach the product database. Try again.</div>
+      </div>
+    `;
+  }
+}
+
+// --- Scanner setup ---
+const html5QrCode = new Html5Qrcode("reader", {
+  formatsToSupport: [
+    Html5QrcodeSupportedFormats.EAN_13,
+    Html5QrcodeSupportedFormats.EAN_8,
+    Html5QrcodeSupportedFormats.UPC_A,
+    Html5QrcodeSupportedFormats.UPC_E,
+    Html5QrcodeSupportedFormats.CODE_128
+  ]
+});
+
+function onScanSuccess(decodedText) {
+  lookupBarcode(decodedText);
+}
+
+function startScanner() {
+  html5QrCode.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 250, height: 150 } },
+    onScanSuccess,
+    () => {} // ignore per-frame scan failures
+  ).then(() => {
+    statusEl.textContent = 'Point camera at a barcode';
+    isScanning = true;
+    toggleScanBtn.textContent = 'Pause Scanner';
+  }).catch(err => {
+    statusEl.textContent = 'Camera access denied or unavailable';
+    console.error(err);
+  });
+}
+
+function stopScanner() {
+  html5QrCode.stop().then(() => {
+    isScanning = false;
+    toggleScanBtn.textContent = 'Resume Scanner';
+    statusEl.textContent = 'Scanner paused';
+  }).catch(() => {});
+}
+
+toggleScanBtn.addEventListener('click', () => {
+  if (isScanning) stopScanner();
+  else startScanner();
+});
+
+document.getElementById('manualLookupBtn').addEventListener('click', () => {
+  const val = document.getElementById('manualCode').value;
+  lookupBarcode(val);
+});
+
+document.getElementById('manualCode').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    lookupBarcode(e.target.value);
+  }
+});
+
+document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistory();
+});
+
+renderHistory();
+startScanner();
+</script>
+
+</body>
+</html>
