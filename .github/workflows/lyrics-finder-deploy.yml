@@ -44,20 +44,12 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      MUSIXMATCH_API_KEY: ${{ secrets.MUSIXMATCH_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: npm install
-      - name: Sync Musixmatch API key when configured
-        run: |
-          if [ -n "$MUSIXMATCH_API_KEY" ]; then
-            printf '%s' "$MUSIXMATCH_API_KEY" | npx wrangler secret put MUSIXMATCH_API_KEY
-          else
-            echo 'MUSIXMATCH_API_KEY is not configured in GitHub secrets; deploying without it.'
-          fi
       - run: npm run deploy
       - name: Live health smoke test
         run: |
