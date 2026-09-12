@@ -4,20 +4,21 @@ import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
 
-test('lyrics finder opens DuckDuckGo lyrics mode', () => {
-  assert.match(html, /Find Lyrics in DuckDuckGo/);
+test('lyrics finder embeds DuckDuckGo lyrics mode', () => {
+  assert.match(html, /Load Lyrics Card/);
+  assert.match(html, /id="lyricsFrame"/);
+  assert.match(html, /lyricsFrame'\)\.src=url/);
   assert.match(html, /https:\/\/duckduckgo\.com\/\?/);
   assert.match(html, /params\.set\('iax','lyrics'\)/);
   assert.match(html, /params\.set\('ia','web'\)/);
   assert.match(html, /params\.set\('t','iphone'\)/);
-  assert.match(html, /lyrics to \$\{title\} by \$\{artist\}/);
-  assert.match(html, /window\.location\.href/);
-  assert.doesNotMatch(html, /google\.com\/search/);
+  assert.match(html, /lyrics to \$\{parts\.title\} by \$\{parts\.artist\}/);
 });
 
-test('search context is preserved for returning from DuckDuckGo', () => {
-  assert.match(html, /sessionStorage\.setItem/);
-  assert.match(html, /window\.addEventListener\('pageshow',restoreSearch\)/);
+test('Safari fallback remains available if framing is blocked', () => {
+  assert.match(html, /id="openSafari"/);
+  assert.match(html, /Open in Safari/);
+  assert.match(html, /window\.open\(state\.duckUrl/);
 });
 
 test('copy formatter remains available', () => {
