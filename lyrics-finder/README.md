@@ -1,18 +1,18 @@
 # Lyrics Finder
 
-A simple DuckDuckGo Lyrics-view launcher and formatter with no paid lyrics API.
+A simple DuckDuckGo Lyrics-card viewer and formatter with no paid lyrics API.
 
 ## What it does
 
 - Enter a song title + artist.
-- **Find Lyrics in DuckDuckGo** opens DuckDuckGo using the dedicated Lyrics-view URL pattern:
+- **Load Lyrics Card** builds DuckDuckGo's dedicated Lyrics-view URL:
   - `q=lyrics to TITLE by ARTIST`
   - `t=iphone`
   - `ia=web`
   - `iax=lyrics`
-- On iPhone/Safari, DuckDuckGo can render its Musixmatch-powered lyrics card directly in that Lyrics view when one is available.
-- Copy lyrics manually from that card.
-- Use the browser Back button to return to Lyrics Finder; the app preserves the title and artist.
+- The app attempts to display DuckDuckGo's own Musixmatch-powered Lyrics view inside an embedded iframe.
+- If DuckDuckGo blocks framing, **Open in Safari** opens that same Lyrics URL directly.
+- Copy lyrics manually from DuckDuckGo's card.
 - Tap **Paste Lyrics**, then **Copy All**.
 - Copy everything in this exact format:
 
@@ -34,4 +34,4 @@ npm run dev
 
 The Worker name is `rick-lyrics-finder`.
 
-No lyrics API account, API key, or paid service is required. Lyrics Finder only builds the DuckDuckGo Lyrics-view URL; it does not fetch, extract, or store the lyrics itself.
+No lyrics API account, API key, or paid service is required. The embedded page remains DuckDuckGo's original content; Lyrics Finder does not extract or store the lyrics.
