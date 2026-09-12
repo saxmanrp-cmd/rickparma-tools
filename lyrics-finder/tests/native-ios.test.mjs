@@ -14,7 +14,7 @@ test('native Lyrics Finder uses WKWebView as top-level app web content', () => {
 });
 
 test('native app builds the DuckDuckGo lyrics card URL', () => {
-  assert.match(swift, /lyrics to \\(cleanTitle\) by \\(cleanArtist\)/);
+  assert.ok(swift.includes('lyrics to \\(cleanTitle) by \\(cleanArtist)'));
   assert.match(swift, /URLQueryItem\(name: "t", value: "iphone"\)/);
   assert.match(swift, /URLQueryItem\(name: "ia", value: "web"\)/);
   assert.match(swift, /URLQueryItem\(name: "iax", value: "lyrics"\)/);
