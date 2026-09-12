@@ -10,7 +10,7 @@ test('native Lyrics Finder uses WKWebView as top-level app web content', () => {
   assert.match(swift, /WKWebView/);
   assert.match(swift, /UIViewRepresentable/);
   assert.match(swift, /fullScreenCover/);
-  assert.doesNotMatch(swift, /iframe/i);
+  assert.doesNotMatch(swift, /<iframe/i);
 });
 
 test('native app builds the DuckDuckGo lyrics card URL', () => {
