@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0d12" />
+  <title>Lyrics Finder</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0d12;
+      --card: #151922;
+      --card-2: #10141c;
+      --text: #f7f8fb;
+      --muted: #949cad;
+      --line: #282f3b;
+      --accent: #8e68ff;
+      --accent-2: #6f4cf1;
+      --success: #64d68b;
+      --danger: #ff7e8a;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top, rgba(142,104,255,.14), transparent 34rem),
+        var(--bg);
+      color: var(--text);
+    }
+    button, input, textarea { font: inherit; }
+    .wrap {
+      width: min(760px, 100%);
+      margin: 0 auto;
+      padding: calc(26px + env(safe-area-inset-top)) 18px calc(42px + env(safe-area-inset-bottom));
+    }
+    header { margin-bottom: 22px; }
+    h1 { margin: 0; font-size: clamp(34px, 8vw, 52px); letter-spacing: -0.045em; line-height: .95; }
+    .sub { margin: 12px 0 0; color: var(--muted); font-size: 16px; }
+    .source { display: inline-flex; align-items: center; gap: 7px; margin-top: 12px; color: #c8cddd; font-size: 13px; }
+    .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--success); box-shadow: 0 0 16px rgba(100,214,139,.45); }
+    .card {
+      background: rgba(21,25,34,.94);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: 0 18px 55px rgba(0,0,0,.23);
+    }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label { display: block; margin-bottom: 7px; color: #c5cad5; font-size: 13px; font-weight: 700; }
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: var(--card-2);
+      color: var(--text);
+      border-radius: 14px;
+      outline: none;
+    }
+    input { height: 52px; padding: 0 14px; }
+    textarea { min-height: 290px; resize: vertical; padding: 15px; line-height: 1.55; }
+    input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(142,104,255,.14); }
+    .btn {
+      border: 0;
+      border-radius: 14px;
+      min-height: 52px;
+      padding: 0 18px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .12s ease, opacity .12s ease;
+    }
+    .btn:active { transform: scale(.985); }
+    .btn:disabled { opacity: .45; cursor: default; }
+    .primary { width: 100%; margin-top: 12px; color: white; background: linear-gradient(180deg, var(--accent), var(--accent-2)); }
+    .secondary { background: #242b38; color: white; }
+    .copy { background: white; color: #0b0d12; }
+    .row { display: flex; gap: 10px; margin-top: 14px; }
+    .row .btn { flex: 1; }
+    .status { min-height: 22px; margin-top: 11px; font-size: 14px; color: var(--muted); }
+    .status.error { color: var(--danger); }
+    .match {
+      display: none;
+      margin-top: 16px;
+      padding: 15px;
+      background: #10141c;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+    }
+    .match.show { display: block; }
+    .match-title { margin: 0; font-size: 20px; font-weight: 900; }
+    .match-artist { margin: 4px 0 0; color: #d5dae4; font-weight: 750; }
+    .match-meta { margin: 7px 0 0; color: var(--muted); font-size: 13px; }
+    .section { margin-top: 18px; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+    .section-title { margin: 0; font-size: 17px; }
+    .hint { color: var(--muted); font-size: 12px; text-align: right; }
+    .preview {
+      margin-top: 14px;
+      white-space: pre-wrap;
+      background: #0d1016;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      line-height: 1.55;
+      color: #e8ebf2;
+      max-height: 340px;
+      overflow: auto;
+    }
+    .small-note { margin: 12px 2px 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    a { color: inherit; }
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 1fr; }
+      .row { flex-direction: column; }
+      .section-head { align-items: start; flex-direction: column; }
+      .hint { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <h1>Lyrics Finder</h1>
+      <p class="sub">Find the exact song on Musixmatch, then format your lyrics cleanly.</p>
+      <div class="source"><span class="dot"></span>Musixmatch only</div>
+    </header>
+
+    <section class="card">
+      <div class="grid">
+        <div>
+          <label for="title">Song title</label>
+          <input id="title" autocomplete="off" placeholder="September" />
+        </div>
+        <div>
+          <label for="artist">Artist</label>
+          <input id="artist" autocomplete="off" placeholder="Earth, Wind & Fire" />
+        </div>
+      </div>
+
+      <button id="find" class="btn primary">Find on Musixmatch</button>
+      <div id="status" class="status" aria-live="polite"></div>
+
+      <div id="match" class="match">
+        <p id="matchTitle" class="match-title"></p>
+        <p id="matchArtist" class="match-artist"></p>
+        <p id="matchMeta" class="match-meta"></p>
+        <div class="row">
+          <button id="open" class="btn secondary">Open on Musixmatch</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Lyrics body</h2>
+            <div class="small-note">Paste lyrics you own or are authorized to use.</div>
+          </div>
+          <div class="hint">Copy format: TITLE · ARTIST · body</div>
+        </div>
+        <textarea id="lyrics" placeholder="Paste lyrics here..."></textarea>
+      </div>
+
+      <div class="row">
+        <button id="copy" class="btn copy">Copy All</button>
+        <button id="clear" class="btn secondary">Clear</button>
+      </div>
+
+      <div id="preview" class="preview"></div>
+      <p class="small-note">Song matching is performed only through Musixmatch. The Musixmatch API key stays on the server and is never exposed in the browser.</p>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const state = { musixmatchUrl: '' };
+
+    function normalizedTitle() {
+      return $('title').value.trim().toUpperCase();
+    }
+
+    function normalizedArtist() {
+      return $('artist').value.trim().toUpperCase();
+    }
+
+    function formattedText() {
+      const title = normalizedTitle();
+      const artist = normalizedArtist();
+      const body = $('lyrics').value.trim();
+      return `${title}\n${artist}${body ? `\n\n${body}` : ''}`.trim();
+    }
+
+    function renderPreview() {
+      $('preview').textContent = formattedText() || 'Your formatted copy will appear here.';
+    }
+
+    function setStatus(message, error = false) {
+      $('status').textContent = message;
+      $('status').className = error ? 'status error' : 'status';
+    }
+
+    async function findSong() {
+      const title = $('title').value.trim();
+      const artist = $('artist').value.trim();
+      if (!title || !artist) {
+        setStatus('Enter both a song title and artist.', true);
+        return;
+      }
+
+      $('find').disabled = true;
+      $('match').classList.remove('show');
+      state.musixmatchUrl = '';
+      setStatus('Searching Musixmatch…');
+
+      try {
+        const params = new URLSearchParams({ title, artist });
+        const response = await fetch(`/api/match?${params}`);
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || 'Could not find that song.');
+
+        $('title').value = data.title || title;
+        $('artist').value = data.artist || artist;
+        $('matchTitle').textContent = data.title || title;
+        $('matchArtist').textContent = data.artist || artist;
+
+        const bits = [];
+        if (data.album) bits.push(data.album);
+        if (data.instrumental) bits.push('Instrumental');
+        else if (data.hasLyrics) bits.push('Lyrics available on Musixmatch');
+        if (data.restricted) bits.push('Restricted by Musixmatch');
+        $('matchMeta').textContent = bits.join(' · ') || 'Matched on Musixmatch';
+
+        state.musixmatchUrl = data.musixmatchUrl || '';
+        $('open').disabled = !state.musixmatchUrl;
+        $('match').classList.add('show');
+        setStatus('Match found.');
+        renderPreview();
+      } catch (error) {
+        setStatus(error.message || 'Search failed.', true);
+      } finally {
+        $('find').disabled = false;
+      }
+    }
+
+    async function copyAll() {
+      const text = formattedText();
+      if (!normalizedTitle() || !normalizedArtist()) {
+        setStatus('Add the title and artist first.', true);
+        return;
+      }
+      if (!$('lyrics').value.trim()) {
+        setStatus('Paste the lyrics body first.', true);
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const box = document.createElement('textarea');
+        box.value = text;
+        box.style.position = 'fixed';
+        box.style.opacity = '0';
+        document.body.appendChild(box);
+        box.select();
+        document.execCommand('copy');
+        box.remove();
+      }
+
+      setStatus('Copied all.');
+      const original = $('copy').textContent;
+      $('copy').textContent = 'Copied ✓';
+      setTimeout(() => { $('copy').textContent = original; }, 1200);
+    }
+
+    function clearAll() {
+      $('title').value = '';
+      $('artist').value = '';
+      $('lyrics').value = '';
+      state.musixmatchUrl = '';
+      $('match').classList.remove('show');
+      setStatus('');
+      renderPreview();
+      $('title').focus();
+    }
+
+    $('find').addEventListener('click', findSong);
+    $('copy').addEventListener('click', copyAll);
+    $('clear').addEventListener('click', clearAll);
+    $('open').addEventListener('click', () => {
+      if (state.musixmatchUrl) window.open(state.musixmatchUrl, '_blank', 'noopener,noreferrer');
+    });
+    $('title').addEventListener('input', renderPreview);
+    $('artist').addEventListener('input', renderPreview);
+    $('lyrics').addEventListener('input', renderPreview);
+    $('title').addEventListener('keydown', (event) => { if (event.key === 'Enter') findSong(); });
+    $('artist').addEventListener('keydown', (event) => { if (event.key === 'Enter') findSong(); });
+
+    renderPreview();
+  </script>
+</body>
+</html>
