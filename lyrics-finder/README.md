@@ -1,15 +1,15 @@
 # Lyrics Finder
 
-A simple lyrics-source viewer and formatter with no paid lyrics API.
+A simple Google lyrics-search launcher and formatter with no paid lyrics API.
 
 ## What it does
 
 - Enter a song title + artist.
-- **Find Lyrics** uses DuckDuckGo's documented `\` operator to jump directly to the first result for an exact `title + artist + lyrics` search.
-- The selected source is loaded in an in-app iframe when that website allows embedding.
-- If the source blocks iframe embedding, **Open Source** opens the same top result directly in the browser.
-- **Google Results** remains available as an alternate search.
-- Copy lyrics manually from the source, return to the app, and use **Paste Lyrics**.
+- **Find Lyrics on Google** opens a normal Google search for `title + artist + lyrics` in the same browser context.
+- Google may render its own Musixmatch-powered lyrics card directly in the search results.
+- Copy lyrics manually from Google's card or another result.
+- Use the browser Back button to return to Lyrics Finder; the app preserves the title and artist.
+- Tap **Paste Lyrics**, then **Copy All**.
 - Copy everything in this exact format:
 
 ```text
@@ -30,4 +30,4 @@ npm run dev
 
 The Worker name is `rick-lyrics-finder`.
 
-No lyrics API account, API key, or paid service is required. The lyrics remain on the original source website; the app does not extract or store full lyrics.
+No lyrics API account, API key, or paid service is required. The app opens Google search but does not scrape, extract, or store lyrics from Google or any lyrics provider.
