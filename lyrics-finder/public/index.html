@@ -16,7 +16,7 @@
     *{box-sizing:border-box}
     body{margin:0;min-height:100vh;background:radial-gradient(circle at top,rgba(142,104,255,.14),transparent 34rem),var(--bg);color:var(--text)}
     button,input,textarea{font:inherit}
-    .wrap{width:min(820px,100%);margin:0 auto;padding:calc(26px + env(safe-area-inset-top)) 18px calc(42px + env(safe-area-inset-bottom))}
+    .wrap{width:min(760px,100%);margin:0 auto;padding:calc(26px + env(safe-area-inset-top)) 18px calc(42px + env(safe-area-inset-bottom))}
     header{margin-bottom:22px}
     h1{margin:0;font-size:clamp(34px,8vw,52px);letter-spacing:-.045em;line-height:.95}
     .sub{margin:12px 0 0;color:var(--muted);font-size:16px;line-height:1.45}
@@ -27,11 +27,10 @@
     label{display:block;margin-bottom:7px;color:#c5cad5;font-size:13px;font-weight:700}
     input,textarea{width:100%;border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:14px;outline:none}
     input{height:52px;padding:0 14px}
-    textarea{min-height:260px;resize:vertical;padding:15px;line-height:1.55}
+    textarea{min-height:290px;resize:vertical;padding:15px;line-height:1.55}
     input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(142,104,255,.14)}
     .btn{border:0;border-radius:14px;min-height:52px;padding:0 18px;font-weight:800;cursor:pointer;transition:transform .12s ease,opacity .12s ease}
     .btn:active{transform:scale(.985)}
-    .btn:disabled{opacity:.45;cursor:default}
     .primary{color:#fff;background:linear-gradient(180deg,var(--accent),var(--accent2))}
     .secondary{background:#242b38;color:#fff}
     .copy{background:#fff;color:#0b0d12}
@@ -45,28 +44,19 @@
     .section-title{margin:0;font-size:17px}
     .hint{color:var(--muted);font-size:12px;text-align:right}
     .small-note{margin:10px 2px 0;color:var(--muted);font-size:12px;line-height:1.45}
-    .viewer{display:none;margin-top:18px;border:1px solid var(--line);background:#0d1016;border-radius:18px;overflow:hidden}
-    .viewer.show{display:block}
-    .viewer-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);background:#121722}
-    .viewer-title{font-size:14px;font-weight:850}
-    .viewer-note{font-size:11px;color:var(--muted);text-align:right}
-    iframe{display:block;width:100%;height:min(62vh,640px);border:0;background:#fff}
-    .viewer-actions{display:flex;gap:10px;padding:12px;border-top:1px solid var(--line)}
-    .viewer-actions .btn{flex:1;min-height:46px}
     .preview{margin-top:14px;white-space:pre-wrap;background:#0d1016;border:1px solid var(--line);border-radius:16px;padding:16px;line-height:1.55;color:#e8ebf2;max-height:340px;overflow:auto}
     .steps{margin:16px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
     .steps li{padding:11px;border:1px solid var(--line);border-radius:13px;background:#10141c;color:#cfd4df;font-size:12px;line-height:1.35}
     .steps strong{display:block;color:#fff;font-size:13px;margin-bottom:3px}
-    @media(max-width:640px){
-      .grid{grid-template-columns:1fr}.row,.viewer-actions{flex-direction:column}.section-head{align-items:start;flex-direction:column}.hint{text-align:left}.steps{grid-template-columns:1fr}iframe{height:56vh}.viewer-head{align-items:flex-start;flex-direction:column}.viewer-note{text-align:left}
-    }
+    .google-note{margin-top:16px;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:#10141c;color:#cfd4df;font-size:13px;line-height:1.45}
+    @media(max-width:640px){.grid{grid-template-columns:1fr}.row{flex-direction:column}.section-head{align-items:start;flex-direction:column}.hint{text-align:left}.steps{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
   <main class="wrap">
     <header>
       <h1>Lyrics Finder</h1>
-      <p class="sub">Enter a song and jump straight to the top lyrics result. If the source allows embedding, it appears right here.</p>
+      <p class="sub">Search Google for the song so Google can show its own lyrics card when one is available.</p>
       <div class="source"><span class="dot"></span>No account · No paid API</div>
     </header>
 
@@ -82,34 +72,24 @@
         </div>
       </div>
 
-      <button id="find" class="btn primary wide">Find Lyrics</button>
+      <button id="find" class="btn primary wide">Find Lyrics on Google</button>
       <div id="status" class="status" aria-live="polite"></div>
 
-      <ul class="steps">
-        <li><strong>1. Find</strong>We jump to the top web result for that exact song.</li>
-        <li><strong>2. Copy</strong>Select and copy the lyrics on the source page.</li>
-        <li><strong>3. Format</strong>Paste below, then Copy All.</li>
-      </ul>
-
-      <div id="viewer" class="viewer">
-        <div class="viewer-head">
-          <div class="viewer-title">Lyrics Source</div>
-          <div class="viewer-note">Some websites block embedded viewing.</div>
-        </div>
-        <iframe id="sourceFrame" title="Lyrics source page" referrerpolicy="no-referrer" sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
-        <div class="viewer-actions">
-          <button id="openSource" class="btn primary">Open Source</button>
-          <button id="google" class="btn secondary">Google Results</button>
-          <button id="hideViewer" class="btn secondary">Hide Viewer</button>
-        </div>
-        <div class="small-note" style="padding:0 12px 12px">If this area is blank or says the page cannot be displayed, tap <strong>Open Source</strong>. That means the lyrics site blocks iframe embedding; the app cannot override that browser security setting.</div>
+      <div class="google-note">
+        Google may show a Musixmatch lyrics card directly in the search results. Copy the lyrics there, then use your browser Back button to return here.
       </div>
+
+      <ul class="steps">
+        <li><strong>1. Find</strong>Open the exact Google search for title + artist + lyrics.</li>
+        <li><strong>2. Copy</strong>Copy the lyrics from Google's card or the result you choose.</li>
+        <li><strong>3. Format</strong>Come back, Paste Lyrics, then Copy All.</li>
+      </ul>
 
       <div class="section">
         <div class="section-head">
           <div>
             <h2 class="section-title">Lyrics body</h2>
-            <div class="small-note">After copying from the source page, tap Paste Lyrics.</div>
+            <div class="small-note">After copying in Google, come back here and tap Paste Lyrics.</div>
           </div>
           <div class="hint">TITLE · ARTIST · body</div>
         </div>
@@ -123,13 +103,13 @@
       </div>
 
       <div id="preview" class="preview"></div>
-      <p class="small-note">Find Lyrics uses DuckDuckGo's documented “go directly to the first result” search operator. The lyrics remain on the original website; this app does not extract or store them.</p>
+      <p class="small-note">Find Lyrics opens a normal Google search in this browser. The app does not scrape, extract, or store lyrics from Google or any lyrics provider.</p>
     </section>
   </main>
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const state = { directUrl: '' };
+    const STORAGE_KEY = 'rickLyricsFinderSearch';
 
     function normalizedTitle(){ return $('title').value.trim().toUpperCase(); }
     function normalizedArtist(){ return $('artist').value.trim().toUpperCase(); }
@@ -157,41 +137,36 @@
         setStatus('Enter both a song title and artist.',true);
         return null;
       }
-      return `"${title}" "${artist}" lyrics`;
+      return `${title} ${artist} lyrics`;
     }
 
-    function buildDirectUrl(){
-      const query = searchQuery();
-      if(!query) return null;
-      return `https://duckduckgo.com/?q=${encodeURIComponent(`\\${query}`)}`;
+    function rememberSearch(){
+      try{
+        sessionStorage.setItem(STORAGE_KEY,JSON.stringify({
+          title:$('title').value.trim(),
+          artist:$('artist').value.trim(),
+          pending:true
+        }));
+      }catch{}
+    }
+
+    function restoreSearch(){
+      try{
+        const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null');
+        if(!saved) return;
+        if(!$('title').value) $('title').value = saved.title || '';
+        if(!$('artist').value) $('artist').value = saved.artist || '';
+        if(saved.pending) setStatus('Back from Google? Tap Paste Lyrics after you copy the lyrics.');
+      }catch{}
+      renderPreview();
     }
 
     function findLyrics(){
-      const url = buildDirectUrl();
-      if(!url) return;
-      state.directUrl = url;
-      $('sourceFrame').src = url;
-      $('viewer').classList.add('show');
-      setStatus('Loading the top lyrics result…');
-      $('viewer').scrollIntoView({behavior:'smooth',block:'start'});
-    }
-
-    function openSource(){
-      if(!state.directUrl){
-        const url = buildDirectUrl();
-        if(!url) return;
-        state.directUrl = url;
-      }
-      window.open(state.directUrl,'_blank','noopener,noreferrer');
-      setStatus('Opened the top lyrics source.');
-    }
-
-    function openGoogle(){
       const query = searchQuery();
       if(!query) return;
-      const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-      window.open(url,'_blank','noopener,noreferrer');
-      setStatus('Opened Google results.');
+      rememberSearch();
+      setStatus('Opening Google…');
+      window.location.href = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
     }
 
     async function pasteLyrics(){
@@ -202,6 +177,10 @@
           return;
         }
         $('lyrics').value = text.trim();
+        try{
+          const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null');
+          if(saved){ saved.pending = false; sessionStorage.setItem(STORAGE_KEY,JSON.stringify(saved)); }
+        }catch{}
         renderPreview();
         setStatus('Lyrics pasted.');
       }catch{
@@ -235,14 +214,11 @@
 
     function clearAll(){
       $('title').value=''; $('artist').value=''; $('lyrics').value='';
-      state.directUrl=''; $('sourceFrame').src='about:blank'; $('viewer').classList.remove('show');
+      try{ sessionStorage.removeItem(STORAGE_KEY); }catch{}
       setStatus(''); renderPreview(); $('title').focus();
     }
 
     $('find').addEventListener('click',findLyrics);
-    $('openSource').addEventListener('click',openSource);
-    $('google').addEventListener('click',openGoogle);
-    $('hideViewer').addEventListener('click',()=>$('viewer').classList.remove('show'));
     $('paste').addEventListener('click',pasteLyrics);
     $('copy').addEventListener('click',copyAll);
     $('clear').addEventListener('click',clearAll);
@@ -251,8 +227,9 @@
     $('lyrics').addEventListener('input',renderPreview);
     $('title').addEventListener('keydown',(event)=>{if(event.key==='Enter') findLyrics();});
     $('artist').addEventListener('keydown',(event)=>{if(event.key==='Enter') findLyrics();});
-    $('sourceFrame').addEventListener('load',()=>setStatus('Source loaded. If it is blank, tap Open Source.'));
+    window.addEventListener('pageshow',restoreSearch);
 
+    restoreSearch();
     renderPreview();
   </script>
 </body>
