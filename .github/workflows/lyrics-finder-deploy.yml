@@ -1,0 +1,66 @@
+name: Lyrics Finder Deploy
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'lyrics-finder/**'
+      - '.github/workflows/lyrics-finder-deploy.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'lyrics-finder/**'
+      - '.github/workflows/lyrics-finder-deploy.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lyrics-finder-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lyrics-finder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npm test
+
+  deploy:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lyrics-finder
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      MUSIXMATCH_API_KEY: ${{ secrets.MUSIXMATCH_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - name: Sync Musixmatch API key when configured
+        run: |
+          if [ -n "$MUSIXMATCH_API_KEY" ]; then
+            printf '%s' "$MUSIXMATCH_API_KEY" | npx wrangler secret put MUSIXMATCH_API_KEY
+          else
+            echo 'MUSIXMATCH_API_KEY is not configured in GitHub secrets; deploying without it.'
+          fi
+      - run: npm run deploy
+      - name: Live health smoke test
+        run: |
+          curl --fail --silent --show-error --max-time 15 \
+            https://rick-lyrics-finder.saxmanrp.workers.dev/api/health | tee /tmp/lyrics-health.json
+          grep -q '"ok":true' /tmp/lyrics-health.json
