@@ -8,19 +8,24 @@
   <style>
     :root{color-scheme:dark;--bg:#0b0d12;--card:#151922;--card2:#10141c;--text:#f7f8fb;--muted:#949cad;--line:#282f3b;--accent:#8e68ff;--accent2:#6f4cf1;--success:#64d68b;--danger:#ff7e8a;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
     *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at top,rgba(142,104,255,.14),transparent 34rem),var(--bg);color:var(--text)}button,input,textarea{font:inherit}
-    .wrap{width:min(800px,100%);margin:0 auto;padding:calc(26px + env(safe-area-inset-top)) 18px calc(42px + env(safe-area-inset-bottom))}header{margin-bottom:22px}h1{margin:0;font-size:clamp(34px,8vw,52px);letter-spacing:-.045em;line-height:.95}.sub{margin:12px 0 0;color:var(--muted);font-size:16px;line-height:1.45}.source{display:inline-flex;align-items:center;gap:7px;margin-top:12px;color:#c8cddd;font-size:13px}.dot{width:8px;height:8px;border-radius:999px;background:var(--success);box-shadow:0 0 16px rgba(100,214,139,.45)}
-    .card{background:rgba(21,25,34,.94);border:1px solid var(--line);border-radius:22px;padding:18px;box-shadow:0 18px 55px rgba(0,0,0,.23)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}label{display:block;margin-bottom:7px;color:#c5cad5;font-size:13px;font-weight:700}input,textarea{width:100%;border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:14px;outline:none}input{height:52px;padding:0 14px}textarea{min-height:260px;resize:vertical;padding:15px;line-height:1.55}input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(142,104,255,.14)}
-    .btn{border:0;border-radius:14px;min-height:52px;padding:0 18px;font-weight:800;cursor:pointer;transition:transform .12s ease,opacity .12s ease}.btn:active{transform:scale(.985)}.primary{color:#fff;background:linear-gradient(180deg,var(--accent),var(--accent2))}.secondary{background:#242b38;color:#fff}.copy{background:#fff;color:#0b0d12}.wide{width:100%;margin-top:14px}.row{display:flex;gap:10px;margin-top:14px}.row .btn{flex:1}.status{min-height:22px;margin-top:11px;font-size:14px;color:var(--muted)}.status.error{color:var(--danger)}
-    .viewer{display:none;margin-top:18px;border:1px solid var(--line);background:#0d1016;border-radius:18px;overflow:hidden}.viewer.show{display:block}.viewer-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);background:#121722}.viewer-title{font-size:14px;font-weight:850}.viewer-note{font-size:11px;color:var(--muted);text-align:right}.frame-wrap{background:white;min-height:540px}.frame-wrap iframe{display:block;width:100%;height:68vh;min-height:540px;border:0;background:white}.viewer-actions{display:flex;gap:10px;padding:12px;border-top:1px solid var(--line)}.viewer-actions .btn{flex:1;min-height:46px}.small-note{margin:10px 2px 0;color:var(--muted);font-size:12px;line-height:1.45}.viewer .small-note{padding:0 12px 12px;margin-top:0}
-    .section{margin-top:20px}.section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:8px}.section-title{margin:0;font-size:17px}.hint{color:var(--muted);font-size:12px;text-align:right}.preview{margin-top:14px;white-space:pre-wrap;background:#0d1016;border:1px solid var(--line);border-radius:16px;padding:16px;line-height:1.55;color:#e8ebf2;max-height:340px;overflow:auto}
-    @media(max-width:640px){.grid{grid-template-columns:1fr}.row,.viewer-actions{flex-direction:column}.section-head{align-items:start;flex-direction:column}.hint{text-align:left}.viewer-head{align-items:flex-start;flex-direction:column}.viewer-note{text-align:left}.frame-wrap iframe{height:62vh;min-height:500px}}
+    .wrap{width:min(760px,100%);margin:0 auto;padding:calc(26px + env(safe-area-inset-top)) 18px calc(42px + env(safe-area-inset-bottom))}
+    header{margin-bottom:22px}h1{margin:0;font-size:clamp(34px,8vw,52px);letter-spacing:-.045em;line-height:.95}.sub{margin:12px 0 0;color:var(--muted);font-size:16px;line-height:1.45}
+    .source{display:inline-flex;align-items:center;gap:7px;margin-top:12px;color:#c8cddd;font-size:13px}.dot{width:8px;height:8px;border-radius:999px;background:var(--success);box-shadow:0 0 16px rgba(100,214,139,.45)}
+    .card{background:rgba(21,25,34,.94);border:1px solid var(--line);border-radius:22px;padding:18px;box-shadow:0 18px 55px rgba(0,0,0,.23)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    label{display:block;margin-bottom:7px;color:#c5cad5;font-size:13px;font-weight:700}input,textarea{width:100%;border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:14px;outline:none}input{height:52px;padding:0 14px}textarea{min-height:290px;resize:vertical;padding:15px;line-height:1.55}input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(142,104,255,.14)}
+    .btn{border:0;border-radius:14px;min-height:52px;padding:0 18px;font-weight:800;cursor:pointer;transition:transform .12s ease,opacity .12s ease}.btn:active{transform:scale(.985)}.primary{color:#fff;background:linear-gradient(180deg,var(--accent),var(--accent2))}.secondary{background:#242b38;color:#fff}.copy{background:#fff;color:#0b0d12}.wide{width:100%;margin-top:14px}.row{display:flex;gap:10px;margin-top:14px}.row .btn{flex:1}
+    .status{min-height:22px;margin-top:11px;font-size:14px;color:var(--muted)}.status.error{color:var(--danger)}
+    .flow{margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:16px;background:#10141c}.flow-title{font-weight:850}.flow-text{margin-top:6px;color:#cfd4df;font-size:13px;line-height:1.5}
+    .steps{margin:12px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.steps li{padding:11px;border:1px solid var(--line);border-radius:13px;background:#10141c;color:#cfd4df;font-size:12px;line-height:1.35}.steps strong{display:block;color:#fff;font-size:13px;margin-bottom:3px}
+    .section{margin-top:20px}.section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:8px}.section-title{margin:0;font-size:17px}.hint{color:var(--muted);font-size:12px;text-align:right}.small-note{margin:10px 2px 0;color:var(--muted);font-size:12px;line-height:1.45}.preview{margin-top:14px;white-space:pre-wrap;background:#0d1016;border:1px solid var(--line);border-radius:16px;padding:16px;line-height:1.55;color:#e8ebf2;max-height:340px;overflow:auto}
+    @media(max-width:640px){.grid{grid-template-columns:1fr}.row{flex-direction:column}.section-head{align-items:start;flex-direction:column}.hint{text-align:left}.steps{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
   <main class="wrap">
     <header>
       <h1>Lyrics Finder</h1>
-      <p class="sub">Load DuckDuckGo's Musixmatch-powered Lyrics card directly inside the app.</p>
+      <p class="sub">Open DuckDuckGo's Musixmatch-powered Lyrics view as the full page, copy there, then come straight back.</p>
       <div class="source"><span class="dot"></span>No account · No paid API</div>
     </header>
 
@@ -30,27 +35,23 @@
         <div><label for="artist">Artist</label><input id="artist" autocomplete="off" autocapitalize="words" placeholder="Earth, Wind & Fire" /></div>
       </div>
 
-      <button id="find" class="btn primary wide">Load Lyrics Card</button>
+      <button id="find" class="btn primary wide">Open Lyrics Card</button>
       <div id="status" class="status" aria-live="polite"></div>
 
-      <div id="viewer" class="viewer">
-        <div class="viewer-head">
-          <div class="viewer-title">DuckDuckGo Lyrics</div>
-          <div class="viewer-note">Musixmatch-powered card · rendered by DuckDuckGo</div>
-        </div>
-        <div class="frame-wrap">
-          <iframe id="lyricsFrame" title="DuckDuckGo lyrics card" sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
-        </div>
-        <div class="viewer-actions">
-          <button id="openSafari" class="btn primary">Open in Safari</button>
-          <button id="hideViewer" class="btn secondary">Hide Card</button>
-        </div>
-        <div class="small-note">If DuckDuckGo refuses to display inside the app or this area stays blank, tap <strong>Open in Safari</strong>. That means DuckDuckGo is blocking cross-site embedding; the app cannot override that browser security rule.</div>
+      <div class="flow">
+        <div class="flow-title">Fast iPhone flow</div>
+        <div class="flow-text">DuckDuckGo opens as the main page using its dedicated Lyrics mode. Copy the lyrics from the Musixmatch card, tap Back, then paste below.</div>
       </div>
+
+      <ul class="steps">
+        <li><strong>1. Open</strong>DuckDuckGo Lyrics mode opens full-screen.</li>
+        <li><strong>2. Copy</strong>Copy from the Musixmatch card.</li>
+        <li><strong>3. Back</strong>Return here, Paste Lyrics, then Copy All.</li>
+      </ul>
 
       <div class="section">
         <div class="section-head">
-          <div><h2 class="section-title">Lyrics body</h2><div class="small-note">Copy from the card above, then tap Paste Lyrics.</div></div>
+          <div><h2 class="section-title">Lyrics body</h2><div class="small-note">After copying the card, come back and tap Paste Lyrics.</div></div>
           <div class="hint">TITLE · ARTIST · body</div>
         </div>
         <textarea id="lyrics" placeholder="Paste lyrics here..."></textarea>
@@ -63,13 +64,13 @@
       </div>
 
       <div id="preview" class="preview"></div>
-      <p class="small-note">Lyrics Finder embeds DuckDuckGo's own Lyrics view using <code>t=iphone&amp;ia=web&amp;iax=lyrics</code>. It does not extract or republish the lyrics itself.</p>
+      <p class="small-note">Lyrics Finder opens DuckDuckGo with <code>t=iphone&amp;ia=web&amp;iax=lyrics</code> and preserves your song while you are away.</p>
     </section>
   </main>
 
   <script>
     const $=id=>document.getElementById(id);
-    const state={duckUrl:''};
+    const STORAGE_KEY='rickLyricsFinderSearch';
 
     function normalizedTitle(){return $('title').value.trim().toUpperCase()}
     function normalizedArtist(){return $('artist').value.trim().toUpperCase()}
@@ -94,24 +95,38 @@
       return `https://duckduckgo.com/?${params.toString()}`;
     }
 
-    function loadLyricsCard(){
-      const url=buildDuckDuckGoLyricsUrl();
-      if(!url)return;
-      state.duckUrl=url;
-      $('lyricsFrame').src=url;
-      $('viewer').classList.add('show');
-      setStatus('Loading DuckDuckGo Lyrics card…');
-      $('viewer').scrollIntoView({behavior:'smooth',block:'start'});
+    function rememberSearch(){
+      try{sessionStorage.setItem(STORAGE_KEY,JSON.stringify({title:$('title').value.trim(),artist:$('artist').value.trim(),lyrics:$('lyrics').value,pending:true}))}catch{}
     }
 
-    function openInSafari(){
-      if(!state.duckUrl){const url=buildDuckDuckGoLyricsUrl();if(!url)return;state.duckUrl=url}
-      window.open(state.duckUrl,'_blank','noopener,noreferrer');
-      setStatus('Opened DuckDuckGo Lyrics in Safari.');
+    function restoreSearch(){
+      try{
+        const saved=JSON.parse(sessionStorage.getItem(STORAGE_KEY)||'null');
+        if(!saved)return;
+        if(!$('title').value)$('title').value=saved.title||'';
+        if(!$('artist').value)$('artist').value=saved.artist||'';
+        if(!$('lyrics').value&&saved.lyrics)$('lyrics').value=saved.lyrics;
+        if(saved.pending)setStatus('Back from DuckDuckGo? Tap Paste Lyrics after you copy the card.');
+      }catch{}
+      renderPreview();
+    }
+
+    function openLyricsCard(){
+      const url=buildDuckDuckGoLyricsUrl();
+      if(!url)return;
+      rememberSearch();
+      setStatus('Opening DuckDuckGo Lyrics…');
+      window.location.href=url;
     }
 
     async function pasteLyrics(){
-      try{const text=await navigator.clipboard.readText();if(!text.trim()){setStatus('Your clipboard is empty.',true);return}$('lyrics').value=text.trim();renderPreview();setStatus('Lyrics pasted.')}catch{$('lyrics').focus();setStatus('Clipboard access was blocked. Tap the lyrics box and paste normally.',true)}
+      try{
+        const text=await navigator.clipboard.readText();
+        if(!text.trim()){setStatus('Your clipboard is empty.',true);return}
+        $('lyrics').value=text.trim();
+        try{const saved=JSON.parse(sessionStorage.getItem(STORAGE_KEY)||'null');if(saved){saved.pending=false;saved.lyrics=$('lyrics').value;sessionStorage.setItem(STORAGE_KEY,JSON.stringify(saved))}}catch{}
+        renderPreview();setStatus('Lyrics pasted.');
+      }catch{$('lyrics').focus();setStatus('Clipboard access was blocked. Tap the lyrics box and paste normally.',true)}
     }
 
     async function copyAll(){
@@ -122,21 +137,19 @@
       setStatus('Copied all.');const original=$('copy').textContent;$('copy').textContent='Copied ✓';setTimeout(()=>{$('copy').textContent=original},1200)
     }
 
-    function clearAll(){$('title').value='';$('artist').value='';$('lyrics').value='';state.duckUrl='';$('lyricsFrame').src='about:blank';$('viewer').classList.remove('show');setStatus('');renderPreview();$('title').focus()}
+    function clearAll(){$('title').value='';$('artist').value='';$('lyrics').value='';try{sessionStorage.removeItem(STORAGE_KEY)}catch{}setStatus('');renderPreview();$('title').focus()}
 
-    $('find').addEventListener('click',loadLyricsCard);
-    $('openSafari').addEventListener('click',openInSafari);
-    $('hideViewer').addEventListener('click',()=>$('viewer').classList.remove('show'));
+    $('find').addEventListener('click',openLyricsCard);
     $('paste').addEventListener('click',pasteLyrics);
     $('copy').addEventListener('click',copyAll);
     $('clear').addEventListener('click',clearAll);
     $('title').addEventListener('input',renderPreview);
     $('artist').addEventListener('input',renderPreview);
     $('lyrics').addEventListener('input',renderPreview);
-    $('title').addEventListener('keydown',event=>{if(event.key==='Enter')loadLyricsCard()});
-    $('artist').addEventListener('keydown',event=>{if(event.key==='Enter')loadLyricsCard()});
-    $('lyricsFrame').addEventListener('load',()=>setStatus('DuckDuckGo Lyrics view loaded. If it is blank, tap Open in Safari.'));
-    renderPreview();
+    $('title').addEventListener('keydown',event=>{if(event.key==='Enter')openLyricsCard()});
+    $('artist').addEventListener('keydown',event=>{if(event.key==='Enter')openLyricsCard()});
+    window.addEventListener('pageshow',restoreSearch);
+    restoreSearch();renderPreview();
   </script>
 </body>
 </html>
