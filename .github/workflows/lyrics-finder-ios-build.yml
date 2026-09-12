@@ -1,0 +1,42 @@
+name: Lyrics Finder iOS Build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'lyrics-finder/ios/**'
+      - 'lyrics-finder/tests/native-ios.test.mjs'
+      - '.github/workflows/lyrics-finder-ios-build.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'lyrics-finder/ios/**'
+      - 'lyrics-finder/tests/native-ios.test.mjs'
+      - '.github/workflows/lyrics-finder-ios-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: lyrics-finder/ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build iPhone simulator app
+        run: |
+          xcodebuild \
+            -project LyricsFinder.xcodeproj \
+            -scheme LyricsFinder \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
