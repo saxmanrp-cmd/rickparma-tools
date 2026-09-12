@@ -1,0 +1,23 @@
+name: LyricsFinder
+options:
+  bundleIdPrefix: com.rickparma
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  LyricsFinder:
+    type: application
+    platform: iOS
+    sources:
+      - LyricsFinder
+    info:
+      path: LyricsFinder/Info.plist
+      properties:
+        CFBundleDisplayName: Lyrics Finder
+        CFBundleExecutable: $(EXECUTABLE_NAME)
+        UILaunchScreen: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rickparma.lyricsfinder
+        SWIFT_VERSION: 5.0
+        TARGETED_DEVICE_FAMILY: 1
+        SUPPORTS_MACCATALYST: NO
