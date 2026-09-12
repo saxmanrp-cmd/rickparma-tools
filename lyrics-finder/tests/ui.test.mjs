@@ -4,16 +4,18 @@ import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
 
-test('lyrics finder opens a direct Google lyrics search', () => {
-  assert.match(html, /Find Lyrics on Google/);
-  assert.match(html, /https:\/\/www\.google\.com\/search\?q=/);
+test('lyrics finder opens DuckDuckGo lyrics mode', () => {
+  assert.match(html, /Find Lyrics in DuckDuckGo/);
+  assert.match(html, /https:\/\/duckduckgo\.com\/\?/);
+  assert.match(html, /params\.set\('iax','lyrics'\)/);
+  assert.match(html, /params\.set\('ia','web'\)/);
+  assert.match(html, /params\.set\('t','iphone'\)/);
+  assert.match(html, /lyrics to \$\{title\} by \$\{artist\}/);
   assert.match(html, /window\.location\.href/);
-  assert.match(html, /\$\{title\} \$\{artist\} lyrics/);
-  assert.doesNotMatch(html, /id="sourceFrame"/);
-  assert.doesNotMatch(html, /duckduckgo\.com/);
+  assert.doesNotMatch(html, /google\.com\/search/);
 });
 
-test('search context is preserved for returning from Google', () => {
+test('search context is preserved for returning from DuckDuckGo', () => {
   assert.match(html, /sessionStorage\.setItem/);
   assert.match(html, /window\.addEventListener\('pageshow',restoreSearch\)/);
 });
