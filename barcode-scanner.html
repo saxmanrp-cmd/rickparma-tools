@@ -280,6 +280,23 @@ function gradeClass(grade) {
   return 'unknown';
 }
 
+function barcodeVariants(code) {
+  const variants = [code];
+  if (code.length === 12) variants.push('0' + code); // UPC-A -> EAN-13
+  if (code.length === 13 && code.startsWith('0')) variants.push(code.slice(1)); // EAN-13 -> UPC-A
+  if (code.length === 11) variants.push('0' + code); // occasionally misread short
+  return [...new Set(variants)];
+}
+
+async function fetchProduct(code) {
+  const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json`);
+  const data = await res.json();
+  if (data.status === 1 && data.product && Object.keys(data.product).length > 0) {
+    return data.product;
+  }
+  return null;
+}
+
 async function lookupBarcode(code) {
   code = (code || '').trim();
   if (!code) return;
@@ -293,10 +310,14 @@ async function lookupBarcode(code) {
   resultEl.innerHTML = '';
 
   try {
-    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json`);
-    const data = await res.json();
+    const variants = barcodeVariants(code);
+    let p = null;
+    for (const variant of variants) {
+      p = await fetchProduct(variant);
+      if (p) break;
+    }
 
-    if (data.status !== 1 || !data.product) {
+    if (!p) {
       statusEl.textContent = `No product found for ${code}`;
       resultEl.innerHTML = `
         <div class="card">
@@ -308,7 +329,6 @@ async function lookupBarcode(code) {
       return;
     }
 
-    const p = data.product;
     const name = p.product_name || p.generic_name || 'Unnamed product';
     const brand = p.brands || '';
     const image = p.image_front_url || p.image_url || '';
