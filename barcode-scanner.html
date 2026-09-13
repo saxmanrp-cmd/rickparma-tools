@@ -386,7 +386,11 @@ function onScanSuccess(decodedText) {
 function startScanner() {
   html5QrCode.start(
     { facingMode: "environment" },
-    { fps: 10, qrbox: { width: 250, height: 150 } },
+    { fps: 15, qrbox: (viewfinderWidth, viewfinderHeight) => {
+        const width = Math.min(viewfinderWidth * 0.9, 350);
+        const height = Math.min(viewfinderHeight * 0.5, 180);
+        return { width, height };
+      } },
     onScanSuccess,
     () => {} // ignore per-frame scan failures
   ).then(() => {
