@@ -5,6 +5,17 @@
   const SESSION_KEY = 'rick-booking-cloud-session';
   const VERSION_KEY = 'rick-booking-cloud-version';
   const DEFAULT_API = 'https://rick-booking-engine.saxmanrp.workers.dev';
+  const STATUS_RANK = {
+    'Not contacted': 0,
+    'Queued': 10,
+    'Drafted': 20,
+    'Sent': 30,
+    'Follow-up': 40,
+    'Replied': 80,
+    'Pass': 90,
+    'Booked': 100,
+    'Do not contact': 110
+  };
 
   function readState() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
@@ -58,6 +69,42 @@
     return out;
   }
 
+  function statusRank(value) { return STATUS_RANK[String(value || '')] ?? 0; }
+
+  function mergeStates(remoteState = {}, localState = {}) {
+    const merged = mergeObject(remoteState, localState) || {};
+    merged.overrides ||= {};
+    merged.campaigns ||= {};
+
+    // Strong outcomes from the cloud must not be erased by an older browser state.
+    // This is especially important for automatic reply detection.
+    for (const [id, remoteOverride] of Object.entries(remoteState.overrides || {})) {
+      const localOverride = localState.overrides?.[id] || {};
+      const remoteRank = statusRank(remoteOverride?.Status);
+      const localRank = statusRank(localOverride?.Status);
+      const hasCloudReply = !!remoteOverride?.['Last Reply At'];
+      if (remoteRank > localRank || (hasCloudReply && localRank < statusRank('Pass'))) {
+        merged.overrides[id] = { ...(merged.overrides[id] || {}), ...remoteOverride };
+      }
+    }
+
+    // A campaign stopped by a cloud-detected reply stays stopped unless this device has
+    // already moved the lead into a stronger terminal outcome such as Booked or DNC.
+    for (const [id, remoteCampaign] of Object.entries(remoteState.campaigns || {})) {
+      if (!remoteCampaign?.repliedAt) continue;
+      const localStatus = merged.overrides?.[id]?.Status;
+      if (statusRank(localStatus) >= statusRank('Pass')) continue;
+      merged.campaigns[id] = {
+        ...(merged.campaigns[id] || {}),
+        ...remoteCampaign,
+        active: false,
+        paused: false
+      };
+    }
+
+    return merged;
+  }
+
   function meaningful(state) {
     if (!state || typeof state !== 'object') return false;
     const keys = ['overrides', 'roomPrefs', 'contactPrefs', 'campaigns', 'relationships', 'textOk', 'currentVenueDetails'];
@@ -98,7 +145,7 @@
 
     if (!meaningful(remote.state)) merged = local;
     else if (!meaningful(local)) merged = remote.state;
-    else merged = mergeObject(remote.state, local);
+    else merged = mergeStates(remote.state, local);
 
     if (JSON.stringify(merged) !== JSON.stringify(local)) writeState(merged);
 
@@ -112,7 +159,7 @@
     } catch (error) {
       if (error.status !== 409) throw error;
       remote = await api('/api/state');
-      const retryMerged = mergeObject(remote.state || {}, readState());
+      const retryMerged = mergeStates(remote.state || {}, readState());
       writeState(retryMerged);
       const saved = await api('/api/state', {
         method: 'PUT',
@@ -237,7 +284,7 @@
   }
 
   injectStyles();
-  window.BookingCloud = { api, health, login, logout, syncNow, providerStatus, apiBase };
+  window.BookingCloud = { api, health, login, logout, syncNow, providerStatus, apiBase, mergeStates };
 
   const observer = new MutationObserver(() => {
     if (document.querySelector('[data-view="settings"].active') && !document.querySelector('[data-cloud-sync]')) renderCard();
