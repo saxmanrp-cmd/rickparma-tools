@@ -1,3 +1,6 @@
+import { microsoftStatus, sendMicrosoftEmail } from './providers/microsoft.js';
+import { twilioStatus, sendTwilioText } from './providers/twilio.js';
+
 const json = (data, { status = 200, headers = {} } = {}) => new Response(JSON.stringify(data), {
   status,
   headers: { 'content-type': 'application/json; charset=utf-8', ...headers }
@@ -40,6 +43,10 @@ function clampLimit(value, fallback = 50, max = 250) {
   return Math.min(Math.floor(n), max);
 }
 
+function safeError(error) {
+  return String(error?.message || error || 'Server error.').slice(0, 1000);
+}
+
 async function getState(env) {
   const row = await env.DB.prepare('SELECT state_json, version, updated_at FROM app_state WHERE id = ?')
     .bind('rick').first();
@@ -78,15 +85,20 @@ async function putState(request, env) {
   return { ok: true, version: nextVersion, updatedAt: new Date().toISOString() };
 }
 
-async function addEvent(request, env) {
-  const body = await readJson(request);
-  if (!body || !body.eventType) return { error: 'eventType is required.', status: 400 };
+async function addEventData(env, body = {}) {
+  if (!body.eventType) throw new Error('eventType is required.');
   const payload = body.payload == null ? null : JSON.stringify(body.payload);
   await env.DB.prepare(`
     INSERT INTO crm_events (contact_id, event_type, channel, payload_json)
     VALUES (?, ?, ?, ?)
   `).bind(body.contactId || null, String(body.eventType).slice(0, 120), body.channel || null, payload).run();
   return { ok: true };
+}
+
+async function addEvent(request, env) {
+  const body = await readJson(request);
+  if (!body || !body.eventType) return { error: 'eventType is required.', status: 400 };
+  return addEventData(env, body);
 }
 
 async function listEvents(url, env) {
@@ -111,12 +123,9 @@ async function listEvents(url, env) {
   return { events };
 }
 
-async function addMessage(request, env) {
-  const body = await readJson(request);
-  if (!body || !body.direction || !body.channel) {
-    return { error: 'direction and channel are required.', status: 400 };
-  }
-  if (!['outbound', 'inbound'].includes(body.direction)) return { error: 'Invalid direction.', status: 400 };
+async function addMessageData(env, body = {}) {
+  if (!body.direction || !body.channel) throw new Error('direction and channel are required.');
+  if (!['outbound', 'inbound'].includes(body.direction)) throw new Error('Invalid direction.');
   const id = body.id || crypto.randomUUID();
   const metadata = body.metadata == null ? null : JSON.stringify(body.metadata);
   await env.DB.prepare(`
@@ -149,6 +158,18 @@ async function addMessage(request, env) {
     body.receivedAt || (body.direction === 'inbound' ? new Date().toISOString() : null)
   ).run();
   return { ok: true, id };
+}
+
+async function addMessage(request, env) {
+  const body = await readJson(request);
+  if (!body || !body.direction || !body.channel) {
+    return { error: 'direction and channel are required.', status: 400 };
+  }
+  try {
+    return await addMessageData(env, body);
+  } catch (error) {
+    return { error: safeError(error), status: 400 };
+  }
 }
 
 async function listMessages(url, env) {
@@ -184,6 +205,70 @@ async function listMessages(url, env) {
   };
 }
 
+async function sendEmail(request, env) {
+  const body = await readJson(request);
+  if (!body) return { error: 'Invalid JSON body.', status: 400 };
+  if (body.complianceOk !== true) return { error: 'Compliance approval is required.', status: 400 };
+
+  const result = await sendMicrosoftEmail(env, body);
+  const sentAt = new Date().toISOString();
+  const message = await addMessageData(env, {
+    contactId: body.contactId || null,
+    direction: 'outbound',
+    channel: 'email',
+    provider: result.provider,
+    sender: result.sender,
+    recipient: result.recipient,
+    subject: body.subject,
+    body: body.body,
+    status: 'sent',
+    providerMessageId: result.providerMessageId,
+    threadId: result.threadId,
+    metadata: {
+      requestedFrom: result.requestedFrom,
+      internetMessageId: result.internetMessageId || null,
+      campaignId: body.campaignId || null
+    },
+    sentAt
+  });
+  await addEventData(env, {
+    contactId: body.contactId || null,
+    eventType: 'message_sent',
+    channel: 'email',
+    payload: { messageId: message.id, providerMessageId: result.providerMessageId, threadId: result.threadId }
+  });
+  return { ...result, crmMessageId: message.id, sentAt };
+}
+
+async function sendSms(request, env) {
+  const body = await readJson(request);
+  if (!body) return { error: 'Invalid JSON body.', status: 400 };
+  if (body.complianceOk !== true) return { error: 'Compliance approval is required.', status: 400 };
+
+  const result = await sendTwilioText(env, body);
+  const sentAt = new Date().toISOString();
+  const message = await addMessageData(env, {
+    contactId: body.contactId || null,
+    direction: 'outbound',
+    channel: 'sms',
+    provider: result.provider,
+    sender: result.sender,
+    recipient: result.recipient,
+    body: body.body,
+    status: result.status || 'queued',
+    providerMessageId: result.providerMessageId,
+    metadata: { campaignId: body.campaignId || null },
+    sentAt
+  });
+  await addEventData(env, {
+    contactId: body.contactId || null,
+    eventType: 'message_sent',
+    channel: 'sms',
+    payload: { messageId: message.id, providerMessageId: result.providerMessageId }
+  });
+  return { ...result, crmMessageId: message.id, sentAt };
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -192,13 +277,18 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
     if (url.pathname === '/api/health' && request.method === 'GET') {
-      return json({ ok: true, service: 'rick-booking-engine', version: '0.1.0', time: new Date().toISOString() }, { headers: cors });
+      return json({ ok: true, service: 'rick-booking-engine', version: '0.2.0', time: new Date().toISOString() }, { headers: cors });
     }
 
     if (!url.pathname.startsWith('/api/')) return json({ error: 'Not found.' }, { status: 404, headers: cors });
 
     const auth = authorized(request, env);
     if (!auth.ok) return json({ error: auth.error }, { status: auth.status, headers: cors });
+
+    if (url.pathname === '/api/providers' && request.method === 'GET') {
+      return json({ email: microsoftStatus(env), sms: twilioStatus(env) }, { headers: cors });
+    }
+
     if (!env.DB) return json({ error: 'D1 binding DB is not configured.' }, { status: 503, headers: cors });
 
     try {
@@ -224,10 +314,18 @@ export default {
       if (url.pathname === '/api/messages' && request.method === 'GET') {
         return json(await listMessages(url, env), { headers: cors });
       }
+      if (url.pathname === '/api/send/email' && request.method === 'POST') {
+        const result = await sendEmail(request, env);
+        return json(result, { status: result.status || 200, headers: cors });
+      }
+      if (url.pathname === '/api/send/sms' && request.method === 'POST') {
+        const result = await sendSms(request, env);
+        return json(result, { status: result.status || 200, headers: cors });
+      }
       return json({ error: 'Not found.' }, { status: 404, headers: cors });
     } catch (error) {
       console.error(error);
-      return json({ error: 'Server error.' }, { status: 500, headers: cors });
+      return json({ error: safeError(error) }, { status: 502, headers: cors });
     }
   }
 };
