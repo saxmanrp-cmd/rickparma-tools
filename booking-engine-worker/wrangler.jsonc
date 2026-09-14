@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "rick-booking-engine",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-14",
+  "observability": { "enabled": true },
+  "vars": {
+    "ALLOWED_ORIGINS": "https://booking-engine-v1.rickparma-tools.pages.dev,https://rickparma-tools.pages.dev"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "rick-booking-crm",
+      "database_id": "REPLACE_AFTER_CREATING_D1_DATABASE"
+    }
+  ]
+}
