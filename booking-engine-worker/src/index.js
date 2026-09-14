@@ -1,5 +1,6 @@
 import { microsoftStatus, sendMicrosoftEmail } from './providers/microsoft.js';
 import { twilioStatus, sendTwilioText } from './providers/twilio.js';
+import { authStatus, bearerToken, createSession, verifySession } from './auth.js';
 
 const json = (data, { status = 200, headers = {} } = {}) => new Response(JSON.stringify(data), {
   status,
@@ -23,13 +24,17 @@ function corsHeaders(request, env) {
   };
 }
 
-function authorized(request, env) {
-  const expected = String(env.BOOKING_API_TOKEN || '').trim();
-  if (!expected) return { ok: false, status: 503, error: 'BOOKING_API_TOKEN is not configured.' };
-  const auth = request.headers.get('authorization') || '';
-  const supplied = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
-  if (!supplied || supplied !== expected) return { ok: false, status: 401, error: 'Unauthorized.' };
-  return { ok: true };
+async function authorized(request, env) {
+  const supplied = bearerToken(request);
+  if (!supplied) return { ok: false, status: 401, error: 'Unauthorized.' };
+
+  // Server/CLI fallback. Never embed BOOKING_API_TOKEN in the browser app.
+  const adminToken = String(env.BOOKING_API_TOKEN || '').trim();
+  if (adminToken && supplied === adminToken) return { ok: true, subject: 'admin-token' };
+
+  const session = await verifySession(env, supplied);
+  if (session) return { ok: true, subject: session.sub, session };
+  return { ok: false, status: 401, error: 'Session expired or invalid.' };
 }
 
 async function readJson(request) {
@@ -277,13 +282,32 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
     if (url.pathname === '/api/health' && request.method === 'GET') {
-      return json({ ok: true, service: 'rick-booking-engine', version: '0.2.0', time: new Date().toISOString() }, { headers: cors });
+      return json({ ok: true, service: 'rick-booking-engine', version: '0.3.0', time: new Date().toISOString() }, { headers: cors });
+    }
+
+    if (url.pathname === '/api/auth/config' && request.method === 'GET') {
+      return json({ auth: authStatus(env) }, { headers: cors });
+    }
+
+    if (url.pathname === '/api/auth/login' && request.method === 'POST') {
+      try {
+        const body = await readJson(request);
+        const session = await createSession(env, body?.password || '');
+        if (!session) return json({ error: 'Incorrect password.' }, { status: 401, headers: cors });
+        return json({ ok: true, ...session }, { headers: cors });
+      } catch (error) {
+        return json({ error: safeError(error) }, { status: 503, headers: cors });
+      }
     }
 
     if (!url.pathname.startsWith('/api/')) return json({ error: 'Not found.' }, { status: 404, headers: cors });
 
-    const auth = authorized(request, env);
+    const auth = await authorized(request, env);
     if (!auth.ok) return json({ error: auth.error }, { status: auth.status, headers: cors });
+
+    if (url.pathname === '/api/auth/status' && request.method === 'GET') {
+      return json({ ok: true, subject: auth.subject, expiresAt: auth.session?.exp ? new Date(auth.session.exp * 1000).toISOString() : null }, { headers: cors });
+    }
 
     if (url.pathname === '/api/providers' && request.method === 'GET') {
       return json({ email: microsoftStatus(env), sms: twilioStatus(env) }, { headers: cors });
