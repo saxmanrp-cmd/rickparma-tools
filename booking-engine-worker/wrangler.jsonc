@@ -1,11 +1,16 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "rick-booking-engine",
-  "main": "src/index.js",
+  "main": "src/entry.js",
   "compatibility_date": "2026-09-14",
   "observability": { "enabled": true },
+  "triggers": {
+    "crons": ["*/10 * * * *"]
+  },
   "vars": {
-    "ALLOWED_ORIGINS": "https://booking-engine-v1.rickparma-tools.pages.dev,https://rickparma-tools.pages.dev"
+    "ALLOWED_ORIGINS": "https://booking-engine-v1.rickparma-tools.pages.dev,https://rickparma-tools.pages.dev",
+    "MS_SENDER_USER": "saxman@rickparma.com",
+    "MS_BOOKING_ALIAS": "booking@rickparma.com"
   },
   "d1_databases": [
     {
