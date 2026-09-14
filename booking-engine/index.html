@@ -21,9 +21,9 @@
       <section class="view active" data-view="dashboard">
         <div class="hero-card">
           <div>
-            <div class="eyebrow">SMART BOOKING QUEUE</div>
+            <div class="eyebrow">ROOM-FIRST BOOKING</div>
             <h2>Find me gigs.</h2>
-            <p>Ranks the best Vegas opportunities, pulls in due follow-ups, and keeps risky contacts behind approval.</p>
+            <p>Prioritizes solo-friendly rooms and stages while keeping useful buyers active for their other venues.</p>
           </div>
           <button class="primary giant" id="findGigsButton">Find Me Gigs</button>
         </div>
@@ -32,15 +32,15 @@
 
         <div class="section-heading">
           <h3>Start Here</h3>
-          <span>Big targets. No clutter.</span>
+          <span>Sort the rooms, not the buyers.</span>
         </div>
         <div class="shortcut-grid">
-          <button class="shortcut" data-shortcut="best"><strong>🔥 Best Leads</strong><span>Highest score first</span></button>
+          <button class="shortcut" data-shortcut="solo"><strong>🎤 Solo-Friendly</strong><span>Best fit for one-man stages and rooms</span></button>
           <button class="shortcut" data-shortcut="working"><strong>🎷 Working Rooms</strong><span>Recurring local opportunities</span></button>
-          <button class="shortcut" data-shortcut="strategic"><strong>🏨 Casino Buyers</strong><span>Corporate & property buyers</span></button>
-          <button class="shortcut" data-shortcut="agency"><strong>🤝 Agencies</strong><span>Placement & promoter relationships</span></button>
+          <button class="shortcut" data-go-view="buyers"><strong>♬ Rooms & Stages</strong><span>Target, maybe, open, or skip by room</span></button>
+          <button class="shortcut" data-shortcut="agency"><strong>🤝 Agencies</strong><span>Keep multi-venue relationships alive</span></button>
           <button class="shortcut" data-shortcut="followups"><strong>⏰ Follow-Ups</strong><span>Nothing falls through the cracks</span></button>
-          <button class="shortcut" data-shortcut="research"><strong>🔎 Research</strong><span>Missing or stale buyer info</span></button>
+          <button class="shortcut" data-shortcut="skipped"><strong>🚫 Skipped Rooms</strong><span>Country-first or personal no-go rooms</span></button>
         </div>
 
         <div class="section-heading">
@@ -53,27 +53,28 @@
       <section class="view" data-view="leads">
         <div class="page-title">
           <div>
-            <div class="eyebrow">105 RESEARCHED CONTACTS</div>
+            <div class="eyebrow">ROOMS + USEFUL BUYERS</div>
             <h2>Leads</h2>
           </div>
         </div>
 
         <div class="search-wrap">
-          <input id="leadSearch" type="search" placeholder="Search venue, buyer, casino…" autocomplete="off" />
+          <input id="leadSearch" type="search" placeholder="Search venue, room, buyer, casino…" autocomplete="off" />
         </div>
         <div class="filter-row" id="filterRow">
           <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="solo">Solo-Friendly</button>
           <button class="chip" data-filter="A">Priority A</button>
           <button class="chip" data-filter="Working Room">Working Rooms</button>
           <button class="chip" data-filter="Strategic Buyer">Casino Buyers</button>
           <button class="chip" data-filter="Agency / Promoter">Agencies</button>
-          <button class="chip" data-filter="safe">Auto-Safe</button>
           <button class="chip" data-filter="followups">Follow-Ups</button>
+          <button class="chip" data-filter="skipped">Skipped Rooms</button>
         </div>
         <div class="sort-row">
           <span id="resultCount"></span>
           <select id="leadSort" aria-label="Sort leads">
-            <option value="score">Best match</option>
+            <option value="score">Best Rick fit</option>
             <option value="priority">Priority</option>
             <option value="entity">A–Z</option>
             <option value="followup">Follow-up date</option>
@@ -90,7 +91,7 @@
           </div>
           <button class="secondary" id="rebuildQueueButton">Rebuild</button>
         </div>
-        <div class="queue-note">Due follow-ups first, then verified targeted email leads, then high-value contacts needing your approval.</div>
+        <div class="queue-note">Solo-friendly rooms and due follow-ups come first. Skipped rooms are removed, but their buyers stay available for other venues.</div>
         <div id="queueSummary" class="metric-grid compact"></div>
         <div id="queueList" class="stack"></div>
       </section>
@@ -98,12 +99,13 @@
       <section class="view" data-view="buyers">
         <div class="page-title">
           <div>
-            <div class="eyebrow">WHO CONTROLS WHAT</div>
-            <h2>Buyer Map</h2>
+            <div class="eyebrow">ROOM BY ROOM</div>
+            <h2>Rooms & Stages</h2>
           </div>
         </div>
+        <div class="queue-note">Choose the room fit here. A room can be skipped without blacklisting the buyer who may control other useful rooms.</div>
         <div class="search-wrap">
-          <input id="buyerSearch" type="search" placeholder="Search MGM, Caesars, ARIA, Bellagio…" autocomplete="off" />
+          <input id="buyerSearch" type="search" placeholder="Search room, casino, lounge, bar…" autocomplete="off" />
         </div>
         <div id="buyerMap" class="stack"></div>
       </section>
@@ -134,7 +136,7 @@
 
         <div class="settings-card">
           <h3>CRM Data</h3>
-          <p>Your outreach changes are stored in this browser. Export a backup anytime.</p>
+          <p>Your outreach changes and room preferences are stored in this browser. Export a backup anytime.</p>
           <div class="button-row">
             <button class="secondary" id="exportButton">Export CRM</button>
             <label class="secondary file-label">Import CRM<input id="importInput" type="file" accept="application/json" /></label>
@@ -142,8 +144,8 @@
         </div>
 
         <div class="settings-card warning-card">
-          <h3>Automation Guardrail</h3>
-          <p><strong>YES – TARGETED</strong> can be queued automatically. <strong>MANUAL APPROVAL</strong> always waits for you. <strong>NO</strong> never enters an outreach queue.</p>
+          <h3>Room-Level Rule</h3>
+          <p><strong>Skipping a room does not skip the buyer.</strong> Maxan, Vic’s, and obvious country-first rooms are seeded as room-level skips, while the people connected to them can still surface for other properties.</p>
         </div>
       </section>
     </main>
@@ -152,7 +154,7 @@
       <button class="nav-button active" data-nav="dashboard"><span>⌂</span><small>Home</small></button>
       <button class="nav-button" data-nav="leads"><span>◎</span><small>Leads</small></button>
       <button class="nav-button nav-primary" data-nav="queue"><span>⚡</span><small>Queue</small></button>
-      <button class="nav-button" data-nav="buyers"><span>⌘</span><small>Buyers</small></button>
+      <button class="nav-button" data-nav="buyers"><span>♬</span><small>Rooms</small></button>
       <button class="nav-button" data-nav="settings"><span>⚙</span><small>Settings</small></button>
     </nav>
   </div>
