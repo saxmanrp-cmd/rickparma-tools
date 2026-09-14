@@ -35,7 +35,12 @@
     return { ...base, ...(readState().overrides?.[id] || {}) };
   }
 
+  function campaignContext(id) {
+    return readState().campaignContexts?.[id] || null;
+  }
+
   function typeFor(c) {
+    if (campaignContext(c?.['Contact ID'])?.grouped) return 'buyer';
     if (c?.Lane === 'Agency / Promoter') return 'agent';
     if (c?.Lane === 'Strategic Buyer') return 'buyer';
     return 'room';
@@ -97,6 +102,14 @@
     return `Live music for ${c.Entity} — Rick Parma`;
   }
 
+  function groupedBuyerLine(c) {
+    const context = campaignContext(c['Contact ID']);
+    const rooms = context?.allEntities?.filter(Boolean) || [];
+    if (rooms.length < 2) return '';
+    const names = rooms.slice(0, 4).join(', ');
+    return `\n\nI noticed your contact route is tied to more than one room (${names}${rooms.length > 4 ? ', and others' : ''}), so I wanted to reach out once rather than send separate pitches for each venue.`;
+  }
+
   function introEmail(c, campaign) {
     const id = c['Contact ID'];
     const type = campaign?.type || typeFor(c);
@@ -108,7 +121,7 @@
     }
 
     if (type === 'buyer') {
-      return `${hello(c)}\n\nI’m Rick Parma, a Las Vegas-based singer and saxophonist. My sweet spot is polished solo singer/sax and flexible lounge entertainment — R&B, Motown, soul, pop, Top 40 and neo-soul — and I can scale through full band when the room calls for it.\n\nI’m reaching out because I’m interested in building the right relationship across the rooms you program, rather than pitching one property and disappearing. I’ve performed extensively in Las Vegas casino, lounge and corporate environments, including ARIA and Westgate.\n\nIf there are lounges, casino bars, restaurants or special-event rooms in your portfolio that use versatile local entertainment, I’d love to be considered.\n\n${links}${representationLine()}\n\nThank you,\nRick Parma`;
+      return `${hello(c)}\n\nI’m Rick Parma, a Las Vegas-based singer and saxophonist. My sweet spot is polished solo singer/sax and flexible lounge entertainment — R&B, Motown, soul, pop, Top 40 and neo-soul — and I can scale through full band when the room calls for it.\n\nI’m reaching out because I’m interested in building the right relationship across the rooms you program, rather than pitching one property and disappearing. I’ve performed extensively in Las Vegas casino, lounge and corporate environments, including ARIA and Westgate.${groupedBuyerLine(c)}\n\nIf there are lounges, casino bars, restaurants or special-event rooms in your portfolio that use versatile local entertainment, I’d love to be considered.\n\n${links}${representationLine()}\n\nThank you,\nRick Parma`;
     }
 
     if (type === 'agent') {
@@ -164,7 +177,9 @@
   function draftFor(id) {
     const c = contactById(id);
     if (!c) return null;
-    const campaign = campaignFor(id) || { type: typeFor(c), step: 0 };
+    const smartType = typeFor(c);
+    const saved = campaignFor(id);
+    const campaign = saved ? { ...saved, type: smartType } : { type: smartType, step: 0 };
     const step = stepFor(c, campaign);
     const channel = recommendedChannel(c, campaign);
     const body = channel === 'Text'
