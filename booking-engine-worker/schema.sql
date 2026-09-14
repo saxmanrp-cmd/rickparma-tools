@@ -42,5 +42,16 @@ CREATE INDEX IF NOT EXISTS idx_messages_contact_created
 CREATE INDEX IF NOT EXISTS idx_messages_thread
   ON messages(thread_id);
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_provider_message_unique
+  ON messages(provider, provider_message_id)
+  WHERE provider_message_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS sync_state (
+  provider TEXT PRIMARY KEY,
+  cursor TEXT,
+  metadata_json TEXT,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 INSERT OR IGNORE INTO app_state (id, state_json, version)
 VALUES ('rick', '{}', 1);
