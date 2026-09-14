@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1020" />
+  <title>Rick Parma Booking Engine</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">RICK PARMA</div>
+        <h1>Booking Engine</h1>
+      </div>
+      <button class="icon-button" id="refreshButton" title="Refresh view" aria-label="Refresh view">↻</button>
+    </header>
+
+    <main>
+      <section class="view active" data-view="dashboard">
+        <div class="hero-card">
+          <div>
+            <div class="eyebrow">SMART BOOKING QUEUE</div>
+            <h2>Find me gigs.</h2>
+            <p>Ranks the best Vegas opportunities, pulls in due follow-ups, and keeps risky contacts behind approval.</p>
+          </div>
+          <button class="primary giant" id="findGigsButton">Find Me Gigs</button>
+        </div>
+
+        <div class="metric-grid" id="metricGrid"></div>
+
+        <div class="section-heading">
+          <h3>Start Here</h3>
+          <span>Big targets. No clutter.</span>
+        </div>
+        <div class="shortcut-grid">
+          <button class="shortcut" data-shortcut="best"><strong>🔥 Best Leads</strong><span>Highest score first</span></button>
+          <button class="shortcut" data-shortcut="working"><strong>🎷 Working Rooms</strong><span>Recurring local opportunities</span></button>
+          <button class="shortcut" data-shortcut="strategic"><strong>🏨 Casino Buyers</strong><span>Corporate & property buyers</span></button>
+          <button class="shortcut" data-shortcut="agency"><strong>🤝 Agencies</strong><span>Placement & promoter relationships</span></button>
+          <button class="shortcut" data-shortcut="followups"><strong>⏰ Follow-Ups</strong><span>Nothing falls through the cracks</span></button>
+          <button class="shortcut" data-shortcut="research"><strong>🔎 Research</strong><span>Missing or stale buyer info</span></button>
+        </div>
+
+        <div class="section-heading">
+          <h3>Top Opportunities</h3>
+          <button class="text-button" data-go-view="leads">See all</button>
+        </div>
+        <div id="topLeads" class="stack"></div>
+      </section>
+
+      <section class="view" data-view="leads">
+        <div class="page-title">
+          <div>
+            <div class="eyebrow">105 RESEARCHED CONTACTS</div>
+            <h2>Leads</h2>
+          </div>
+        </div>
+
+        <div class="search-wrap">
+          <input id="leadSearch" type="search" placeholder="Search venue, buyer, casino…" autocomplete="off" />
+        </div>
+        <div class="filter-row" id="filterRow">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="A">Priority A</button>
+          <button class="chip" data-filter="Working Room">Working Rooms</button>
+          <button class="chip" data-filter="Strategic Buyer">Casino Buyers</button>
+          <button class="chip" data-filter="Agency / Promoter">Agencies</button>
+          <button class="chip" data-filter="safe">Auto-Safe</button>
+          <button class="chip" data-filter="followups">Follow-Ups</button>
+        </div>
+        <div class="sort-row">
+          <span id="resultCount"></span>
+          <select id="leadSort" aria-label="Sort leads">
+            <option value="score">Best match</option>
+            <option value="priority">Priority</option>
+            <option value="entity">A–Z</option>
+            <option value="followup">Follow-up date</option>
+          </select>
+        </div>
+        <div id="leadList" class="stack"></div>
+      </section>
+
+      <section class="view" data-view="queue">
+        <div class="page-title inline-title">
+          <div>
+            <div class="eyebrow">TODAY'S WORK</div>
+            <h2>Campaign Queue</h2>
+          </div>
+          <button class="secondary" id="rebuildQueueButton">Rebuild</button>
+        </div>
+        <div class="queue-note">Due follow-ups first, then verified targeted email leads, then high-value contacts needing your approval.</div>
+        <div id="queueSummary" class="metric-grid compact"></div>
+        <div id="queueList" class="stack"></div>
+      </section>
+
+      <section class="view" data-view="buyers">
+        <div class="page-title">
+          <div>
+            <div class="eyebrow">WHO CONTROLS WHAT</div>
+            <h2>Buyer Map</h2>
+          </div>
+        </div>
+        <div class="search-wrap">
+          <input id="buyerSearch" type="search" placeholder="Search MGM, Caesars, ARIA, Bellagio…" autocomplete="off" />
+        </div>
+        <div id="buyerMap" class="stack"></div>
+      </section>
+
+      <section class="view" data-view="settings">
+        <div class="page-title">
+          <div>
+            <div class="eyebrow">CAMPAIGN BASICS</div>
+            <h2>Settings</h2>
+          </div>
+        </div>
+        <div class="settings-card">
+          <label>Website
+            <input id="websiteInput" type="url" placeholder="https://RickParma.com" />
+          </label>
+          <label>EPK / Promo Link
+            <input id="epkInput" type="url" placeholder="Paste your EPK or promo link" />
+          </label>
+          <label>Representation line
+            <input id="representationInput" type="text" />
+          </label>
+          <label class="toggle-line">
+            <input id="representationToggle" type="checkbox" />
+            <span>Include representation line in new pitches</span>
+          </label>
+          <button class="primary" id="saveSettingsButton">Save Settings</button>
+        </div>
+
+        <div class="settings-card">
+          <h3>CRM Data</h3>
+          <p>Your outreach changes are stored in this browser. Export a backup anytime.</p>
+          <div class="button-row">
+            <button class="secondary" id="exportButton">Export CRM</button>
+            <label class="secondary file-label">Import CRM<input id="importInput" type="file" accept="application/json" /></label>
+          </div>
+        </div>
+
+        <div class="settings-card warning-card">
+          <h3>Automation Guardrail</h3>
+          <p><strong>YES – TARGETED</strong> can be queued automatically. <strong>MANUAL APPROVAL</strong> always waits for you. <strong>NO</strong> never enters an outreach queue.</p>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Main navigation">
+      <button class="nav-button active" data-nav="dashboard"><span>⌂</span><small>Home</small></button>
+      <button class="nav-button" data-nav="leads"><span>◎</span><small>Leads</small></button>
+      <button class="nav-button nav-primary" data-nav="queue"><span>⚡</span><small>Queue</small></button>
+      <button class="nav-button" data-nav="buyers"><span>⌘</span><small>Buyers</small></button>
+      <button class="nav-button" data-nav="settings"><span>⚙</span><small>Settings</small></button>
+    </nav>
+  </div>
+
+  <div class="modal-backdrop" id="detailModal" aria-hidden="true">
+    <div class="modal-card detail-modal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+      <div class="modal-top">
+        <div>
+          <div class="eyebrow" id="detailEyebrow"></div>
+          <h2 id="detailTitle"></h2>
+        </div>
+        <button class="icon-button" data-close-modal="detailModal" aria-label="Close">×</button>
+      </div>
+      <div id="detailContent"></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="draftModal" aria-hidden="true">
+    <div class="modal-card draft-modal" role="dialog" aria-modal="true" aria-labelledby="draftTitle">
+      <div class="modal-top">
+        <div>
+          <div class="eyebrow">PERSONALIZED OUTREACH</div>
+          <h2 id="draftTitle">Campaign Draft</h2>
+        </div>
+        <button class="icon-button" data-close-modal="draftModal" aria-label="Close">×</button>
+      </div>
+      <label class="draft-field">Subject
+        <input id="draftSubject" type="text" />
+      </label>
+      <label class="draft-field">Message / Call Script
+        <textarea id="draftBody" rows="15"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button class="secondary" id="copyDraftButton">Copy</button>
+        <button class="secondary" id="emailDraftButton">Open Email</button>
+        <button class="primary" id="markSentButton">Mark Sent</button>
+      </div>
+      <div class="fine-print" id="draftGuardrail"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="./data.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
