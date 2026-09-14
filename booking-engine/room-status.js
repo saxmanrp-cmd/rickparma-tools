@@ -174,4 +174,9 @@
   observer.observe(document.documentElement, { subtree: true, childList: true });
   window.addEventListener('load', decorateRooms);
   setTimeout(decorateRooms, 0);
+
+  const campaignScript = document.createElement('script');
+  campaignScript.src = './campaign-engine.js';
+  campaignScript.defer = true;
+  document.body.appendChild(campaignScript);
 })();
