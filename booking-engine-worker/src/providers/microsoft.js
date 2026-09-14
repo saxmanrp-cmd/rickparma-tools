@@ -11,7 +11,8 @@ export function microsoftStatus(env) {
     provider: 'microsoft-graph',
     configured: absent.length === 0,
     missing: absent,
-    senderUser: env.MS_SENDER_USER || null
+    senderUser: env.MS_SENDER_USER || null,
+    bookingAlias: env.MS_BOOKING_ALIAS || null
   };
 }
 
@@ -49,6 +50,16 @@ function sanitizeText(value, max = 10000) {
   return String(value || '').slice(0, max);
 }
 
+async function graphJson(url, init, label) {
+  const response = await fetch(url, init);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail = data?.error?.message || `HTTP ${response.status}`;
+    throw new Error(`${label}: ${detail}`);
+  }
+  return data;
+}
+
 export async function sendMicrosoftEmail(env, input = {}) {
   if (input.approved !== true) throw new Error('Explicit approval is required before sending.');
   const to = normalizeAddress(input.to);
@@ -63,37 +74,47 @@ export async function sendMicrosoftEmail(env, input = {}) {
     .filter(Boolean);
   if (fromRequested && !allowedSenders.includes(fromRequested)) throw new Error('Requested From address is not allowed.');
 
-  // Graph's sendMail endpoint sends as the mailbox in the URL. If Microsoft/GoDaddy
-  // later supports the alias as a true Graph sender in this tenant, MS_SENDER_USER can
-  // be changed accordingly. Until then, the app can still display booking@ as the
-  // intended logistics identity while Graph uses the licensed mailbox.
+  // GoDaddy/Microsoft 365 may still rewrite an alias to the licensed mailbox even when
+  // alias sending is enabled. We preserve the requested identity in our CRM, but Graph
+  // sends through the mailbox configured in MS_SENDER_USER unless/until the tenant
+  // permits the alias as a true Graph sender.
   const mailbox = env.MS_SENDER_USER;
   const token = await accessToken(env);
-  const payload = {
-    message: {
-      subject,
-      body: { contentType: 'Text', content },
-      toRecipients: [{ emailAddress: { address: to } }],
-      internetMessageHeaders: [
-        { name: 'X-Rick-Booking-Contact', value: sanitizeText(input.contactId, 180) || 'unknown' },
-        { name: 'X-Rick-Booking-Campaign', value: sanitizeText(input.campaignId, 180) || 'unknown' }
-      ]
-    },
-    saveToSentItems: true
+  const headers = {
+    authorization: `Bearer ${token}`,
+    'content-type': 'application/json'
   };
 
-  const response = await fetch(`${GRAPH_ROOT}/users/${encodeURIComponent(mailbox)}/sendMail`, {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${token}`,
-      'content-type': 'application/json'
+  // Create a draft first so Graph gives us both a message id and conversation id.
+  // Those identifiers are what the reply watcher will use later to connect inbound
+  // responses to the right CRM campaign.
+  const draft = await graphJson(
+    `${GRAPH_ROOT}/users/${encodeURIComponent(mailbox)}/messages`,
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        subject,
+        body: { contentType: 'Text', content },
+        toRecipients: [{ emailAddress: { address: to } }],
+        internetMessageHeaders: [
+          { name: 'X-Rick-Booking-Contact', value: sanitizeText(input.contactId, 180) || 'unknown' },
+          { name: 'X-Rick-Booking-Campaign', value: sanitizeText(input.campaignId, 180) || 'unknown' }
+        ]
+      })
     },
-    body: JSON.stringify(payload)
-  });
+    'Microsoft draft creation failed'
+  );
 
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    const detail = data?.error?.message || `HTTP ${response.status}`;
+  if (!draft.id) throw new Error('Microsoft draft did not return a message id.');
+
+  const sendResponse = await fetch(`${GRAPH_ROOT}/users/${encodeURIComponent(mailbox)}/messages/${encodeURIComponent(draft.id)}/send`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}` }
+  });
+  if (!sendResponse.ok) {
+    const data = await sendResponse.json().catch(() => ({}));
+    const detail = data?.error?.message || `HTTP ${sendResponse.status}`;
     throw new Error(`Microsoft send failed: ${detail}`);
   }
 
@@ -103,7 +124,8 @@ export async function sendMicrosoftEmail(env, input = {}) {
     sender: mailbox,
     requestedFrom: fromRequested || mailbox,
     recipient: to,
-    providerMessageId: null,
-    threadId: null
+    providerMessageId: draft.id,
+    threadId: draft.conversationId || null,
+    internetMessageId: draft.internetMessageId || null
   };
 }
