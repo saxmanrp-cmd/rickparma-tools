@@ -54,6 +54,13 @@
     return `<div class="win-row"><span>✓</span><div><strong>${escapeHtml(c.Entity)}</strong><small>${escapeHtml(c.Contact || c.Lane || '')}</small></div></div>`;
   }
 
+  function renderSignature(replies, wins) {
+    return JSON.stringify({
+      replies: replies.map(c => [c['Contact ID'], c.Status, c['CRM Note'] || '']),
+      wins: wins.map(c => [c['Contact ID'], c.Status])
+    });
+  }
+
   function render() {
     const view = document.querySelector('[data-view="campaigns"]');
     if (!view) return;
@@ -68,10 +75,13 @@
     const all = contacts();
     const replies = all.filter(c => c.Status === 'Replied');
     const wins = all.filter(c => c.Status === 'Booked').slice(0, 8);
+    const signature = renderSignature(replies, wins);
+    if (host.dataset.signature === signature) return;
 
     host.innerHTML = `
       ${replies.length ? `<section class="reply-section"><div class="reply-heading"><div><span class="eyebrow">NEEDS YOU</span><h3>Hot Replies</h3></div><span>${replies.length}</span></div><div class="reply-grid">${replies.map(replyCard).join('')}</div></section>` : ''}
       ${wins.length ? `<section class="wins-section"><div class="reply-heading"><div><span class="eyebrow">WINS</span><h3>Booked</h3></div><span>${wins.length}</span></div><div class="wins-list">${wins.map(winCard).join('')}</div></section>` : ''}`;
+    host.dataset.signature = signature;
 
     host.querySelectorAll('[data-reply-open]').forEach(btn => btn.onclick = () => {
       const c = all.find(x => x['Contact ID'] === btn.dataset.replyOpen);
