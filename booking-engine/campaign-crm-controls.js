@@ -67,7 +67,7 @@
     const state = readState();
     state.campaigns ||= {};
     const existing = state.campaigns[c['Contact ID']];
-    if (existing?.active) return toast('Campaign is already active');
+    if (existing?.active && !existing?.paused) return toast('Campaign is already active');
     state.campaigns[c['Contact ID']] = {
       active: true,
       paused: false,
@@ -87,7 +87,7 @@
     const state = readState();
     const campaign = state.campaigns?.[c['Contact ID']];
     if (!campaign) return;
-    campaign.active = campaign.active === false ? true : campaign.active;
+    if (campaign.active === false) campaign.active = true;
     campaign.paused = !campaign.paused;
     writeState(state);
     toast(campaign.paused ? 'Campaign paused' : 'Campaign resumed');
@@ -121,6 +121,7 @@
     state.relationships[c['Contact ID']] = relationship;
     writeState(state);
     toast('Relationship saved');
+    refreshDetail();
   }
 
   function saveTextOk(c, enabled) {
@@ -129,6 +130,7 @@
     state.textOk[c['Contact ID']] = !!enabled;
     writeState(state);
     toast(enabled ? 'Texting marked OK' : 'Texting disabled');
+    refreshDetail();
   }
 
   function historyMarkup(c) {
@@ -143,8 +145,19 @@
       </div>`).join('');
   }
 
-  function escapeHtml(v) {
-    return String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+  function detailSignature(c, state, campaign, relationship, textOk, blocked, status) {
+    return JSON.stringify({
+      id: c['Contact ID'],
+      relationship,
+      textOk,
+      blocked,
+      status,
+      active: !!campaign?.active,
+      paused: !!campaign?.paused,
+      step: campaign?.step ?? null,
+      completed: campaign?.completed?.length || 0,
+      mergedStatus: state.overrides?.[c['Contact ID']]?.Status || c.Status || ''
+    });
   }
 
   function decorateDetail() {
@@ -154,7 +167,6 @@
     const c = currentDetailContact();
     if (!c) return;
 
-    host.querySelector('[data-campaign-crm-controls]')?.remove();
     const state = readState();
     const campaign = state.campaigns?.[c['Contact ID']];
     const relationship = state.relationships?.[c['Contact ID']] || 'Cold';
@@ -165,11 +177,17 @@
       : campaign.active ? 'Active'
       : 'Stopped'
       : 'Not started';
-    const buttonLabel = !campaign ? 'Start Campaign' : campaign.active && !campaign.paused ? 'Pause Campaign' : campaign.paused ? 'Resume Campaign' : 'Restart Campaign';
+    const signature = detailSignature(c, state, campaign, relationship, textOk, blocked, status);
+    const existing = host.querySelector('[data-campaign-crm-controls]');
+    if (existing?.dataset.contactId === c['Contact ID'] && existing.dataset.signature === signature) return;
+    existing?.remove();
 
+    const buttonLabel = !campaign ? 'Start Campaign' : campaign.active && !campaign.paused ? 'Pause Campaign' : campaign.paused ? 'Resume Campaign' : 'Restart Campaign';
     const section = document.createElement('div');
     section.className = 'detail-section campaign-detail-section';
     section.dataset.campaignCrmControls = 'true';
+    section.dataset.contactId = c['Contact ID'];
+    section.dataset.signature = signature;
     section.innerHTML = `
       <h3>Campaign & Relationship</h3>
       <div class="campaign-detail-grid">
@@ -213,25 +231,31 @@
 
   function decorateCampaignCards() {
     document.querySelectorAll('[data-view="campaigns"] .campaign-card').forEach(card => {
-      if (card.querySelector('[data-addon-pause]')) return;
       const id = card.dataset.campaignId;
       if (!id) return;
       const c = window.BOOKING_DATA?.contacts?.find(x => x['Contact ID'] === id);
       if (!c) return;
       const campaign = readState().campaigns?.[id];
+      if (!campaign) return;
       const actions = card.querySelector('.campaign-actions');
-      if (!actions || !campaign) return;
-      const btn = document.createElement('button');
-      btn.className = 'secondary';
-      btn.dataset.addonPause = id;
-      btn.textContent = campaign.paused ? 'Resume' : 'Pause';
-      btn.addEventListener('click', () => togglePause(c));
-      actions.appendChild(btn);
-      if (campaign.paused) {
-        card.classList.add('campaign-paused');
-        card.querySelectorAll('[data-action-id],[data-done-id]').forEach(el => el.disabled = true);
+      if (!actions) return;
+      let btn = card.querySelector('[data-addon-pause]');
+      if (!btn) {
+        btn = document.createElement('button');
+        btn.className = 'secondary';
+        btn.dataset.addonPause = id;
+        btn.addEventListener('click', () => togglePause(c));
+        actions.appendChild(btn);
       }
+      const paused = !!campaign.paused;
+      if (btn.textContent !== (paused ? 'Resume' : 'Pause')) btn.textContent = paused ? 'Resume' : 'Pause';
+      card.classList.toggle('campaign-paused', paused);
+      card.querySelectorAll('[data-action-id],[data-done-id]').forEach(el => { el.disabled = paused; });
     });
+  }
+
+  function escapeHtml(v) {
+    return String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
   }
 
   function injectStyles() {
