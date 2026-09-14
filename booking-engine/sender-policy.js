@@ -119,6 +119,15 @@
     setTimeout(() => toast.classList.remove('show'), 1800);
   }
 
+  function loadCampaignCrmControls() {
+    if (document.querySelector('script[data-campaign-crm-controls-loader]')) return;
+    const script = document.createElement('script');
+    script.src = './campaign-crm-controls.js';
+    script.async = false;
+    script.dataset.campaignCrmControlsLoader = 'true';
+    document.body.appendChild(script);
+  }
+
   window.BookingSenderPolicy = { policy, senderFor };
 
   const observer = new MutationObserver(() => {
@@ -129,9 +138,11 @@
   window.addEventListener('load', () => {
     injectSettings();
     decorateCampaignCards();
+    loadCampaignCrmControls();
   });
   setTimeout(() => {
     injectSettings();
     decorateCampaignCards();
+    loadCampaignCrmControls();
   }, 0);
 })();
