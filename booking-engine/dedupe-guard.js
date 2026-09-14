@@ -16,6 +16,11 @@
     return { ...base, ...(readState().overrides?.[id] || {}) };
   }
 
+  function allMergedContacts() {
+    const state = readState();
+    return (window.BOOKING_DATA?.contacts || []).map(c => ({ ...c, ...(state.overrides?.[c['Contact ID']] || {}) }));
+  }
+
   function canonicalKey(c) {
     const email = String(c?.Email || '').trim().toLowerCase();
     if (email) return `email:${email}`;
@@ -27,15 +32,27 @@
     return `contact:${norm(c?.Entity)}|${person}|${operator}`;
   }
 
+  function doNotContactKeys() {
+    return new Set(allMergedContacts()
+      .filter(c => c.Status === 'Do not contact')
+      .map(canonicalKey));
+  }
+
   function dedupeQueue() {
     const state = readState();
     const queue = state.queue || [];
     const groups = new Map();
+    const dncKeys = doNotContactKeys();
+    const complianceSuppressed = {};
 
     queue.forEach((id, index) => {
       const c = mergedContact(id);
       if (!c) return;
       const key = canonicalKey(c);
+      if (dncKeys.has(key)) {
+        complianceSuppressed[id] = 'do-not-contact';
+        return;
+      }
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push({ id, c, index });
     });
@@ -64,12 +81,14 @@
     kept.sort((a, b) => queue.indexOf(a) - queue.indexOf(b));
     state.queue = kept;
     state.dedupeSuppressed = suppressed;
+    state.complianceSuppressed = complianceSuppressed;
     state.campaignContexts = { ...(state.campaignContexts || {}), ...contexts };
     state.lastDedupe = {
       at: new Date().toISOString(),
       originalCount: queue.length,
       finalCount: kept.length,
-      suppressedCount: queue.length - kept.length
+      duplicateSuppressedCount: Object.keys(suppressed).length,
+      complianceSuppressedCount: Object.keys(complianceSuppressed).length
     };
     writeState(state);
     return state.lastDedupe;
@@ -80,7 +99,9 @@
     if (!view) return;
     let note = view.querySelector('[data-dedupe-note]');
     const info = readState().lastDedupe;
-    if (!info?.suppressedCount) {
+    const duplicates = info?.duplicateSuppressedCount || 0;
+    const compliance = info?.complianceSuppressedCount || 0;
+    if (!duplicates && !compliance) {
       note?.remove();
       return;
     }
@@ -91,7 +112,10 @@
       const legend = view.querySelector('.campaign-legend');
       if (legend) legend.after(note); else view.prepend(note);
     }
-    const text = `${info.suppressedCount} duplicate room pitch${info.suppressedCount === 1 ? '' : 'es'} grouped under the same buyer/contact.`;
+    const parts = [];
+    if (duplicates) parts.push(`${duplicates} duplicate room pitch${duplicates === 1 ? '' : 'es'} grouped under the same buyer/contact`);
+    if (compliance) parts.push(`${compliance} record${compliance === 1 ? '' : 's'} suppressed by Do Not Contact`);
+    const text = `${parts.join(' • ')}.`;
     if (note.textContent !== text) note.textContent = text;
   }
 
@@ -127,7 +151,8 @@
     const btn = e.target.closest('#buildCampaignsButton');
     if (!btn) return;
     const info = dedupeQueue();
-    if (info.suppressedCount) toast(`${info.suppressedCount} duplicate pitch${info.suppressedCount === 1 ? '' : 'es'} grouped`);
+    const total = (info.duplicateSuppressedCount || 0) + (info.complianceSuppressedCount || 0);
+    if (total) toast(`${total} duplicate/compliance record${total === 1 ? '' : 's'} handled`);
     setTimeout(() => {
       decorateCampaigns();
       decorateCards();
@@ -154,5 +179,5 @@
     decorateCards();
   }, 0);
 
-  window.BookingDedupe = { dedupeQueue, canonicalKey };
+  window.BookingDedupe = { dedupeQueue, canonicalKey, doNotContactKeys };
 })();
