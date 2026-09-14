@@ -133,6 +133,7 @@
     loadModule('./pitch-kit.js', 'data-pitch-kit-loader');
     loadModule('./smart-drafts.js', 'data-smart-drafts-loader');
     loadModule('./current-venue-booker.js', 'data-current-venue-booker-loader');
+    loadModule('./dedupe-guard.js', 'data-dedupe-guard-loader');
   }
 
   window.BookingSenderPolicy = { policy, senderFor };
