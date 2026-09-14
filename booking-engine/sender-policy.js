@@ -134,6 +134,7 @@
     loadModule('./smart-drafts.js', 'data-smart-drafts-loader');
     loadModule('./current-venue-booker.js', 'data-current-venue-booker-loader');
     loadModule('./dedupe-guard.js', 'data-dedupe-guard-loader');
+    loadModule('./reply-center.js', 'data-reply-center-loader');
   }
 
   window.BookingSenderPolicy = { policy, senderFor };
