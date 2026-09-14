@@ -131,6 +131,7 @@
   function loadExtensions() {
     loadModule('./campaign-crm-controls.js', 'data-campaign-crm-controls-loader');
     loadModule('./pitch-kit.js', 'data-pitch-kit-loader');
+    loadModule('./submission-channel.js', 'data-submission-channel-loader');
     loadModule('./smart-drafts.js', 'data-smart-drafts-loader');
     loadModule('./current-venue-booker.js', 'data-current-venue-booker-loader');
     loadModule('./dedupe-guard.js', 'data-dedupe-guard-loader');
