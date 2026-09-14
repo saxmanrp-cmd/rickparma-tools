@@ -86,8 +86,8 @@ export async function sendMicrosoftEmail(env, input = {}) {
   };
 
   // Create a draft first so Graph gives us both a message id and conversation id.
-  // Those identifiers are what the reply watcher will use later to connect inbound
-  // responses to the right CRM campaign.
+  // Those identifiers are what the reply watcher uses to connect inbound responses
+  // to the right CRM campaign.
   const draft = await graphJson(
     `${GRAPH_ROOT}/users/${encodeURIComponent(mailbox)}/messages`,
     {
@@ -128,4 +128,37 @@ export async function sendMicrosoftEmail(env, input = {}) {
     threadId: draft.conversationId || null,
     internetMessageId: draft.internetMessageId || null
   };
+}
+
+export async function syncMicrosoftInbox(env, deltaLink = '') {
+  const token = await accessToken(env);
+  const mailbox = env.MS_SENDER_USER;
+  let url = deltaLink || `${GRAPH_ROOT}/users/${encodeURIComponent(mailbox)}/mailFolders/inbox/messages/delta?$select=id,conversationId,internetMessageId,from,toRecipients,subject,bodyPreview,receivedDateTime`;
+  const messages = [];
+  let finalDeltaLink = deltaLink || '';
+  let pages = 0;
+
+  while (url && pages < 10) {
+    pages++;
+    const data = await graphJson(url, {
+      headers: { authorization: `Bearer ${token}`, accept: 'application/json' }
+    }, 'Microsoft inbox sync failed');
+    for (const message of (data.value || [])) {
+      if (message?.['@removed']) continue;
+      messages.push({
+        id: message.id || null,
+        conversationId: message.conversationId || null,
+        internetMessageId: message.internetMessageId || null,
+        from: message.from?.emailAddress?.address || null,
+        to: (message.toRecipients || []).map(r => r?.emailAddress?.address).filter(Boolean),
+        subject: message.subject || '',
+        bodyPreview: message.bodyPreview || '',
+        receivedDateTime: message.receivedDateTime || null
+      });
+    }
+    if (data['@odata.deltaLink']) finalDeltaLink = data['@odata.deltaLink'];
+    url = data['@odata.nextLink'] || '';
+  }
+
+  return { messages, deltaLink: finalDeltaLink, pages };
 }
