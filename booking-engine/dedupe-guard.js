@@ -91,7 +91,8 @@
       const legend = view.querySelector('.campaign-legend');
       if (legend) legend.after(note); else view.prepend(note);
     }
-    note.textContent = `${info.suppressedCount} duplicate room pitch${info.suppressedCount === 1 ? '' : 'es'} grouped under the same buyer/contact.`;
+    const text = `${info.suppressedCount} duplicate room pitch${info.suppressedCount === 1 ? '' : 'es'} grouped under the same buyer/contact.`;
+    if (note.textContent !== text) note.textContent = text;
   }
 
   function decorateCards() {
