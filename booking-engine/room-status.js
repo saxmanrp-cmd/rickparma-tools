@@ -82,6 +82,10 @@
     return window.BOOKING_DATA?.buyerMap?.find(r => roomKey(r) === key) || null;
   }
 
+  function setTextIfChanged(el, value) {
+    if (el && el.textContent !== value) el.textContent = value;
+  }
+
   function decorateRooms() {
     const state = readState();
     document.querySelectorAll('.room-card').forEach(card => {
@@ -109,17 +113,18 @@
         prefWrap.querySelectorAll('[data-room-pref]').forEach(b => b.classList.remove('active'));
         const badge = card.querySelector('.fit-badge');
         if (badge) {
-          badge.className = 'fit-badge current-venue-badge';
-          badge.textContent = 'Current Venue';
+          if (badge.className !== 'fit-badge current-venue-badge') badge.className = 'fit-badge current-venue-badge';
+          setTextIfChanged(badge, 'Current Venue');
         }
+        const message = 'Already performing here — removed from prospecting. Buyer relationship stays active for other rooms.';
         const reason = card.querySelector('.room-reason');
-        if (reason) reason.textContent = 'Already performing here — removed from prospecting. Buyer relationship stays active for other rooms.';
+        if (reason) setTextIfChanged(reason, message);
         else {
           const buyer = card.querySelector('.room-buyer');
-          if (buyer) {
+          if (buyer && !card.querySelector('.current-venue-note')) {
             const note = document.createElement('div');
             note.className = 'room-reason current-venue-note';
-            note.textContent = 'Already performing here — removed from prospecting. Buyer relationship stays active for other rooms.';
+            note.textContent = message;
             buyer.before(note);
           }
         }
@@ -149,9 +154,10 @@
       const state = readState();
       if (state.roomPrefs?.[currentBtn.dataset.roomKey] === PREF) {
         clearCurrentVenue(row);
-        state.roomPrefs ||= {};
-        delete state.roomPrefs[currentBtn.dataset.roomKey];
-        writeState({ ...readState(), roomPrefs: state.roomPrefs });
+        const latest = readState();
+        latest.roomPrefs ||= {};
+        delete latest.roomPrefs[currentBtn.dataset.roomKey];
+        writeState(latest);
       } else {
         markCurrentVenue(row);
       }
@@ -174,9 +180,4 @@
   observer.observe(document.documentElement, { subtree: true, childList: true });
   window.addEventListener('load', decorateRooms);
   setTimeout(decorateRooms, 0);
-
-  const campaignScript = document.createElement('script');
-  campaignScript.src = './campaign-engine.js';
-  campaignScript.defer = true;
-  document.body.appendChild(campaignScript);
 })();
