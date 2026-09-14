@@ -136,6 +136,7 @@
     loadModule('./current-venue-booker.js', 'data-current-venue-booker-loader');
     loadModule('./dedupe-guard.js', 'data-dedupe-guard-loader');
     loadModule('./reply-center.js', 'data-reply-center-loader');
+    loadModule('./research-guard.js', 'data-research-guard-loader');
   }
 
   window.BookingSenderPolicy = { policy, senderFor };
