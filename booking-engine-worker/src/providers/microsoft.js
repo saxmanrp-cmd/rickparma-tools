@@ -182,7 +182,7 @@ export async function replyMicrosoftEmail(env, input = {}) {
 export async function syncMicrosoftInbox(env, deltaLink = '') {
   const token = await accessToken(env);
   const mailbox = env.MS_SENDER_USER;
-  let url = deltaLink || `${GRAPH_ROOT}/users/${encodeURIComponent(mailbox)}/mailFolders/inbox/messages/delta?$select=id,conversationId,internetMessageId,from,toRecipients,subject,bodyPreview,receivedDateTime`;
+  let url = deltaLink || `${GRAPH_ROOT}/users/${encodeURIComponent(mailbox)}/mailFolders/inbox/messages/delta?$select=id,conversationId,internetMessageId,from,toRecipients,subject,body,bodyPreview,receivedDateTime`;
   const messages = [];
   let finalDeltaLink = deltaLink || '';
   let pages = 0;
@@ -190,7 +190,11 @@ export async function syncMicrosoftInbox(env, deltaLink = '') {
   while (url && pages < 10) {
     pages++;
     const data = await graphJson(url, {
-      headers: { authorization: `Bearer ${token}`, accept: 'application/json' }
+      headers: {
+        authorization: `Bearer ${token}`,
+        accept: 'application/json',
+        prefer: 'outlook.body-content-type="text"'
+      }
     }, 'Microsoft inbox sync failed');
     for (const message of (data.value || [])) {
       if (message?.['@removed']) continue;
@@ -201,6 +205,7 @@ export async function syncMicrosoftInbox(env, deltaLink = '') {
         from: message.from?.emailAddress?.address || null,
         to: (message.toRecipients || []).map(r => r?.emailAddress?.address).filter(Boolean),
         subject: message.subject || '',
+        body: String(message.body?.content || message.bodyPreview || '').slice(0, 30000),
         bodyPreview: message.bodyPreview || '',
         receivedDateTime: message.receivedDateTime || null
       });
