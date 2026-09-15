@@ -67,18 +67,32 @@
     return campaignStep(c['Contact ID']) === 0;
   }
 
-  function shortSubmissionPitch(c) {
-    const assets = window.BookingPitchKit?.selectedAssets?.(c) || [{ label: 'Website', url: 'https://rickparma.com/' }];
-    const media = assets.slice(0, 2).map(a => `${a.label}: ${a.url}`).join('\n');
-    return `Rick Parma — Las Vegas singer / saxophonist\n\nSolo singer/sax through full band, specializing in R&B, Motown, soul, pop, Top 40 and neo-soul. Extensive Las Vegas casino, lounge and corporate experience, including ARIA and Westgate. Looking for recurring lounge, casino-bar, restaurant and special-event opportunities.\n\n${media}`;
+  function submissionPitch(c) {
+    const kit = window.BookingPitchKit;
+    const pack = kit?.campaignPackage?.(c) || {
+      profile: 'room',
+      bio: 'Rick Parma is a Las Vegas-based vocalist and saxophonist performing R&B, Motown, soul, funk, pop, Top 40 and neo-soul from solo singer/sax through full band.',
+      proof: '30+ years professional • Las Vegas singer / saxophonist',
+      media: [{ label: 'Website', url: 'https://rickparma.com/' }],
+      links: [{ key: 'website', label: 'Website', url: 'https://rickparma.com/' }]
+    };
+    const k = kit?.kit?.() || {
+      website: 'https://rickparma.com/',
+      calendar: 'https://rickparma.com/#calendar',
+      instagram: 'https://instagram.com/rickparmaofficial',
+      bookingEmail: 'booking@rickparma.com'
+    };
+    const media = pack.media.slice(0, 2).map(a => `${a.label}: ${a.url}`).join('\n');
+
+    return `RICK PARMA\nVocalist • Saxophonist • Entertainer • Las Vegas, NV\n\nBIO\n${pack.bio}\n\nSELECTED CREDITS\n${pack.proof}\n\nMEDIA\n${media}\n\nWebsite: ${k.website}\nCurrent dates: ${k.calendar}\nInstagram: ${k.instagram}\nBooking: ${k.bookingEmail}`;
   }
 
   async function openSubmission(c) {
     const info = submissionInfo(c);
     if (!info) return;
     try {
-      await navigator.clipboard.writeText(shortSubmissionPitch(c));
-      toast('Submission pitch copied');
+      await navigator.clipboard.writeText(submissionPitch(c));
+      toast('Submission packet copied');
     } catch {
       toast('Opening submission form');
     }
@@ -137,11 +151,12 @@
       if (!c || !shouldUseSubmission(c)) return;
       const info = submissionInfo(c);
       if (!info) return;
+      const profile = window.BookingPitchKit?.profileFor?.(c) || 'artist';
 
       const box = document.createElement('div');
       box.dataset.submissionPreview = 'true';
       box.className = 'submission-preview';
-      box.innerHTML = `<strong>Official submission route</strong><span>${escapeHtml(info.route || info.label)}</span><button class="primary" type="button">Copy Pitch & Open Form</button>`;
+      box.innerHTML = `<strong>Official ${escapeHtml(profile)} submission package</strong><span>${escapeHtml(info.route || info.label)}</span><span>Copies the matching bio + selected credits + media + website + live calendar + Instagram + booking contact.</span><button class="primary" type="button">Copy Package & Open Form</button>`;
       box.querySelector('button').onclick = () => openSubmission(c);
       const copy = preview.querySelector('.campaign-copy');
       if (copy) copy.before(box); else preview.appendChild(box);
@@ -191,5 +206,5 @@
     decoratePreview();
   }, 0);
 
-  window.BookingSubmissionChannel = { submissionInfo, shouldUseSubmission, shortSubmissionPitch };
+  window.BookingSubmissionChannel = { submissionInfo, shouldUseSubmission, submissionPitch };
 })();
