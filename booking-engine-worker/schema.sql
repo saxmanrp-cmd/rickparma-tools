@@ -53,5 +53,107 @@ CREATE TABLE IF NOT EXISTS sync_state (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS autopilot_config (
+  id TEXT PRIMARY KEY,
+  config_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS prospects (
+  id TEXT PRIMARY KEY,
+  dedupe_key TEXT NOT NULL UNIQUE,
+  entity TEXT NOT NULL,
+  room TEXT,
+  category TEXT,
+  profile TEXT,
+  contact_name TEXT,
+  contact_role TEXT,
+  email TEXT,
+  phone TEXT,
+  website_url TEXT,
+  booking_url TEXT,
+  contact_route TEXT,
+  fit_score INTEGER NOT NULL DEFAULT 0,
+  confidence REAL NOT NULL DEFAULT 0,
+  automation_safe TEXT NOT NULL DEFAULT 'MANUAL',
+  fit_reason TEXT,
+  evidence_summary TEXT,
+  source_urls_json TEXT,
+  buyer_key TEXT,
+  status TEXT NOT NULL DEFAULT 'researched',
+  room_preference TEXT NOT NULL DEFAULT 'OPEN',
+  relationship TEXT NOT NULL DEFAULT 'Cold',
+  text_ok INTEGER NOT NULL DEFAULT 0,
+  current_venue INTEGER NOT NULL DEFAULT 0,
+  suppressed INTEGER NOT NULL DEFAULT 0,
+  campaign_type TEXT,
+  campaign_stage INTEGER NOT NULL DEFAULT 0,
+  campaign_active INTEGER NOT NULL DEFAULT 0,
+  touch_count INTEGER NOT NULL DEFAULT 0,
+  discovered_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  verified_at TEXT,
+  last_researched_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  next_research_at TEXT,
+  last_contacted_at TEXT,
+  next_action_at TEXT,
+  metadata_json TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_prospects_status_action
+  ON prospects(status, campaign_active, next_action_at);
+
+CREATE INDEX IF NOT EXISTS idx_prospects_fit_confidence
+  ON prospects(fit_score DESC, confidence DESC);
+
+CREATE INDEX IF NOT EXISTS idx_prospects_email
+  ON prospects(email);
+
+CREATE TABLE IF NOT EXISTS suppressions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  contact_id TEXT,
+  kind TEXT NOT NULL,
+  value TEXT NOT NULL,
+  reason TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(kind, value)
+);
+
+CREATE INDEX IF NOT EXISTS idx_suppressions_contact
+  ON suppressions(contact_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS escalations (
+  id TEXT PRIMARY KEY,
+  contact_id TEXT,
+  message_id TEXT,
+  category TEXT NOT NULL,
+  priority TEXT NOT NULL DEFAULT 'normal',
+  summary TEXT NOT NULL,
+  proposed_action TEXT,
+  status TEXT NOT NULL DEFAULT 'open',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  resolved_at TEXT,
+  metadata_json TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_escalations_status_created
+  ON escalations(status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS autopilot_runs (
+  id TEXT PRIMARY KEY,
+  run_type TEXT NOT NULL,
+  mode TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'running',
+  summary_json TEXT,
+  error_text TEXT,
+  started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  finished_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_autopilot_runs_type_started
+  ON autopilot_runs(run_type, started_at DESC);
+
 INSERT OR IGNORE INTO app_state (id, state_json, version)
 VALUES ('rick', '{}', 1);
+
+INSERT OR IGNORE INTO autopilot_config (id, config_json)
+VALUES ('default', '{"mode":"shadow"}');
