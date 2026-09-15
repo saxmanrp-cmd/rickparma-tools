@@ -1,11 +1,12 @@
 import { replyMicrosoftEmail, microsoftStatus } from './providers/microsoft.js';
+import { sendTwilioText, twilioStatus } from './providers/twilio.js';
 import { classifyBookingReply, draftBookingReply } from './providers/openai.js';
 import { categoryPolicy, canAutonomouslySend, withinSendWindow, appendComplianceFooter } from './autopilot-policy.js';
 import { getProspect, suppressProspect } from './prospects.js';
 import { checkRickAvailability } from './calendar-availability.js';
 import {
   safeJson, daysFromNow, event, artistContext, assetText, priorThread,
-  todayEventCount, storeOutbound, storeDraft, mirrorOverride
+  todayEventCount, storeOutbound, storeDraft, mirrorOverride, nowIso
 } from './autopilot-common.js';
 
 async function createEscalation(env, contactId, messageId, classification) {
@@ -30,7 +31,7 @@ async function createEscalation(env, contactId, messageId, classification) {
     classification.recommendedAction || '',
     JSON.stringify(classification)
   ).run();
-  await event(env, contactId, 'autopilot_escalation_created', 'email', {
+  await event(env, contactId, 'autopilot_escalation_created', classification.channel || null, {
     escalationId: id,
     category: classification.category,
     calendarAvailability: classification.calendarAvailability || null
@@ -73,7 +74,7 @@ async function applyClassification(env, message, classification) {
   if (category === 'opt_out') {
     await suppressProspect(env, id, 'Recipient opted out of booking outreach.');
     await mirrorOverride(env, id, { Status: 'Do not contact', 'Next Follow-up': null });
-    await event(env, id, 'autopilot_opt_out', 'email', { messageId: message.id });
+    await event(env, id, 'autopilot_opt_out', message.channel, { messageId: message.id });
     return;
   }
 
@@ -128,7 +129,7 @@ async function draftReplyForMessage(env, config, message, classification) {
   const profile = prospect.profile || prospect.campaign_type || 'room';
   const draft = await draftBookingReply(env, {
     classification,
-    inbound: { from: message.sender, subject: message.subject, body: message.body },
+    inbound: { channel: message.channel, from: message.sender, subject: message.subject, body: message.body },
     artistContext: artistContext(profile),
     assets: assetText(profile),
     priorMessages: await priorThread(env, prospect.id),
@@ -137,12 +138,56 @@ async function draftReplyForMessage(env, config, message, classification) {
   return {
     prospect,
     subject: draft.data.subject || `Re: ${message.subject || 'Booking'}`,
-    body: appendComplianceFooter(draft.data.body, config),
+    body: message.channel === 'sms' ? String(draft.data.body || '').slice(0, 1500) : appendComplianceFooter(draft.data.body, config),
     responseId: draft.responseId || null
   };
 }
 
+async function storeOutboundSms(env, prospect, message, body, sent, classification, draft) {
+  const id = crypto.randomUUID();
+  await env.DB.prepare(`
+    INSERT INTO messages (
+      id,contact_id,direction,channel,provider,sender,recipient,body,status,
+      provider_message_id,metadata_json,sent_at
+    ) VALUES (?,?,'outbound','sms','twilio',?,?,?,'sent',?,?,?)
+  `).bind(
+    id,
+    prospect.id,
+    sent.sender,
+    sent.recipient,
+    body,
+    sent.providerMessageId || null,
+    JSON.stringify({
+      purpose: 'auto-reply',
+      replyingTo: message.id,
+      replyCategory: classification.category,
+      calendarAvailability: classification.calendarAvailability || null,
+      aiResponseId: draft.responseId
+    }),
+    nowIso()
+  ).run();
+  return id;
+}
+
 async function sendReply(env, message, classification, draft) {
+  if (message.channel === 'sms') {
+    if (!Number(draft.prospect.text_ok || 0)) throw new Error('Text OK is not enabled for this contact.');
+    const sent = await sendTwilioText(env, {
+      approved: true,
+      textOk: true,
+      to: message.sender,
+      body: draft.body
+    });
+    const outId = await storeOutboundSms(env, draft.prospect, message, draft.body, sent, classification, draft);
+    await event(env, draft.prospect.id, 'autopilot_reply_sent', 'sms', {
+      messageId: outId,
+      replyingTo: message.id,
+      category: classification.category,
+      calendarAvailability: classification.calendarAvailability || null
+    });
+    return outId;
+  }
+
   const sent = await replyMicrosoftEmail(env, {
     approved: true,
     sourceMessageId: message.provider_message_id,
@@ -177,7 +222,7 @@ async function sendReply(env, message, classification, draft) {
 export async function processInboundCycle(env, config) {
   const rows = await env.DB.prepare(`
     SELECT * FROM messages
-    WHERE direction='inbound' AND channel='email' AND status IN ('received','classified')
+    WHERE direction='inbound' AND channel IN ('email','sms') AND status IN ('received','classified')
     ORDER BY COALESCE(received_at,created_at) ASC
     LIMIT 30
   `).all();
@@ -191,6 +236,7 @@ export async function processInboundCycle(env, config) {
   const gate = canAutonomouslySend(config);
   const windowOpen = withinSendWindow(config);
   const microsoftReady = microsoftStatus(env).configured;
+  const twilioReady = twilioStatus(env).configured;
 
   for (const message of rows.results || []) {
     let metadata = safeJson(message.metadata_json, {});
@@ -203,13 +249,13 @@ export async function processInboundCycle(env, config) {
         body: message.body,
         context: message.contact_id ? await priorThread(env, message.contact_id) : ''
       });
-      classification = await enrichAvailability({ ...result.data, aiResponseId: result.responseId || null });
+      classification = await enrichAvailability({ ...result.data, channel: message.channel, aiResponseId: result.responseId || null });
       await saveClassification(env, message, classification, 'classified');
       await applyClassification(env, message, classification);
       classified++;
       metadata = { ...metadata, classification };
     } else if (!classification.calendarAvailability && (classification.requestedDates?.length || ['availability_request','offer_or_hold'].includes(classification.category))) {
-      classification = await enrichAvailability(classification);
+      classification = await enrichAvailability({ ...classification, channel: message.channel });
       await saveClassification(env, message, classification, 'classified');
       metadata = { ...metadata, classification };
     }
@@ -226,8 +272,6 @@ export async function processInboundCycle(env, config) {
       continue;
     }
 
-    // High-value replies can receive a brief non-committal acknowledgement even when
-    // the classifier correctly marks them as not safe for a substantive auto-response.
     const shouldReply = config.allowAutoRoutineReplies && (
       policy.escalate
       || classification.mustEscalate
@@ -245,10 +289,15 @@ export async function processInboundCycle(env, config) {
       continue;
     }
 
+    const channelAllowed = message.channel === 'email'
+      ? microsoftReady && !!message.provider_message_id
+      : twilioReady && Number(draft.prospect.text_ok || 0) === 1;
+
     if (config.mode === 'shadow') {
       const stored = await storeDraft(env, draft.prospect.id, draft.subject, draft.body, {
-        purpose: `shadow-reply-${message.id}`,
+        purpose: `shadow-reply-${message.channel}-${message.id}`,
         replyingTo: message.id,
+        replyChannel: message.channel,
         replyCategory: classification.category,
         calendarAvailability: classification.calendarAvailability || null,
         aiResponseId: draft.responseId
@@ -258,7 +307,7 @@ export async function processInboundCycle(env, config) {
       continue;
     }
 
-    if (!gate.ok || !windowOpen || !microsoftReady || replyUsed + autoReplied >= config.dailyAutoReplyLimit || !message.provider_message_id) {
+    if (!gate.ok || !windowOpen || !channelAllowed || replyUsed + autoReplied >= config.dailyAutoReplyLimit) {
       continue;
     }
 
@@ -275,6 +324,7 @@ export async function processInboundCycle(env, config) {
     shadowDrafted,
     sendGate: gate.ok ? 'ready' : gate.reason,
     windowOpen,
-    microsoftReady
+    microsoftReady,
+    twilioReady
   };
 }
