@@ -11,7 +11,7 @@ export const DEFAULT_AUTOPILOT_CONFIG = Object.freeze({
   sendWindowStartHour: 9,
   sendWindowEndHour: 16,
   sendWeekdaysOnly: true,
-  maxColdTouches: 4,
+  maxColdTouches: 5,
   followupDays: [5, 10, 16, 75],
   allowColdSms: false,
   allowAutoRoutineReplies: true,
@@ -37,7 +37,7 @@ export function normalizeAutopilotConfig(input = {}) {
   out.minConfidence = clampNum(out.minConfidence, 0, 1, 0.82);
   out.sendWindowStartHour = clampInt(out.sendWindowStartHour, 0, 23, 9);
   out.sendWindowEndHour = clampInt(out.sendWindowEndHour, 1, 24, 16);
-  out.maxColdTouches = clampInt(out.maxColdTouches, 1, 8, 4);
+  out.maxColdTouches = clampInt(out.maxColdTouches, 1, 8, 5);
   out.followupDays = Array.isArray(out.followupDays)
     ? out.followupDays.map(v => clampInt(v, 1, 365, 5)).slice(0, 8)
     : [...DEFAULT_AUTOPILOT_CONFIG.followupDays];
@@ -128,9 +128,9 @@ export function appendComplianceFooter(body, config) {
 export function categoryPolicy(category) {
   const autoReply = new Set([
     'positive_interest', 'request_materials', 'follow_up_later', 'submission_redirect',
-    'not_interested', 'out_of_office', 'question'
+    'question'
   ]);
-  const noReply = new Set(['bounce', 'opt_out']);
+  const noReply = new Set(['bounce', 'opt_out', 'not_interested', 'out_of_office']);
   const escalate = new Set(['availability_request', 'rate_request', 'offer_or_hold', 'other']);
   return {
     autoReply: autoReply.has(category),
