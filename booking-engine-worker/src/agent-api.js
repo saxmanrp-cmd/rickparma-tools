@@ -1,5 +1,6 @@
 import { bearerToken, verifySession } from './auth.js';
 import { bookingAgentStatus, setBookingAgentConfig, runAutonomousBookingAgent, listBookingEscalations, resolveBookingEscalation } from './autopilot-agent.js';
+import { respondToEscalation } from './escalation-response.js';
 import { importProspects, listProspects } from './prospects.js';
 
 function corsHeaders(request, env) {
@@ -85,6 +86,11 @@ export async function handleAgentApi(request, env) {
     }
     if (url.pathname === '/api/escalations' && request.method === 'GET') {
       return json({ escalations: await listBookingEscalations(env, Number(url.searchParams.get('limit')) || 50) }, request, env);
+    }
+    const respondMatch = url.pathname.match(/^\/api\/escalations\/([^/]+)\/respond$/);
+    if (respondMatch && request.method === 'POST') {
+      const body = await readJson(request);
+      return json(await respondToEscalation(env, decodeURIComponent(respondMatch[1]), body.decision || ''), request, env);
     }
     const resolveMatch = url.pathname.match(/^\/api\/escalations\/([^/]+)\/resolve$/);
     if (resolveMatch && request.method === 'POST') {
