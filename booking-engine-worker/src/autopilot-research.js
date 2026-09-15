@@ -1,5 +1,6 @@
 import { researchBookingProspects } from './providers/openai.js';
 import { verificationTargets, upsertResearchedProspect } from './prospects.js';
+import { stageDiscoveredProspect, trustedSourceList } from './prospect-staging.js';
 import { startRun, finishRun } from './autopilot-common.js';
 
 export async function runResearchCycle(env, config) {
@@ -23,20 +24,24 @@ export async function runResearchCycle(env, config) {
     let discovered = 0;
     for (const item of ai.data.verified || []) {
       if (!item.requestedId) continue;
+      item.sourceUrls = trustedSourceList(item.sourceUrls, ai.sources);
       await upsertResearchedProspect(env, item, item.requestedId);
       verified++;
     }
+
+    // New AI discoveries are never immediately send-eligible. They are staged MANUAL
+    // with verified_at cleared, which forces a separate research pass before the
+    // autonomous sender can consider them.
     for (const item of ai.data.discovered || []) {
-      if ((!item.sourceUrls || item.sourceUrls.length === 0) && ai.sources?.length) {
-        item.sourceUrls = ai.sources.slice(0, 5);
-      }
-      await upsertResearchedProspect(env, item);
+      const sources = trustedSourceList(item.sourceUrls, ai.sources);
+      await stageDiscoveredProspect(env, item, sources);
       discovered++;
     }
 
     const summary = {
       verified,
       discovered,
+      stagedForSecondPass: discovered,
       notes: ai.data.researchNotes || '',
       responseId: ai.responseId || null,
       sources: (ai.sources || []).slice(0, 20)
