@@ -8,6 +8,8 @@ import {
   priorThread, todayEventCount, storeOutbound, storeDraft, mirrorOverride
 } from './autopilot-common.js';
 
+function recipientKey(email) { return String(email || '').trim().toLowerCase(); }
+
 function nextFollowupDelay(config, touchCountAfterSend) {
   const offsets = Array.isArray(config.followupDays) ? config.followupDays : [5, 10, 16, 75];
   if (touchCountAfterSend <= 0) return offsets[0] || 5;
@@ -17,10 +19,29 @@ function nextFollowupDelay(config, touchCountAfterSend) {
   return Math.max(1, nextOffset - priorOffset);
 }
 
+async function promptProspect(env, prospect) {
+  const prompt = prospectForPrompt(prospect);
+  const email = recipientKey(prospect.email);
+  if (!email) return prompt;
+  const result = await env.DB.prepare(`
+    SELECT id,entity,room,category,profile
+    FROM prospects
+    WHERE lower(email)=? AND id!=? AND suppressed=0 AND current_venue=0
+    ORDER BY fit_score DESC LIMIT 8
+  `).bind(email, prospect.id).all();
+  prompt.relatedOpportunities = (result.results || []).map(row => ({
+    entity: row.entity,
+    room: row.room || '',
+    category: row.category || '',
+    profile: row.profile || 'room'
+  }));
+  return prompt;
+}
+
 async function draftInitial(env, prospect) {
   const profile = prospect.profile || prospect.campaign_type || 'room';
   const ai = await draftBookingEmail(env, {
-    prospect: prospectForPrompt(prospect),
+    prospect: await promptProspect(env, prospect),
     artistContext: artistContext(profile),
     assets: assetText(profile),
     purpose: 'initial outreach'
@@ -31,13 +52,47 @@ async function draftInitial(env, prospect) {
 async function draftFollowup(env, prospect) {
   const profile = prospect.profile || prospect.campaign_type || 'room';
   const ai = await draftBookingEmail(env, {
-    prospect: prospectForPrompt(prospect),
+    prospect: await promptProspect(env, prospect),
     artistContext: artistContext(profile),
     assets: assetText(profile),
     purpose: `follow-up touch ${Number(prospect.touch_count || 0) + 1}`,
     priorMessages: await priorThread(env, prospect.id)
   });
   return { ...ai.data, responseId: ai.responseId || null };
+}
+
+async function hasShadowDraft(env, contactId, purpose) {
+  const row = await env.DB.prepare(`
+    SELECT id FROM messages
+    WHERE contact_id=? AND direction='outbound' AND channel='email' AND status='draft'
+      AND json_extract(metadata_json,'$.purpose')=?
+    LIMIT 1
+  `).bind(contactId, purpose).first();
+  return !!row;
+}
+
+async function existingRecipientThread(env, prospect) {
+  const email = recipientKey(prospect.email);
+  if (!email) return null;
+  return env.DB.prepare(`
+    SELECT contact_id,sent_at,thread_id,recipient
+    FROM messages
+    WHERE direction='outbound' AND channel='email' AND lower(recipient)=? AND status!='draft'
+    ORDER BY COALESCE(sent_at,created_at) DESC LIMIT 1
+  `).bind(email).first();
+}
+
+async function attachDuplicateToExistingThread(env, prospect, owner) {
+  await env.DB.prepare(`
+    UPDATE prospects SET
+      status='Grouped Buyer',campaign_active=0,next_action_at=NULL,last_contacted_at=COALESCE(last_contacted_at,?)
+    WHERE id=?
+  `).bind(owner.sent_at || nowIso(), prospect.id).run();
+  await event(env, prospect.id, 'autopilot_grouped_recipient', 'email', {
+    groupedUnderContactId: owner.contact_id || null,
+    threadId: owner.thread_id || null,
+    recipient: owner.recipient || prospect.email
+  });
 }
 
 async function sendDraft(env, config, prospect, draft, purpose) {
@@ -109,18 +164,35 @@ export async function processOutboundCycle(env, config) {
   let sentInitial = 0;
   let sentFollowups = 0;
   let skipped = 0;
+  let grouped = 0;
   const initialUsed = await todayEventCount(env, 'autopilot_initial_sent');
   const followupUsed = await todayEventCount(env, 'autopilot_followup_sent');
+  const seenRecipients = new Set();
 
   const initialCandidates = prospects.filter(p => !p.last_contacted_at && !Number(p.campaign_active || 0));
   for (const prospect of initialCandidates) {
     const eligibility = prospectEligible(config, prospect);
     if (!eligibility.ok) { skipped++; continue; }
+    const key = recipientKey(prospect.email);
+    if (!key) { skipped++; continue; }
+
+    // One buyer email = one cold relationship thread, even if many room records point to it.
+    if (seenRecipients.has(key)) { grouped++; continue; }
+    seenRecipients.add(key);
+    const owner = await existingRecipientThread(env, prospect);
+    if (owner && owner.contact_id !== prospect.id) {
+      await attachDuplicateToExistingThread(env, prospect, owner);
+      grouped++;
+      continue;
+    }
+
     if (config.mode !== 'shadow' && (!sendGate.ok || !windowOpen || initialUsed + sentInitial >= config.dailyInitialEmailLimit)) break;
+    if (config.mode === 'shadow' && await hasShadowDraft(env, prospect.id, 'initial')) continue;
+
     const draft = await draftInitial(env, prospect);
     if (config.mode === 'shadow') {
-      await shadowDraft(env, config, prospect, draft, 'initial');
-      drafted++;
+      const stored = await shadowDraft(env, config, prospect, draft, 'initial');
+      if (stored.created) drafted++;
     } else {
       await sendDraft(env, config, prospect, draft, 'initial');
       sentInitial++;
@@ -137,11 +209,13 @@ export async function processOutboundCycle(env, config) {
       continue;
     }
     if (config.mode !== 'shadow' && (!sendGate.ok || !windowOpen || followupUsed + sentFollowups >= config.dailyFollowupEmailLimit)) break;
-    const draft = await draftFollowup(env, prospect);
     const purpose = `followup-${Number(prospect.touch_count || 0) + 1}`;
+    if (config.mode === 'shadow' && await hasShadowDraft(env, prospect.id, purpose)) continue;
+
+    const draft = await draftFollowup(env, prospect);
     if (config.mode === 'shadow') {
-      await shadowDraft(env, config, prospect, draft, purpose);
-      drafted++;
+      const stored = await shadowDraft(env, config, prospect, draft, purpose);
+      if (stored.created) drafted++;
     } else {
       await sendDraft(env, config, prospect, draft, purpose);
       sentFollowups++;
@@ -152,6 +226,7 @@ export async function processOutboundCycle(env, config) {
     drafted,
     sentInitial,
     sentFollowups,
+    grouped,
     skipped,
     sendGate: sendGate.ok ? 'ready' : sendGate.reason,
     windowOpen
