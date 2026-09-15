@@ -166,18 +166,23 @@ const replySchema = {
     autoReplyAllowed: { type: 'boolean' },
     followUpDate: { type: 'string' },
     extractedDateOrWindow: { type: 'string' },
+    requestedDates: {
+      type: 'array',
+      items: { type: 'string', pattern: '^20\\d{2}-\\d{2}-\\d{2}$' },
+      maxItems: 8
+    },
     extractedMoneyOrTerms: { type: 'string' },
     submissionUrl: { type: 'string' },
     recommendedAction: { type: 'string' }
   },
   required: [
     'category','sentiment','summary','mustEscalate','autoReplyAllowed','followUpDate',
-    'extractedDateOrWindow','extractedMoneyOrTerms','submissionUrl','recommendedAction'
+    'extractedDateOrWindow','requestedDates','extractedMoneyOrTerms','submissionUrl','recommendedAction'
   ]
 };
 
 export async function classifyBookingReply(env, { sender, subject, body, context = '' }) {
-  const input = `Classify this reply to Rick Parma's booking outreach.\n\nFROM: ${sender || ''}\nSUBJECT: ${subject || ''}\nREPLY:\n${String(body || '').slice(0, 12000)}\n\nKNOWN CONTEXT:\n${String(context || '').slice(0, 6000)}\n\nSafety policy: offers/holds, specific date availability, money/rates, contracts, exclusivity, legal terms, unusual commitments, or anything ambiguous/high-value MUST be escalated. Routine requests for promo materials, simple acknowledgements, follow-up-later requests, submission redirects, not-interested responses, opt-outs, out-of-office notices, and basic questions answerable from the artist profile may be auto-handled. Never treat an opt-out as a sales opportunity.`;
+  const input = `Classify this reply to Rick Parma's booking outreach.\n\nFROM: ${sender || ''}\nSUBJECT: ${subject || ''}\nREPLY:\n${String(body || '').slice(0, 12000)}\n\nKNOWN CONTEXT:\n${String(context || '').slice(0, 6000)}\n\nSafety policy: offers/holds, specific date availability, money/rates, contracts, exclusivity, legal terms, unusual commitments, or anything ambiguous/high-value MUST be escalated. Routine requests for promo materials, simple acknowledgements, follow-up-later requests, submission redirects, not-interested responses, opt-outs, out-of-office notices, and basic questions answerable from the artist profile may be auto-handled. Never treat an opt-out as a sales opportunity. Resolve concrete requested dates to YYYY-MM-DD when the sender gives enough date information; otherwise leave requestedDates empty and preserve ambiguity in extractedDateOrWindow.`;
   return structuredResponse(env, {
     name: 'booking_reply_classification',
     schema: replySchema,
@@ -210,8 +215,15 @@ export async function draftBookingEmail(env, { prospect, artistContext, assets, 
   });
 }
 
-export async function draftBookingReply(env, { classification, inbound, artistContext, assets, priorMessages = '' }) {
-  const input = `Draft Rick Parma's reply to a booking contact.\n\nCLASSIFICATION:\n${JSON.stringify(classification)}\n\nINBOUND:\n${JSON.stringify(inbound)}\n\nARTIST FACTS:\n${String(artistContext || '').slice(0, 7000)}\n\nLINKS:\n${String(assets || '').slice(0, 4000)}\n\nEARLIER THREAD:\n${String(priorMessages || '').slice(0, 8000)}\n\nRules: never invent availability, rates, contract terms, exclusivity, or commitments. If the classification says escalation is required, write only a brief acknowledgement that keeps the conversation warm without accepting anything (for example, thank them and say you'll confirm details). If they ask for materials, provide only relevant links. If they say no or opt out, be brief and do not sell harder. If they redirect to a submission process, thank them and acknowledge the route. Keep it natural and concise.`;
+export async function draftBookingReply(env, {
+  classification,
+  inbound,
+  artistContext,
+  assets,
+  priorMessages = '',
+  calendarAvailability = null
+}) {
+  const input = `Draft Rick Parma's reply to a booking contact.\n\nCLASSIFICATION:\n${JSON.stringify(classification)}\n\nINBOUND:\n${JSON.stringify(inbound)}\n\nARTIST FACTS:\n${String(artistContext || '').slice(0, 7000)}\n\nLINKS:\n${String(assets || '').slice(0, 4000)}\n\nCALENDAR CHECK:\n${JSON.stringify(calendarAvailability || { summary: 'No calendar check performed.' })}\n\nEARLIER THREAD:\n${String(priorMessages || '').slice(0, 8000)}\n\nRules: never invent availability, rates, contract terms, exclusivity, or commitments. If the classification says escalation is required, write only a brief acknowledgement that keeps the conversation warm without accepting anything. When a calendar check says looks_open, you may say the date currently looks open on Rick's calendar but must not accept or promise the date. When it says busy, clearly say there appears to be a calendar conflict and that Rick will confirm options. If no exact calendar date was checked, do not claim availability. If they ask for materials, provide only relevant links. If they say no or opt out, be brief and do not sell harder. If they redirect to a submission process, thank them and acknowledge the route. Keep it natural and concise.`;
   return structuredResponse(env, {
     name: 'booking_reply_draft',
     schema: draftSchema,
