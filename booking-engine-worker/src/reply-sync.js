@@ -109,6 +109,31 @@ async function storeInbound(env, input) {
   return id;
 }
 
+async function matchMicrosoftOutbound(env, message, sender) {
+  if (message.conversationId) {
+    const byThread = await env.DB.prepare(`
+      SELECT id, contact_id, sent_at, thread_id
+      FROM messages
+      WHERE direction='outbound' AND channel='email' AND thread_id=?
+      ORDER BY sent_at DESC, created_at DESC LIMIT 1
+    `).bind(message.conversationId).first();
+    if (byThread?.contact_id) return { ...byThread, matchedBy: 'thread' };
+  }
+
+  // Some buyers start a brand-new message rather than pressing Reply. If we previously
+  // emailed that exact address, attach the new message to the most recent relationship.
+  if (sender) {
+    const byRecipient = await env.DB.prepare(`
+      SELECT id, contact_id, sent_at, thread_id
+      FROM messages
+      WHERE direction='outbound' AND channel='email' AND lower(recipient)=?
+      ORDER BY sent_at DESC, created_at DESC LIMIT 1
+    `).bind(sender).first();
+    if (byRecipient?.contact_id) return { ...byRecipient, matchedBy: 'sender' };
+  }
+  return null;
+}
+
 export async function syncMicrosoftReplies(env) {
   if (!env.DB || !microsoftStatus(env).configured) return { ok: true, skipped: true, reason: 'Microsoft or DB not configured.' };
 
@@ -117,24 +142,22 @@ export async function syncMicrosoftReplies(env) {
   const result = await syncMicrosoftInbox(env, cursor);
   let matched = 0;
   let stored = 0;
+  let matchedByThread = 0;
+  let matchedBySender = 0;
   const selfAddresses = new Set([env.MS_SENDER_USER, env.MS_BOOKING_ALIAS].map(normalizeEmail).filter(Boolean));
 
   for (const message of result.messages) {
     const sender = normalizeEmail(message.from);
-    if (!sender || selfAddresses.has(sender) || !message.conversationId) continue;
+    if (!sender || selfAddresses.has(sender)) continue;
 
-    const outbound = await env.DB.prepare(`
-      SELECT id, contact_id, sent_at
-      FROM messages
-      WHERE direction = 'outbound' AND channel = 'email' AND thread_id = ?
-      ORDER BY sent_at DESC, created_at DESC
-      LIMIT 1
-    `).bind(message.conversationId).first();
+    const outbound = await matchMicrosoftOutbound(env, message, sender);
     if (!outbound?.contact_id) continue;
-
     if (outbound.sent_at && message.receivedDateTime && String(message.receivedDateTime) <= String(outbound.sent_at)) continue;
     matched++;
+    if (outbound.matchedBy === 'thread') matchedByThread++;
+    if (outbound.matchedBy === 'sender') matchedBySender++;
 
+    const body = message.body || message.bodyPreview || '';
     const inboundId = await storeInbound(env, {
       contactId: outbound.contact_id,
       channel: 'email',
@@ -142,11 +165,14 @@ export async function syncMicrosoftReplies(env) {
       sender: message.from,
       recipient: env.MS_SENDER_USER,
       subject: message.subject,
-      body: message.bodyPreview,
+      body,
       providerMessageId: message.id,
-      threadId: message.conversationId,
+      threadId: message.conversationId || outbound.thread_id || null,
       receivedAt: message.receivedDateTime,
-      metadata: { internetMessageId: message.internetMessageId || null }
+      metadata: {
+        internetMessageId: message.internetMessageId || null,
+        matchedBy: outbound.matchedBy
+      }
     });
     if (!inboundId) continue;
     stored++;
@@ -155,18 +181,31 @@ export async function syncMicrosoftReplies(env) {
       contactId: outbound.contact_id,
       eventType: 'message_received',
       channel: 'email',
-      payload: { messageId: inboundId, providerMessageId: message.id, threadId: message.conversationId }
+      payload: {
+        messageId: inboundId,
+        providerMessageId: message.id,
+        threadId: message.conversationId || outbound.thread_id || null,
+        matchedBy: outbound.matchedBy
+      }
     });
     await updateContactReplied(env, outbound.contact_id, {
       channel: 'email',
-      preview: message.bodyPreview,
+      preview: body,
       receivedAt: message.receivedDateTime,
       sender: message.from
     });
   }
 
-  if (result.deltaLink) await setSyncCursor(env, providerKey, result.deltaLink, { lastMatched: matched, lastStored: stored, pages: result.pages });
-  return { ok: true, checked: result.messages.length, matched, stored, pages: result.pages };
+  if (result.deltaLink) {
+    await setSyncCursor(env, providerKey, result.deltaLink, {
+      lastMatched: matched,
+      lastStored: stored,
+      matchedByThread,
+      matchedBySender,
+      pages: result.pages
+    });
+  }
+  return { ok: true, checked: result.messages.length, matched, stored, matchedByThread, matchedBySender, pages: result.pages };
 }
 
 async function twilioSignature(env, url, params) {
@@ -212,9 +251,8 @@ export async function handleTwilioWebhook(request, env) {
     outbound = await env.DB.prepare(`
       SELECT id, contact_id
       FROM messages
-      WHERE direction = 'outbound' AND channel = 'sms' AND recipient = ?
-      ORDER BY sent_at DESC, created_at DESC
-      LIMIT 1
+      WHERE direction='outbound' AND channel='sms' AND recipient=?
+      ORDER BY sent_at DESC, created_at DESC LIMIT 1
     `).bind(from).first();
   }
 
