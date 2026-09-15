@@ -130,6 +130,55 @@ export async function sendMicrosoftEmail(env, input = {}) {
   };
 }
 
+export async function replyMicrosoftEmail(env, input = {}) {
+  if (input.approved !== true) throw new Error('Explicit approval is required before replying.');
+  const sourceMessageId = String(input.sourceMessageId || '').trim();
+  const content = sanitizeText(input.body, 20000).trim();
+  if (!sourceMessageId) throw new Error('A source Microsoft message id is required for a threaded reply.');
+  if (!content) throw new Error('Reply body is required.');
+
+  const mailbox = env.MS_SENDER_USER;
+  const token = await accessToken(env);
+  const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+  const replyDraft = await graphJson(
+    `${GRAPH_ROOT}/users/${encodeURIComponent(mailbox)}/messages/${encodeURIComponent(sourceMessageId)}/createReply`,
+    { method: 'POST', headers, body: '{}' },
+    'Microsoft createReply failed'
+  );
+  if (!replyDraft.id) throw new Error('Microsoft createReply did not return a draft id.');
+
+  const updated = await graphJson(
+    `${GRAPH_ROOT}/users/${encodeURIComponent(mailbox)}/messages/${encodeURIComponent(replyDraft.id)}`,
+    {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ body: { contentType: 'Text', content } })
+    },
+    'Microsoft reply draft update failed'
+  );
+
+  const sendResponse = await fetch(`${GRAPH_ROOT}/users/${encodeURIComponent(mailbox)}/messages/${encodeURIComponent(replyDraft.id)}/send`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}` }
+  });
+  if (!sendResponse.ok) {
+    const data = await sendResponse.json().catch(() => ({}));
+    const detail = data?.error?.message || `HTTP ${sendResponse.status}`;
+    throw new Error(`Microsoft reply send failed: ${detail}`);
+  }
+
+  const recipient = (updated.toRecipients || replyDraft.toRecipients || [])[0]?.emailAddress?.address || null;
+  return {
+    ok: true,
+    provider: 'microsoft-graph',
+    sender: mailbox,
+    recipient,
+    providerMessageId: replyDraft.id,
+    threadId: updated.conversationId || replyDraft.conversationId || null,
+    internetMessageId: updated.internetMessageId || replyDraft.internetMessageId || null
+  };
+}
+
 export async function syncMicrosoftInbox(env, deltaLink = '') {
   const token = await accessToken(env);
   const mailbox = env.MS_SENDER_USER;
