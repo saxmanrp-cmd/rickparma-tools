@@ -150,7 +150,7 @@
   }
 
   async function renderHome() {
-    const home = document.querySelector('[data-view="home"]');
+    const home = document.querySelector('[data-view="dashboard"]');
     if (!home) return;
     let panel = home.querySelector('[data-agent-home]');
     if (!panel) {
