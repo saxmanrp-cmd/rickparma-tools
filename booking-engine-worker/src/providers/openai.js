@@ -48,11 +48,14 @@ async function structuredResponse(env, {
   instructions,
   input,
   web = false,
-  model = null
+  model = null,
+  effort = 'low'
 }) {
   if (!configured(env)) throw new Error('OPENAI_API_KEY is not configured.');
   const payload = {
     model: model || env.OPENAI_MODEL || 'gpt-5.6-luna',
+    store: false,
+    reasoning: { effort },
     instructions,
     input,
     text: {
@@ -140,6 +143,7 @@ export async function researchBookingProspects(env, { verify = [], discoverCount
     instructions: 'You are the research desk for a professional Las Vegas musician booking operation. Be conservative with identity/contact verification. Current evidence matters more than old directory data. Return only the requested JSON structure.',
     input,
     web: true,
+    effort: 'medium',
     model: env.OPENAI_RESEARCH_MODEL || env.OPENAI_MODEL || 'gpt-5.6-terra'
   });
 }
@@ -179,6 +183,7 @@ export async function classifyBookingReply(env, { sender, subject, body, context
     schema: replySchema,
     instructions: 'You triage professional booking email replies. Protect the artist from accidental commitments. Be conservative about escalation.',
     input,
+    effort: 'low',
     model: env.OPENAI_MODEL || 'gpt-5.6-luna'
   });
 }
@@ -194,12 +199,13 @@ const draftSchema = {
 };
 
 export async function draftBookingEmail(env, { prospect, artistContext, assets, purpose = 'initial', priorMessages = '' }) {
-  const input = `Write a concise, human professional booking email from Rick Parma.\n\nPURPOSE: ${purpose}\nPROSPECT:\n${JSON.stringify(prospect)}\n\nARTIST FACTS:\n${String(artistContext || '').slice(0, 7000)}\n\nUSEFUL LINKS:\n${String(assets || '').slice(0, 4000)}\n\nPRIOR THREAD IF ANY:\n${String(priorMessages || '').slice(0, 8000)}\n\nRules: 1) Do not invent facts about the venue, contact, artist, availability, rates, or relationships. 2) Keep a first cold email compact and personalized; usually 120-220 words before the compliance footer. 3) Use at most two promo/media links plus the current calendar unless a reply specifically asks for more. 4) Do not claim Rick is represented by the recipient or imply an existing relationship unless supplied. 5) Do not promise availability, pricing, contracts, exclusivity, or dates. 6) The caller is Rick Parma, not a fake agent. 7) No hypey marketing language or mass-mail wording.`;
+  const input = `Write a concise, human professional booking email from Rick Parma.\n\nPURPOSE: ${purpose}\nPROSPECT:\n${JSON.stringify(prospect)}\n\nARTIST FACTS:\n${String(artistContext || '').slice(0, 7000)}\n\nUSEFUL LINKS:\n${String(assets || '').slice(0, 4000)}\n\nPRIOR THREAD IF ANY:\n${String(priorMessages || '').slice(0, 8000)}\n\nRules: 1) Do not invent facts about the venue, contact, artist, availability, rates, or relationships. 2) Keep a first cold email compact and personalized; usually 120-220 words before the compliance footer. 3) Use at most two promo/media links plus the current calendar unless a reply specifically asks for more. 4) Do not claim Rick is represented by the recipient or imply an existing relationship unless supplied. 5) Do not promise availability, pricing, contracts, exclusivity, or dates. 6) The caller is Rick Parma, not a fake agent. 7) No hypey marketing language or mass-mail wording. 8) If relatedOpportunities are supplied for the same buyer email, treat them as one relationship and do not write separate-sounding room pitches.`;
   return structuredResponse(env, {
     name: 'booking_email_draft',
     schema: draftSchema,
     instructions: 'You write targeted one-to-one booking outreach for a professional Las Vegas singer and saxophonist. Sound like a working musician contacting an entertainment professional, not a marketing blast.',
     input,
+    effort: 'low',
     model: env.OPENAI_MODEL || 'gpt-5.6-luna'
   });
 }
@@ -211,6 +217,7 @@ export async function draftBookingReply(env, { classification, inbound, artistCo
     schema: draftSchema,
     instructions: 'You write concise professional replies in Rick Parma’s voice. Protect him from accidental business commitments.',
     input,
+    effort: 'low',
     model: env.OPENAI_MODEL || 'gpt-5.6-luna'
   });
 }
