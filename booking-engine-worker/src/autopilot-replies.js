@@ -2,6 +2,7 @@ import { replyMicrosoftEmail, microsoftStatus } from './providers/microsoft.js';
 import { classifyBookingReply, draftBookingReply } from './providers/openai.js';
 import { categoryPolicy, canAutonomouslySend, withinSendWindow, appendComplianceFooter } from './autopilot-policy.js';
 import { getProspect, suppressProspect } from './prospects.js';
+import { checkRickAvailability } from './calendar-availability.js';
 import {
   safeJson, daysFromNow, event, artistContext, assetText, priorThread,
   todayEventCount, storeOutbound, storeDraft, mirrorOverride
@@ -13,6 +14,9 @@ async function createEscalation(env, contactId, messageId, classification) {
   if (existing?.id) return existing.id;
   const id = crypto.randomUUID();
   const high = ['availability_request', 'rate_request', 'offer_or_hold'].includes(classification.category);
+  const availabilityNote = classification.calendarAvailability?.summary
+    ? ` Calendar: ${classification.calendarAvailability.summary}`
+    : '';
   await env.DB.prepare(`
     INSERT INTO escalations (id,contact_id,message_id,category,priority,summary,proposed_action,metadata_json)
     VALUES (?,?,?,?,?,?,?,?)
@@ -22,13 +26,14 @@ async function createEscalation(env, contactId, messageId, classification) {
     messageId || null,
     classification.category,
     high ? 'high' : 'normal',
-    classification.summary || 'Booking reply needs review.',
+    `${classification.summary || 'Booking reply needs review.'}${availabilityNote}`.slice(0, 4000),
     classification.recommendedAction || '',
     JSON.stringify(classification)
   ).run();
   await event(env, contactId, 'autopilot_escalation_created', 'email', {
     escalationId: id,
-    category: classification.category
+    category: classification.category,
+    calendarAvailability: classification.calendarAvailability || null
   });
   return id;
 }
@@ -38,6 +43,26 @@ async function saveClassification(env, message, classification, status = 'classi
   metadata.classification = classification;
   await env.DB.prepare('UPDATE messages SET status=?,metadata_json=? WHERE id=?')
     .bind(status, JSON.stringify(metadata), message.id).run();
+}
+
+async function enrichAvailability(classification) {
+  const dates = Array.isArray(classification?.requestedDates) ? classification.requestedDates : [];
+  const shouldCheck = dates.length > 0 || ['availability_request', 'offer_or_hold'].includes(classification?.category);
+  if (!shouldCheck) return classification;
+  try {
+    const calendarAvailability = await checkRickAvailability(dates.length ? dates : [classification.extractedDateOrWindow || '']);
+    return { ...classification, calendarAvailability };
+  } catch (error) {
+    return {
+      ...classification,
+      calendarAvailability: {
+        source: 'rick-parma-shows-calendar',
+        dates: [],
+        summary: 'Calendar check unavailable; Rick must confirm manually.',
+        error: String(error?.message || error).slice(0, 500)
+      }
+    };
+  }
 }
 
 async function applyClassification(env, message, classification) {
@@ -106,7 +131,8 @@ async function draftReplyForMessage(env, config, message, classification) {
     inbound: { from: message.sender, subject: message.subject, body: message.body },
     artistContext: artistContext(profile),
     assets: assetText(profile),
-    priorMessages: await priorThread(env, prospect.id)
+    priorMessages: await priorThread(env, prospect.id),
+    calendarAvailability: classification.calendarAvailability || null
   });
   return {
     prospect,
@@ -135,13 +161,15 @@ async function sendReply(env, message, classification, draft) {
       purpose: 'auto-reply',
       replyingTo: message.id,
       replyCategory: classification.category,
+      calendarAvailability: classification.calendarAvailability || null,
       aiResponseId: draft.responseId
     }
   });
   await event(env, draft.prospect.id, 'autopilot_reply_sent', 'email', {
     messageId: outId,
     replyingTo: message.id,
-    category: classification.category
+    category: classification.category,
+    calendarAvailability: classification.calendarAvailability || null
   });
   return outId;
 }
@@ -175,10 +203,14 @@ export async function processInboundCycle(env, config) {
         body: message.body,
         context: message.contact_id ? await priorThread(env, message.contact_id) : ''
       });
-      classification = { ...result.data, aiResponseId: result.responseId || null };
+      classification = await enrichAvailability({ ...result.data, aiResponseId: result.responseId || null });
       await saveClassification(env, message, classification, 'classified');
       await applyClassification(env, message, classification);
       classified++;
+      metadata = { ...metadata, classification };
+    } else if (!classification.calendarAvailability && (classification.requestedDates?.length || ['availability_request','offer_or_hold'].includes(classification.category))) {
+      classification = await enrichAvailability(classification);
+      await saveClassification(env, message, classification, 'classified');
       metadata = { ...metadata, classification };
     }
 
@@ -194,9 +226,13 @@ export async function processInboundCycle(env, config) {
       continue;
     }
 
-    const shouldReply = config.allowAutoRoutineReplies
-      && classification.autoReplyAllowed !== false
-      && (policy.autoReply || policy.escalate || classification.mustEscalate);
+    // High-value replies can receive a brief non-committal acknowledgement even when
+    // the classifier correctly marks them as not safe for a substantive auto-response.
+    const shouldReply = config.allowAutoRoutineReplies && (
+      policy.escalate
+      || classification.mustEscalate
+      || (classification.autoReplyAllowed !== false && policy.autoReply)
+    );
 
     if (!shouldReply) {
       await saveClassification(env, { ...message, metadata_json: JSON.stringify(metadata) }, classification, 'processed');
@@ -214,6 +250,7 @@ export async function processInboundCycle(env, config) {
         purpose: `shadow-reply-${message.id}`,
         replyingTo: message.id,
         replyCategory: classification.category,
+        calendarAvailability: classification.calendarAvailability || null,
         aiResponseId: draft.responseId
       });
       if (stored.created) shadowDrafted++;
