@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "rick-booking-engine",
+  "main": "src/entry.js",
+  "compatibility_date": "2026-09-14",
+  "observability": { "enabled": true },
+  "triggers": {
+    "crons": ["*/10 * * * *"]
+  },
+  "vars": {
+    "ALLOWED_ORIGINS": "https://booking-engine-v1.rickparma-tools.pages.dev,https://rickparma-tools.pages.dev",
+    "MS_SENDER_USER": "saxman@rickparma.com",
+    "MS_BOOKING_ALIAS": "booking@rickparma.com",
+    "OPENAI_MODEL": "gpt-5.6-luna",
+    "OPENAI_RESEARCH_MODEL": "gpt-5.6-terra"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "rick-booking-crm",
+      "database_id": "281733ac-976d-4254-bc0e-df0e6eec3b88"
+    }
+  ]
+}
