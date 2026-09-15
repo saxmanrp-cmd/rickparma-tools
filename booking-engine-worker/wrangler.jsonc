@@ -3,9 +3,13 @@
   "name": "rick-booking-engine",
   "main": "src/entry.js",
   "compatibility_date": "2026-09-14",
-  "observability": { "enabled": true },
+  "observability": {
+    "enabled": true
+  },
   "triggers": {
-    "crons": ["*/10 * * * *"]
+    "crons": [
+      "*/10 * * * *"
+    ]
   },
   "vars": {
     "ALLOWED_ORIGINS": "https://booking-engine-v1.rickparma-tools.pages.dev,https://rickparma-tools.pages.dev",
