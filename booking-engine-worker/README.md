@@ -1,21 +1,48 @@
 # Rick Parma Booking Engine Worker
 
-Cloudflare Worker + D1 backend for the Booking Engine CRM.
+Cloudflare Worker + D1 backend for the autonomous Rick Parma Booking Agent.
 
-## Purpose
+## What the agent does
 
-The browser app remains local-first using localStorage. This worker adds the secure cloud layer for:
+The browser remains local-first, but this Worker is designed to run the booking operation without daily babysitting:
 
-- sync CRM state between Mac/iPhone
-- preserve room preferences and `Already Playing Here` choices
-- store campaign state/history
-- store outbound/inbound message records
-- send individually approved Microsoft 365 email
-- send individually approved Twilio SMS only when `Text OK` is true
-- store Microsoft message/conversation IDs for future reply detection
-- store Twilio message SIDs for delivery/reply tracking
+- imports the existing Booking Engine research database
+- verifies stale/manual contacts with current web research
+- discovers additional Las Vegas rooms, buyers, agencies, promoters and appropriate event buyers
+- scores fit and confidence conservatively
+- writes target-specific outreach using Rick's real bio, casino/festival credits, videos, calendar and social links
+- sends one-to-one Microsoft 365 email when Autopilot is in a sending mode
+- follows up on the Day 5 / Day 10 / Day 16 / Day 75 cadence
+- polls Microsoft replies and ties them to the correct campaign by conversation ID
+- classifies replies and automatically handles routine responses
+- stops campaigns on replies, passes and opt-outs
+- surfaces only business decisions that genuinely need Rick
 
-There is deliberately **no bulk-send endpoint**.
+Cold automated SMS is intentionally disabled. Twilio remains available for known contacts where `Text OK` is explicitly set, but it is not part of autonomous cold prospecting.
+
+## Autopilot modes
+
+- **Off** — agent does nothing.
+- **Shadow** — research, verify, draft and classify, but sends nothing. This is the default.
+- **Pilot** — autonomous sending with small daily limits (default 3 new emails/day, 5 follow-ups/day).
+- **Live** — autonomous operation using the configured daily limits.
+
+The agent will not enter a sending mode successfully until its safety requirements are met.
+
+## What always escalates to Rick
+
+The agent can automatically handle normal relationship maintenance, promo requests, follow-up-later requests, submission redirects, basic questions and positive replies that do not require a commitment.
+
+It creates a **Needs Rick** escalation for:
+
+- rates / money
+- contracts or legal terms
+- a real date hold or booking offer
+- availability commitments
+- exclusivity
+- unusual or ambiguous business commitments
+
+For those messages the agent may send a brief acknowledgement to keep the conversation warm, but it will not invent a rate, promise a date or accept a contract.
 
 ## One-time Cloudflare setup
 
@@ -33,7 +60,7 @@ Initialize the database:
 npm run db:init
 ```
 
-### Login secrets
+## Login secrets
 
 The browser never receives a permanent API secret. It exchanges Rick's app password for a short-lived signed session.
 
@@ -52,30 +79,55 @@ npx wrangler secret put BOOKING_API_TOKEN
 
 Do **not** put that token into front-end JavaScript.
 
-### Microsoft 365 / Graph
+## OpenAI research + automation
 
-The provider uses Microsoft Graph rather than SMTP AUTH. The tenant currently has SMTP AUTH disabled, which should remain that way.
+The autonomous research/writing layer uses the OpenAI Responses API with web search for current prospect verification and lower-cost structured model calls for classification/drafting.
 
-Configure an Entra/Microsoft app with the required application mail permission and admin consent, then add:
+```bash
+npx wrangler secret put OPENAI_API_KEY
+```
+
+Default model variables in `wrangler.jsonc`:
+
+- `OPENAI_RESEARCH_MODEL`: `gpt-5.6-terra`
+- `OPENAI_MODEL`: `gpt-5.6-luna`
+
+They can be changed without changing the campaign code.
+
+## Microsoft 365 / Graph
+
+The provider uses Microsoft Graph rather than SMTP AUTH.
+
+Configure an Entra/Microsoft app with the required application mail permissions and admin consent, then add:
 
 ```bash
 npx wrangler secret put MS_TENANT_ID
 npx wrangler secret put MS_CLIENT_ID
 npx wrangler secret put MS_CLIENT_SECRET
-npx wrangler secret put MS_SENDER_USER
-npx wrangler secret put MS_BOOKING_ALIAS
 ```
 
-Expected sender values:
+The non-secret sender values are already in `wrangler.jsonc`:
 
 - `MS_SENDER_USER`: `saxman@rickparma.com`
 - `MS_BOOKING_ALIAS`: `booking@rickparma.com`
 
-The provider creates a draft first, captures Microsoft's message ID and conversation ID, then sends it. This is intentional so a later reply watcher can connect inbound replies to the correct campaign.
+Initial outreach uses Rick's personal sender identity. The provider creates a Microsoft draft first, captures message/conversation IDs and then sends it. Automated replies use `createReply`, so they stay inside the existing buyer thread.
 
-GoDaddy/Microsoft may still rewrite the alias to the licensed mailbox. The CRM preserves the requested identity separately so the alias issue can be resolved later without changing campaign history.
+GoDaddy/Microsoft may still rewrite the alias to the licensed mailbox. That does not block the personal-sender campaign path.
 
-### Twilio
+## Business postal address / commercial email safety
+
+Before Pilot or Live can send, Settings → Booking Agent must contain a valid **business postal address**. Use an appropriate business address, PO Box or commercial mailbox; do not fabricate one.
+
+Every autonomous cold email receives:
+
+- truthful sender identity
+- a business postal address
+- a clear reply-based opt-out line
+
+Opt-outs are propagated across duplicate records tied to the same email/phone.
+
+## Twilio (optional / relationship contacts only)
 
 ```bash
 npx wrangler secret put TWILIO_ACCOUNT_SID
@@ -83,122 +135,86 @@ npx wrangler secret put TWILIO_AUTH_TOKEN
 npx wrangler secret put TWILIO_FROM_NUMBER
 ```
 
-The SMS send endpoint requires all of these on every request:
+The existing SMS endpoint requires one recipient, explicit approval, compliance confirmation and contact-level `Text OK`. The autonomous cold engine never uses it.
 
-- one recipient only
-- `approved: true`
-- `complianceOk: true`
-- `textOk: true`
-
-Deploy:
+## Deploy
 
 ```bash
 npm run deploy
 ```
 
-## Authentication API
+The Worker cron runs every 10 minutes. Each scheduled cycle:
 
-### `GET /api/auth/config`
+1. syncs Microsoft inbox replies
+2. processes inbound replies before any new outbound work
+3. runs daily research once per Las Vegas local day
+4. generates/sends due initial emails and follow-ups according to mode/limits
 
-Public health-style check showing whether app login is configured. Does not expose secret values.
+## Autonomous API
 
-### `POST /api/auth/login`
+All routes below require a valid Booking Engine session.
 
-```json
-{ "password": "..." }
-```
+### `GET /api/autopilot/status`
 
-Returns a signed session token valid for up to 12 hours. Store it in `sessionStorage`, not source code or persistent configuration.
+Returns mode, readiness, provider state, counts and the latest run summary.
 
-### `GET /api/auth/status`
+### `GET /api/autopilot/config`
 
-Requires `Authorization: Bearer <session-token>`.
+Returns Autopilot configuration and readiness.
 
-All CRM/provider routes accept a valid short-lived session. `BOOKING_API_TOKEN`, when configured, is only an optional server/CLI fallback.
+### `PUT /api/autopilot/config`
 
-## Provider status
+Saves mode, daily limits, thresholds, business postal address and other policy settings.
 
-`GET /api/providers`
+### `POST /api/autopilot/run`
 
-Reports whether Microsoft Graph and Twilio have all required configuration, without exposing the secret values.
-
-## State
-
-`GET /api/state`
-
-Returns the saved Booking Engine state and its version.
-
-`PUT /api/state`
+Runs one booking-agent cycle immediately.
 
 ```json
-{
-  "state": { "...": "full browser CRM state" },
-  "expectedVersion": 3
-}
+{ "forceResearch": false }
 ```
 
-`expectedVersion` is optional. When provided, conflicting writes return HTTP 409 rather than silently overwriting newer state.
+### `GET /api/autopilot/drafts`
 
-## CRM events
+Returns Shadow Mode drafts for inspection.
 
-`POST /api/events`
+### `POST /api/prospects/import`
 
-```json
-{
-  "contactId": "LV-0001",
-  "eventType": "campaign_step_completed",
-  "channel": "email",
-  "payload": { "step": 1 }
-}
-```
+Seeds/updates D1 from the existing `BOOKING_DATA.contacts` plus current browser CRM state. The operation is idempotent.
 
-`GET /api/events?contactId=LV-0001&limit=50`
+### `GET /api/prospects`
 
-## Message records
+Returns server-side prospects, including newly discovered research.
 
-`GET /api/messages?contactId=LV-0001&limit=50`
+### `GET /api/escalations`
 
-The `providerMessageId` and `threadId` fields attach provider messages to CRM campaigns.
+Returns the **Needs Rick** queue.
 
-## Individually approved sends
+### `POST /api/escalations/:id/resolve`
 
-### `POST /api/send/email`
+Marks one exception resolved.
 
-Requires a logged-in session plus:
+## Existing core API
 
-```json
-{
-  "approved": true,
-  "complianceOk": true,
-  "contactId": "LV-0001",
-  "campaignId": "LV-0001",
-  "from": "saxman@rickparma.com",
-  "to": "buyer@example.com",
-  "subject": "Live music introduction",
-  "body": "..."
-}
-```
-
-### `POST /api/send/sms`
-
-```json
-{
-  "approved": true,
-  "complianceOk": true,
-  "textOk": true,
-  "contactId": "LV-0001",
-  "campaignId": "LV-0001",
-  "to": "+17025551212",
-  "body": "..."
-}
-```
+- `GET /api/health`
+- `GET /api/auth/config`
+- `POST /api/auth/login`
+- `GET /api/auth/status`
+- `GET /api/providers`
+- `GET/PUT /api/state`
+- `GET/POST /api/events`
+- `GET/POST /api/messages`
+- `POST /api/send/email`
+- `POST /api/send/sms`
+- `POST /api/webhooks/twilio`
 
 ## Security rules
 
-- Never commit Microsoft, Twilio, password, session, or API secrets.
-- No bulk-send route exists.
-- Browser sessions expire.
-- SMS requires the contact-level `Text OK` decision.
-- Send requests require explicit approval and compliance confirmation.
-- The Worker only allows configured Booking Engine origins through CORS.
-- Keep the browser app functional without cloud sync so a backend outage never blocks Rick from accessing the CRM.
+- Never commit OpenAI, Microsoft, Twilio, password, session or API secrets.
+- The browser receives only a short-lived signed Booking Engine session.
+- No general bulk-send endpoint exists.
+- Cold automated SMS is disabled in policy code.
+- Autonomous email requires fit/confidence thresholds and a verified professional email route.
+- Do Not Contact, Pass, Booked, current venues and room-level skips stop automation.
+- Replies are processed before new sends so the agent cannot send a follow-up after a response has already arrived.
+- Local browser CRM remains usable if the Worker is unavailable.
