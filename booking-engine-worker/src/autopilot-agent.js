@@ -93,8 +93,15 @@ export async function setBookingAgentConfig(env, input) {
 
 export async function listBookingEscalations(env, limit = 50) {
   const result = await env.DB.prepare(`
-    SELECT e.*,p.entity,p.room,p.contact_name,p.contact_role,p.email
-    FROM escalations e LEFT JOIN prospects p ON p.id=e.contact_id
+    SELECT
+      e.*,
+      p.entity,p.room,p.contact_name,p.contact_role,p.email,p.phone,p.text_ok,
+      m.channel AS inbound_channel,m.sender AS inbound_sender,m.subject AS inbound_subject,
+      m.body AS inbound_body,m.provider_message_id AS inbound_provider_message_id,m.thread_id AS inbound_thread_id,
+      m.received_at AS inbound_received_at
+    FROM escalations e
+    LEFT JOIN prospects p ON p.id=e.contact_id
+    LEFT JOIN messages m ON m.id=e.message_id
     WHERE e.status='open'
     ORDER BY CASE WHEN e.priority='high' THEN 0 ELSE 1 END,e.created_at DESC
     LIMIT ?
