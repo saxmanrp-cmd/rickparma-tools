@@ -1,6 +1,19 @@
-import { upsertResearchedProspect } from './prospects.js';
+import { upsertResearchedProspect, matchesKnownCurrentVenue, dedupeKey } from './prospects.js';
 
 export async function stageDiscoveredProspect(env, item = {}, trustedSources = []) {
+  if (await matchesKnownCurrentVenue(env, item)) return null;
+
+  const key = dedupeKey({
+    entity: item.entity,
+    room: item.room,
+    contactName: item.contactName,
+    email: item.email
+  });
+  const existing = await env.DB.prepare(
+    'SELECT id FROM prospects WHERE dedupe_key=? LIMIT 1'
+  ).bind(key).first();
+  if (existing?.id) return null;
+
   const staged = {
     ...item,
     automationSafe: 'MANUAL',

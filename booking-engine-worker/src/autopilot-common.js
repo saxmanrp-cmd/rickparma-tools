@@ -112,7 +112,7 @@ export async function storeDraft(env, contactId, subject, body, metadata = {}) {
   await env.DB.prepare(`
     INSERT INTO messages (id,contact_id,direction,channel,provider,sender,recipient,subject,body,status,metadata_json)
     VALUES (?,?,'outbound','email','shadow',?,?,?,?, 'draft', ?)
-  `).bind(id, contactId, ARTIST_PROFILE.personalEmail, null, subject, body, JSON.stringify(metadata)).run();
+  `).bind(id, contactId, ARTIST_PROFILE.bookingEmail, null, subject, body, JSON.stringify(metadata)).run();
   return { id, created: true };
 }
 

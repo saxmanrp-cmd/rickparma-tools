@@ -34,8 +34,8 @@ export async function runResearchCycle(env, config) {
     // autonomous sender can consider them.
     for (const item of ai.data.discovered || []) {
       const sources = trustedSourceList(item.sourceUrls, ai.sources);
-      await stageDiscoveredProspect(env, item, sources);
-      discovered++;
+      const stagedId = await stageDiscoveredProspect(env, item, sources);
+      if (stagedId) discovered++;
     }
 
     const summary = {

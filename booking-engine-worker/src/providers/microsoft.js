@@ -95,6 +95,7 @@ export async function sendMicrosoftEmail(env, input = {}) {
       headers,
       body: JSON.stringify({
         subject,
+        from: { emailAddress: { address: fromRequested || mailbox } },
         body: { contentType: 'Text', content },
         toRecipients: [{ emailAddress: { address: to } }],
         internetMessageHeaders: [

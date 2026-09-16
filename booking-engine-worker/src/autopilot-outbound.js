@@ -101,7 +101,7 @@ async function sendDraft(env, config, prospect, draft, purpose) {
     approved: true,
     complianceOk: true,
     to: prospect.email,
-    from: ARTIST_PROFILE.personalEmail,
+    from: ARTIST_PROFILE.bookingEmail,
     subject: draft.subject,
     body,
     contactId: prospect.id,
@@ -119,7 +119,7 @@ async function sendDraft(env, config, prospect, draft, purpose) {
     internetMessageId: result.internetMessageId,
     metadata: {
       purpose,
-      requestedFrom: ARTIST_PROFILE.personalEmail,
+      requestedFrom: ARTIST_PROFILE.bookingEmail,
       aiResponseId: draft.responseId || null
     }
   });

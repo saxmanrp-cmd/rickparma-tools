@@ -19,6 +19,67 @@ export function dedupeKey(input = {}) {
   return `entity:${entity}|room:${room}|contact:${contact}`;
 }
 
+
+function venueComparable(value) {
+  return norm(value)
+    .replace(/^the\s+/, '')
+    .replace(/\b(?:hotel|casino|resort|lounge|club|bar|room|stage|showroom|theater|theatre)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function venueNames(input = {}) {
+  const values = [
+    input.entity, input.Entity,
+    input.room, input.Room, input['Room / Stage']
+  ];
+  const names = new Set();
+  for (const value of values) {
+    const raw = norm(value);
+    const comparable = venueComparable(value);
+    if (raw) names.add(raw);
+    if (comparable) names.add(comparable);
+  }
+  return names;
+}
+
+function venueSetsOverlap(a, b) {
+  for (const left of a) {
+    for (const right of b) {
+      if (left === right) return true;
+    }
+  }
+  return false;
+}
+
+export async function matchesKnownCurrentVenue(env, item = {}) {
+  const candidateNames = venueNames(item);
+
+  const current = await env.DB.prepare(`
+    SELECT entity,room
+    FROM prospects
+    WHERE current_venue=1 OR room_preference='PERFORMING'
+  `).all();
+
+  for (const row of (current.results || [])) {
+    if (venueSetsOverlap(candidateNames, venueNames(row))) return true;
+  }
+
+  const stateRow = await env.DB.prepare(
+    "SELECT state_json FROM app_state WHERE id='rick' LIMIT 1"
+  ).first();
+
+  const state = parsedJson(stateRow?.state_json, {});
+  for (const [name, preference] of Object.entries(state.roomPrefs || {})) {
+    if (String(preference || '').toUpperCase() !== 'PERFORMING') continue;
+    if (venueSetsOverlap(candidateNames, venueNames({ entity: name, room: name }))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function profileFor(input = {}) {
   const lane = text(input.profile || input.Lane || input.category || input.Category).toLowerCase();
   const all = [
@@ -208,7 +269,11 @@ export async function verificationTargets(env, limit = 6) {
     WHERE suppressed=0
       AND current_venue=0
       AND room_preference NOT IN ('SKIP','PERFORMING')
-      AND (automation_safe!='YES_TARGETED' OR confidence<0.82 OR verified_at IS NULL)
+      AND (
+        verified_at IS NULL
+        OR source_urls_json IS NULL
+        OR source_urls_json='[]'
+      )
     ORDER BY fit_score DESC,confidence ASC,last_researched_at ASC
     LIMIT ?
   `).bind(Math.max(1, Math.min(20, Number(limit) || 6))).all();

@@ -28,7 +28,10 @@ function sourceUrls(data) {
   const urls = new Set();
   for (const item of data?.output || []) {
     if (item?.type === 'web_search_call') {
-      for (const source of item?.action?.sources || []) if (source?.url) urls.add(source.url);
+      for (const source of item?.action?.sources || []) {
+        if (source?.url) urls.add(source.url);
+      }
+      if (item?.action?.url) urls.add(item.action.url);
     }
     if (item?.type === 'message') {
       for (const part of item.content || []) {
@@ -67,7 +70,10 @@ async function structuredResponse(env, {
       }
     }
   };
-  if (web) payload.tools = [{ type: 'web_search', search_context_size: 'medium' }];
+  if (web) {
+    payload.tools = [{ type: 'web_search', search_context_size: 'medium' }];
+    payload.include = ['web_search_call.action.sources'];
+  }
 
   const response = await fetch(RESPONSES_URL, {
     method: 'POST',
@@ -135,7 +141,9 @@ export async function researchBookingProspects(env, { verify = [], discoverCount
   const verifyText = verify.length
     ? verify.map(v => `- ID ${v.id}: ${v.entity}${v.room ? ` / ${v.room}` : ''}; existing contact ${v.contactName || 'unknown'} ${v.contactRole || ''}; email ${v.email || 'unknown'}; phone ${v.phone || 'unknown'}`).join('\n')
     : '- none';
-  const input = `Research current Las Vegas live-music booking opportunities for Rick Parma.\n\nVERIFY THESE EXISTING LEADS:\n${verifyText}\n\nAlso discover up to ${Math.max(0, Math.min(10, Number(discoverCount) || 0))} additional strong prospects.\n\nRick is a Las Vegas singer/saxophonist whose best targets are casino lounges, casino bars, upscale lounges, restaurants with recurring live music, cocktail rooms, corporate/private-event buyers, appropriate festivals, and agencies/promoters that place local live entertainment. His main music is R&B, Motown, soul, funk, pop, Top 40 and neo-soul. He can perform solo singer/sax to tracks through full band.\n\nROOM-SPECIFIC EXCLUSIONS: do not recommend straight-ahead-jazz-only rooms or country-first rooms for direct room outreach. Do NOT blacklist a buyer merely because they control one excluded room; they may control other appropriate rooms.\n\nVerification rules: use current public professional sources, strongly prefer official venue/company pages and current professional profiles/directories. Do not invent emails, phone numbers, names, roles, or booking routes. Only return a direct email when publicly evidenced. If a lead cannot be confidently verified, mark MANUAL or NO rather than guessing. For new discoveries, prioritize prospects with a real email or official artist-submission route. Use requestedId only for leads supplied in the verification list; use an empty string for newly discovered prospects.\n\nAutomationSafe should be YES_TARGETED only when the entity/opportunity is a strong fit AND the professional contact route is sufficiently verified for targeted one-to-one outreach.`;
+  const input = `Research current Las Vegas live-music booking opportunities for Rick Parma.\n\nVERIFY THESE EXISTING LEADS:\n${verifyText}\n\nAlso discover up to ${Math.max(0, Math.min(10, Number(discoverCount) || 0))} additional strong prospects.\n\nRick is a Las Vegas singer/saxophonist whose best targets are casino lounges, casino bars, upscale lounges, restaurants with recurring live music, cocktail rooms, corporate/private-event buyers, appropriate festivals, and agencies/promoters that place local live entertainment. His main music is R&B, Motown, soul, funk, pop, Top 40 and neo-soul. He can perform solo singer/sax to tracks through full band.\n\nROOM-SPECIFIC EXCLUSIONS: do not recommend straight-ahead-jazz-only rooms or country-first rooms for direct room outreach. Do NOT blacklist a buyer merely because they control one excluded room; they may control other appropriate rooms.\n\nVerification rules: use current public professional sources, strongly prefer official venue/company pages and current professional profiles/directories. Do not invent emails, phone numbers, names, roles, or booking routes. Only return a direct email when publicly evidenced. If a lead cannot be confidently verified, mark MANUAL or NO rather than guessing. For new discoveries, prioritize prospects with a real email or official artist-submission route. Use requestedId only for leads supplied in the verification list; use an empty string for newly discovered prospects.\n\nAutomationSafe should be YES_TARGETED only when the entity/opportunity is a strong fit AND the professional contact route is sufficiently verified for targeted one-to-one outreach.
+
+SOURCE REQUIREMENT: for every verified or discovered item, populate sourceUrls with the exact current webpages actually used to support the entity, contact, role, email, phone, booking route, and fit assessment. Prefer official venue/company pages. Do not invent or reconstruct URLs.`;
 
   return structuredResponse(env, {
     name: 'booking_research',
@@ -193,6 +201,38 @@ export async function classifyBookingReply(env, { sender, subject, body, context
   });
 }
 
+
+function enforceEmailLinks(body, maxLinks = 3) {
+  let text = String(body || '')
+    .replace(/<a\b[^>]*href=["']([^"']+)["'][^>]*>[\s\S]*?<\/a>/gi, '$1')
+    .replace(/\[([\s\S]*?)\]\(([\s\S]*?)\)/g, '$1');
+
+  const seen = new Set();
+  let kept = 0;
+  const linkPattern = /\b(?:https?:\/\/|www\.)[^\s<>\]\)]+|\b(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s<>\]\)]*)?/gi;
+
+  text = text.replace(linkPattern, raw => {
+    const value = raw.replace(/[.,;!?]+$/, '');
+    const canonical = value
+      .replace(/^https?:\/\//i, '')
+      .replace(/^www\./i, '')
+      .replace(/\/$/, '')
+      .toLowerCase();
+
+    if (seen.has(canonical) || kept >= maxLinks) return '';
+    seen.add(canonical);
+    kept++;
+    return value;
+  });
+
+  return text
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\(\s*\)/g, '')
+    .replace(/\[\s*\]/g, '')
+    .trim();
+}
+
 const draftSchema = {
   type: 'object',
   additionalProperties: false,
@@ -204,8 +244,8 @@ const draftSchema = {
 };
 
 export async function draftBookingEmail(env, { prospect, artistContext, assets, purpose = 'initial', priorMessages = '' }) {
-  const input = `Write a concise, human professional booking email from Rick Parma.\n\nPURPOSE: ${purpose}\nPROSPECT:\n${JSON.stringify(prospect)}\n\nARTIST FACTS:\n${String(artistContext || '').slice(0, 7000)}\n\nUSEFUL LINKS:\n${String(assets || '').slice(0, 4000)}\n\nPRIOR THREAD IF ANY:\n${String(priorMessages || '').slice(0, 8000)}\n\nRules: 1) Do not invent facts about the venue, contact, artist, availability, rates, or relationships. 2) Keep a first cold email compact and personalized; usually 120-220 words before the compliance footer. 3) Use at most two promo/media links plus the current calendar unless a reply specifically asks for more. 4) Do not claim Rick is represented by the recipient or imply an existing relationship unless supplied. 5) Do not promise availability, pricing, contracts, exclusivity, or dates. 6) The caller is Rick Parma, not a fake agent. 7) No hypey marketing language or mass-mail wording. 8) If relatedOpportunities are supplied for the same buyer email, treat them as one relationship and do not write separate-sounding room pitches.`;
-  return structuredResponse(env, {
+  const input = `Write a concise, human professional booking email from Rick Parma.\n\nPURPOSE: ${purpose}\nPROSPECT:\n${JSON.stringify(prospect)}\n\nARTIST FACTS:\n${String(artistContext || '').slice(0, 7000)}\n\nUSEFUL LINKS:\n${String(assets || '').slice(0, 4000)}\n\nPRIOR THREAD IF ANY:\n${String(priorMessages || '').slice(0, 8000)}\n\nRules: 1) Do not invent facts about the venue, contact, artist, availability, rates, or relationships. 2) Keep a first cold email compact and personalized; usually 120-220 words before the compliance footer. 3) Use at most two promo/media links plus the current calendar unless a reply specifically asks for more. 4) Do not claim Rick is represented by the recipient or imply an existing relationship unless supplied. 5) Do not promise availability, pricing, contracts, exclusivity, or dates. 6) The caller is Rick Parma, not a fake agent. 7) No hypey marketing language or mass-mail wording. 8) If relatedOpportunities are supplied for the same buyer email, treat them as one relationship and do not write separate-sounding room pitches. 9) If prospect.contactName is blank, use a generic greeting such as Hello; NEVER infer a person's name from an email address, URL, evidence summary, or other field. 10) BODY MUST BE PLAIN TEXT ONLY. Write URLs as raw URLs on their own lines; never use Markdown links, brackets, HTML, or embedded hyperlinks. 11) For an initial cold email, use no more than three total links: at most two promo/media links plus one website or current-calendar link. Do not add extra social links unless specifically requested. 12) Do not repeat the same website URL in both the body and signature.`;
+  const result = await structuredResponse(env, {
     name: 'booking_email_draft',
     schema: draftSchema,
     instructions: 'You write targeted one-to-one booking outreach for a professional Las Vegas singer and saxophonist. Sound like a working musician contacting an entertainment professional, not a marketing blast.',
@@ -213,6 +253,8 @@ export async function draftBookingEmail(env, { prospect, artistContext, assets, 
     effort: 'low',
     model: env.OPENAI_MODEL || 'gpt-5.6-luna'
   });
+  result.data.body = enforceEmailLinks(result.data.body, 3);
+  return result;
 }
 
 export async function draftBookingReply(env, {
