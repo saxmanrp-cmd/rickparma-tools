@@ -124,9 +124,10 @@ function cleanBodyBeforeSignature(body, config = {}) {
   // The standardized signature owns Rick's website and booking email. Remove common
   // AI-generated website blocks and standalone copies so those details appear once.
   text = text
-    .replace(/(^|\n)(?:Website|More about my work|More info(?:rmation)?|Learn more|About my work):\s*\nhttps?:\/\/(?:www\.)?rickparma\.com\/?\s*(?=\n|$)/gi, '$1')
+    .replace(/(^|\n)(?:Website|More about my work|More about me|More info(?:rmation)?|Learn more|About my work):\s*\nhttps?:\/\/(?:www\.)?rickparma\.com\/?\s*(?=\n|$)/gi, '$1')
     .replace(/(^|\n)https?:\/\/(?:www\.)?rickparma\.com\/?\s*(?=\n|$)/gi, '$1')
-    .replace(/(^|\n)Booking(?: email)?:\s*booking@rickparma\.com\s*(?=\n|$)/gi, '$1');
+    .replace(/(^|\n)Booking(?: email)?:\s*booking@rickparma\.com\s*(?=\n|$)/gi, '$1')
+    .replace(/(^|\n)(?:Website|More about my work|More about me|More info(?:rmation)?|Learn more|About my work):\s*(?=\n\s*\n|\n?$)/gi, '$1');
 
   let lines = text.split('\n').map(line => line.replace(/[ \t]+$/g, ''));
   while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
