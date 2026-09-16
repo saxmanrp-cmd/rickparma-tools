@@ -1,4 +1,4 @@
-import { researchBookingProspects } from './providers/openai.js';
+import { researchBookingProspects } from './providers/research.js';
 import { verificationTargets, upsertResearchedProspect } from './prospects.js';
 import { stageDiscoveredProspect, trustedSourceList } from './prospect-staging.js';
 import { startRun, finishRun } from './autopilot-common.js';
