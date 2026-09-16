@@ -1,0 +1,54 @@
+name: Text Blast JOIN Repair
+
+on:
+  push:
+    branches:
+      - fix/text-blast-join-subscriber-repair
+    paths:
+      - '.github/scripts/text_blast_join_repair.py'
+      - '.github/workflows/text-blast-join-repair.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch Text Blast admin
+        run: python .github/scripts/text_blast_join_repair.py
+
+      - name: Verify JOIN repair guardrails
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('admin.html').read_text(encoding='utf-8')
+          checks = [
+              "repairMissingJoinSubscribers",
+              "const rawConvos = data.conversations || [];",
+              "await repairMissingJoinSubscribers(rawConvos);",
+              "Recovered ${repaired} missed JOIN opt-in",
+              "totalCount.textContent = `${active.length} active`;",
+              "const stopCommands = new Set(['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT']);",
+          ]
+          missing = [item for item in checks if item not in text]
+          if missing:
+              raise SystemExit('Missing expected JOIN repair code: ' + ', '.join(missing))
+          if "totalCount.textContent = `${subscribers.length} total`;" in text:
+              raise SystemExit('Old misleading total subscriber count is still present')
+          print('Text Blast JOIN repair verification passed.')
+          PY
+
+      - name: Commit patched admin
+        run: |
+          if git diff --quiet -- admin.html; then
+            echo "No admin.html changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin.html
+          git commit -m "Repair missed JOIN subscriber opt-ins"
+          git push
