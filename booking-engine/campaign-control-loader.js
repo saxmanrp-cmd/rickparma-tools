@@ -38,7 +38,7 @@
     loading = true;
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = './campaign-control-center.js';
+      script.src = './campaign-control-center-safe.js?v=20260916-2';
       script.async = false;
       script.onload = () => {
         loaded = true;
