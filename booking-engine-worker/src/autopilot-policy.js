@@ -121,8 +121,11 @@ export function prospectEligible(config, prospect) {
 function cleanBodyBeforeSignature(body, config = {}) {
   let text = String(body || '').replace(/\r\n/g, '\n').trim();
 
+  // The standardized signature owns Rick's website and booking email. Remove common
+  // AI-generated website blocks and standalone copies so those details appear once.
   text = text
-    .replace(/(^|\n)Website:\s*\nhttps?:\/\/(?:www\.)?rickparma\.com\/?\s*(?=\n|$)/gi, '$1')
+    .replace(/(^|\n)(?:Website|More about my work|More info(?:rmation)?|Learn more|About my work):\s*\nhttps?:\/\/(?:www\.)?rickparma\.com\/?\s*(?=\n|$)/gi, '$1')
+    .replace(/(^|\n)https?:\/\/(?:www\.)?rickparma\.com\/?\s*(?=\n|$)/gi, '$1')
     .replace(/(^|\n)Booking(?: email)?:\s*booking@rickparma\.com\s*(?=\n|$)/gi, '$1');
 
   let lines = text.split('\n').map(line => line.replace(/[ \t]+$/g, ''));
@@ -172,7 +175,7 @@ export function appendComplianceFooter(body, config) {
     'Rick Parma',
     'Singer • Saxophonist • Entertainer',
     'booking@rickparma.com',
-    'https://rickparma.com/',
+    'RickParma.com',
     config.businessPostalAddress || ''
   ].filter(Boolean).join('\n');
 
