@@ -2,6 +2,7 @@ import { bearerToken, verifySession } from './auth.js';
 import { bookingAgentStatus, setBookingAgentConfig, runAutonomousBookingAgent, listBookingEscalations, resolveBookingEscalation } from './autopilot-agent.js';
 import { respondToEscalation } from './escalation-response.js';
 import { importProspects, listProspects } from './prospects.js';
+import { getAutopilotConfig, appendComplianceFooter } from './autopilot-policy.js';
 
 function corsHeaders(request, env) {
   const origin = request.headers.get('origin') || '';
@@ -70,7 +71,12 @@ export async function handleAgentApi(request, env) {
         FROM messages m LEFT JOIN prospects p ON p.id=m.contact_id
         WHERE m.status='draft' ORDER BY m.created_at DESC LIMIT ?
       `).bind(limit).all();
-      return json({ drafts: result.results || [] }, request, env);
+      const config = await getAutopilotConfig(env);
+      const drafts = (result.results || []).map(row => ({
+        ...row,
+        body: appendComplianceFooter(row.body || '', config)
+      }));
+      return json({ drafts }, request, env);
     }
     if (url.pathname === '/api/prospects/import' && request.method === 'POST') {
       const body = await readJson(request);
