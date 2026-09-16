@@ -118,11 +118,43 @@ export function prospectEligible(config, prospect) {
   return { ok: true };
 }
 
+function cleanBodyBeforeSignature(body) {
+  let text = String(body || '').trim();
+
+  // The standardized footer owns Rick's website/email/signature. Remove a generated
+  // website block so the same information does not appear twice in one message.
+  text = text
+    .replace(/(^|\n)Website:\s*\nhttps?:\/\/(?:www\.)?rickparma\.com\/?\s*(?=\n|$)/gi, '$1')
+    .replace(/(^|\n)Booking(?: email)?:\s*booking@rickparma\.com\s*(?=\n|$)/gi, '$1');
+
+  let lines = text.split('\n').map(line => line.replace(/[ \t]+$/g, ''));
+  while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+
+  // Keep a natural closing such as “Thanks,” or “Thank you for your time,” but remove
+  // any AI-generated signature beneath it. The system adds one consistent signature.
+  for (let i = Math.max(0, lines.length - 6); i < lines.length; i++) {
+    if (lines[i].trim().toLowerCase() !== 'rick parma') continue;
+    const tail = lines.slice(i + 1).join(' ').toLowerCase();
+    if (!tail || /singer|vocalist|saxophonist|entertainer|booking@rickparma|rickparma\.com/.test(tail)) {
+      lines = lines.slice(0, i);
+      break;
+    }
+  }
+
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 export function appendComplianceFooter(body, config) {
-  const lines = [String(body || '').trim()];
-  if (config.businessPostalAddress) lines.push(`\nRick Parma\n${config.businessPostalAddress}`);
-  if (config.optOutLine) lines.push(config.optOutLine);
-  return lines.filter(Boolean).join('\n\n');
+  const content = cleanBodyBeforeSignature(body);
+  const signature = [
+    'Rick Parma',
+    'Singer • Saxophonist • Entertainer',
+    'booking@rickparma.com',
+    'https://rickparma.com/',
+    config.businessPostalAddress || ''
+  ].filter(Boolean).join('\n');
+
+  return [content, signature, config.optOutLine || ''].filter(Boolean).join('\n\n');
 }
 
 export function categoryPolicy(category) {
