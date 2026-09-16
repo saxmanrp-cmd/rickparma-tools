@@ -8,6 +8,8 @@ import {
   priorThread, todayEventCount, storeOutbound, storeDraft, mirrorOverride
 } from './autopilot-common.js';
 
+const DRAFT_FORMAT_VERSION = 'signature-v2';
+
 function recipientKey(email) { return String(email || '').trim().toLowerCase(); }
 
 function nextFollowupDelay(config, touchCountAfterSend) {
@@ -66,8 +68,9 @@ async function hasShadowDraft(env, contactId, purpose) {
     SELECT id FROM messages
     WHERE contact_id=? AND direction='outbound' AND channel='email' AND status='draft'
       AND json_extract(metadata_json,'$.purpose')=?
+      AND COALESCE(json_extract(metadata_json,'$.formatVersion'),'')=?
     LIMIT 1
-  `).bind(contactId, purpose).first();
+  `).bind(contactId, purpose, DRAFT_FORMAT_VERSION).first();
   return !!row;
 }
 
@@ -120,7 +123,8 @@ async function sendDraft(env, config, prospect, draft, purpose) {
     metadata: {
       purpose,
       requestedFrom: ARTIST_PROFILE.bookingEmail,
-      aiResponseId: draft.responseId || null
+      aiResponseId: draft.responseId || null,
+      formatVersion: DRAFT_FORMAT_VERSION
     }
   });
 
@@ -150,7 +154,8 @@ async function shadowDraft(env, config, prospect, draft, purpose) {
   const body = appendComplianceFooter(draft.body, config);
   const stored = await storeDraft(env, prospect.id, draft.subject, body, {
     purpose,
-    aiResponseId: draft.responseId || null
+    aiResponseId: draft.responseId || null,
+    formatVersion: DRAFT_FORMAT_VERSION
   });
   if (stored.created) await event(env, prospect.id, 'autopilot_shadow_draft', 'email', { purpose, messageId: stored.id });
   return stored;
