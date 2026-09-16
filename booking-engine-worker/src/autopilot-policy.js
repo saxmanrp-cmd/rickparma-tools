@@ -41,7 +41,7 @@ export function normalizeAutopilotConfig(input = {}) {
   out.followupDays = Array.isArray(out.followupDays)
     ? out.followupDays.map(v => clampInt(v, 1, 365, 5)).slice(0, 8)
     : [...DEFAULT_AUTOPILOT_CONFIG.followupDays];
-  out.allowColdSms = false; // Non-negotiable default: no automated cold SMS.
+  out.allowColdSms = false;
   out.businessPostalAddress = String(out.businessPostalAddress || '').trim().slice(0, 300);
   out.optOutLine = String(out.optOutLine || DEFAULT_AUTOPILOT_CONFIG.optOutLine).trim().slice(0, 500);
   return out;
@@ -118,11 +118,9 @@ export function prospectEligible(config, prospect) {
   return { ok: true };
 }
 
-function cleanBodyBeforeSignature(body) {
-  let text = String(body || '').trim();
+function cleanBodyBeforeSignature(body, config = {}) {
+  let text = String(body || '').replace(/\r\n/g, '\n').trim();
 
-  // The standardized footer owns Rick's website/email/signature. Remove a generated
-  // website block so the same information does not appear twice in one message.
   text = text
     .replace(/(^|\n)Website:\s*\nhttps?:\/\/(?:www\.)?rickparma\.com\/?\s*(?=\n|$)/gi, '$1')
     .replace(/(^|\n)Booking(?: email)?:\s*booking@rickparma\.com\s*(?=\n|$)/gi, '$1');
@@ -130,13 +128,37 @@ function cleanBodyBeforeSignature(body) {
   let lines = text.split('\n').map(line => line.replace(/[ \t]+$/g, ''));
   while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
 
-  // Keep a natural closing such as “Thanks,” or “Thank you for your time,” but remove
-  // any AI-generated signature beneath it. The system adds one consistent signature.
-  for (let i = Math.max(0, lines.length - 6); i < lines.length; i++) {
+  // Strip any existing opt-out line so this function is idempotent on old stored drafts.
+  while (lines.length && /rather not hear from me|won't follow up|will not follow up|reply ['‘’\"]?no thanks/i.test(lines[lines.length - 1].trim())) {
+    lines.pop();
+    while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+  }
+
+  // Remove a previously-added system signature/footer, including the legacy
+  // “Rick Parma + address” footer and the current full signature.
+  const addressNeedle = String(config.businessPostalAddress || '').trim().toLowerCase();
+  for (let i = lines.length - 1; i >= Math.max(0, lines.length - 14); i--) {
+    if (lines[i].trim().toLowerCase() !== 'rick parma') continue;
+    const tail = lines.slice(i + 1).join(' ').toLowerCase();
+    const looksSystemGenerated =
+      /booking@rickparma\.com|rickparma\.com|singer|vocalist|saxophonist|entertainer/.test(tail)
+      || (addressNeedle && tail.includes(addressNeedle))
+      || /\b(?:las vegas|north las vegas),?\s+nv\b/.test(tail)
+      || /\b\d{5}(?:-\d{4})?\b/.test(tail);
+    if (looksSystemGenerated) {
+      lines = lines.slice(0, i);
+      while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+      break;
+    }
+  }
+
+  // Remove an AI-generated name/title signature that may remain above the old footer.
+  for (let i = lines.length - 1; i >= Math.max(0, lines.length - 8); i--) {
     if (lines[i].trim().toLowerCase() !== 'rick parma') continue;
     const tail = lines.slice(i + 1).join(' ').toLowerCase();
     if (!tail || /singer|vocalist|saxophonist|entertainer|booking@rickparma|rickparma\.com/.test(tail)) {
       lines = lines.slice(0, i);
+      while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
       break;
     }
   }
@@ -145,7 +167,7 @@ function cleanBodyBeforeSignature(body) {
 }
 
 export function appendComplianceFooter(body, config) {
-  const content = cleanBodyBeforeSignature(body);
+  const content = cleanBodyBeforeSignature(body, config);
   const signature = [
     'Rick Parma',
     'Singer • Saxophonist • Entertainer',
