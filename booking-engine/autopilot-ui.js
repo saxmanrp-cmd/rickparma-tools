@@ -149,28 +149,104 @@
     return `<div class="agent-metric"><strong>${Number(n || 0)}</strong><span>${esc(label)}</span></div>`;
   }
 
+  function activityLabel(eventType, prospect) {
+    const status = String(prospect?.status || '');
+    if (eventType === 'autopilot_initial_sent') return 'Sent first outreach';
+    if (eventType === 'autopilot_followup_sent') return 'Sent follow-up';
+    if (eventType === 'autopilot_escalation_created') return 'Needs Rick';
+    if (eventType === 'autopilot_reply_sent') return 'Agent replied';
+    if (eventType === 'autopilot_opt_out') return 'Opted out • stopped';
+    if (eventType === 'message_received') {
+      if (status === 'Replied') return 'Replied • follow-ups stopped';
+      if (status === 'Pass') return 'Passed • follow-ups stopped';
+      if (status === 'Do not contact') return 'Opted out • stopped';
+      return 'Reply received';
+    }
+    return '';
+  }
+
   async function renderHome() {
     const home = document.querySelector('[data-view="dashboard"]');
     if (!home) return;
+
     let panel = home.querySelector('[data-agent-home]');
     if (!panel) {
       panel = document.createElement('div');
       panel.className = 'agent-home-panel';
       panel.dataset.agentHome = 'true';
       const anchor = home.querySelector('.metric-grid, .dashboard-grid');
-      if (anchor) anchor.after(panel); else home.appendChild(panel);
+      if (anchor) anchor.after(panel);
+      else home.appendChild(panel);
     }
+
     if (!lastStatus) {
-      try { await status(); } catch { panel.remove(); return; }
+      try { await status(); }
+      catch { panel.remove(); return; }
     }
+
     const s = lastStatus;
     const c = s.counts || {};
+
+    let recent = [];
+    try {
+      const [eventsData, prospectsData] = await Promise.all([
+        api('/api/events?limit=30'),
+        api('/api/prospects?limit=500')
+      ]);
+
+      const prospects = new Map(
+        (prospectsData.prospects || []).map(p => [p.id, p])
+      );
+
+      recent = (eventsData.events || [])
+        .map(e => ({ ...e, prospect: prospects.get(e.contactId) || null }))
+        .filter(e => activityLabel(e.eventType, e.prospect))
+        .slice(0, 8);
+    } catch {}
+
     panel.innerHTML = `
-      <div class="agent-home-head"><div><div class="eyebrow">BOOKING AGENT</div><strong>${esc(modeLabel(s.config?.mode))} Mode</strong></div><span class="agent-dot ${s.readiness?.canSend ? 'on' : ''}"></span></div>
-      <div class="agent-home-metrics">
-        ${metric(c.verified,'Verified')}${metric(c.contacted,'Contacted')}${metric(c.replied,'Replies')}${metric(c.needsRick,'Needs Rick')}
+      <div class="agent-home-head">
+        <div>
+          <div class="eyebrow">BOOKING AGENT</div>
+          <strong>What happened</strong>
+        </div>
+        <span class="agent-mode mode-${esc(s.config?.mode)}">${esc(modeLabel(s.config?.mode))}</span>
       </div>
-      <div class="agent-home-foot">${s.latestRun?.startedAt ? `Last agent run: ${new Date(s.latestRun.startedAt).toLocaleString()}` : 'Agent has not run yet.'}</div>`;
+
+      <div class="agent-home-metrics">
+        ${metric(c.contacted,'Contacted')}
+        ${metric(c.replied,'Replies')}
+        ${metric(c.needsRick,'Needs Rick')}
+        ${metric(c.verified,'Verified')}
+      </div>
+
+      <div class="agent-home-activity">
+        <div class="agent-section-title">
+          <strong>Recent activity</strong>
+          <span>${recent.length}</span>
+        </div>
+
+        ${recent.length ? recent.map(e => `
+          <div class="agent-home-activity-row">
+            <div>
+              <strong>${esc(e.prospect?.entity || 'Booking activity')}</strong>
+              <span>${esc(activityLabel(e.eventType, e.prospect))}</span>
+            </div>
+            <time>${esc(new Date(e.createdAt).toLocaleString([], {
+              month:'short',
+              day:'numeric',
+              hour:'numeric',
+              minute:'2-digit'
+            }))}</time>
+          </div>
+        `).join('') : '<div class="agent-empty">No recent booking activity.</div>'}
+      </div>
+
+      <div class="agent-home-foot">
+        ${s.latestRun?.startedAt
+          ? `Last agent run: ${new Date(s.latestRun.startedAt).toLocaleString()}`
+          : 'Agent has not run yet.'}
+      </div>`;
   }
 
   async function renderCampaignAgentSections() {
@@ -212,7 +288,7 @@
     const style = document.createElement('style');
     style.id = 'autopilot-ui-styles';
     style.textContent = `
-      .agent-title-row,.agent-home-head,.agent-section-title{display:flex;align-items:center;justify-content:space-between;gap:12px}.agent-title-row h3{margin:2px 0 0}.agent-mode{font-size:11px;font-weight:900;padding:7px 10px;border-radius:999px;border:1px solid var(--line);text-transform:uppercase;letter-spacing:.08em}.mode-shadow{color:#b8d0ff}.mode-pilot{color:#ffd37f}.mode-live{color:#8ce1b2}.agent-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.agent-settings label span{font-weight:500;color:var(--muted)}.agent-safety{padding:11px 12px;border:1px solid rgba(242,190,97,.22);background:rgba(242,190,97,.06);border-radius:12px;font-size:11px;line-height:1.45;color:var(--muted);margin:10px 0}.agent-readiness{margin:10px 0}.agent-status-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:11px}.agent-status-row span{color:var(--muted)}.agent-status-row strong.good{color:#8ce1b2}.agent-status-row strong.warn{color:#ffd37f;max-width:55%;text-align:right}.agent-buttons{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:8px}.agent-message{min-height:18px;color:var(--muted);font-size:11px;margin-top:8px}.agent-home-panel,.agent-review-block{border:1px solid var(--line);border-radius:18px;background:var(--surface);padding:15px;margin:14px 0}.agent-home-head strong{font-size:18px}.agent-dot{width:10px;height:10px;border-radius:999px;background:#6b7280}.agent-dot.on{background:#8ce1b2;box-shadow:0 0 14px rgba(140,225,178,.5)}.agent-home-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:12px}.agent-metric{padding:10px 6px;border:1px solid var(--line);border-radius:12px;text-align:center}.agent-metric strong{display:block;font-size:20px}.agent-metric span{display:block;font-size:9px;color:var(--muted);margin-top:2px}.agent-home-foot{font-size:10px;color:var(--muted);margin-top:10px}.agent-review-section{margin:12px 0}.agent-section-title span{font-size:11px;padding:4px 7px;border-radius:999px;background:var(--surface-3);color:var(--muted)}.agent-exception{padding:10px 0;border-bottom:1px solid var(--line)}.agent-exception:last-child{border-bottom:0}.agent-exception.high{border-left:3px solid #ffd37f;padding-left:10px}.agent-exception div{display:flex;justify-content:space-between;gap:8px}.agent-exception span,.agent-exception p,.agent-empty{font-size:11px;color:var(--muted)}.agent-exception p{margin:6px 0 0;line-height:1.4}.agent-draft{border-top:1px solid var(--line);padding:9px 0}.agent-draft summary{cursor:pointer;font-size:11px;font-weight:700}.agent-draft pre{white-space:pre-wrap;font-family:inherit;color:var(--muted);font-size:11px;line-height:1.45}.agent-error{color:#ffd37f;font-size:11px}@media(max-width:520px){.agent-grid{grid-template-columns:1fr 1fr}.agent-buttons{grid-template-columns:1fr}.agent-home-metrics{grid-template-columns:1fr 1fr}}
+      .agent-title-row,.agent-home-head,.agent-section-title{display:flex;align-items:center;justify-content:space-between;gap:12px}.agent-title-row h3{margin:2px 0 0}.agent-mode{font-size:11px;font-weight:900;padding:7px 10px;border-radius:999px;border:1px solid var(--line);text-transform:uppercase;letter-spacing:.08em}.mode-shadow{color:#b8d0ff}.mode-pilot{color:#ffd37f}.mode-live{color:#8ce1b2}.agent-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.agent-settings label span{font-weight:500;color:var(--muted)}.agent-safety{padding:11px 12px;border:1px solid rgba(242,190,97,.22);background:rgba(242,190,97,.06);border-radius:12px;font-size:11px;line-height:1.45;color:var(--muted);margin:10px 0}.agent-readiness{margin:10px 0}.agent-status-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:11px}.agent-status-row span{color:var(--muted)}.agent-status-row strong.good{color:#8ce1b2}.agent-status-row strong.warn{color:#ffd37f;max-width:55%;text-align:right}.agent-buttons{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:8px}.agent-message{min-height:18px;color:var(--muted);font-size:11px;margin-top:8px}.agent-home-panel,.agent-review-block{border:1px solid var(--line);border-radius:18px;background:var(--surface);padding:15px;margin:14px 0}.agent-home-head strong{font-size:18px}.agent-dot{width:10px;height:10px;border-radius:999px;background:#6b7280}.agent-dot.on{background:#8ce1b2;box-shadow:0 0 14px rgba(140,225,178,.5)}.agent-home-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:12px}.agent-metric{padding:10px 6px;border:1px solid var(--line);border-radius:12px;text-align:center}.agent-metric strong{display:block;font-size:20px}.agent-metric span{display:block;font-size:9px;color:var(--muted);margin-top:2px}.agent-home-activity{margin-top:14px}.agent-home-activity-row{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;padding:11px 0;border-top:1px solid rgba(255,255,255,.06)}.agent-home-activity-row strong{display:block;font-size:13px}.agent-home-activity-row span{display:block;color:var(--muted);font-size:11px;margin-top:3px}.agent-home-activity-row time{font-size:10px;color:var(--muted);white-space:nowrap}.agent-home-foot{font-size:10px;color:var(--muted);margin-top:10px}.agent-review-section{margin:12px 0}.agent-section-title span{font-size:11px;padding:4px 7px;border-radius:999px;background:var(--surface-3);color:var(--muted)}.agent-exception{padding:10px 0;border-bottom:1px solid var(--line)}.agent-exception:last-child{border-bottom:0}.agent-exception.high{border-left:3px solid #ffd37f;padding-left:10px}.agent-exception div{display:flex;justify-content:space-between;gap:8px}.agent-exception span,.agent-exception p,.agent-empty{font-size:11px;color:var(--muted)}.agent-exception p{margin:6px 0 0;line-height:1.4}.agent-draft{border-top:1px solid var(--line);padding:9px 0}.agent-draft summary{cursor:pointer;font-size:11px;font-weight:700}.agent-draft pre{white-space:pre-wrap;font-family:inherit;color:var(--muted);font-size:11px;line-height:1.45}.agent-error{color:#ffd37f;font-size:11px}@media(max-width:520px){.agent-grid{grid-template-columns:1fr 1fr}.agent-buttons{grid-template-columns:1fr}.agent-home-metrics{grid-template-columns:1fr 1fr}}
     `;
     document.head.appendChild(style);
   }
