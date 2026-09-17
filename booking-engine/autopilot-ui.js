@@ -89,8 +89,8 @@
         </select>
       </label>
       <div class="agent-grid">
-        <label>New emails / day<input data-agent-initial type="number" min="0" max="50" value="${Number(c.dailyInitialEmailLimit || 3)}"></label>
-        <label>Follow-ups / day<input data-agent-followups type="number" min="0" max="100" value="${Number(c.dailyFollowupEmailLimit || 5)}"></label>
+        <label>New emails / day<input data-agent-initial type="number" min="0" max="50" value="${Number(c.dailyInitialEmailLimit ?? 3)}"></label>
+        <label>Follow-ups / day<input data-agent-followups type="number" min="0" max="100" value="${Number(c.dailyFollowupEmailLimit ?? 5)}"></label>
         <label>Minimum fit<input data-agent-fit type="number" min="0" max="100" value="${Number(c.minFitScore || 82)}"></label>
         <label>Minimum confidence<input data-agent-confidence type="number" min="0" max="1" step="0.01" value="${Number(c.minConfidence || .82)}"></label>
       </div>
