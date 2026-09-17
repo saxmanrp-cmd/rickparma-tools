@@ -79,6 +79,7 @@ export async function sendMicrosoftEmail(env, input = {}) {
   // sends through the mailbox configured in MS_SENDER_USER unless/until the tenant
   // permits the alias as a true Graph sender.
   const mailbox = env.MS_SENDER_USER;
+  const replyTo = normalizeAddress(env.MS_BOOKING_ALIAS || fromRequested || mailbox);
   const token = await accessToken(env);
   const headers = {
     authorization: `Bearer ${token}`,
@@ -96,6 +97,7 @@ export async function sendMicrosoftEmail(env, input = {}) {
       body: JSON.stringify({
         subject,
         from: { emailAddress: { address: fromRequested || mailbox } },
+        replyTo: [{ emailAddress: { address: replyTo } }],
         body: { contentType: 'Text', content },
         toRecipients: [{ emailAddress: { address: to } }],
         internetMessageHeaders: [
