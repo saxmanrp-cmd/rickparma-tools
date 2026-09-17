@@ -272,7 +272,7 @@ export async function processInboundCycle(env, config) {
       continue;
     }
 
-    const shouldReply = config.allowAutoRoutineReplies && (
+    const shouldReply = !(config.mode === 'pilot' && config.pilotApprovedDraftId) && config.allowAutoRoutineReplies && (
       policy.escalate
       || classification.mustEscalate
       || (classification.autoReplyAllowed !== false && policy.autoReply)

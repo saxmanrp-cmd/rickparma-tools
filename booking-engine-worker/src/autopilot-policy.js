@@ -19,6 +19,7 @@ export const DEFAULT_AUTOPILOT_CONFIG = Object.freeze({
   businessPostalAddress: '',
   optOutLine: "If you'd rather not hear from me, reply ‘no thanks’ and I won't follow up.",
   pilotRequireVerifiedEmail: true,
+  pilotApprovedDraftId: '',
   stopOnReply: true,
   stopOnOptOut: true,
   stopOnPass: true,
@@ -43,6 +44,7 @@ export function normalizeAutopilotConfig(input = {}) {
     : [...DEFAULT_AUTOPILOT_CONFIG.followupDays];
   out.allowColdSms = false;
   out.businessPostalAddress = String(out.businessPostalAddress || '').trim().slice(0, 300);
+  out.pilotApprovedDraftId = String(out.pilotApprovedDraftId || '').trim().slice(0, 100);
   out.optOutLine = String(out.optOutLine || DEFAULT_AUTOPILOT_CONFIG.optOutLine).trim().slice(0, 500);
   return out;
 }

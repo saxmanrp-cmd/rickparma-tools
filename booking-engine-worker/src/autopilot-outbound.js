@@ -63,6 +63,34 @@ async function draftFollowup(env, prospect) {
   return { ...ai.data, responseId: ai.responseId || null };
 }
 
+async function getApprovedPilotDraft(env, config) {
+  const draftId = String(config.pilotApprovedDraftId || '').trim();
+  if (config.mode !== 'pilot' || !draftId) return null;
+
+  return env.DB.prepare(`
+    SELECT m.id AS approved_draft_id,m.subject,m.body,p.*
+    FROM messages m
+    JOIN prospects p ON p.id=m.contact_id
+    WHERE m.id=?
+      AND m.direction='outbound'
+      AND m.channel='email'
+      AND m.status='draft'
+      AND json_extract(m.metadata_json,'$.purpose')='initial'
+      AND COALESCE(json_extract(m.metadata_json,'$.formatVersion'),'')=?
+    LIMIT 1
+  `).bind(draftId, DRAFT_FORMAT_VERSION).first();
+}
+
+async function claimApprovedPilotDraft(env, draftId) {
+  const result = await env.DB.prepare(`
+    UPDATE messages
+    SET status='sending'
+    WHERE id=? AND status='draft'
+  `).bind(draftId).run();
+
+  return Number(result?.meta?.changes || 0) === 1;
+}
+
 async function hasShadowDraft(env, contactId, purpose) {
   const row = await env.DB.prepare(`
     SELECT id FROM messages
@@ -173,6 +201,65 @@ export async function processOutboundCycle(env, config) {
   const initialUsed = await todayEventCount(env, 'autopilot_initial_sent');
   const followupUsed = await todayEventCount(env, 'autopilot_followup_sent');
   const seenRecipients = new Set();
+
+  // One-shot Pilot safety lock: while an approved Shadow draft ID is armed,
+  // Pilot may send only that exact stored draft and then must exit this cycle.
+  if (config.mode === 'pilot' && config.pilotApprovedDraftId) {
+    const approved = await getApprovedPilotDraft(env, config);
+
+    if (!approved) {
+      return {
+        drafted, sentInitial, sentFollowups, grouped, skipped: skipped + 1,
+        sendGate: sendGate.ok ? 'ready' : sendGate.reason,
+        windowOpen,
+        pilotLock: 'Approved draft is unavailable or already claimed.'
+      };
+    }
+
+    const eligibility = prospectEligible(config, approved);
+    if (!eligibility.ok) {
+      return {
+        drafted, sentInitial, sentFollowups, grouped, skipped: skipped + 1,
+        sendGate: sendGate.ok ? 'ready' : sendGate.reason,
+        windowOpen,
+        pilotLock: `Approved recipient blocked: ${eligibility.reason}`
+      };
+    }
+
+    if (!sendGate.ok || !windowOpen || initialUsed >= config.dailyInitialEmailLimit) {
+      return {
+        drafted, sentInitial, sentFollowups, grouped, skipped,
+        sendGate: sendGate.ok ? 'ready' : sendGate.reason,
+        windowOpen,
+        pilotLock: 'Approved draft is armed but sending conditions are not open.'
+      };
+    }
+
+    const claimed = await claimApprovedPilotDraft(env, approved.approved_draft_id);
+    if (!claimed) {
+      return {
+        drafted, sentInitial, sentFollowups, grouped, skipped: skipped + 1,
+        sendGate: sendGate.ok ? 'ready' : sendGate.reason,
+        windowOpen,
+        pilotLock: 'Approved draft was already claimed.'
+      };
+    }
+
+    await sendDraft(env, config, approved, {
+      subject: approved.subject,
+      body: approved.body,
+      responseId: null
+    }, 'initial');
+
+    sentInitial++;
+
+    return {
+      drafted, sentInitial, sentFollowups, grouped, skipped,
+      sendGate: 'ready',
+      windowOpen,
+      pilotLock: 'Approved draft sent.'
+    };
+  }
 
   const initialCandidates = prospects.filter(p => !p.last_contacted_at && !Number(p.campaign_active || 0));
   for (const prospect of initialCandidates) {
