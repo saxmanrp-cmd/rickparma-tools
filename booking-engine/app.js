@@ -386,7 +386,7 @@
       const solo = roomSoloScore(r) >= 70 && pref.pref !== 'SKIP';
       const badge = pref.pref === 'SKIP' ? '<span class="fit-badge skip">Skip Room</span>' : pref.pref === 'TARGET' ? '<span class="fit-badge solo">Target Room</span>' : solo ? '<span class="fit-badge solo">Solo-Friendly</span>' : '<span class="fit-badge open">Open</span>';
       return `
-        <section class="room-card ${pref.pref === 'SKIP' ? 'skip' : pref.pref === 'TARGET' ? 'target' : ''}" data-room-index="${index}">
+        <section class="room-card ${pref.pref === 'SKIP' ? 'skip' : pref.pref === 'TARGET' ? 'target' : ''}" data-room-index="${index}" data-live-prospect-id="${escapeHtml(r.__liveProspectId || '')}" data-live-room-preference="${escapeHtml(r.__liveRoomPreference || '')}">
           <div class="room-head"><div><strong>${escapeHtml(name)}</strong><span class="room-sub">${escapeHtml(r['Music Fit'] || r['Campaign Lane'] || '')}</span></div>${badge}</div>
           ${pref.reason ? `<div class="room-reason">${escapeHtml(pref.reason)}</div>` : ''}
           <div class="room-buyer"><b>Booking route stays active:</b> ${escapeHtml(r['Primary Buyer / Route'] || 'Research buyer route')}<br>${r['Contact Detail'] ? escapeHtml(r['Contact Detail']) : ''}</div>

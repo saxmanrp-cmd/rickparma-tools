@@ -93,7 +93,7 @@
       const anyPref = prefWrap?.querySelector('[data-room-key]');
       if (!prefWrap || !anyPref) return;
       const key = anyPref.dataset.roomKey;
-      const current = state.roomPrefs?.[key] === PREF;
+      const current = state.roomPrefs?.[key] === PREF || card.dataset.liveRoomPreference === PREF;
 
       let btn = prefWrap.querySelector('[data-room-current]');
       if (!btn) {
@@ -144,23 +144,51 @@
     document.head.appendChild(style);
   }
 
-  document.addEventListener('click', e => {
+  document.addEventListener('click', async e => {
     const currentBtn = e.target.closest('[data-room-current]');
     if (currentBtn) {
       e.preventDefault();
       e.stopPropagation();
-      const row = rowForKey(currentBtn.dataset.roomKey);
-      if (!row) return;
+      const key = currentBtn.dataset.roomKey;
+      const row = rowForKey(key);
+      const card = currentBtn.closest('.room-card');
+      const liveProspectId = card?.dataset.liveProspectId || '';
+      if (!row && !liveProspectId) return;
+
       const state = readState();
-      if (state.roomPrefs?.[currentBtn.dataset.roomKey] === PREF) {
-        clearCurrentVenue(row);
+      const isCurrent = state.roomPrefs?.[key] === PREF || card?.dataset.liveRoomPreference === PREF;
+
+      if (isCurrent) {
+        if (row) clearCurrentVenue(row);
+
         const latest = readState();
         latest.roomPrefs ||= {};
-        delete latest.roomPrefs[currentBtn.dataset.roomKey];
+        delete latest.roomPrefs[key];
         writeState(latest);
+
+        if (liveProspectId && window.BookingCloud?.api) {
+          await window.BookingCloud.api(`/api/prospects/${encodeURIComponent(liveProspectId)}/room-preference`, {
+            method: 'PUT',
+            body: { preference: 'OPEN' }
+          });
+        }
       } else {
-        markCurrentVenue(row);
+        if (row) markCurrentVenue(row);
+        else {
+          const latest = readState();
+          latest.roomPrefs ||= {};
+          latest.roomPrefs[key] = PREF;
+          writeState(latest);
+        }
+
+        if (liveProspectId && window.BookingCloud?.api) {
+          await window.BookingCloud.api(`/api/prospects/${encodeURIComponent(liveProspectId)}/room-preference`, {
+            method: 'PUT',
+            body: { preference: 'PERFORMING' }
+          });
+        }
       }
+
       window.location.reload();
       return;
     }

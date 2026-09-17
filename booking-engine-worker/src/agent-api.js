@@ -86,7 +86,7 @@ export async function handleAgentApi(request, env) {
     if (roomPrefMatch && request.method === 'PUT') {
       const body = await readJson(request);
       const preference = String(body.preference || '').toUpperCase();
-      if (!['TARGET','MAYBE','OPEN','SKIP'].includes(preference)) {
+      if (!['TARGET','MAYBE','OPEN','SKIP','PERFORMING'].includes(preference)) {
         return json({ error: 'Invalid room preference.' }, request, env, 400);
       }
 
@@ -94,8 +94,10 @@ export async function handleAgentApi(request, env) {
       const existing = await env.DB.prepare('SELECT id FROM prospects WHERE id=? LIMIT 1').bind(id).first();
       if (!existing?.id) return json({ error: 'Prospect not found.' }, request, env, 404);
 
-      await env.DB.prepare('UPDATE prospects SET room_preference=? WHERE id=?').bind(preference, id).run();
-      return json({ ok: true, id, roomPreference: preference }, request, env);
+      const currentVenue = preference === 'PERFORMING' ? 1 : 0;
+      await env.DB.prepare('UPDATE prospects SET room_preference=?,current_venue=? WHERE id=?')
+        .bind(preference, currentVenue, id).run();
+      return json({ ok: true, id, roomPreference: preference, currentVenue }, request, env);
     }
 
     if (url.pathname === '/api/prospects' && request.method === 'GET') {
