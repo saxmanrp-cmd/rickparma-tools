@@ -22,7 +22,11 @@
     catch { return {}; }
   }
   function writeState(state) { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-  function token() { return sessionStorage.getItem(SESSION_KEY) || ''; }
+  function token() {
+    return localStorage.getItem(SESSION_KEY)
+      || sessionStorage.getItem(SESSION_KEY)
+      || '';
+  }
   function cloudVersion() { return Number(sessionStorage.getItem(VERSION_KEY) || 0); }
   function setCloudVersion(v) { sessionStorage.setItem(VERSION_KEY, String(Number(v) || 0)); }
 
@@ -124,12 +128,14 @@
   async function login(password) {
     const data = await api('/api/auth/login', { method: 'POST', body: { password }, auth: false });
     if (!data.token) throw new Error('Login did not return a session.');
-    sessionStorage.setItem(SESSION_KEY, data.token);
+    localStorage.setItem(SESSION_KEY, data.token);
+    sessionStorage.removeItem(SESSION_KEY);
     setCloudVersion(0);
     return data;
   }
 
   function logout() {
+    localStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(VERSION_KEY);
   }

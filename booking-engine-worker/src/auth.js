@@ -43,7 +43,7 @@ export function authStatus(env) {
   return { configured: missing.length === 0, missing };
 }
 
-export async function createSession(env, password, ttlSeconds = 43200) {
+export async function createSession(env, password, ttlSeconds = 2592000) {
   const status = authStatus(env);
   if (!status.configured) throw new Error(`Booking login is not configured: ${status.missing.join(', ')}`);
   if (!constantTimeStringEqual(password, env.APP_PASSWORD)) return null;
@@ -52,7 +52,7 @@ export async function createSession(env, password, ttlSeconds = 43200) {
   const payload = {
     sub: 'rick',
     iat: now,
-    exp: now + Math.max(900, Math.min(Number(ttlSeconds) || 43200, 86400)),
+    exp: now + Math.max(900, Math.min(Number(ttlSeconds) || 2592000, 2592000)),
     nonce: crypto.randomUUID()
   };
   const payloadEncoded = b64urlEncode(encoder.encode(JSON.stringify(payload)));
