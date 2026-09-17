@@ -25,6 +25,8 @@
   let currentView = 'dashboard';
   let leadFilter = 'all';
   let activeDraftId = null;
+  let liveRoomRows = [];
+  let liveRoomRowsFetchedAt = 0;
 
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -279,7 +281,14 @@
 
   function roomPref(r) {
     const custom = state.roomPrefs[roomKey(r)];
-    return custom ? { pref: custom, reason: custom === 'SKIP' ? 'Your room-level preference.' : '' } : seededRoomPref(r);
+    if (custom) return { pref: custom, reason: custom === 'SKIP' ? 'Your room-level preference.' : '' };
+
+    const livePref = String(r.__liveRoomPreference || '').toUpperCase();
+    if (ROOM_PREFS.includes(livePref)) {
+      return { pref: livePref, reason: livePref === 'SKIP' ? 'Your room-level preference.' : '' };
+    }
+
+    return seededRoomPref(r);
   }
 
   function roomSoloScore(r) {
@@ -295,7 +304,20 @@
     return score;
   }
 
-  function setRoomPref(r, pref) {
+  async function setRoomPref(r, pref) {
+    if (r.__liveProspectId && window.BookingCloud?.api) {
+      try {
+        await window.BookingCloud.api(`/api/prospects/${encodeURIComponent(r.__liveProspectId)}/room-preference`, {
+          method: 'PUT',
+          body: { preference: pref }
+        });
+        r.__liveRoomPreference = pref;
+      } catch (error) {
+        toast(error.message || 'Could not update live room preference.');
+        return;
+      }
+    }
+
     const key = roomKey(r);
     if (pref === 'OPEN') delete state.roomPrefs[key]; else state.roomPrefs[key] = pref;
 
@@ -311,9 +333,51 @@
     saveState(); renderAll(); renderRooms();
   }
 
-  function renderRooms() {
+  async function refreshLiveRoomRows(force = false) {
+    if (!window.BookingCloud?.api) return;
+    if (!force && Date.now() - liveRoomRowsFetchedAt < 60000) return;
+
+    try {
+      const data = await window.BookingCloud.api('/api/prospects?limit=500');
+      liveRoomRows = (data.prospects || [])
+        .filter(p => String(p.profile || '').toLowerCase() === 'room' && p.entity)
+        .map(p => ({
+          'Operator / Group': p.entity || '',
+          'Property / Venue': p.entity || '',
+          'Room / Surface': p.room || '',
+          'Campaign Lane': p.category || 'Live CRM',
+          'Music Fit': p.fit_reason || p.evidence_summary || '',
+          'Primary Buyer / Route': [p.contact_name, p.contact_role].filter(Boolean).join(' • ') || p.contact_route || 'Live CRM',
+          'Contact Detail': [p.email, p.phone].filter(Boolean).join(' • '),
+          __liveProspectId: p.id || '',
+          __liveRoomPreference: p.room_preference || 'OPEN'
+        }));
+      liveRoomRowsFetchedAt = Date.now();
+    } catch (error) {
+      if (force) toast(error.message || 'Could not refresh live rooms.');
+    }
+  }
+
+  function mergedRoomRows() {
+    const merged = [...DATA.buyerMap];
+    const seen = new Set(merged.map(roomKey));
+
+    for (const row of liveRoomRows) {
+      const key = roomKey(row);
+      if (!key || seen.has(key)) continue;
+      merged.push(row);
+      seen.add(key);
+    }
+
+    return merged;
+  }
+
+  async function renderRooms(refreshLive = false) {
+    await refreshLiveRoomRows(refreshLive === true);
+
     const q = ($('#buyerSearch')?.value || '').trim().toLowerCase();
-    let rows = DATA.buyerMap.filter(r => !q || Object.values(r).filter(Boolean).join(' ').toLowerCase().includes(q));
+    const allRows = mergedRoomRows();
+    let rows = allRows.filter(r => !q || Object.values(r).filter(Boolean).join(' ').toLowerCase().includes(q));
     rows.sort((a, b) => roomSoloScore(b) - roomSoloScore(a));
 
     $('#buyerMap').innerHTML = rows.map((r, index) => {
@@ -334,7 +398,7 @@
 
     $$('[data-room-pref]', $('#buyerMap')).forEach(btn => btn.addEventListener('click', e => {
       e.stopPropagation();
-      const row = DATA.buyerMap.find(r => roomKey(r) === btn.dataset.roomKey);
+      const row = rows.find(r => roomKey(r) === btn.dataset.roomKey);
       if (row) setRoomPref(row, btn.dataset.roomPref);
     }));
   }
@@ -346,7 +410,7 @@
     window.scrollTo({ top: 0, behavior: 'instant' });
     if (name === 'leads') renderLeads();
     if (name === 'queue') renderQueue();
-    if (name === 'buyers') renderRooms();
+    if (name === 'buyers') renderRooms(true);
     if (name === 'settings') renderSettings();
   }
 
