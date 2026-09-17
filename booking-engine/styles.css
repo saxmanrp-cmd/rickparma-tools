@@ -143,7 +143,7 @@ p { color: var(--muted); line-height: 1.55; }
 .warning-card { border-color: rgba(242,190,97,.28); }
 .bottom-nav {
   position: fixed; z-index: 40; left: 50%; bottom: 0; transform: translateX(-50%);
-  width: min(980px, 100%); display: grid; grid-template-columns: repeat(5, 1fr); align-items: end;
+  width: min(980px, 100%); display: grid; grid-template-columns: repeat(4, 1fr); align-items: end;
   padding: 8px 8px max(9px, env(safe-area-inset-bottom)); background: rgba(10,14,22,.94); backdrop-filter: blur(22px);
   border-top: 1px solid rgba(255,255,255,.07);
 }
@@ -192,4 +192,18 @@ p { color: var(--muted); line-height: 1.55; }
   .lead-top { grid-template-columns: auto 1fr; }
   .lead-top > .badge { grid-column: 2; justify-self: start; }
   .lead-meta { margin-left: 60px; }
+}
+
+
+/* Kindergarten-simple daily view: the automation engine stays underneath. */
+[data-view="dashboard"] > .hero-card,
+[data-view="dashboard"] > #metricGrid,
+[data-view="dashboard"] > .section-heading,
+[data-view="dashboard"] > .shortcut-grid,
+[data-view="dashboard"] > #topLeads {
+  display: none !important;
+}
+
+[data-view="dashboard"] [data-agent-home] {
+  margin-top: 6px;
 }
