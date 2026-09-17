@@ -388,21 +388,6 @@
       <div id="campaignList" class="stack"></div>`;
     main.insertBefore(section, settings);
 
-    const nav = document.querySelector('.bottom-nav');
-    const settingsBtn = nav.querySelector('[data-nav="settings"]');
-    const button = document.createElement('button');
-    button.className = 'nav-button';
-    button.dataset.nav = 'campaigns';
-    button.innerHTML = '<span>✉</span><small>Campaigns</small>';
-    nav.insertBefore(button, settingsBtn);
-    nav.style.gridTemplateColumns = 'repeat(6, 1fr)';
-
-    button.addEventListener('click', () => {
-      document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.dataset.view === 'campaigns'));
-      document.querySelectorAll('.nav-button').forEach(b => b.classList.toggle('active', b === button));
-      window.scrollTo({ top: 0, behavior: 'instant' });
-      render();
-    });
     section.querySelector('#buildCampaignsButton').onclick = buildFromQueue;
 
     injectStyles();

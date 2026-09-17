@@ -126,21 +126,7 @@
   }
 
   function decorateHome() {
-    const dashboard = document.querySelector('[data-view="dashboard"]');
-    const metricGrid = dashboard?.querySelector('#metricGrid');
-    if (!metricGrid) return;
-    let badge = dashboard.querySelector('[data-research-home]');
-    const count = rows().length;
-    if (!badge) {
-      badge = document.createElement('button');
-      badge.className = 'research-home-button';
-      badge.dataset.researchHome = 'true';
-      metricGrid.after(badge);
-      badge.onclick = () => document.querySelector('[data-nav="campaigns"]')?.click();
-    }
-    const text = count ? `🔎 ${count} contacts need research before outreach` : '✓ Contact data is clean';
-    if (badge.textContent !== text) badge.textContent = text;
-    badge.classList.toggle('clean', count === 0);
+    document.querySelector('[data-research-home]')?.remove();
   }
 
   function escapeHtml(v) {
