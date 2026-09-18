@@ -15,7 +15,7 @@
     roomPrefs: {},
     settings: {
       website: 'https://RickParma.com',
-      epk: '',
+      epk: 'https://RickParma.com/epk/',
       representation: DATA.profile?.representation || 'Booking coordination available through Justin Young Entertainment.',
       includeRepresentation: true
     }
@@ -51,7 +51,7 @@
   function loadState() {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-      return {
+      const merged = {
         ...defaultState,
         ...(saved || {}),
         settings: { ...defaultState.settings, ...(saved?.settings || {}) },
@@ -60,6 +60,8 @@
         contactPrefs: saved?.contactPrefs || {},
         roomPrefs: saved?.roomPrefs || {}
       };
+      if (!String(merged.settings?.epk || '').trim()) merged.settings.epk = defaultState.settings.epk;
+      return merged;
     } catch {
       return structuredClone(defaultState);
     }
