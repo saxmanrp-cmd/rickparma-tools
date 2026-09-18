@@ -413,4 +413,18 @@
   observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
   window.addEventListener('load', renderCard);
   setTimeout(renderCard, 0);
+
+  // AUTO_SYNC_ON_OPEN
+  setTimeout(async () => {
+    if (!token()) return;
+
+    try {
+      await syncNow();
+    } catch (error) {
+      if (error?.status === 401) logout();
+    }
+
+    renderCard();
+  }, 500);
+
 })();
