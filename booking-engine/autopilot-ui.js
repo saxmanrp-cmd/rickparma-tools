@@ -295,6 +295,7 @@
 
   injectStyles();
   const observer = new MutationObserver(() => {
+    if (document.querySelector('[data-view="dashboard"].active') && !document.querySelector('[data-agent-home]')) renderHome();
     if (document.querySelector('[data-view="settings"].active') && !document.querySelector('[data-autopilot-settings]')) renderSettings();
     if (document.querySelector('[data-view="campaigns"].active') && !document.querySelector('[data-agent-review]')) renderCampaignAgentSections();
   });
