@@ -51,6 +51,7 @@ export function artistContext(profile = 'room') {
     `Music: ${ARTIST_PROFILE.styles.join(', ')}.`,
     compactCredentials(profile),
     `Website: ${ARTIST_PROFILE.website}`,
+    `EPK: ${ARTIST_PROFILE.epk}`,
     `Calendar: ${ARTIST_PROFILE.calendar}`,
     `Instagram: ${ARTIST_PROFILE.instagram}`
   ].join('\n');
