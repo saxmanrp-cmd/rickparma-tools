@@ -69,6 +69,7 @@ async function enrichAvailability(classification) {
 
 
 const CONTACT_LEARNING_VERSION = 'reply-contacts-v1';
+const REPLY_DISPOSITION_VERSION = 'reply-disposition-v2';
 
 async function ensureReplyContactLearning(env, message, classification = {}) {
   if (classification?.contactLearning?.version === CONTACT_LEARNING_VERSION) return classification;
@@ -149,7 +150,7 @@ async function backfillReplyContacts(env, limit = 4) {
     if (scanned >= limit) break;
     const metadata = safeJson(message.metadata_json, {});
     const existing = metadata.classification || {};
-    if (existing?.contactLearning?.version === CONTACT_LEARNING_VERSION) continue;
+    if (existing?.contactLearning?.version === CONTACT_LEARNING_VERSION && existing?.dispositionVersion === REPLY_DISPOSITION_VERSION) continue;
     scanned++;
 
     try {
@@ -160,13 +161,19 @@ async function backfillReplyContacts(env, limit = 4) {
         context: await priorThread(env, message.contact_id)
       });
 
-      const classification = await ensureReplyContactLearning(env, message, {
+      let classification = {
         ...existing,
-        discoveredContacts: refreshed.data?.discoveredContacts || [],
-        organizationWebsite: refreshed.data?.organizationWebsite || '',
-        organizationSocialUrls: refreshed.data?.organizationSocialUrls || [],
-        organizationMarkets: refreshed.data?.organizationMarkets || []
-      });
+        ...refreshed.data,
+        channel: existing.channel || message.channel,
+        aiResponseId: existing.aiResponseId || refreshed.responseId || null,
+        dispositionVersion: REPLY_DISPOSITION_VERSION
+      };
+
+      if (classification.category === 'not_booking_contact') {
+        await applyClassification(env, message, classification);
+      }
+
+      classification = await ensureReplyContactLearning(env, message, classification);
 
       metadata.classification = classification;
       await env.DB.prepare('UPDATE messages SET metadata_json=? WHERE id=?')
@@ -189,6 +196,17 @@ async function applyClassification(env, message, classification) {
     await suppressProspect(env, id, 'Recipient opted out of booking outreach.');
     await mirrorOverride(env, id, { Status: 'Do not contact', 'Next Follow-up': null });
     await event(env, id, 'autopilot_opt_out', message.channel, { messageId: message.id });
+    return;
+  }
+
+  if (category === 'not_booking_contact') {
+    await env.DB.prepare("UPDATE prospects SET status='Pass',automation_safe='NO',suppressed=1,campaign_active=0,next_action_at=NULL WHERE id=?")
+      .bind(id).run();
+    await mirrorOverride(env, id, { Status: 'Pass', 'Next Follow-up': null });
+    await event(env, id, 'autopilot_non_booking_contact', message.channel, {
+      messageId: message.id,
+      summary: classification.summary || ''
+    });
     return;
   }
 
@@ -365,7 +383,12 @@ export async function processInboundCycle(env, config) {
         body: message.body,
         context: message.contact_id ? await priorThread(env, message.contact_id) : ''
       });
-      classification = await enrichAvailability({ ...result.data, channel: message.channel, aiResponseId: result.responseId || null });
+      classification = await enrichAvailability({
+        ...result.data,
+        channel: message.channel,
+        aiResponseId: result.responseId || null,
+        dispositionVersion: REPLY_DISPOSITION_VERSION
+      });
       classification = await ensureReplyContactLearning(env, message, classification);
       await saveClassification(env, message, classification, 'classified');
       await applyClassification(env, message, classification);
