@@ -3,6 +3,20 @@ import { upsertResearchedProspect, matchesKnownCurrentVenue, dedupeKey } from '.
 export async function stageDiscoveredProspect(env, item = {}, trustedSources = []) {
   if (await matchesKnownCurrentVenue(env, item)) return null;
 
+  const profile = String(item.profile || '').trim().toLowerCase();
+  const category = String(item.category || '').trim().toLowerCase();
+  const combined = [item.entity,item.room,item.contactRole,item.fitReason,item.evidenceSummary]
+    .map(v => String(v || '').toLowerCase()).join(' ');
+
+  // Venue-first discovery: do not add independent intermediaries as new prospects.
+  // Venue-owned entertainment departments and direct venue buyers should be profiled
+  // as room/buyer/corporate records by research instead.
+  if (
+    profile === 'agency'
+    || /\bconsultant\b/.test(category)
+    || /\b(talent agency|booking agency|independent agent|consultant|promoter)\b/.test(combined)
+  ) return null;
+
   const key = dedupeKey({
     entity: item.entity,
     room: item.room,
