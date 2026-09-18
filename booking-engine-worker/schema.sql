@@ -108,6 +108,34 @@ CREATE INDEX IF NOT EXISTS idx_prospects_fit_confidence
 CREATE INDEX IF NOT EXISTS idx_prospects_email
   ON prospects(email);
 
+CREATE TABLE IF NOT EXISTS prospect_contacts (
+  id TEXT PRIMARY KEY,
+  prospect_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  role TEXT,
+  email TEXT,
+  phone TEXT,
+  market TEXT,
+  website_url TEXT,
+  social_url TEXT,
+  is_primary INTEGER NOT NULL DEFAULT 0,
+  confidence REAL NOT NULL DEFAULT 0,
+  source_message_id TEXT,
+  source_kind TEXT NOT NULL DEFAULT 'reply',
+  metadata_json TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_prospect_contacts_prospect
+  ON prospect_contacts(prospect_id, is_primary DESC, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_prospect_contacts_email
+  ON prospect_contacts(email);
+
+CREATE INDEX IF NOT EXISTS idx_prospect_contacts_phone
+  ON prospect_contacts(phone);
+
 CREATE TABLE IF NOT EXISTS suppressions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   contact_id TEXT,
