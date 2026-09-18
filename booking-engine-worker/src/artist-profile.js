@@ -2,6 +2,7 @@ export const ARTIST_PROFILE = Object.freeze({
   name: 'Rick Parma',
   base: 'Las Vegas, NV',
   website: 'https://rickparma.com/',
+  epk: 'https://rickparma.com/epk/',
   calendar: 'https://rickparma.com/#calendar',
   instagram: 'https://instagram.com/rickparmaofficial',
   facebook: 'https://www.facebook.com/rickparmaofficial',
@@ -35,39 +36,14 @@ export const ARTIST_PROFILE = Object.freeze({
 
 export function campaignAssets(profile = 'room') {
   const p = ARTIST_PROFILE;
-  if (profile === 'festival') {
-    return [
-      { label: 'Compilation', url: p.compilation },
-      { label: 'Full Band Promo', url: p.fullBandPromo },
-      { label: 'Current Calendar', url: p.calendar }
-    ];
-  }
-  if (profile === 'agency') {
-    return [
-      { label: 'Short Promo', url: p.shortPromo },
-      { label: 'Full Band Promo', url: p.fullBandPromo },
-      { label: 'Current Calendar', url: p.calendar }
-    ];
-  }
-  if (profile === 'corporate') {
-    return [
-      { label: 'Short Promo', url: p.shortPromo },
-      { label: 'Compilation', url: p.compilation },
-      { label: 'Current Calendar', url: p.calendar }
-    ];
-  }
-  if (profile === 'buyer') {
-    return [
-      { label: 'Short Promo', url: p.shortPromo },
-      { label: 'Compilation', url: p.compilation },
-      { label: 'Current Calendar', url: p.calendar }
-    ];
-  }
-  return [
-    { label: 'Short Promo', url: p.shortPromo },
-    { label: 'Current Calendar', url: p.calendar },
-    { label: 'Website', url: p.website }
+  const assets = [
+    { label: 'EPK', url: p.epk },
+    { label: 'Current Calendar', url: p.calendar }
   ];
+  if (profile === 'festival' || profile === 'agency') {
+    assets.push({ label: 'Full Band Promo', url: p.fullBandPromo });
+  }
+  return assets;
 }
 
 export function compactCredentials(profile = 'room') {
