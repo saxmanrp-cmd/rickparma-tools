@@ -103,6 +103,15 @@ async function ensureReplyContactLearning(env, message, classification = {}) {
   }
 
   const learning = await learnContactsFromReply(env, prospect, message, extraction);
+  if (learning.primaryUpdated && learning.primaryContact) {
+    await mirrorOverride(env, prospect.id, {
+      Contact: learning.primaryContact.name || '',
+      Role: learning.primaryContact.role || '',
+      Phone: learning.primaryContact.phone || '',
+      ...(learning.organizationWebsite ? { Website: learning.organizationWebsite } : {})
+    });
+  }
+
   if (learning.learned || learning.primaryUpdated) {
     await event(env, prospect.id, 'autopilot_contacts_learned', message.channel, {
       messageId: message.id,
