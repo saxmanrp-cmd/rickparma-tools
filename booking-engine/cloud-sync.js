@@ -149,13 +149,11 @@
   }
 
   async function faceIdAvailable() {
-    try {
-      if (!window.PublicKeyCredential || !window.SimpleWebAuthnBrowser) return false;
-      if (typeof window.SimpleWebAuthnBrowser.platformAuthenticatorIsAvailable !== 'function') return false;
-      return !!(await window.SimpleWebAuthnBrowser.platformAuthenticatorIsAvailable());
-    } catch {
-      return false;
-    }
+    return !!(
+      window.PublicKeyCredential &&
+      window.SimpleWebAuthnBrowser?.startRegistration &&
+      window.SimpleWebAuthnBrowser?.startAuthentication
+    );
   }
 
   async function setupFaceId() {
