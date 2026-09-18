@@ -133,7 +133,7 @@
     loadModule('./pitch-kit.js', 'data-pitch-kit-loader');
     loadModule('./submission-channel.js', 'data-submission-channel-loader');
     loadModule('./simplewebauthn-browser.js', 'data-simplewebauthn-browser-loader');
-    loadModule('./cloud-sync.js', 'data-cloud-sync-loader');
+    loadModule('./cloud-sync.js?v=f3dc026', 'data-cloud-sync-loader');
     loadModule('./live-send.js', 'data-live-send-loader');
     loadModule('./smart-drafts.js', 'data-smart-drafts-loader');
     loadModule('./current-venue-booker.js', 'data-current-venue-booker-loader');
