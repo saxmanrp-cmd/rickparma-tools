@@ -3,6 +3,7 @@ import { sendTwilioText, twilioStatus } from './providers/twilio.js';
 import { classifyBookingReply, draftBookingReply } from './providers/openai.js';
 import { categoryPolicy, canAutonomouslySend, withinSendWindow, appendComplianceFooter } from './autopilot-policy.js';
 import { getProspect, suppressProspect } from './prospects.js';
+import { learnContactsFromReply } from './contacts.js';
 import { checkRickAvailability } from './calendar-availability.js';
 import {
   safeJson, daysFromNow, event, artistContext, assetText, priorThread,
@@ -64,6 +65,110 @@ async function enrichAvailability(classification) {
       }
     };
   }
+}
+
+
+const CONTACT_LEARNING_VERSION = 'reply-contacts-v1';
+
+async function ensureReplyContactLearning(env, message, classification = {}) {
+  if (classification?.contactLearning?.version === CONTACT_LEARNING_VERSION) return classification;
+  if (!message?.contact_id) {
+    return {
+      ...classification,
+      contactLearning: { version: CONTACT_LEARNING_VERSION, learned: 0, primaryUpdated: false }
+    };
+  }
+
+  let extraction = classification;
+  if (!Array.isArray(extraction.discoveredContacts)) {
+    const refreshed = await classifyBookingReply(env, {
+      sender: message.sender,
+      subject: message.subject,
+      body: message.body,
+      context: await priorThread(env, message.contact_id)
+    });
+    extraction = refreshed.data || {};
+  }
+
+  const prospect = await getProspect(env, message.contact_id);
+  if (!prospect) {
+    return {
+      ...classification,
+      discoveredContacts: extraction.discoveredContacts || [],
+      organizationWebsite: extraction.organizationWebsite || '',
+      organizationSocialUrls: extraction.organizationSocialUrls || [],
+      organizationMarkets: extraction.organizationMarkets || [],
+      contactLearning: { version: CONTACT_LEARNING_VERSION, learned: 0, primaryUpdated: false }
+    };
+  }
+
+  const learning = await learnContactsFromReply(env, prospect, message, extraction);
+  if (learning.learned || learning.primaryUpdated) {
+    await event(env, prospect.id, 'autopilot_contacts_learned', message.channel, {
+      messageId: message.id,
+      learned: learning.learned,
+      primaryUpdated: learning.primaryUpdated,
+      primaryContact: learning.primaryContact || null
+    });
+  }
+
+  return {
+    ...classification,
+    discoveredContacts: extraction.discoveredContacts || [],
+    organizationWebsite: extraction.organizationWebsite || '',
+    organizationSocialUrls: extraction.organizationSocialUrls || [],
+    organizationMarkets: extraction.organizationMarkets || [],
+    contactLearning: learning
+  };
+}
+
+async function backfillReplyContacts(env, limit = 4) {
+  const rows = await env.DB.prepare(`
+    SELECT * FROM messages
+    WHERE direction='inbound'
+      AND channel='email'
+      AND contact_id IS NOT NULL
+      AND status='processed'
+    ORDER BY COALESCE(received_at,created_at) DESC
+    LIMIT 30
+  `).all();
+
+  let scanned = 0;
+  let enriched = 0;
+
+  for (const message of rows.results || []) {
+    if (scanned >= limit) break;
+    const metadata = safeJson(message.metadata_json, {});
+    const existing = metadata.classification || {};
+    if (existing?.contactLearning?.version === CONTACT_LEARNING_VERSION) continue;
+    scanned++;
+
+    try {
+      const refreshed = await classifyBookingReply(env, {
+        sender: message.sender,
+        subject: message.subject,
+        body: message.body,
+        context: await priorThread(env, message.contact_id)
+      });
+
+      const classification = await ensureReplyContactLearning(env, message, {
+        ...existing,
+        discoveredContacts: refreshed.data?.discoveredContacts || [],
+        organizationWebsite: refreshed.data?.organizationWebsite || '',
+        organizationSocialUrls: refreshed.data?.organizationSocialUrls || [],
+        organizationMarkets: refreshed.data?.organizationMarkets || []
+      });
+
+      metadata.classification = classification;
+      await env.DB.prepare('UPDATE messages SET metadata_json=? WHERE id=?')
+        .bind(JSON.stringify(metadata), message.id).run();
+      enriched++;
+    } catch (error) {
+      console.error('reply-contact-backfill-failed', message.id, error);
+    }
+  }
+
+  return { scanned, enriched };
 }
 
 async function applyClassification(env, message, classification) {
@@ -220,6 +325,8 @@ async function sendReply(env, message, classification, draft) {
 }
 
 export async function processInboundCycle(env, config) {
+  const contactBackfill = await backfillReplyContacts(env);
+
   const rows = await env.DB.prepare(`
     SELECT * FROM messages
     WHERE direction='inbound' AND channel IN ('email','sms') AND status IN ('received','classified')
@@ -250,12 +357,18 @@ export async function processInboundCycle(env, config) {
         context: message.contact_id ? await priorThread(env, message.contact_id) : ''
       });
       classification = await enrichAvailability({ ...result.data, channel: message.channel, aiResponseId: result.responseId || null });
+      classification = await ensureReplyContactLearning(env, message, classification);
       await saveClassification(env, message, classification, 'classified');
       await applyClassification(env, message, classification);
       classified++;
       metadata = { ...metadata, classification };
     } else if (!classification.calendarAvailability && (classification.requestedDates?.length || ['availability_request','offer_or_hold'].includes(classification.category))) {
       classification = await enrichAvailability({ ...classification, channel: message.channel });
+      classification = await ensureReplyContactLearning(env, message, classification);
+      await saveClassification(env, message, classification, 'classified');
+      metadata = { ...metadata, classification };
+    } else if (classification?.contactLearning?.version !== CONTACT_LEARNING_VERSION) {
+      classification = await ensureReplyContactLearning(env, message, classification);
       await saveClassification(env, message, classification, 'classified');
       metadata = { ...metadata, classification };
     }
@@ -322,6 +435,7 @@ export async function processInboundCycle(env, config) {
     escalated,
     stopped,
     shadowDrafted,
+    contactBackfill,
     sendGate: gate.ok ? 'ready' : gate.reason,
     windowOpen,
     microsoftReady,
