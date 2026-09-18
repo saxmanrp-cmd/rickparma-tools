@@ -22,6 +22,7 @@
   };
 
   let state = loadState();
+  saveState();
   let currentView = 'dashboard';
   let leadFilter = 'all';
   let activeDraftId = null;
