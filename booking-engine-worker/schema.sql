@@ -157,3 +157,33 @@ VALUES ('rick', '{}', 1);
 
 INSERT OR IGNORE INTO autopilot_config (id, config_json)
 VALUES ('default', '{"mode":"shadow"}');
+
+CREATE TABLE IF NOT EXISTS passkey_credentials (
+  credential_id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL DEFAULT 'rick',
+  public_key_b64url TEXT NOT NULL,
+  counter INTEGER NOT NULL DEFAULT 0,
+  device_type TEXT,
+  backed_up INTEGER NOT NULL DEFAULT 0,
+  rp_id TEXT NOT NULL,
+  origin TEXT NOT NULL,
+  transports_json TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_used_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_passkey_credentials_user
+  ON passkey_credentials(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS auth_challenges (
+  challenge TEXT PRIMARY KEY,
+  purpose TEXT NOT NULL,
+  user_id TEXT NOT NULL DEFAULT 'rick',
+  rp_id TEXT NOT NULL,
+  origin TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_challenges_expiry
+  ON auth_challenges(expires_at);

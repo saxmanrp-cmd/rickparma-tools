@@ -43,25 +43,42 @@ export function authStatus(env) {
   return { configured: missing.length === 0, missing };
 }
 
-export async function createSession(env, password, ttlSeconds = 2592000) {
-  const status = authStatus(env);
-  if (!status.configured) throw new Error(`Booking login is not configured: ${status.missing.join(', ')}`);
-  if (!constantTimeStringEqual(password, env.APP_PASSWORD)) return null;
+export async function createAuthenticatedSession(env, ttlSeconds = 2592000) {
+
+  if (!String(env.SESSION_SECRET || '').trim()) {
+    throw new Error('Booking session signing is not configured: SESSION_SECRET');
+  }
 
   const now = Math.floor(Date.now() / 1000);
+
   const payload = {
     sub: 'rick',
     iat: now,
     exp: now + Math.max(900, Math.min(Number(ttlSeconds) || 2592000, 2592000)),
     nonce: crypto.randomUUID()
   };
+
   const payloadEncoded = b64urlEncode(encoder.encode(JSON.stringify(payload)));
   const signingInput = `booking_v1.${payloadEncoded}`;
   const signature = await sign(env.SESSION_SECRET, signingInput);
+
   return {
     token: `${signingInput}.${signature}`,
     expiresAt: new Date(payload.exp * 1000).toISOString()
   };
+
+}
+
+export async function createSession(env, password, ttlSeconds = 2592000) {
+
+  const status = authStatus(env);
+
+  if (!status.configured) throw new Error(`Booking login is not configured: ${status.missing.join(', ')}`);
+
+  if (!constantTimeStringEqual(password, env.APP_PASSWORD)) return null;
+
+  return createAuthenticatedSession(env, ttlSeconds);
+
 }
 
 export async function verifySession(env, token) {

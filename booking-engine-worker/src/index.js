@@ -1,6 +1,13 @@
 import { microsoftStatus, sendMicrosoftEmail } from './providers/microsoft.js';
 import { twilioStatus, sendTwilioText } from './providers/twilio.js';
 import { authStatus, bearerToken, createSession, verifySession } from './auth.js';
+import {
+  passkeyStatus,
+  registrationOptions,
+  completeRegistration,
+  authenticationOptions,
+  completeAuthentication
+} from './passkeys.js';
 
 const json = (data, { status = 200, headers = {} } = {}) => new Response(JSON.stringify(data), {
   status,
@@ -300,6 +307,34 @@ export default {
       }
     }
 
+    if (url.pathname === '/api/auth/passkey/status' && request.method === 'GET') {
+      try {
+        const status = await passkeyStatus(env);
+        return json({ ok: true, configured: status.configured }, { headers: cors });
+      } catch (error) {
+        return json({ error: safeError(error) }, { status: 503, headers: cors });
+      }
+    }
+
+    if (url.pathname === '/api/auth/passkey/login/options' && request.method === 'POST') {
+      try {
+        const options = await authenticationOptions(request, env);
+        return json({ ok: true, options }, { headers: cors });
+      } catch (error) {
+        return json({ error: safeError(error) }, { status: 400, headers: cors });
+      }
+    }
+
+    if (url.pathname === '/api/auth/passkey/login/verify' && request.method === 'POST') {
+      try {
+        const body = await readJson(request);
+        const result = await completeAuthentication(request, env, body || {});
+        return json(result, { headers: cors });
+      } catch (error) {
+        return json({ error: safeError(error) }, { status: 401, headers: cors });
+      }
+    }
+
     if (!url.pathname.startsWith('/api/')) return json({ error: 'Not found.' }, { status: 404, headers: cors });
 
     const auth = await authorized(request, env);
@@ -307,6 +342,25 @@ export default {
 
     if (url.pathname === '/api/auth/status' && request.method === 'GET') {
       return json({ ok: true, subject: auth.subject, expiresAt: auth.session?.exp ? new Date(auth.session.exp * 1000).toISOString() : null }, { headers: cors });
+    }
+
+    if (url.pathname === '/api/auth/passkey/register/options' && request.method === 'POST') {
+      try {
+        const options = await registrationOptions(request, env);
+        return json({ ok: true, options }, { headers: cors });
+      } catch (error) {
+        return json({ error: safeError(error) }, { status: 400, headers: cors });
+      }
+    }
+
+    if (url.pathname === '/api/auth/passkey/register/verify' && request.method === 'POST') {
+      try {
+        const body = await readJson(request);
+        const result = await completeRegistration(request, env, body || {});
+        return json(result, { headers: cors });
+      } catch (error) {
+        return json({ error: safeError(error) }, { status: 400, headers: cors });
+      }
     }
 
     if (url.pathname === '/api/providers' && request.method === 'GET') {

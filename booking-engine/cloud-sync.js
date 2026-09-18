@@ -140,6 +140,78 @@
     sessionStorage.removeItem(VERSION_KEY);
   }
 
+  async function passkeyStatus() {
+    try {
+      return await api('/api/auth/passkey/status', { auth: false });
+    } catch {
+      return { configured: false };
+    }
+  }
+
+  async function faceIdAvailable() {
+    try {
+      if (!window.PublicKeyCredential || !window.SimpleWebAuthnBrowser) return false;
+      if (typeof window.SimpleWebAuthnBrowser.platformAuthenticatorIsAvailable !== 'function') return false;
+      return !!(await window.SimpleWebAuthnBrowser.platformAuthenticatorIsAvailable());
+    } catch {
+      return false;
+    }
+  }
+
+  async function setupFaceId() {
+    if (!window.SimpleWebAuthnBrowser?.startRegistration) {
+      throw new Error('Face ID support is not ready in this browser.');
+    }
+
+    const start = await api('/api/auth/passkey/register/options', {
+      method: 'POST'
+    });
+
+    const response = await window.SimpleWebAuthnBrowser.startRegistration({
+      optionsJSON: start.options
+    });
+
+    return api('/api/auth/passkey/register/verify', {
+      method: 'POST',
+      body: {
+        challenge: start.options.challenge,
+        response
+      }
+    });
+  }
+
+  async function loginWithFaceId() {
+    if (!window.SimpleWebAuthnBrowser?.startAuthentication) {
+      throw new Error('Face ID support is not ready in this browser.');
+    }
+
+    const start = await api('/api/auth/passkey/login/options', {
+      method: 'POST',
+      auth: false
+    });
+
+    const response = await window.SimpleWebAuthnBrowser.startAuthentication({
+      optionsJSON: start.options
+    });
+
+    const result = await api('/api/auth/passkey/login/verify', {
+      method: 'POST',
+      auth: false,
+      body: {
+        challenge: start.options.challenge,
+        response
+      }
+    });
+
+    if (!result.token) throw new Error('Face ID login did not return a session.');
+
+    localStorage.setItem(SESSION_KEY, result.token);
+    sessionStorage.removeItem(SESSION_KEY);
+    setCloudVersion(0);
+
+    return result;
+  }
+
   async function providerStatus() {
     return api('/api/providers');
   }
@@ -202,6 +274,9 @@
       return;
     }
 
+    const passkeys = await passkeyStatus();
+    const faceIdReady = await faceIdAvailable();
+
     if (!token()) {
       card.innerHTML = `
         <h3>Cloud CRM</h3>
@@ -209,6 +284,7 @@
         ${statusDot('Cloud backend', 'Online', 'cloud-good')}
         <label>Rick login<input type="password" data-cloud-password autocomplete="current-password" placeholder="Booking Engine password"></label>
         <button class="primary" data-cloud-login>Log In</button>
+        ${passkeys.configured && faceIdReady ? '<button class="secondary" data-cloud-faceid-login>Sign in with Face ID</button>' : ''}
         <div class="cloud-message" data-cloud-message></div>`;
       card.querySelector('[data-cloud-login]').onclick = async () => {
         const btn = card.querySelector('[data-cloud-login]');
@@ -226,6 +302,26 @@
           btn.disabled = false;
         }
       };
+
+      const faceLogin = card.querySelector('[data-cloud-faceid-login]');
+      if (faceLogin) {
+        faceLogin.onclick = async () => {
+          const message = card.querySelector('[data-cloud-message]');
+          faceLogin.disabled = true;
+          message.textContent = 'Checking Face ID…';
+          try {
+            await loginWithFaceId();
+            await syncNow();
+            toast('Signed in with Face ID');
+            renderCard();
+          } catch (error) {
+            message.textContent = error.message || 'Face ID sign-in failed.';
+          } finally {
+            faceLogin.disabled = false;
+          }
+        };
+      }
+
       return;
     }
 
@@ -246,10 +342,12 @@
       <p>Secure session is active. Local data remains the fallback even while cloud sync is connected.</p>
       ${statusDot('Cloud sync', 'Connected', 'cloud-good')}
       ${statusDot('Cloud version', String(cloudVersion() || '—'), '')}
+      ${statusDot('Face ID', passkeys.configured ? 'Ready' : 'Not set up', passkeys.configured ? 'cloud-good' : 'cloud-muted')}
       ${statusDot('Microsoft email', emailReady ? 'Ready' : 'Needs setup', emailReady ? 'cloud-good' : 'cloud-warn')}
       ${statusDot('Twilio SMS', smsReady ? 'Ready' : 'Needs setup', smsReady ? 'cloud-good' : 'cloud-warn')}
       <div class="cloud-buttons">
         <button class="primary" data-cloud-sync-now>Sync Now</button>
+        ${faceIdReady && !passkeys.configured ? '<button class="secondary" data-cloud-faceid-setup>Set Up Face ID</button>' : ''}
         <button class="secondary" data-cloud-logout>Log Out</button>
       </div>
       <div class="cloud-message" data-cloud-message></div>`;
@@ -265,6 +363,25 @@
         message.textContent = error.message || 'Sync failed.';
       }
     };
+    const faceSetup = card.querySelector('[data-cloud-faceid-setup]');
+    if (faceSetup) {
+      faceSetup.onclick = async () => {
+        const message = card.querySelector('[data-cloud-message]');
+        faceSetup.disabled = true;
+        message.textContent = 'Setting up Face ID…';
+        try {
+          await setupFaceId();
+          message.textContent = 'Face ID is ready.';
+          toast('Face ID ready');
+          renderCard();
+        } catch (error) {
+          message.textContent = error.message || 'Face ID setup failed.';
+        } finally {
+          faceSetup.disabled = false;
+        }
+      };
+    }
+
     card.querySelector('[data-cloud-logout]').onclick = () => {
       logout();
       renderCard();
