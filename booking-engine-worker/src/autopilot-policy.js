@@ -113,6 +113,9 @@ export function prospectEligible(config, prospect) {
   if (Number(prospect.current_venue || 0)) return { ok: false, reason: 'Current venue.' };
   if (['skip', 'SKIP', 'PERFORMING'].includes(String(prospect.room_preference || ''))) return { ok: false, reason: 'Room preference excludes outreach.' };
   if (String(prospect.status || '').toLowerCase() === 'do not contact') return { ok: false, reason: 'Do not contact.' };
+  if (String(prospect.profile || prospect.campaign_type || '').toLowerCase() === 'agency') {
+    return { ok: false, reason: 'Venue-first policy: independent agency/promoter outreach is manual only.' };
+  }
   if (String(prospect.automation_safe || '') !== 'YES_TARGETED') return { ok: false, reason: 'Not verified for autonomous outreach.' };
   if (!String(prospect.email || '').includes('@')) return { ok: false, reason: 'No verified email.' };
   if (Number(prospect.fit_score || 0) < config.minFitScore) return { ok: false, reason: 'Fit score below threshold.' };
@@ -190,7 +193,7 @@ export function categoryPolicy(category) {
     'positive_interest', 'request_materials', 'follow_up_later', 'submission_redirect',
     'question'
   ]);
-  const noReply = new Set(['bounce', 'opt_out', 'not_interested', 'out_of_office']);
+  const noReply = new Set(['bounce', 'opt_out', 'not_interested', 'not_booking_contact', 'out_of_office']);
   const escalate = new Set(['availability_request', 'rate_request', 'offer_or_hold', 'other']);
   return {
     autoReply: autoReply.has(category),
