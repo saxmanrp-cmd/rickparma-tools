@@ -209,7 +209,10 @@ export async function learnContactsFromReply(env, prospect, message, extraction 
 
   const contacts = result.results || [];
   const vegasContacts = contacts.filter(row => isVegasMarket(row.market));
-  const pool = vegasContacts.length ? vegasContacts : contacts;
+  const unassignedMarketContacts = contacts.filter(row => !text(row.market));
+  // This Booking Engine is Las Vegas-first. If a reply explicitly labels contacts
+  // for other markets, keep them as alternates instead of replacing the Vegas route.
+  const pool = vegasContacts.length ? vegasContacts : unassignedMarketContacts;
   const best = pool
     .filter(row => text(row.name) && Number(row.confidence || 0) >= 0.8)
     .sort((a, b) => contactScore(b) - contactScore(a))[0] || null;
