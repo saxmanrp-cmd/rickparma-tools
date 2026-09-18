@@ -156,6 +156,27 @@ SOURCE REQUIREMENT: for every verified or discovered item, populate sourceUrls w
   });
 }
 
+const replyContactShape = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    name: { type: 'string' },
+    role: { type: 'string' },
+    email: { type: 'string' },
+    phone: { type: 'string' },
+    market: { type: 'string' },
+    websiteUrl: { type: 'string' },
+    socialUrl: { type: 'string' },
+    isPrimarySuggested: { type: 'boolean' },
+    confidence: { type: 'number', minimum: 0, maximum: 1 },
+    sourceText: { type: 'string' }
+  },
+  required: [
+    'name','role','email','phone','market','websiteUrl','socialUrl',
+    'isPrimarySuggested','confidence','sourceText'
+  ]
+};
+
 const replySchema = {
   type: 'object',
   additionalProperties: false,
@@ -181,16 +202,21 @@ const replySchema = {
     },
     extractedMoneyOrTerms: { type: 'string' },
     submissionUrl: { type: 'string' },
-    recommendedAction: { type: 'string' }
+    recommendedAction: { type: 'string' },
+    discoveredContacts: { type: 'array', items: replyContactShape, maxItems: 10 },
+    organizationWebsite: { type: 'string' },
+    organizationSocialUrls: { type: 'array', items: { type: 'string' }, maxItems: 8 },
+    organizationMarkets: { type: 'array', items: { type: 'string' }, maxItems: 8 }
   },
   required: [
     'category','sentiment','summary','mustEscalate','autoReplyAllowed','followUpDate',
-    'extractedDateOrWindow','requestedDates','extractedMoneyOrTerms','submissionUrl','recommendedAction'
+    'extractedDateOrWindow','requestedDates','extractedMoneyOrTerms','submissionUrl','recommendedAction',
+    'discoveredContacts','organizationWebsite','organizationSocialUrls','organizationMarkets'
   ]
 };
 
 export async function classifyBookingReply(env, { sender, subject, body, context = '' }) {
-  const input = `Classify this reply to Rick Parma's booking outreach.\n\nFROM: ${sender || ''}\nSUBJECT: ${subject || ''}\nREPLY:\n${String(body || '').slice(0, 12000)}\n\nKNOWN CONTEXT:\n${String(context || '').slice(0, 6000)}\n\nSafety policy: offers/holds, specific date availability, money/rates, contracts, exclusivity, legal terms, unusual commitments, or anything ambiguous/high-value MUST be escalated. Routine requests for promo materials, simple acknowledgements, follow-up-later requests, submission redirects, not-interested responses, opt-outs, out-of-office notices, and basic questions answerable from the artist profile may be auto-handled. Never treat an opt-out as a sales opportunity. Resolve concrete requested dates to YYYY-MM-DD when the sender gives enough date information; otherwise leave requestedDates empty and preserve ambiguity in extractedDateOrWindow.`;
+  const input = `Classify this reply to Rick Parma's booking outreach.\n\nFROM: ${sender || ''}\nSUBJECT: ${subject || ''}\nREPLY:\n${String(body || '').slice(0, 12000)}\n\nKNOWN CONTEXT:\n${String(context || '').slice(0, 6000)}\n\nSafety policy: offers/holds, specific date availability, money/rates, contracts, exclusivity, legal terms, unusual commitments, or anything ambiguous/high-value MUST be escalated. Routine requests for promo materials, simple acknowledgements, follow-up-later requests, submission redirects, not-interested responses, opt-outs, out-of-office notices, and basic questions answerable from the artist profile may be auto-handled. Never treat an opt-out as a sales opportunity. Resolve concrete requested dates to YYYY-MM-DD when the sender gives enough date information; otherwise leave requestedDates empty and preserve ambiguity in extractedDateOrWindow.\n\nCONTACT LEARNING: Extract professional contact details that are explicitly present in the reply or signature. This includes named people, job titles, direct phone/text numbers, direct emails, market/office labels such as Las Vegas or Los Angeles, company website, and company social links. Do not infer a person's identity from an email address or guess missing fields. Use sourceText as a short exact-support snippet from the reply, not a paraphrased invention. Set confidence high only when the contact details are plainly stated. isPrimarySuggested may be true for an explicitly senior or primary booking/sales contact, but do not invent hierarchy. If no contacts are explicitly supplied, return an empty discoveredContacts array.`;
   return structuredResponse(env, {
     name: 'booking_reply_classification',
     schema: replySchema,
