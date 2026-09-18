@@ -280,10 +280,11 @@ export async function verificationTargets(env, limit = 6) {
   return result.results || [];
 }
 
-export async function listProspects(env, { limit = 100, status = '', eligibleOnly = false } = {}) {
+export async function listProspects(env, { limit = 100, status = '', eligibleOnly = false, includeSuppressed = false } = {}) {
   const cap = Math.max(1, Math.min(500, Number(limit) || 100));
   let sql = 'SELECT * FROM prospects WHERE 1=1';
   const binds = [];
+  if (!includeSuppressed) sql += ' AND suppressed=0';
   if (status) { sql += ' AND status=?'; binds.push(status); }
   if (eligibleOnly) {
     sql += " AND suppressed=0 AND current_venue=0 AND automation_safe='YES_TARGETED' AND email IS NOT NULL AND email!=''";
