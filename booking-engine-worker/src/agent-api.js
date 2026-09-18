@@ -2,6 +2,7 @@ import { bearerToken, verifySession } from './auth.js';
 import { bookingAgentStatus, setBookingAgentConfig, runAutonomousBookingAgent, listBookingEscalations, resolveBookingEscalation } from './autopilot-agent.js';
 import { respondToEscalation } from './escalation-response.js';
 import { importProspects, listProspects } from './prospects.js';
+import { listProspectContacts } from './contacts.js';
 import { getAutopilotConfig, appendComplianceFooter } from './autopilot-policy.js';
 
 function corsHeaders(request, env) {
@@ -82,6 +83,14 @@ export async function handleAgentApi(request, env) {
       const body = await readJson(request);
       return json({ ok: true, ...(await importProspects(env, Array.isArray(body.contacts) ? body.contacts : [], body.state || {})) }, request, env);
     }
+    const contactsMatch = url.pathname.match(/^\/api\/prospects\/([^/]+)\/contacts$/);
+    if (contactsMatch && request.method === 'GET') {
+      const id = decodeURIComponent(contactsMatch[1]);
+      const existing = await env.DB.prepare('SELECT id FROM prospects WHERE id=? LIMIT 1').bind(id).first();
+      if (!existing?.id) return json({ error: 'Prospect not found.' }, request, env, 404);
+      return json({ contacts: await listProspectContacts(env, id) }, request, env);
+    }
+
     const roomPrefMatch = url.pathname.match(/^\/api\/prospects\/([^/]+)\/room-preference$/);
     if (roomPrefMatch && request.method === 'PUT') {
       const body = await readJson(request);
