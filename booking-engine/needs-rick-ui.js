@@ -85,20 +85,26 @@
     }
   }
 
+  function targetView() {
+    return document.querySelector('[data-view="dashboard"]')
+      || document.querySelector('[data-view="campaigns"]');
+  }
+
   async function render(force = false) {
     if (rendering) return;
-    const campaigns = document.querySelector('[data-view="campaigns"]');
-    if (!campaigns) return;
-    let host = campaigns.querySelector('[data-needs-rick-inbox]');
+    const view = targetView();
+    if (!view) return;
+    let host = view.querySelector('[data-needs-rick-inbox]');
     if (!host) {
       host = document.createElement('section');
       host.dataset.needsRickInbox = 'true';
       host.className = 'needs-rick-inbox';
-      const oldReview = campaigns.querySelector('[data-agent-review]');
-      if (oldReview) oldReview.before(host);
+
+      const agentHome = view.querySelector('[data-agent-home]');
+      if (agentHome) agentHome.after(host);
       else {
-        const list = campaigns.querySelector('#campaignList');
-        if (list) list.before(host); else campaigns.appendChild(host);
+        const anchor = view.querySelector('.metric-grid, .dashboard-grid, #campaignList');
+        if (anchor) anchor.after(host); else view.appendChild(host);
       }
     } else if (!force && host.dataset.loaded === 'true') return;
 
@@ -106,7 +112,7 @@
     try {
       const data = await api('/api/escalations?limit=25');
       const items = data.escalations || [];
-      const legacy = campaigns.querySelector('[data-agent-review] .agent-review-block:first-child');
+      const legacy = view.querySelector('[data-agent-review] .agent-review-block:first-child');
       if (legacy) legacy.style.display = 'none';
       host.dataset.loaded = 'true';
       host.innerHTML = `
@@ -160,10 +166,20 @@
   }
 
   styles();
+  async function openNeedsRick() {
+    await render(true);
+    const host = targetView()?.querySelector('[data-needs-rick-inbox]');
+    if (!host) return;
+    host.scrollIntoView({ behavior:'smooth', block:'start' });
+    const first = host.querySelector('.needs-card');
+    if (first && !first.open) first.open = true;
+  }
+
   const observer = new MutationObserver(() => {
-    if (document.querySelector('[data-view="campaigns"].active') && !document.querySelector('[data-needs-rick-inbox]')) render();
+    if (document.querySelector('[data-view="dashboard"].active') && !document.querySelector('[data-needs-rick-inbox]')) render();
   });
   observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
   window.addEventListener('load',()=>setTimeout(render,2100));
   window.addEventListener('booking-agent-refresh',()=>render(true));
+  window.addEventListener('booking-needs-rick-open',openNeedsRick);
 })();
