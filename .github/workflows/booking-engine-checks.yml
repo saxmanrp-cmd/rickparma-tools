@@ -64,6 +64,9 @@ jobs:
 
           const defaults = normalizeAutopilotConfig();
           if (defaults.mode !== 'shadow') throw new Error('Autopilot must default to shadow mode');
+          if (defaults.researchDailyTarget !== 15) throw new Error('Expected 15 daily research targets');
+          if (defaults.verifyDailyTarget !== 15) throw new Error('Expected 15 daily verification targets');
+          if (defaults.dailyInitialEmailLimit !== 10) throw new Error('Expected 10 daily initial email limit');
           if (defaults.allowColdSms !== false) throw new Error('Cold SMS must remain disabled');
           if (defaults.maxColdTouches !== 5) throw new Error('Expected five-touch campaign');
           if (JSON.stringify(defaults.followupDays) !== JSON.stringify([5,10,16,75])) throw new Error('Follow-up cadence changed unexpectedly');
