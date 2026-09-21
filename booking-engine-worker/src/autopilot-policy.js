@@ -1,9 +1,12 @@
+const THROUGHPUT_PROFILE_VERSION = 2;
+
 export const DEFAULT_AUTOPILOT_CONFIG = Object.freeze({
   mode: 'shadow',
   timezone: 'America/Los_Angeles',
-  researchDailyTarget: 6,
-  verifyDailyTarget: 6,
-  dailyInitialEmailLimit: 3,
+  throughputProfileVersion: THROUGHPUT_PROFILE_VERSION,
+  researchDailyTarget: 15,
+  verifyDailyTarget: 15,
+  dailyInitialEmailLimit: 10,
   dailyFollowupEmailLimit: 5,
   dailyAutoReplyLimit: 10,
   minFitScore: 82,
@@ -27,11 +30,23 @@ export const DEFAULT_AUTOPILOT_CONFIG = Object.freeze({
 });
 
 export function normalizeAutopilotConfig(input = {}) {
-  const out = { ...DEFAULT_AUTOPILOT_CONFIG, ...(input || {}) };
+  const source = input || {};
+  const out = { ...DEFAULT_AUTOPILOT_CONFIG, ...source };
+
+  // One-time throughput upgrade approved by Rick on 2026-09-21.
+  // Keep all safety gates, targeting thresholds, send window, and follow-up policy intact.
+  if (Number(source.throughputProfileVersion || 0) < THROUGHPUT_PROFILE_VERSION) {
+    out.researchDailyTarget = 15;
+    out.verifyDailyTarget = 15;
+    out.dailyInitialEmailLimit = 10;
+    out.throughputProfileVersion = THROUGHPUT_PROFILE_VERSION;
+  }
+
   if (!['off', 'shadow', 'pilot', 'live'].includes(out.mode)) out.mode = 'shadow';
-  out.researchDailyTarget = clampInt(out.researchDailyTarget, 0, 20, 6);
-  out.verifyDailyTarget = clampInt(out.verifyDailyTarget, 0, 20, 6);
-  out.dailyInitialEmailLimit = clampInt(out.dailyInitialEmailLimit, 0, 50, 3);
+  out.throughputProfileVersion = THROUGHPUT_PROFILE_VERSION;
+  out.researchDailyTarget = clampInt(out.researchDailyTarget, 0, 20, 15);
+  out.verifyDailyTarget = clampInt(out.verifyDailyTarget, 0, 20, 15);
+  out.dailyInitialEmailLimit = clampInt(out.dailyInitialEmailLimit, 0, 50, 10);
   out.dailyFollowupEmailLimit = clampInt(out.dailyFollowupEmailLimit, 0, 100, 5);
   out.dailyAutoReplyLimit = clampInt(out.dailyAutoReplyLimit, 0, 100, 10);
   out.minFitScore = clampInt(out.minFitScore, 0, 100, 82);
@@ -63,7 +78,19 @@ export async function getAutopilotConfig(env) {
   const row = await env.DB.prepare('SELECT config_json FROM autopilot_config WHERE id = ?').bind('default').first();
   let parsed = {};
   try { parsed = JSON.parse(row?.config_json || '{}'); } catch {}
-  return normalizeAutopilotConfig(parsed);
+
+  const config = normalizeAutopilotConfig(parsed);
+
+  // Persist the one-time profile migration so later user edits remain authoritative.
+  if (Number(parsed.throughputProfileVersion || 0) < THROUGHPUT_PROFILE_VERSION) {
+    await env.DB.prepare(`
+      INSERT INTO autopilot_config (id, config_json, updated_at)
+      VALUES ('default', ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(id) DO UPDATE SET config_json = excluded.config_json, updated_at = CURRENT_TIMESTAMP
+    `).bind(JSON.stringify(config)).run();
+  }
+
+  return config;
 }
 
 export async function saveAutopilotConfig(env, input = {}) {
