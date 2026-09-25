@@ -1,0 +1,97 @@
+name: Booking Engine Checks
+
+on:
+  pull_request:
+    paths:
+      - 'booking-engine/**'
+      - 'booking-engine-worker/**'
+      - '.github/workflows/booking-engine-checks.yml'
+  push:
+    branches:
+      - booking-engine-v1
+    paths:
+      - 'booking-engine/**'
+      - 'booking-engine-worker/**'
+      - '.github/workflows/booking-engine-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check browser JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            node --check "$file"
+          done < <(find booking-engine -maxdepth 1 -type f -name '*.js' -print0 | sort -z)
+
+      - name: Check Worker JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            node --check "$file"
+          done < <(find booking-engine-worker/src -type f -name '*.js' -print0 | sort -z)
+
+      - name: Validate package metadata
+        run: node -e "JSON.parse(require('fs').readFileSync('booking-engine-worker/package.json','utf8')); console.log('package.json OK')"
+
+      - name: Exercise autonomous safety policy
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import {
+            DEFAULT_AUTOPILOT_CONFIG,
+            normalizeAutopilotConfig,
+            canAutonomouslySend,
+            prospectEligible,
+            categoryPolicy
+          } from './booking-engine-worker/src/autopilot-policy.js';
+
+          const defaults = normalizeAutopilotConfig();
+          if (defaults.mode !== 'shadow') throw new Error('Autopilot must default to shadow mode');
+          if (defaults.researchDailyTarget !== 15) throw new Error('Expected 15 daily research targets');
+          if (defaults.verifyDailyTarget !== 15) throw new Error('Expected 15 daily verification targets');
+          if (defaults.dailyInitialEmailLimit !== 10) throw new Error('Expected 10 daily initial email limit');
+          if (defaults.allowColdSms !== false) throw new Error('Cold SMS must remain disabled');
+          if (defaults.maxColdTouches !== 5) throw new Error('Expected five-touch campaign');
+          if (JSON.stringify(defaults.followupDays) !== JSON.stringify([5,10,16,75])) throw new Error('Follow-up cadence changed unexpectedly');
+          if (canAutonomouslySend(defaults).ok) throw new Error('Shadow mode must never autonomously send');
+
+          const pilotNoAddress = normalizeAutopilotConfig({ mode: 'pilot' });
+          if (canAutonomouslySend(pilotNoAddress).ok) throw new Error('Pilot must require a business postal address');
+          const pilotReady = normalizeAutopilotConfig({ mode: 'pilot', businessPostalAddress: 'TEST ADDRESS FOR UNIT TEST ONLY' });
+          if (!canAutonomouslySend(pilotReady).ok) throw new Error('Pilot readiness policy regression');
+
+          const safeProspect = {
+            suppressed: 0,
+            current_venue: 0,
+            room_preference: 'OPEN',
+            status: 'researched',
+            automation_safe: 'YES_TARGETED',
+            email: 'buyer@example.com',
+            fit_score: 95,
+            confidence: 0.95
+          };
+          if (!prospectEligible(pilotReady, safeProspect).ok) throw new Error('Verified safe prospect should be eligible');
+          if (prospectEligible(pilotReady, { ...safeProspect, current_venue: 1 }).ok) throw new Error('Current venue must not be prospectable');
+          if (prospectEligible(pilotReady, { ...safeProspect, suppressed: 1 }).ok) throw new Error('Suppressed contact must not be prospectable');
+          if (!categoryPolicy('offer_or_hold').escalate) throw new Error('Offers/holds must escalate');
+          if (!categoryPolicy('opt_out').noReply) throw new Error('Opt-outs must stop replies');
+
+          console.log('Autonomous safety policy OK');
+          NODE
