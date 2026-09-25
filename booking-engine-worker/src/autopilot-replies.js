@@ -217,9 +217,41 @@ async function applyClassification(env, message, classification) {
   }
 
   if (category === 'bounce') {
-    await env.DB.prepare("UPDATE prospects SET status='Research Needed',automation_safe='MANUAL',campaign_active=0,next_action_at=NULL WHERE id=?")
-      .bind(id).run();
-    await mirrorOverride(env, id, { Status: 'Research', 'Next Follow-up': null });
+    const prospect = await getProspect(env, id);
+    const messageMeta = safeJson(message.metadata_json, {});
+    const prospectMeta = safeJson(prospect?.metadata_json, {});
+    const bouncedEmail = String(messageMeta.bounceTarget || prospect?.email || '').trim().toLowerCase();
+    const invalidEmails = [...new Set([
+      ...(Array.isArray(prospectMeta.invalidEmails) ? prospectMeta.invalidEmails : []),
+      ...(bouncedEmail ? [bouncedEmail] : [])
+    ])];
+
+    const nextMetadata = {
+      ...prospectMeta,
+      invalidEmails,
+      lastBounceAt: nowIso(),
+      lastBounceMessageId: message.id,
+      lastBounceEmail: bouncedEmail || null
+    };
+
+    await env.DB.prepare(`
+      UPDATE prospects SET
+        email=NULL,
+        contact_route='unknown',
+        status='Research Needed',
+        automation_safe='MANUAL',
+        campaign_active=0,
+        next_action_at=NULL,
+        verified_at=NULL,
+        metadata_json=?
+      WHERE id=?
+    `).bind(JSON.stringify(nextMetadata), id).run();
+
+    await mirrorOverride(env, id, { Email: '', Status: 'Research', 'Next Follow-up': null });
+    await event(env, id, 'autopilot_bounce', message.channel, {
+      messageId: message.id,
+      bouncedEmail: bouncedEmail || null
+    });
     return;
   }
 
