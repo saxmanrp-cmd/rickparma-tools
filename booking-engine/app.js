@@ -45,6 +45,7 @@
       .pref-btn.active{color:#fff;border-color:#5571a4;background:#253552}.pref-btn[data-pref="TARGET"].active{background:rgba(99,210,151,.18);border-color:rgba(99,210,151,.5);color:#8ce1b2}.pref-btn[data-pref="SKIP"].active{background:rgba(240,122,131,.15);border-color:rgba(240,122,131,.45);color:#ff9ea5}
       .fit-badge{display:inline-flex;align-items:center;min-height:27px;padding:0 9px;border-radius:999px;font-size:11px;font-weight:850;border:1px solid var(--line);white-space:nowrap}.fit-badge.solo{color:#8ce1b2;border-color:rgba(99,210,151,.32);background:rgba(99,210,151,.09)}.fit-badge.skip{color:#ff9ea5;border-color:rgba(240,122,131,.30);background:rgba(240,122,131,.08)}.fit-badge.open{color:#b8d0ff;border-color:#39517c;background:#1d2940}
       .room-reason{margin-top:8px;color:var(--muted);font-size:12px}.buyer-note{padding:12px 14px;border-radius:14px;background:rgba(120,167,255,.08);border:1px solid rgba(120,167,255,.2);color:#c9d9f7;font-size:13px;line-height:1.45;margin:14px 0}
+      .detail-email-history{display:grid;gap:8px}.detail-email-item{border:1px solid var(--line);border-radius:13px;background:var(--surface-2);overflow:hidden}.detail-email-item.bounce{border-color:rgba(240,122,131,.38)}.detail-email-item summary{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:11px;cursor:pointer;list-style:none}.detail-email-item summary::-webkit-details-marker{display:none}.detail-email-item summary strong{display:block;font-size:12px}.detail-email-item summary span{display:block;color:var(--muted);font-size:9px;margin-top:3px}.detail-email-item summary time{font-size:9px;color:var(--muted);white-space:nowrap}.detail-email-body{border-top:1px solid var(--line);padding:11px}.detail-email-body pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:inherit;font-size:11px;line-height:1.5;margin:0;color:#d8dee8;max-height:320px;overflow:auto}.detail-email-original-subject{font-size:10px;font-weight:800;color:#ffabab;margin-bottom:8px}.detail-email-empty,.detail-email-loading{display:block;color:var(--muted);font-size:11px;padding:8px 0}
     `;
     document.head.appendChild(style);
   }
@@ -454,6 +455,7 @@
         <label>Status<select id="detailStatus">${STATUS_OPTIONS.map(s => `<option ${s === c.Status ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}</select></label>
         <label>Next follow-up<input id="detailFollowup" type="date" value="${escapeHtml(c['Next Follow-up'] || '')}" /></label>
       </div><label class="draft-field">Private CRM note<textarea class="notes-input" id="detailNote" rows="4" placeholder="What happened? What should I remember?">${escapeHtml(c['CRM Note'] || '')}</textarea></label></div>
+      <div class="detail-section"><h3>Email history</h3><div id="detailEmailHistory" class="detail-email-history"><span class="detail-email-loading">Loading messages…</span></div></div>
       <div class="detail-actions">${c.Phone ? `<a class="secondary" href="tel:${escapeHtml(String(c.Phone).replace(/[^0-9+]/g,''))}">Call</a>` : '<button class="secondary" disabled>No phone</button>'}${c.Email ? `<a class="secondary" href="mailto:${escapeHtml(c.Email)}">Email</a>` : '<button class="secondary" disabled>No email</button>'}<button class="primary" id="createDraftFromDetail" ${cp.pref === 'SKIP' ? 'disabled' : ''}>${cp.pref === 'SKIP' ? 'Room Skipped' : 'Create Pitch'}</button></div>`;
 
     $('#detailStatus').addEventListener('change', e => setOverride(id, { Status: e.target.value }));
@@ -462,6 +464,47 @@
     $$('[data-contact-pref]', $('#detailContent')).forEach(btn => btn.addEventListener('click', () => { setContactPref(id, btn.dataset.contactPref); closeModal('detailModal'); openDetail(id); }));
     const draftBtn = $('#createDraftFromDetail'); if (draftBtn && !draftBtn.disabled) draftBtn.addEventListener('click', () => { closeModal('detailModal'); openDraft(id); });
     openModal('detailModal');
+    loadDetailEmailHistory(id);
+  }
+
+  function looksLikeBounce(message) {
+    const text = [message?.subject,message?.body].filter(Boolean).join('\n');
+    return /(undeliverable|delivery has failed|delivery status notification|couldn['’]?t be delivered|unknown to address|recipient address rejected|mail delivery failed|failure notice)/i.test(text);
+  }
+
+  function messageTime(message) {
+    const value = message?.receivedAt || message?.sentAt || message?.createdAt;
+    if (!value) return '';
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleString([], { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+  }
+
+  async function loadDetailEmailHistory(id) {
+    const host = $('#detailEmailHistory');
+    if (!host || !window.BookingCloud?.api) return;
+
+    try {
+      const data = await window.BookingCloud.api(`/api/messages?contactId=${encodeURIComponent(id)}&limit=50`);
+      const rows = (data.messages || []).filter(m => m.channel === 'email');
+      host.innerHTML = rows.length ? rows.map(m => {
+        const bounce = looksLikeBounce(m);
+        const direction = m.direction === 'inbound' ? 'Received' : 'Sent';
+        const peer = m.direction === 'inbound' ? (m.sender || '') : (m.recipient || '');
+        return `
+          <details class="detail-email-item ${bounce ? 'bounce' : ''}">
+            <summary>
+              <div><strong>${escapeHtml(bounce ? 'Undeliverable' : (m.subject || '(No subject)'))}</strong><span>${escapeHtml(direction)}${peer ? ` • ${escapeHtml(peer)}` : ''}</span></div>
+              <time>${escapeHtml(messageTime(m))}</time>
+            </summary>
+            <div class="detail-email-body">
+              ${bounce && m.subject ? `<div class="detail-email-original-subject">${escapeHtml(m.subject)}</div>` : ''}
+              <pre>${escapeHtml(m.body || 'No message body.')}</pre>
+            </div>
+          </details>`;
+      }).join('') : '<div class="detail-email-empty">No email history yet.</div>';
+    } catch (error) {
+      host.innerHTML = `<div class="detail-email-empty">${escapeHtml(error?.message || 'Could not load email history.')}</div>`;
+    }
   }
 
   function campaignDraft(c) {
