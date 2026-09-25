@@ -1,4 +1,4 @@
-import { microsoftStatus, syncMicrosoftInbox } from './providers/microsoft.js';
+import { microsoftStatus, syncMicrosoftInbox, syncMicrosoftDeletedBounces } from './providers/microsoft.js';
 
 const encoder = new TextEncoder();
 
@@ -109,6 +109,86 @@ async function storeInbound(env, input) {
   return id;
 }
 
+
+function emailsInText(value) {
+  return [...new Set(
+    String(value || '')
+      .match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || []
+  )].map(normalizeEmail);
+}
+
+async function matchMicrosoftBounce(env, message, selfAddresses) {
+  const candidates = emailsInText(`${message.subject || ''}\n${message.body || ''}\n${message.bodyPreview || ''}`)
+    .filter(email => email && !selfAddresses.has(email));
+
+  for (const email of candidates) {
+    const outbound = await env.DB.prepare(`
+      SELECT id,contact_id,sent_at,thread_id,recipient
+      FROM messages
+      WHERE direction='outbound' AND channel='email' AND lower(recipient)=?
+      ORDER BY COALESCE(sent_at,created_at) DESC
+      LIMIT 1
+    `).bind(email).first();
+
+    if (outbound?.contact_id) {
+      return { ...outbound, matchedBy:'bounce-recipient', bounceTarget:email };
+    }
+  }
+
+  return null;
+}
+
+async function storeDeletedFolderBounces(env, selfAddresses) {
+  const result = await syncMicrosoftDeletedBounces(env, 35);
+  let matched = 0;
+  let stored = 0;
+
+  for (const message of result.messages || []) {
+    if (!message.id || await alreadyStored(env, 'microsoft-graph', message.id)) continue;
+
+    const outbound = await matchMicrosoftBounce(env, message, selfAddresses);
+    if (!outbound?.contact_id) continue;
+    matched++;
+
+    const body = message.body || message.bodyPreview || '';
+    const inboundId = await storeInbound(env, {
+      contactId: outbound.contact_id,
+      channel: 'email',
+      provider: 'microsoft-graph',
+      sender: message.from,
+      recipient: env.MS_SENDER_USER,
+      subject: message.subject,
+      body,
+      providerMessageId: message.id,
+      threadId: message.conversationId || outbound.thread_id || null,
+      receivedAt: message.receivedDateTime,
+      metadata: {
+        internetMessageId: message.internetMessageId || null,
+        matchedBy: outbound.matchedBy,
+        bounceTarget: outbound.bounceTarget,
+        sourceFolder: 'deleteditems'
+      }
+    });
+    if (!inboundId) continue;
+    stored++;
+
+    await addEvent(env, {
+      contactId: outbound.contact_id,
+      eventType: 'message_received',
+      channel: 'email',
+      payload: {
+        messageId: inboundId,
+        providerMessageId: message.id,
+        matchedBy: outbound.matchedBy,
+        bounceTarget: outbound.bounceTarget,
+        sourceFolder: 'deleteditems'
+      }
+    });
+  }
+
+  return { checked: (result.messages || []).length, matched, stored };
+}
+
 async function matchMicrosoftOutbound(env, message, sender) {
   if (message.conversationId) {
     const byThread = await env.DB.prepare(`
@@ -205,7 +285,19 @@ export async function syncMicrosoftReplies(env) {
       pages: result.pages
     });
   }
-  return { ok: true, checked: result.messages.length, matched, stored, matchedByThread, matchedBySender, pages: result.pages };
+
+  const deletedBounces = await storeDeletedFolderBounces(env, selfAddresses);
+
+  return {
+    ok: true,
+    checked: result.messages.length,
+    matched,
+    stored,
+    matchedByThread,
+    matchedBySender,
+    pages: result.pages,
+    deletedBounces
+  };
 }
 
 async function twilioSignature(env, url, params) {
