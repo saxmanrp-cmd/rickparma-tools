@@ -182,6 +182,40 @@ export async function replyMicrosoftEmail(env, input = {}) {
   };
 }
 
+export async function syncMicrosoftDeletedBounces(env, limit = 25) {
+  const token = await accessToken(env);
+  const mailbox = env.MS_SENDER_USER;
+  const cap = Math.max(1, Math.min(100, Number(limit) || 25));
+  const url = `${GRAPH_ROOT}/users/${encodeURIComponent(mailbox)}/mailFolders/deleteditems/messages?$top=${cap}&$orderby=receivedDateTime%20desc&$select=id,conversationId,internetMessageId,from,toRecipients,subject,body,bodyPreview,receivedDateTime`;
+
+  const data = await graphJson(url, {
+    headers: {
+      authorization: `Bearer ${token}`,
+      accept: 'application/json',
+      prefer: 'outlook.body-content-type="text"'
+    }
+  }, 'Microsoft Deleted Items bounce sync failed');
+
+  const bouncePattern = /(undeliverable|delivery has failed|delivery status notification|couldn['’]?t be delivered|unknown to address|recipient address rejected|mail delivery failed|failure notice)/i;
+
+  const messages = (data.value || [])
+    .filter(message => !message?.['@removed'])
+    .map(message => ({
+      id: message.id || null,
+      conversationId: message.conversationId || null,
+      internetMessageId: message.internetMessageId || null,
+      from: message.from?.emailAddress?.address || null,
+      to: (message.toRecipients || []).map(r => r?.emailAddress?.address).filter(Boolean),
+      subject: message.subject || '',
+      body: String(message.body?.content || message.bodyPreview || '').slice(0, 30000),
+      bodyPreview: message.bodyPreview || '',
+      receivedDateTime: message.receivedDateTime || null
+    }))
+    .filter(message => bouncePattern.test(`${message.subject}\n${message.body}\n${message.bodyPreview}`));
+
+  return { messages };
+}
+
 export async function syncMicrosoftInbox(env, deltaLink = '') {
   const token = await accessToken(env);
   const mailbox = env.MS_SENDER_USER;
