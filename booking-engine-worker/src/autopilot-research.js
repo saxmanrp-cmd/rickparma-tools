@@ -15,7 +15,9 @@ export async function runResearchCycle(env, config) {
         contactName: x.contact_name,
         contactRole: x.contact_role,
         email: x.email,
-        phone: x.phone
+        phone: x.phone,
+        status: x.status,
+        invalidEmails: x.invalidEmails || []
       })),
       discoverCount: config.researchDailyTarget
     });
