@@ -23,7 +23,15 @@ export async function runAutonomousBookingAgent(env, { forceResearch = false } =
   try {
     let research = null;
     const latestResearch = await lastCompletedRun(env, 'research');
-    if (forceResearch || !latestResearch || !sameLocalDay(latestResearch.started_at, config.timezone)) {
+    const urgentResearch = await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM prospects WHERE status='Research Needed' AND suppressed=0 AND current_venue=0 AND verified_at IS NULL"
+    ).first();
+    if (
+      forceResearch
+      || Number(urgentResearch?.n || 0) > 0
+      || !latestResearch
+      || !sameLocalDay(latestResearch.started_at, config.timezone)
+    ) {
       research = await runResearchCycle(env, config);
     }
 
