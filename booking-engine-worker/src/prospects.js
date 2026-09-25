@@ -153,7 +153,7 @@ export async function importProspects(env, contacts = [], state = {}) {
     if (existing) {
       // Browser import is user-state sync. Once web research has verified a contact,
       // never replace that verified email/role/route with an older static seed row.
-      const verified = !!existing.verified_at;
+      const verified = !!existing.verified_at || existing.status === 'Research Needed';
       const metadata = { ...parsedJson(existing.metadata_json, {}), ...importedMetadata };
       await env.DB.prepare(`
         UPDATE prospects SET
@@ -264,7 +264,7 @@ export async function upsertResearchedProspect(env, item = {}, fallbackId = '') 
 
 export async function verificationTargets(env, limit = 6) {
   const result = await env.DB.prepare(`
-    SELECT id,entity,room,contact_name,contact_role,email,phone,automation_safe,confidence,last_researched_at
+    SELECT id,entity,room,contact_name,contact_role,email,phone,automation_safe,confidence,last_researched_at,status,metadata_json
     FROM prospects
     WHERE suppressed=0
       AND current_venue=0
@@ -274,10 +274,16 @@ export async function verificationTargets(env, limit = 6) {
         OR source_urls_json IS NULL
         OR source_urls_json='[]'
       )
-    ORDER BY fit_score DESC,confidence ASC,last_researched_at ASC
+    ORDER BY CASE WHEN status='Research Needed' THEN 0 ELSE 1 END,fit_score DESC,confidence ASC,last_researched_at ASC
     LIMIT ?
   `).bind(Math.max(1, Math.min(20, Number(limit) || 6))).all();
-  return result.results || [];
+  return (result.results || []).map(row => {
+    const metadata = parsedJson(row.metadata_json, {});
+    return {
+      ...row,
+      invalidEmails: Array.isArray(metadata.invalidEmails) ? metadata.invalidEmails : []
+    };
+  });
 }
 
 export async function listProspects(env, { limit = 100, status = '', eligibleOnly = false, includeSuppressed = false } = {}) {
