@@ -221,6 +221,8 @@ async function applyClassification(env, message, classification) {
     const messageMeta = safeJson(message.metadata_json, {});
     const prospectMeta = safeJson(prospect?.metadata_json, {});
     const bouncedEmail = String(messageMeta.bounceTarget || prospect?.email || '').trim().toLowerCase();
+    const currentEmail = String(prospect?.email || '').trim().toLowerCase();
+    const shouldClearCurrentEmail = !!bouncedEmail && currentEmail === bouncedEmail;
     const invalidEmails = [...new Set([
       ...(Array.isArray(prospectMeta.invalidEmails) ? prospectMeta.invalidEmails : []),
       ...(bouncedEmail ? [bouncedEmail] : [])
@@ -236,8 +238,8 @@ async function applyClassification(env, message, classification) {
 
     await env.DB.prepare(`
       UPDATE prospects SET
-        email=NULL,
-        contact_route='unknown',
+        email=CASE WHEN ?=1 THEN NULL ELSE email END,
+        contact_route=CASE WHEN ?=1 THEN 'unknown' ELSE contact_route END,
         status='Research Needed',
         automation_safe='MANUAL',
         campaign_active=0,
@@ -245,9 +247,13 @@ async function applyClassification(env, message, classification) {
         verified_at=NULL,
         metadata_json=?
       WHERE id=?
-    `).bind(JSON.stringify(nextMetadata), id).run();
+    `).bind(shouldClearCurrentEmail ? 1 : 0, shouldClearCurrentEmail ? 1 : 0, JSON.stringify(nextMetadata), id).run();
 
-    await mirrorOverride(env, id, { Email: '', Status: 'Research', 'Next Follow-up': null });
+    await mirrorOverride(env, id, {
+      ...(shouldClearCurrentEmail ? { Email: '' } : {}),
+      Status: 'Research',
+      'Next Follow-up': null
+    });
     await event(env, id, 'autopilot_bounce', message.channel, {
       messageId: message.id,
       bouncedEmail: bouncedEmail || null
