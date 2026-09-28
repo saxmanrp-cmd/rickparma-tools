@@ -258,6 +258,34 @@
   .convo-item { cursor: pointer; }
   .convo-item .snippet { color: var(--text-dim); font-size: 0.8rem; margin-top: 2px; }
 
+  .quick-edit-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.68);
+  }
+
+  .quick-edit-sheet {
+    width: min(100%, 480px);
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--card);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  }
+
+  .quick-edit-sheet h2 { margin-bottom: 4px; }
+
+  @media (min-width: 560px) {
+    .quick-edit-backdrop { align-items: center; }
+  }
+
   .thread-bubble {
     max-width: 80%;
     padding: 8px 12px;
@@ -546,6 +574,26 @@
         <button class="btn btn-danger" id="deleteThreadBtn" style="margin-top:10px;">Delete this conversation</button>
         <button class="btn btn-danger" id="removeSubFromThreadBtn" style="margin-top:8px;">Remove Subscriber</button>
       </div>
+
+      <div class="quick-edit-backdrop hidden" id="quickEditSubscriberModal">
+        <div class="quick-edit-sheet" role="dialog" aria-modal="true" aria-labelledby="quickEditSubscriberTitle">
+          <h2 id="quickEditSubscriberTitle">Edit Subscriber</h2>
+          <p class="subtitle" id="quickEditSubscriberPhone" style="margin-bottom:12px;"></p>
+          <label for="quickEditSubscriberName">Name</label>
+          <input type="text" id="quickEditSubscriberName" placeholder="First Last" autocomplete="name">
+          <label for="quickEditSubscriberTags">Categories (Cmd/Ctrl-click to select multiple)</label>
+          <select id="quickEditSubscriberTags" multiple size="6"></select>
+          <div class="row" style="margin-top:6px;">
+            <input type="text" id="quickEditSubscriberNewTag" placeholder="Add new category" style="flex:1; margin-bottom:0;">
+            <button type="button" class="btn btn-secondary btn-small" id="quickEditSubscriberAddTag" style="width:auto;">Add</button>
+          </div>
+          <div class="message-status" id="quickEditSubscriberStatus"></div>
+          <div class="row" style="margin-top:10px;">
+            <button type="button" class="btn btn-secondary" id="quickEditSubscriberCancel">Cancel</button>
+            <button type="button" class="btn" id="quickEditSubscriberSave">Save</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- SUBSCRIBERS TAB -->
@@ -620,7 +668,7 @@
       </div>
       <div class="card">
         <h2>Active Rules <span class="count-pill" id="ruleCount">0</span></h2>
-        <p class="subtitle" style="margin-bottom:8px;">JOIN/START/YES, STOP variants, and HELP are always built-in and can't be edited here.</p>
+        <p class="subtitle" style="margin-bottom:8px;">STOP variants and START/YES/UNSTOP are handled automatically before these rules.</p>
         <div class="list-scroll" id="ruleList">
           <p class="subtitle">Loading...</p>
         </div>
@@ -903,9 +951,9 @@ function populateNewTagsSelect(selected = []) {
       }
 
       function editSubscriber(phone) {
-        const sub = subscribers.find(s => s.phone === phone);
+        const sub = findSubscriberByPhone(phone);
         if (!sub) return;
-        editingSubPhone = phone;
+        editingSubPhone = sub.phone;
         newPhone.value = sub.phone;
         newPhone.disabled = true;
         newName.value = sub.name || '';
@@ -1918,6 +1966,124 @@ cancelEditScheduleBtn.addEventListener('click', () => {
     return !!s && (s.status === 'stopped' || s.status === 'removed');
   }
 
+  function conversationDisplayName(conversation) {
+    const sub = findSubscriberByPhone(conversation && conversation.phone);
+    return (sub && sub.name) || (conversation && conversation.name) || (conversation && conversation.phone) || '';
+  }
+
+  const quickEditSubscriberModal = document.getElementById('quickEditSubscriberModal');
+  const quickEditSubscriberPhone = document.getElementById('quickEditSubscriberPhone');
+  const quickEditSubscriberName = document.getElementById('quickEditSubscriberName');
+  const quickEditSubscriberTags = document.getElementById('quickEditSubscriberTags');
+  const quickEditSubscriberNewTag = document.getElementById('quickEditSubscriberNewTag');
+  const quickEditSubscriberAddTag = document.getElementById('quickEditSubscriberAddTag');
+  const quickEditSubscriberCancel = document.getElementById('quickEditSubscriberCancel');
+  const quickEditSubscriberSave = document.getElementById('quickEditSubscriberSave');
+  const quickEditSubscriberStatus = document.getElementById('quickEditSubscriberStatus');
+  let quickEditingSubscriberPhone = null;
+
+  function populateQuickEditTags(selected = []) {
+    const allTags = new Set(selected);
+    subscribers.forEach(s => (s.tags || []).forEach(tag => allTags.add(tag)));
+    quickEditSubscriberTags.innerHTML = Array.from(allTags)
+      .sort()
+      .map(tag => `<option value="${tag.replace(/"/g, '&quot;')}" ${selected.includes(tag) ? 'selected' : ''}>${tag}</option>`)
+      .join('');
+  }
+
+  function openQuickEditSubscriber(phone) {
+    const sub = findSubscriberByPhone(phone);
+    if (!sub || sub.status !== 'active') return;
+    quickEditingSubscriberPhone = sub.phone;
+    quickEditSubscriberPhone.textContent = sub.phone;
+    quickEditSubscriberName.value = sub.name || '';
+    quickEditSubscriberNewTag.value = '';
+    quickEditSubscriberStatus.className = 'message-status';
+    quickEditSubscriberStatus.textContent = '';
+    populateQuickEditTags(sub.tags || []);
+    quickEditSubscriberModal.classList.remove('hidden');
+    quickEditSubscriberName.focus();
+  }
+
+  function closeQuickEditSubscriber() {
+    quickEditingSubscriberPhone = null;
+    quickEditSubscriberModal.classList.add('hidden');
+  }
+
+  quickEditSubscriberAddTag.addEventListener('click', () => {
+    const tag = quickEditSubscriberNewTag.value.trim();
+    if (!tag) return;
+    let option = Array.from(quickEditSubscriberTags.options).find(item => item.value === tag);
+    if (!option) {
+      option = document.createElement('option');
+      option.value = tag;
+      option.textContent = tag;
+      quickEditSubscriberTags.appendChild(option);
+    }
+    option.selected = true;
+    quickEditSubscriberNewTag.value = '';
+  });
+
+  quickEditSubscriberCancel.addEventListener('click', closeQuickEditSubscriber);
+  quickEditSubscriberModal.addEventListener('click', event => {
+    if (event.target === quickEditSubscriberModal) closeQuickEditSubscriber();
+  });
+
+  quickEditSubscriberSave.addEventListener('click', async () => {
+    const sub = findSubscriberByPhone(quickEditingSubscriberPhone);
+    if (!sub || sub.status !== 'active') {
+      quickEditSubscriberStatus.className = 'message-status error';
+      quickEditSubscriberStatus.textContent = 'Subscriber record is no longer available.';
+      return;
+    }
+
+    const name = quickEditSubscriberName.value.trim();
+    const tags = Array.from(quickEditSubscriberTags.selectedOptions).map(option => option.value);
+    const customTag = quickEditSubscriberNewTag.value.trim();
+    if (customTag && !tags.includes(customTag)) tags.push(customTag);
+    quickEditSubscriberSave.disabled = true;
+    quickEditSubscriberStatus.className = 'message-status';
+    quickEditSubscriberStatus.textContent = 'Saving...';
+
+    try {
+      const res = await apiFetch('/api/subscribers/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: sub.phone, name, tags }),
+      });
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data.subscribers)) {
+        quickEditSubscriberStatus.className = 'message-status error';
+        quickEditSubscriberStatus.textContent = data.error || 'Failed to save.';
+        return;
+      }
+
+      subscribers = data.subscribers;
+      if (editingSubPhone && normalizeSubscriberPhone(editingSubPhone) === normalizeSubscriberPhone(sub.phone)) {
+        const updated = findSubscriberByPhone(editingSubPhone);
+        if (updated) {
+          editingSubPhone = updated.phone;
+          newPhone.value = updated.phone;
+          newName.value = updated.name || '';
+          newTagCustom.value = '';
+          populateNewTagsSelect(updated.tags || []);
+        }
+      }
+      renderSubscribers();
+      await loadConversations();
+      if (currentThreadPhone && normalizeSubscriberPhone(currentThreadPhone) === normalizeSubscriberPhone(sub.phone)) {
+        const updated = findSubscriberByPhone(currentThreadPhone);
+        threadName.textContent = (updated && updated.name) || currentThreadPhone;
+      }
+      closeQuickEditSubscriber();
+    } catch (e) {
+      quickEditSubscriberStatus.className = 'message-status error';
+      quickEditSubscriberStatus.textContent = 'Connection error.';
+    } finally {
+      quickEditSubscriberSave.disabled = false;
+    }
+  });
+
   // Safety net for the production SMS worker: if a recent inbound JOIN made it
   // into Messages but the subscriber record was never created, repair that
   // missing record using the same /api/subscribers/add endpoint as the admin UI.
@@ -2012,12 +2178,13 @@ cancelEditScheduleBtn.addEventListener('click', () => {
         <div class="convo-item" data-phone="${c.phone}">
           <input type="checkbox" class="convo-check" data-phone="${c.phone}" style="width:auto; margin:2px 10px 0 0; flex-shrink:0;">
           <span style="flex:1; min-width:0;">
-            <strong>${c.name || c.phone}</strong>
+            <strong>${conversationDisplayName(c)}</strong>
             ${isActiveSubscriber(c.phone) ? '<span title="Active subscriber" style="color:#8de5a8; margin-left:6px;">✓</span>' : ''}
-            ${c.name ? `<br><span class="subtitle" style="font-size:0.75rem;">${c.phone}</span>` : ''}
+            ${conversationDisplayName(c) !== c.phone ? `<br><span class="subtitle" style="font-size:0.75rem;">${c.phone}</span>` : ''}
             <div class="snippet">${c.lastDirection === 'out' ? 'You: ' : ''}${(c.lastMessage || '').slice(0, 60)}</div>
           </span>
           <span style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+            ${isActiveSubscriber(c.phone) ? `<button class="action-link" data-phone="${c.phone}" data-action="edit-subscriber">edit</button>` : ''}
             <button class="remove-link" data-phone="${c.phone}" data-action="delete-one">delete</button>
             ${isActiveSubscriber(c.phone) ? `<button class="remove-link" data-phone="${c.phone}" data-action="unsub-one" style="color:var(--danger);">remove subscriber</button>` : ''}
           </span>
@@ -2037,6 +2204,13 @@ cancelEditScheduleBtn.addEventListener('click', () => {
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
           deleteConversations([btn.dataset.phone]);
+        });
+      });
+
+      conversationList.querySelectorAll('[data-action="edit-subscriber"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openQuickEditSubscriber(btn.dataset.phone);
         });
       });
 
@@ -2097,7 +2271,7 @@ cancelEditScheduleBtn.addEventListener('click', () => {
 
     async function openThread(phone) {
     currentThreadPhone = phone;
-    const sub = subscribers.find(s => s.phone === phone);
+    const sub = findSubscriberByPhone(phone);
     threadName.textContent = (sub && sub.name) ? sub.name : phone;
     conversationListCard.classList.add('hidden');
     threadCard.classList.remove('hidden');
