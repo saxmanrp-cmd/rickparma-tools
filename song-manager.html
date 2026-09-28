@@ -102,6 +102,8 @@
   .badge.free{color:var(--free); border-color:var(--free); background:rgba(141,178,229,0.1);}
   .badge.general{color:var(--general); border-color:var(--general); background:rgba(232,184,75,0.1);}
   .badge.special{color:var(--special); border-color:var(--special); background:rgba(232,107,107,0.1);}
+  .song-badges{display:flex; align-items:center; gap:6px;}
+  .badge.power{color:#f4d06f; border-color:#f4d06f; background:rgba(244,208,111,0.1);}
 
   #fab{position:fixed; right:18px; bottom:18px; width:56px; height:56px; border-radius:50%; background:var(--accent); color:#0c1420; font-size:28px; display:flex; align-items:center; justify-content:center; border:none; box-shadow:0 4px 14px rgba(0,0,0,0.4); z-index:50; cursor:pointer;}
 
@@ -124,6 +126,10 @@
   .sheet-actions .btn{flex:1;}
   #addTagRow{display:flex; gap:8px; margin-top:10px;}
   #addTagRow input{flex:1;}
+  .power-song-field{display:flex; align-items:flex-start; gap:10px; margin-top:16px; padding:12px; border:1px solid var(--line); border-radius:10px; background:rgba(245,243,240,0.03); cursor:pointer;}
+  .power-song-field input{width:20px; height:20px; margin:1px 0 0; accent-color:var(--accent);}
+  .power-song-field strong{display:block; font-size:14px;}
+  .power-song-field small{display:block; color:var(--dim); font-size:12px; line-height:1.4; margin-top:3px;}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
@@ -142,6 +148,7 @@
 <button class="btn btn-full" id="songRequestToggleBtn" onclick="toggleSongRequestLive()"></button>
 <button class="btn btn-full" id="fanCamToggleBtn" onclick="toggleFanCamLive()" style="margin-top:8px;"></button>
 <button class="btn btn-full" id="spinToggleBtn" onclick="toggleSpinEnabled()" style="margin-top:8px;"></button>
+<button class="btn btn-full" id="powerSongsToggleBtn" onclick="togglePowerSongsAvailable()" style="margin-top:8px;"></button>
 <button class="btn btn-full" id="smsToggleBtn" onclick="toggleSmsRequestsEnabled()" style="margin-top:8px;"></button>
 </div>
 
@@ -210,6 +217,11 @@
     <button class="btn btn-outline" onclick="addNewTag()">Add</button>
   </div>
 
+  <label class="power-song-field" for="fPowerSong">
+    <input type="checkbox" id="fPowerSong">
+    <span><strong>Power Song</strong><small>Hide this song from guests while Power Songs are held back.</small></span>
+  </label>
+
   <div class="sheet-actions">
     <button class="btn btn-outline" onclick="closeSheet()">Cancel</button>
     <button class="btn btn-danger" id="deleteBtn" onclick="deleteSong()" style="display:none;">Delete</button>
@@ -261,11 +273,13 @@ let sortMode = "title-asc";
 let editingId = null;
 let selectedTags = [];
 let polls = [];
-let activePollId = null; let songRequestLive = true; let fanCamLive = true; let spinEnabled = true; let smsRequestsEnabled = true; function renderHeroToggle(){ renderToggleRow('songRequestToggleBtn','Song Requests',songRequestLive); renderToggleRow('fanCamToggleBtn','Fan Cam',fanCamLive); renderSpinToggle(); renderSmsToggle(); }
+let activePollId = null; let songRequestLive = true; let fanCamLive = true; let spinEnabled = true; let powerSongsAvailable = false; let smsRequestsEnabled = true; function renderHeroToggle(){ renderToggleRow('songRequestToggleBtn','Song Requests',songRequestLive); renderToggleRow('fanCamToggleBtn','Fan Cam',fanCamLive); renderSpinToggle(); renderPowerSongsToggle(); renderSmsToggle(); }
 function renderSpinToggle(){ var btn=document.getElementById('spinToggleBtn'); if(!btn) return; if(spinEnabled){ btn.textContent='Spin Wheel: ON'; btn.className='btn btn-hero-on btn-full'; } else { btn.textContent='Spin Wheel: Paid-Only'; btn.className='btn btn-outline btn-full'; } }
+function renderPowerSongsToggle(){ var btn=document.getElementById('powerSongsToggleBtn'); if(!btn) return; if(powerSongsAvailable){ btn.textContent='Power Songs: Available'; btn.className='btn btn-hero-on btn-full'; } else { btn.textContent='Power Songs: Held Back'; btn.className='btn btn-outline btn-full'; } }
 function renderToggleRow(btnId,label,isLive){ var btn=document.getElementById(btnId); if(!btn) return; if(isLive){ btn.textContent=label+': LIVE'; btn.className='btn btn-hero-on btn-full'; } else { btn.textContent=label+': Hidden'; btn.className='btn btn-outline btn-full'; } }
 async function toggleSongRequestLive(){ var wasLive = songRequestLive; songRequestLive = !songRequestLive; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ songRequestLive = !songRequestLive; renderHeroToggle(); } else if(!wasLive && songRequestLive){ fetch(`${PROXY_BASE}/song-requests-log`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({requests:[]})}).catch(function(){}); } } async function toggleFanCamLive(){ fanCamLive = !fanCamLive; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ fanCamLive = !fanCamLive; renderHeroToggle(); } } async function toggleSpinEnabled(){ spinEnabled = !spinEnabled; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ spinEnabled = !spinEnabled; renderHeroToggle(); } } function renderSmsToggle(){ var btn=document.getElementById('smsToggleBtn'); if(!btn) return; if(smsRequestsEnabled){ btn.textContent='Text Alerts: ON'; btn.className='btn btn-hero-on btn-full'; } else { btn.textContent='Text Alerts: Muted'; btn.className='btn btn-outline btn-full'; } }
 async function toggleSmsRequestsEnabled(){ smsRequestsEnabled = !smsRequestsEnabled; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ smsRequestsEnabled = !smsRequestsEnabled; renderHeroToggle(); } }
+async function togglePowerSongsAvailable(){ powerSongsAvailable = !powerSongsAvailable; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ powerSongsAvailable = !powerSongsAvailable; renderHeroToggle(); } }
 
 
 /* Seed data used only when creating a brand-new bin for the first time */
@@ -297,7 +311,7 @@ async function loadFromCloud(){
     const data = await res.json();
     const record = data.record || {};
     songs = record.songs || [];
-    prices = { ...DEFAULT_PRICES, ...(record.prices || {}) }; songRequestLive = record.songRequestLive !== false; fanCamLive = record.fanCamLive !== false; spinEnabled = record.spinEnabled !== false; smsRequestsEnabled = record.smsRequestsEnabled !== false; renderHeroToggle();
+    prices = { ...DEFAULT_PRICES, ...(record.prices || {}) }; songRequestLive = record.songRequestLive !== false; fanCamLive = record.fanCamLive !== false; spinEnabled = record.spinEnabled !== false; powerSongsAvailable = record.powerSongsAvailable === true; smsRequestsEnabled = record.smsRequestsEnabled !== false; renderHeroToggle();
     rebuildTagList();
     renderSetupBox(true);
     document.getElementById('controlsArea').style.display = 'block';
@@ -316,7 +330,7 @@ async function saveToCloud(){
     const res = await fetch(`${PROXY_BASE}/songs`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ songs, prices, songRequestLive, fanCamLive, spinEnabled, smsRequestsEnabled })
+      body: JSON.stringify({ songs, prices, songRequestLive, fanCamLive, spinEnabled, powerSongsAvailable, smsRequestsEnabled })
     });
     if(!res.ok) throw new Error("save failed");
     return true;
@@ -359,13 +373,14 @@ function csvEscape(val){
 }
 
 function exportCSV(){
-  const header = ['id','title','artist','tier','tags'];
+  const header = ['id','title','artist','tier','tags','powerSong'];
   const rows = songs.map(s => [
     s.id,
     s.t,
     s.a || '',
     s.tier || 'general',
-    (s.tags || []).join(';')
+    (s.tags || []).join(';'),
+    s.powerSong ? 'yes' : ''
   ].map(csvEscape).join(','));
 
   const csv = [header.join(','), ...rows].join('\n');
@@ -430,6 +445,7 @@ async function handleCSVUpload(event){
   const artistIdx = header.indexOf('artist');
   const tierIdx = header.indexOf('tier');
   const tagsIdx = header.indexOf('tags');
+  const powerSongIdx = header.indexOf('powersong');
 
   if(titleIdx === -1){
     alert('CSV must have a "title" column. Download the current list first to see the expected format.');
@@ -449,6 +465,7 @@ async function handleCSVUpload(event){
     tier = 'general'; // only one price tier now — legacy free/special rows all fold into general
     const tags = tagsIdx > -1 ? (r[tagsIdx] || '').split(';').map(t => t.trim()).filter(Boolean) : [];
     const id = idIdx > -1 ? (r[idIdx] || '').trim() : '';
+    const powerSong = powerSongIdx > -1 && /^(1|true|yes)$/i.test((r[powerSongIdx] || '').trim());
 
     const existing = id ? songs.find(s => s.id === id) : null;
     if(existing){
@@ -456,9 +473,10 @@ async function handleCSVUpload(event){
       existing.a = artist;
       existing.tier = tier;
       existing.tags = tags;
+      if(powerSongIdx > -1) existing.powerSong = powerSong;
       updatedCount++;
     } else {
-      songs.push({ id: 's' + Date.now() + Math.floor(Math.random()*10000), t: title, a: artist, tier, tags });
+      songs.push({ id: 's' + Date.now() + Math.floor(Math.random()*10000), t: title, a: artist, tier, tags, powerSong });
       addedCount++;
     }
   }
@@ -538,7 +556,7 @@ function renderList(){
         <div class="song-title">${escapeHtml(s.t)}</div>
         <div class="song-meta">${escapeHtml(s.a||'—')}${s.tags && s.tags.length ? ' · ' + s.tags.join(', ') : ''}</div>
       </div>
-      ${tierBadge()}
+      <div class="song-badges">${s.powerSong ? '<span class="badge power">Power</span>' : ''}${tierBadge()}</div>
     </div>`).join('');
 
   [...listEl.querySelectorAll('.song-row')].forEach(row => {
@@ -568,6 +586,7 @@ function openEditor(id){
   document.getElementById('sheetHeading').textContent = s ? 'Edit Song' : 'Add Song';
   document.getElementById('fTitle').value = s ? s.t : '';
   document.getElementById('fArtist').value = s ? (s.a||'') : '';
+  document.getElementById('fPowerSong').checked = !!(s && s.powerSong);
   document.getElementById('deleteBtn').style.display = s ? 'inline-flex' : 'none';
 
   selectedTags = s ? [...(s.tags||[])] : [];
@@ -610,13 +629,14 @@ async function saveSong(){
   const title = document.getElementById('fTitle').value.trim();
   if(!title){ alert('Song title is required.'); return; }
   const artist = document.getElementById('fArtist').value.trim();
+  const powerSong = document.getElementById('fPowerSong').checked;
 
   if(editingId){
     const s = songs.find(x => x.id === editingId);
-    s.t = title; s.a = artist; s.tier = 'general'; s.tags = [...selectedTags];
+    s.t = title; s.a = artist; s.tier = 'general'; s.tags = [...selectedTags]; s.powerSong = powerSong;
   } else {
     const newId = 's' + Date.now();
-    songs.push({ id: newId, t: title, a: artist, tier: 'general', tags: [...selectedTags] });
+    songs.push({ id: newId, t: title, a: artist, tier: 'general', tags: [...selectedTags], powerSong });
   }
 
   rebuildTagList();
