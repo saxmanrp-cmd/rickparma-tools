@@ -36,7 +36,7 @@ test('Messages quick edit reuses subscriber update and refreshes both views', ()
 
 test('quick edit is limited to active subscriber records', () => {
   assert.match(appScript, /if \(!sub \|\| sub\.status !== 'active'\) return;/);
-  assert.match(appScript, /isActiveSubscriber\(c\.phone\) \? `<button class="action-link"[^`]+data-action="edit-subscriber"/);
+  assert.match(appScript, /isActiveSubscriber\(c\.phone\) \? `<button class="quick-edit-button"[^`]+data-action="edit-subscriber">EDIT<\/button>`/);
 });
 
 test('conversation, delete, remove, and JOIN recovery behavior remains wired', () => {
