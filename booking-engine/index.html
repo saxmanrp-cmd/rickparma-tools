@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1020" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Booking Engine" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <title>Rick Parma Booking Engine</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">RICK PARMA</div>
+        <h1>Booking Engine</h1>
+      </div>
+      <button class="icon-button" id="refreshButton" title="Refresh view" aria-label="Refresh view">↻</button>
+    </header>
+
+    <main>
+      <section class="view active" data-view="dashboard">
+        <div class="hero-card">
+          <div>
+            <div class="eyebrow">ROOM-FIRST BOOKING</div>
+            <h2>Find me gigs.</h2>
+            <p>Prioritizes solo-friendly rooms and stages while keeping useful buyers active for their other venues.</p>
+          </div>
+          <button class="primary giant" id="findGigsButton">Find Me Gigs</button>
+        </div>
+
+        <div class="metric-grid" id="metricGrid"></div>
+
+        <div class="section-heading">
+          <h3>Start Here</h3>
+          <span>Sort the rooms, not the buyers.</span>
+        </div>
+        <div class="shortcut-grid">
+          <button class="shortcut" data-shortcut="solo"><strong>🎤 Solo-Friendly</strong><span>Best fit for one-man stages and rooms</span></button>
+          <button class="shortcut" data-shortcut="working"><strong>🎷 Working Rooms</strong><span>Recurring local opportunities</span></button>
+          <button class="shortcut" data-go-view="buyers"><strong>♬ Rooms & Stages</strong><span>Target, maybe, open, or skip by room</span></button>
+          <button class="shortcut" data-shortcut="agency"><strong>🤝 Agencies</strong><span>Keep multi-venue relationships alive</span></button>
+          <button class="shortcut" data-shortcut="followups"><strong>⏰ Follow-Ups</strong><span>Nothing falls through the cracks</span></button>
+          <button class="shortcut" data-shortcut="skipped"><strong>🚫 Skipped Rooms</strong><span>Country-first or personal no-go rooms</span></button>
+        </div>
+
+        <div class="section-heading">
+          <h3>Top Opportunities</h3>
+          <button class="text-button" data-go-view="leads">See all</button>
+        </div>
+        <div id="topLeads" class="stack"></div>
+      </section>
+
+      <section class="view" data-view="leads">
+        <div class="page-title">
+          <div>
+            <div class="eyebrow">ROOMS + USEFUL BUYERS</div>
+            <h2>Leads</h2>
+          </div>
+        </div>
+
+        <div class="search-wrap">
+          <input id="leadSearch" type="search" placeholder="Search venue, room, buyer, casino…" autocomplete="off" />
+        </div>
+        <div class="filter-row" id="filterRow">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="solo">Solo-Friendly</button>
+          <button class="chip" data-filter="A">Priority A</button>
+          <button class="chip" data-filter="Working Room">Working Rooms</button>
+          <button class="chip" data-filter="Strategic Buyer">Casino Buyers</button>
+          <button class="chip" data-filter="Agency / Promoter">Agencies</button>
+          <button class="chip" data-filter="followups">Follow-Ups</button>
+          <button class="chip" data-filter="skipped">Skipped Rooms</button>
+        </div>
+        <div class="sort-row">
+          <span id="resultCount"></span>
+          <select id="leadSort" aria-label="Sort leads">
+            <option value="score">Best Rick fit</option>
+            <option value="priority">Priority</option>
+            <option value="entity">A–Z</option>
+            <option value="followup">Follow-up date</option>
+          </select>
+        </div>
+        <div id="leadList" class="stack"></div>
+      </section>
+
+      <section class="view" data-view="queue">
+        <div class="page-title inline-title">
+          <div>
+            <div class="eyebrow">TODAY'S WORK</div>
+            <h2>Campaign Queue</h2>
+          </div>
+          <button class="secondary" id="rebuildQueueButton">Rebuild</button>
+        </div>
+        <div class="queue-note">Solo-friendly rooms and due follow-ups come first. Skipped rooms are removed, but their buyers stay available for other venues.</div>
+        <div id="queueSummary" class="metric-grid compact"></div>
+        <div id="queueList" class="stack"></div>
+      </section>
+
+      <section class="view" data-view="buyers">
+        <div class="page-title">
+          <div>
+            <div class="eyebrow">ROOM BY ROOM</div>
+            <h2>Rooms & Stages</h2>
+          </div>
+        </div>
+        <div class="queue-note">Choose the room fit here. A room can be skipped without blacklisting the buyer who may control other useful rooms.</div>
+        <div class="search-wrap">
+          <input id="buyerSearch" type="search" placeholder="Search room, casino, lounge, bar…" autocomplete="off" />
+        </div>
+        <div id="buyerMap" class="stack"></div>
+      </section>
+
+      <section class="view" data-view="settings">
+        <div class="page-title">
+          <div>
+            <div class="eyebrow">CAMPAIGN BASICS</div>
+            <h2>Settings</h2>
+          </div>
+        </div>
+        <div class="settings-card">
+          <label>Website
+            <input id="websiteInput" type="url" placeholder="https://RickParma.com" />
+          </label>
+          <label>EPK / Promo Link
+            <input id="epkInput" type="url" placeholder="Paste your EPK or promo link" />
+          </label>
+          <label>Representation line
+            <input id="representationInput" type="text" />
+          </label>
+          <label class="toggle-line">
+            <input id="representationToggle" type="checkbox" />
+            <span>Include representation line in new pitches</span>
+          </label>
+          <button class="primary" id="saveSettingsButton">Save Settings</button>
+        </div>
+
+        <div class="settings-card">
+          <h3>CRM Data</h3>
+          <p>Your outreach changes and room preferences are stored in this browser. Export a backup anytime.</p>
+          <div class="button-row">
+            <button class="secondary" id="exportButton">Export CRM</button>
+            <label class="secondary file-label">Import CRM<input id="importInput" type="file" accept="application/json" /></label>
+          </div>
+        </div>
+
+        <div class="settings-card warning-card">
+          <h3>Room-Level Rule</h3>
+          <p><strong>Skipping a room does not skip the buyer.</strong> Maxan, Vic’s, and obvious country-first rooms are seeded as room-level skips, while the people connected to them can still surface for other properties.</p>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Main navigation">
+      <button class="nav-button active" data-nav="dashboard"><span>⌂</span><small>Home</small></button>
+      <button class="nav-button" data-nav="leads"><span>◎</span><small>Prospects</small></button>
+      <button class="nav-button" data-nav="buyers"><span>♬</span><small>Rooms</small></button>
+      <button class="nav-button" data-nav="settings"><span>⚙</span><small>Settings</small></button>
+    </nav>
+  </div>
+
+  <div class="modal-backdrop" id="detailModal" aria-hidden="true">
+    <div class="modal-card detail-modal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+      <div class="modal-top">
+        <div>
+          <div class="eyebrow" id="detailEyebrow"></div>
+          <h2 id="detailTitle"></h2>
+        </div>
+        <button class="icon-button" data-close-modal="detailModal" aria-label="Close">×</button>
+      </div>
+      <div id="detailContent"></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="draftModal" aria-hidden="true">
+    <div class="modal-card draft-modal" role="dialog" aria-modal="true" aria-labelledby="draftTitle">
+      <div class="modal-top">
+        <div>
+          <div class="eyebrow">PERSONALIZED OUTREACH</div>
+          <h2 id="draftTitle">Campaign Draft</h2>
+        </div>
+        <button class="icon-button" data-close-modal="draftModal" aria-label="Close">×</button>
+      </div>
+      <label class="draft-field">Subject
+        <input id="draftSubject" type="text" />
+      </label>
+      <label class="draft-field">Message / Call Script
+        <textarea id="draftBody" rows="15"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button class="secondary" id="copyDraftButton">Copy</button>
+        <button class="secondary" id="emailDraftButton">Open Email</button>
+        <button class="primary" id="markSentButton">Mark Sent</button>
+      </div>
+      <div class="fine-print" id="draftGuardrail"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="./data-part-1.js"></script>
+  <script src="./data-part-2.js"></script>
+  <script src="./data-part-3.js"></script>
+  <script src="./data-part-4.js"></script>
+  <script src="./data-part-5.js"></script>
+  <script src="./data-loader.js"></script>
+  <script src="./app.js?v=email-history1"></script>
+  <script src="./room-status.js"></script>
+  <script src="./campaign-engine.js"></script>
+  <script src="./sender-policy.js?v=autosync1"></script>
+  <script src="./autopilot-ui.js?v=needsrick-home2"></script>
+  <script src="./campaign-control-loader.js"></script>
+  <script src="./needs-rick-ui.js?v=needsrick-home2"></script>
+  <script src="./agent-activity-ui.js"></script>\n  <script src="./email-history-ui.js?v=email-history1"></script>
+</body>
+</html>
