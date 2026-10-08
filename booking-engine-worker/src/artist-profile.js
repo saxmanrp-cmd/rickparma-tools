@@ -12,13 +12,14 @@ export const ARTIST_PROFILE = Object.freeze({
   shortPromo: 'https://www.youtube.com/watch?v=A7bKax1LS_g',
   compilation: 'https://www.youtube.com/watch?v=ePFoNTC85XY',
   fullBandPromo: 'https://www.youtube.com/watch?v=6WmPyq6eoRk',
-  formats: ['solo singer/sax to tracks', 'duo', 'full band'],
+  formats: ['solo singer/sax to tracks', 'duo', 'full band', 'DJ/MC'],
   styles: ['R&B', 'Motown', 'soul', 'funk', 'pop', 'Top 40', 'neo-soul'],
   positioning: [
     'Chicago-born, Las Vegas-based vocalist, saxophonist, songwriter and entertainer',
     'More than three decades of professional performance experience',
     'Regular Las Vegas casino work including ARIA and Westgate',
     'Show scales from polished solo singer/sax through full band',
+    'Available for DJ/MC bookings as a standalone service or, when appropriate, alongside live sax/vocal performance',
     'Room-first performer who reads the audience rather than forcing a fixed set list'
   ],
   festivalCredits: [
@@ -53,6 +54,9 @@ export function compactCredentials(profile = 'room') {
   }
   if (profile === 'corporate') {
     return 'More than three decades of professional performance experience across casino, corporate and private-event settings, including a longstanding AKA event relationship and regular ARIA/Westgate work.';
+  }
+  if (profile === 'dj') {
+    return 'Las Vegas-based professional entertainer available for DJ/MC bookings for hospitality, nightlife, corporate and private-event settings, with live sax/vocal performance available as an optional hybrid when it fits the event.';
   }
   if (profile === 'agency') {
     return 'More than three decades of professional experience across casinos, lounges, festivals, corporate and private events, with a show that scales from solo singer/sax through full band.';

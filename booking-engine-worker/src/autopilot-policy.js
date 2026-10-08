@@ -1,14 +1,14 @@
-const THROUGHPUT_PROFILE_VERSION = 2;
+const THROUGHPUT_PROFILE_VERSION = 3;
 
 export const DEFAULT_AUTOPILOT_CONFIG = Object.freeze({
   mode: 'shadow',
   timezone: 'America/Los_Angeles',
   throughputProfileVersion: THROUGHPUT_PROFILE_VERSION,
-  researchDailyTarget: 15,
-  verifyDailyTarget: 15,
-  dailyInitialEmailLimit: 10,
-  dailyFollowupEmailLimit: 5,
-  dailyAutoReplyLimit: 10,
+  researchDailyTarget: 40,
+  verifyDailyTarget: 40,
+  dailyInitialEmailLimit: 25,
+  dailyFollowupEmailLimit: 15,
+  dailyAutoReplyLimit: 20,
   minFitScore: 82,
   minConfidence: 0.82,
   sendWindowStartHour: 9,
@@ -33,22 +33,25 @@ export function normalizeAutopilotConfig(input = {}) {
   const source = input || {};
   const out = { ...DEFAULT_AUTOPILOT_CONFIG, ...source };
 
-  // One-time throughput upgrade approved by Rick on 2026-09-21.
-  // Keep all safety gates, targeting thresholds, send window, and follow-up policy intact.
+  // One-time aggressive-growth upgrade approved by Rick on 2026-10-08.
+  // Increase venue/DJ acquisition volume while keeping verification, dedupe,
+  // suppression, bounce handling, opt-out, send-window, and targeting gates intact.
   if (Number(source.throughputProfileVersion || 0) < THROUGHPUT_PROFILE_VERSION) {
-    out.researchDailyTarget = 15;
-    out.verifyDailyTarget = 15;
-    out.dailyInitialEmailLimit = 10;
+    out.researchDailyTarget = 40;
+    out.verifyDailyTarget = 40;
+    out.dailyInitialEmailLimit = 25;
+    out.dailyFollowupEmailLimit = 15;
+    out.dailyAutoReplyLimit = 20;
     out.throughputProfileVersion = THROUGHPUT_PROFILE_VERSION;
   }
 
   if (!['off', 'shadow', 'pilot', 'live'].includes(out.mode)) out.mode = 'shadow';
   out.throughputProfileVersion = THROUGHPUT_PROFILE_VERSION;
-  out.researchDailyTarget = clampInt(out.researchDailyTarget, 0, 20, 15);
-  out.verifyDailyTarget = clampInt(out.verifyDailyTarget, 0, 20, 15);
-  out.dailyInitialEmailLimit = clampInt(out.dailyInitialEmailLimit, 0, 50, 10);
-  out.dailyFollowupEmailLimit = clampInt(out.dailyFollowupEmailLimit, 0, 100, 5);
-  out.dailyAutoReplyLimit = clampInt(out.dailyAutoReplyLimit, 0, 100, 10);
+  out.researchDailyTarget = clampInt(out.researchDailyTarget, 0, 60, 40);
+  out.verifyDailyTarget = clampInt(out.verifyDailyTarget, 0, 60, 40);
+  out.dailyInitialEmailLimit = clampInt(out.dailyInitialEmailLimit, 0, 50, 25);
+  out.dailyFollowupEmailLimit = clampInt(out.dailyFollowupEmailLimit, 0, 100, 15);
+  out.dailyAutoReplyLimit = clampInt(out.dailyAutoReplyLimit, 0, 100, 20);
   out.minFitScore = clampInt(out.minFitScore, 0, 100, 82);
   out.minConfidence = clampNum(out.minConfidence, 0, 1, 0.82);
   out.sendWindowStartHour = clampInt(out.sendWindowStartHour, 0, 23, 9);
@@ -206,7 +209,7 @@ export function appendComplianceFooter(body, config) {
   const content = cleanBodyBeforeSignature(body, config);
   const signature = [
     'Rick Parma',
-    'Singer • Saxophonist • Entertainer',
+    'Singer • Saxophonist • DJ • Entertainer',
     'booking@rickparma.com',
     'RickParma.com',
     config.businessPostalAddress || ''

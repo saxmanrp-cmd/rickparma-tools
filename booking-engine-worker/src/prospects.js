@@ -87,6 +87,7 @@ function profileFor(input = {}) {
     input.Notes, input['Booking / Submission Route']
   ].map(text).join(' ').toLowerCase();
   if (/festival|concert series|arts festival/.test(all)) return 'festival';
+  if (/\b(dj|disc jockey|nightlife dj|wedding dj|event dj|dance floor)\b/.test(lane) || /\b(dj|disc jockey|nightlife dj|wedding dj|event dj|dance floor)\b/.test(all)) return 'dj';
   if (/corporate|private event|event planner|convention|meeting|association/.test(all)) return 'corporate';
   if (/agency|promoter|representation/.test(lane) || /agency|talent agency|promoter/.test(all)) return 'agency';
   if (/strategic buyer|buyer|entertainment director|booking director/.test(lane)) return 'buyer';
@@ -276,7 +277,7 @@ export async function verificationTargets(env, limit = 6) {
       )
     ORDER BY CASE WHEN status='Research Needed' THEN 0 ELSE 1 END,fit_score DESC,confidence ASC,last_researched_at ASC
     LIMIT ?
-  `).bind(Math.max(1, Math.min(20, Number(limit) || 6))).all();
+  `).bind(Math.max(1, Math.min(60, Number(limit) || 6))).all();
   return (result.results || []).map(row => {
     const metadata = parsedJson(row.metadata_json, {});
     return {
