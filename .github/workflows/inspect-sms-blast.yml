@@ -27,5 +27,10 @@ jobs:
             -o /tmp/sms-worker
           echo "BYTES=$(wc -c </tmp/sms-worker)"
           grep -a -n -C 25 -E "conversations/reply|X-Admin-Token|Unauthorized" /tmp/sms-worker | head -n 260 || true
-          echo "---- METADATA ----"
-          grep -a -n -A 80 'name="metadata"' /tmp/sms-worker | head -n 100 || true
+          echo "---- METADATA / TAIL ----"
+          tail -n 120 /tmp/sms-worker || true
+          echo "---- SETTINGS ----"
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/sms-blast/settings" \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps(d,indent=2))' || true
