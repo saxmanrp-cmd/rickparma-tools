@@ -18,6 +18,12 @@
     "OPENAI_MODEL": "gpt-5.6-luna",
     "OPENAI_RESEARCH_MODEL": "gpt-5.6-terra"
   },
+  "services": [
+    {
+      "binding": "SMS_BLAST",
+      "service": "sms-blast"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
