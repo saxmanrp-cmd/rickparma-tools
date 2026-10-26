@@ -18,6 +18,8 @@ export const DEFAULT_AUTOPILOT_CONFIG = Object.freeze({
   followupDays: [5, 10, 16, 75],
   allowColdSms: false,
   allowAutoRoutineReplies: true,
+  interventionAlertsEnabled: true,
+  interventionAlertPhone: '',
   requirePhysicalPostalAddress: true,
   businessPostalAddress: '',
   optOutLine: "If you'd rather not hear from me, reply ‘no thanks’ and I won't follow up.",
@@ -61,6 +63,8 @@ export function normalizeAutopilotConfig(input = {}) {
     ? out.followupDays.map(v => clampInt(v, 1, 365, 5)).slice(0, 8)
     : [...DEFAULT_AUTOPILOT_CONFIG.followupDays];
   out.allowColdSms = false;
+  out.interventionAlertsEnabled = out.interventionAlertsEnabled !== false;
+  out.interventionAlertPhone = String(out.interventionAlertPhone || '').trim().slice(0, 40);
   out.businessPostalAddress = String(out.businessPostalAddress || '').trim().slice(0, 300);
   out.pilotApprovedDraftId = String(out.pilotApprovedDraftId || '').trim().slice(0, 100);
   out.optOutLine = String(out.optOutLine || DEFAULT_AUTOPILOT_CONFIG.optOutLine).trim().slice(0, 500);
@@ -143,6 +147,7 @@ export function prospectEligible(config, prospect) {
   if (Number(prospect.current_venue || 0)) return { ok: false, reason: 'Current venue.' };
   if (['skip', 'SKIP', 'PERFORMING'].includes(String(prospect.room_preference || ''))) return { ok: false, reason: 'Room preference excludes outreach.' };
   if (String(prospect.status || '').toLowerCase() === 'do not contact') return { ok: false, reason: 'Do not contact.' };
+  if (String(prospect.status || '').toLowerCase() === 'rick handling') return { ok: false, reason: 'Rick is handling this relationship.' };
   if (String(prospect.profile || prospect.campaign_type || '').toLowerCase() === 'agency') {
     return { ok: false, reason: 'Venue-first policy: independent agency/promoter outreach is manual only.' };
   }
