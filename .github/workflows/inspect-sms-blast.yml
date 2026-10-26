@@ -34,3 +34,8 @@ jobs:
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/sms-blast/settings" \
             | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps(d,indent=2))' || true
+          echo "---- SCHEDULES ----"
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/sms-blast/schedules" \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps(d,indent=2))' || true
