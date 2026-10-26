@@ -1,4 +1,5 @@
 import { microsoftStatus } from './providers/microsoft.js';
+import { twilioStatus } from './providers/twilio.js';
 import { openaiStatus } from './providers/openai.js';
 import { getAutopilotConfig, saveAutopilotConfig, canAutonomouslySend, withinSendWindow, localParts } from './autopilot-policy.js';
 import { runResearchCycle } from './autopilot-research.js';
@@ -52,6 +53,8 @@ export async function bookingAgentStatus(env) {
   const gate = canAutonomouslySend(config);
   const microsoft = microsoftStatus(env);
   const openai = openaiStatus(env);
+  const twilio = twilioStatus(env);
+  const alertPhoneConfigured = !!String(config.interventionAlertPhone || env.BOOKING_ALERT_PHONE || '').trim();
   const [prospects, escalations, latest, drafts] = await Promise.all([
     env.DB.prepare(`SELECT
       COUNT(*) total,
@@ -73,7 +76,13 @@ export async function bookingAgentStatus(env) {
       sendBlocker: !gate.ok ? gate.reason : !microsoft.configured ? 'Microsoft email is not configured.' : !openai.configured ? 'OpenAI is not configured.' : '',
       sendWindowOpen: withinSendWindow(config),
       microsoft,
-      openai
+      openai,
+      interventionTextAlerts: {
+        enabled: config.interventionAlertsEnabled !== false,
+        configured: config.interventionAlertsEnabled !== false && twilio.configured && alertPhoneConfigured,
+        twilioConfigured: twilio.configured,
+        phoneConfigured: alertPhoneConfigured
+      }
     },
     counts: {
       prospects: Number(prospects?.total || 0),
@@ -103,7 +112,7 @@ export async function listBookingEscalations(env, limit = 50) {
   const result = await env.DB.prepare(`
     SELECT
       e.*,
-      p.entity,p.room,p.contact_name,p.contact_role,p.email,p.phone,p.text_ok,
+      p.entity,p.room,p.contact_name,p.contact_role,p.email,p.phone,p.text_ok,p.status AS prospect_status,p.campaign_active,p.next_action_at,
       m.channel AS inbound_channel,m.sender AS inbound_sender,m.subject AS inbound_subject,
       m.body AS inbound_body,m.provider_message_id AS inbound_provider_message_id,m.thread_id AS inbound_thread_id,
       m.received_at AS inbound_received_at
