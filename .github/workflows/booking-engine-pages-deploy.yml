@@ -1,0 +1,41 @@
+name: Booking Engine Pages Deploy
+
+on:
+  push:
+    branches:
+      - booking-engine-v1
+    paths:
+      - 'booking-engine/**'
+      - '.github/workflows/booking-engine-pages-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: booking-engine-pages-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check Booking Engine JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find booking-engine -maxdepth 1 -type f -name '*.js' -print0 | sort -z)
+
+      - name: Deploy Booking Engine Pages
+        run: npx --yes wrangler@4 pages deploy booking-engine --project-name=booking-engine-v1 --branch=main
