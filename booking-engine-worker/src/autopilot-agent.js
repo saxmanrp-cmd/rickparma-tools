@@ -54,6 +54,7 @@ export async function bookingAgentStatus(env) {
   const microsoft = microsoftStatus(env);
   const openai = openaiStatus(env);
   const twilio = twilioStatus(env);
+  const smsServiceConfigured = !!(env.SMS_BLAST && typeof env.SMS_BLAST.fetch === 'function');
   const alertPhoneConfigured = !!String(config.interventionAlertPhone || env.BOOKING_ALERT_PHONE || '').trim();
   const [prospects, escalations, latest, drafts] = await Promise.all([
     env.DB.prepare(`SELECT
@@ -79,7 +80,8 @@ export async function bookingAgentStatus(env) {
       openai,
       interventionTextAlerts: {
         enabled: config.interventionAlertsEnabled !== false,
-        configured: config.interventionAlertsEnabled !== false && twilio.configured && alertPhoneConfigured,
+        configured: config.interventionAlertsEnabled !== false && (smsServiceConfigured || twilio.configured) && alertPhoneConfigured,
+        smsServiceConfigured,
         twilioConfigured: twilio.configured,
         phoneConfigured: alertPhoneConfigured
       }
