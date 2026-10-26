@@ -33,28 +33,53 @@ export default {
         });
       }
 
+      const testBody = [
+        'TEST — NEEDS RICK ALERT',
+        'Booking Engine intervention texting is working.',
+        '',
+        'Example: A booking conversation has reached the point where you should step in personally.',
+        'Open Booking Engine → Needs Rick. Tap “I’m Calling • Pause Emails” before calling.',
+        '',
+        'THIS IS A TEST — no new booking email triggered this.'
+      ].join('\n');
+
       try {
         const sent = await sendTwilioText(env, {
           approved: true,
           textOk: true,
           to,
-          body: [
-            'TEST — NEEDS RICK ALERT',
-            'Booking Engine intervention texting is working.',
-            '',
-            'Example: A booking conversation has reached the point where you should step in personally.',
-            'Open Booking Engine → Needs Rick. Tap “I’m Calling • Pause Emails” before calling.',
-            '',
-            'THIS IS A TEST — no new booking email triggered this.'
-          ].join('\n')
+          body: testBody
         });
-        return new Response(JSON.stringify({ ok: true, status: sent.status || 'queued' }), {
+        return new Response(JSON.stringify({ ok: true, provider: 'direct-twilio', status: sent.status || 'queued' }), {
           status: 200,
           headers: { 'content-type': 'application/json; charset=utf-8' }
         });
-      } catch (error) {
-        return new Response(JSON.stringify({ error: String(error?.message || error).slice(0, 500) }), {
-          status: 502,
+      } catch (directError) {
+        if (!env.SMS_BLAST || typeof env.SMS_BLAST.fetch !== 'function') {
+          return new Response(JSON.stringify({ error: String(directError?.message || directError).slice(0, 500) }), {
+            status: 502,
+            headers: { 'content-type': 'application/json; charset=utf-8' }
+          });
+        }
+
+        const smsRes = await env.SMS_BLAST.fetch(new Request('https://sms-blast.internal/api/conversations/reply', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ phone: to, message: testBody })
+        }));
+        const smsData = await smsRes.json().catch(() => ({}));
+        if (!smsRes.ok) {
+          return new Response(JSON.stringify({
+            error: smsData?.error || `SMS Blast fallback failed with ${smsRes.status}.`,
+            directError: String(directError?.message || directError).slice(0, 300)
+          }), {
+            status: 502,
+            headers: { 'content-type': 'application/json; charset=utf-8' }
+          });
+        }
+
+        return new Response(JSON.stringify({ ok: true, provider: 'sms-blast-service', status: smsData?.status || 'sent' }), {
+          status: 200,
           headers: { 'content-type': 'application/json; charset=utf-8' }
         });
       }
