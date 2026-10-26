@@ -1,0 +1,140 @@
+name: Patch SMS Blast Internal Booking Route
+
+on:
+  push:
+    branches:
+      - booking-engine-v1
+    paths:
+      - '.github/workflows/patch-sms-blast-internal.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download current SMS Blast Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/sms-patch
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/sms-blast" \
+            -o /tmp/sms-patch/original.multipart
+
+          python3 - <<'PY'
+          from pathlib import Path
+          data = Path('/tmp/sms-patch/original.multipart').read_bytes()
+          first_end = data.find(b'\n')
+          boundary = data[:first_end].strip()
+          header_end = data.find(b'\r\n\r\n')
+          sep_len = 4
+          if header_end < 0:
+              header_end = data.find(b'\n\n')
+              sep_len = 2
+          if header_end < 0:
+              raise SystemExit('Could not locate multipart header boundary.')
+          payload_start = header_end + sep_len
+          end_marker = b'\r\n' + boundary + b'--'
+          payload_end = data.rfind(end_marker)
+          if payload_end < 0:
+              end_marker = b'\n' + boundary + b'--'
+              payload_end = data.rfind(end_marker)
+          if payload_end < 0:
+              raise SystemExit('Could not locate multipart closing boundary.')
+          Path('/tmp/sms-patch/worker.js').write_bytes(data[payload_start:payload_end])
+          PY
+
+      - name: Patch only internal Booking Engine reply authorization
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('/tmp/sms-patch/worker.js')
+          s = p.read_text()
+          old = '''    if (!path.startsWith("/api/")) {
+                return new Response("sms-blast worker OK", { headers: CORS_HEADERS });
+              }
+              if (!checkAuth(request, env)) {
+                return json({ error: "Unauthorized" }, 401);
+              }'''
+          new = '''    if (!path.startsWith("/api/")) {
+                return new Response("sms-blast worker OK", { headers: CORS_HEADERS });
+              }
+              const internalBookingReply = request.method === "POST"
+                && path === "/api/conversations/reply"
+                && url.hostname === "sms-blast.internal";
+              if (!internalBookingReply && !checkAuth(request, env)) {
+                return json({ error: "Unauthorized" }, 401);
+              }'''
+          if new in s:
+              print('Internal Booking Engine authorization is already present.')
+          elif old in s:
+              s = s.replace(old, new, 1)
+              p.write_text(s)
+              print('Patched internal Booking Engine authorization.')
+          else:
+              raise SystemExit('Expected SMS Blast authorization block was not found; refusing to deploy.')
+          PY
+          node --check /tmp/sms-patch/worker.js
+
+      - name: Deploy SMS Blast without changing existing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat >/tmp/sms-patch/wrangler.toml <<'TOML'
+          name = "sms-blast"
+          main = "worker.js"
+          compatibility_date = "2026-07-24"
+          keep_vars = true
+
+          [triggers]
+          crons = ["*/5 * * * *"]
+
+          [[kv_namespaces]]
+          binding = "SUBSCRIBERS_KV"
+          id = "b95db7e7be86435f90af09b151bada43"
+          TOML
+          cd /tmp/sms-patch
+          npx --yes wrangler@4 deploy --config wrangler.toml
+
+      - name: Verify bindings and schedule survived
+        shell: bash
+        run: |
+          set -euo pipefail
+          SETTINGS="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/sms-blast/settings")"
+          echo "$SETTINGS" | grep -q '"ADMIN_TOKEN"'
+          echo "$SETTINGS" | grep -q '"PAYMENT_HUB_TOKEN"'
+          echo "$SETTINGS" | grep -q '"TWILIO_ACCOUNT_SID"'
+          echo "$SETTINGS" | grep -q '"TWILIO_AUTH_TOKEN"'
+          echo "$SETTINGS" | grep -q '"TWILIO_FROM_NUMBER"'
+          echo "$SETTINGS" | grep -q '"SUBSCRIBERS_KV"'
+
+          SCHEDULES="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/sms-blast/schedules")"
+          echo "$SCHEDULES" | grep -q '"*/5 * * * *"'
+
+      - name: Verify public admin route still rejects unauthenticated requests
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE="$(curl --silent --output /tmp/public-reply.json --write-out '%{http_code}' \
+            -X POST -H 'content-type: application/json' \
+            --data '{"phone":"+17025550199","message":"should-not-send"}' \
+            https://sms-blast.saxmanrp.workers.dev/api/conversations/reply)"
+          test "$CODE" = "401"
