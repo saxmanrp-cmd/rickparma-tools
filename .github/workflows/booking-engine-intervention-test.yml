@@ -38,6 +38,7 @@ jobs:
           TOKEN="$(openssl rand -hex 24)"
           SQL="UPDATE autopilot_config SET config_json=json_set(COALESCE(config_json,'{}'),'$.interventionTestToken','$TOKEN'), updated_at=CURRENT_TIMESTAMP WHERE id='default';"
           npx wrangler d1 execute rick-booking-crm --remote --command "$SQL" >/tmp/arm.txt
-          RESPONSE="$(curl --fail --silent --show-error --max-time 25 "https://rick-booking-engine.saxmanrp.workers.dev/api/internal/intervention-test?token=$TOKEN")"
+          RESPONSE="$(curl --silent --show-error --max-time 25 -w '\nHTTP_STATUS:%{http_code}' "https://rick-booking-engine.saxmanrp.workers.dev/api/internal/intervention-test?token=$TOKEN")"
           echo "$RESPONSE"
+          echo "$RESPONSE" | grep -q 'HTTP_STATUS:200'
           echo "$RESPONSE" | grep -q '"ok":true'
