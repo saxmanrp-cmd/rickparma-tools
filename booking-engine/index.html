@@ -123,6 +123,21 @@
             <h2>Settings</h2>
           </div>
         </div>
+        <div class="settings-card intervention-settings-card" data-intervention-settings>
+          <div class="eyebrow">NEEDS RICK ALERTS</div>
+          <h3>Intervention Texts</h3>
+          <p>Get a text with the contact, venue, and conversation summary whenever the Booking Agent needs you to step in.</p>
+          <label>Your text number
+            <input data-intervention-phone type="tel" placeholder="Your mobile number" autocomplete="tel" />
+          </label>
+          <label class="toggle-line">
+            <input data-intervention-enabled type="checkbox" />
+            <span>Text me when I need to intervene</span>
+          </label>
+          <button class="primary" data-intervention-save>Save Intervention Alerts</button>
+          <div class="fine-print" data-intervention-status></div>
+        </div>
+
         <div class="settings-card">
           <label>Website
             <input id="websiteInput" type="url" placeholder="https://RickParma.com" />
@@ -213,7 +228,7 @@
   <script src="./room-status.js"></script>
   <script src="./campaign-engine.js"></script>
   <script src="./sender-policy.js?v=autosync1"></script>
-  <script src="./autopilot-ui.js?v=intervention-text1"></script>
+  <script src="./autopilot-ui.js?v=intervention-text2"></script>
   <script src="./campaign-control-loader.js"></script>
   <script src="./needs-rick-ui.js?v=intervention-text1"></script>
   <script src="./agent-activity-ui.js"></script>\n  <script src="./email-history-ui.js?v=email-history1"></script>
