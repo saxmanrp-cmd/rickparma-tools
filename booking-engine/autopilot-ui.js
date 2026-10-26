@@ -56,7 +56,8 @@
       <div class="agent-status-row"><span>AI research + writing</span><strong class="${r.openai?.configured ? 'good' : 'warn'}">${r.openai?.configured ? 'Ready' : 'Needs API key'}</strong></div>
       <div class="agent-status-row"><span>Microsoft email</span><strong class="${r.microsoft?.configured ? 'good' : 'warn'}">${r.microsoft?.configured ? 'Ready' : 'Needs Graph setup'}</strong></div>
       <div class="agent-status-row"><span>Autonomous sending</span><strong class="${r.canSend ? 'good' : 'warn'}">${r.canSend ? 'Ready' : esc(r.sendBlocker || 'Blocked')}</strong></div>
-      <div class="agent-status-row"><span>Send window right now</span><strong>${r.sendWindowOpen ? 'Open' : 'Closed'}</strong></div>`;
+      <div class="agent-status-row"><span>Send window right now</span><strong>${r.sendWindowOpen ? 'Open' : 'Closed'}</strong></div>
+      <div class="agent-status-row"><span>Intervention text alerts</span><strong class="${r.interventionTextAlerts?.configured ? 'good' : 'warn'}">${r.interventionTextAlerts?.configured ? 'Ready' : 'Add text number / check Twilio'}</strong></div>`;
   }
 
   async function renderSettings() {
@@ -97,6 +98,13 @@
       <label>Business postal address <span>(required before Pilot/Live sends)</span>
         <input data-agent-address value="${esc(c.businessPostalAddress || '')}" placeholder="Business mailing address / PO Box / mailbox">
       </label>
+      <label>Rick intervention text number
+        <input data-agent-alert-phone type="tel" value="${esc(c.interventionAlertPhone || '')}" placeholder="Your mobile number">
+      </label>
+      <label class="toggle-line">
+        <input data-agent-alert-enabled type="checkbox" ${c.interventionAlertsEnabled !== false ? 'checked' : ''}>
+        <span>Text me when a booking conversation needs me to step in</span>
+      </label>
       <div class="agent-safety">Cold SMS is permanently disabled. Money, contracts, date holds, exclusivity and unusual commitments always go to <strong>Needs Rick</strong>.</div>
       <div class="agent-readiness">${readinessRows(s)}</div>
       <div class="agent-buttons">
@@ -117,7 +125,9 @@
           dailyFollowupEmailLimit: Number(card.querySelector('[data-agent-followups]').value),
           minFitScore: Number(card.querySelector('[data-agent-fit]').value),
           minConfidence: Number(card.querySelector('[data-agent-confidence]').value),
-          businessPostalAddress: card.querySelector('[data-agent-address]').value.trim()
+          businessPostalAddress: card.querySelector('[data-agent-address]').value.trim(),
+          interventionAlertPhone: card.querySelector('[data-agent-alert-phone]').value.trim(),
+          interventionAlertsEnabled: card.querySelector('[data-agent-alert-enabled]').checked
         };
         await api('/api/autopilot/config', { method: 'PUT', body: { config } });
         toast('Booking Agent settings saved');
