@@ -78,6 +78,43 @@
       return;
     }
     const c = s.config || {};
+
+    const interventionCard = settings.querySelector('[data-intervention-settings]');
+    if (interventionCard) {
+      const phone = interventionCard.querySelector('[data-intervention-phone]');
+      const enabled = interventionCard.querySelector('[data-intervention-enabled]');
+      const save = interventionCard.querySelector('[data-intervention-save]');
+      const msg = interventionCard.querySelector('[data-intervention-status]');
+
+      if (phone) phone.value = c.interventionAlertPhone || '';
+      if (enabled) enabled.checked = c.interventionAlertsEnabled !== false;
+      if (msg) {
+        const ready = s.readiness?.interventionTextAlerts?.configured;
+        msg.textContent = ready
+          ? 'Ready — intervention texts are configured.'
+          : 'Enter your mobile number and save. Twilio must also be connected.';
+      }
+
+      if (save) save.onclick = async () => {
+        save.disabled = true;
+        if (msg) msg.textContent = 'Saving…';
+        try {
+          const config = {
+            ...c,
+            interventionAlertPhone: phone?.value.trim() || '',
+            interventionAlertsEnabled: !!enabled?.checked
+          };
+          await api('/api/autopilot/config', { method:'PUT', body:{ config } });
+          toast('Intervention alerts saved');
+          await refreshAll();
+        } catch (error) {
+          if (msg) msg.textContent = error.message || 'Could not save intervention alerts.';
+        } finally {
+          save.disabled = false;
+        }
+      };
+    }
+
     card.innerHTML = `
       <div class="agent-title-row"><div><div class="eyebrow">AUTONOMOUS BOOKING</div><h3>Booking Agent</h3></div><span class="agent-mode mode-${esc(c.mode)}">${esc(modeLabel(c.mode))}</span></div>
       <p><strong>Shadow</strong> researches and writes but sends nothing. <strong>Pilot</strong> runs automatically with small daily limits. <strong>Live</strong> is the full autonomous engine.</p>
@@ -97,13 +134,6 @@
       </div>
       <label>Business postal address <span>(required before Pilot/Live sends)</span>
         <input data-agent-address value="${esc(c.businessPostalAddress || '')}" placeholder="Business mailing address / PO Box / mailbox">
-      </label>
-      <label>Rick intervention text number
-        <input data-agent-alert-phone type="tel" value="${esc(c.interventionAlertPhone || '')}" placeholder="Your mobile number">
-      </label>
-      <label class="toggle-line">
-        <input data-agent-alert-enabled type="checkbox" ${c.interventionAlertsEnabled !== false ? 'checked' : ''}>
-        <span>Text me when a booking conversation needs me to step in</span>
       </label>
       <div class="agent-safety">Cold SMS is permanently disabled. Money, contracts, date holds, exclusivity and unusual commitments always go to <strong>Needs Rick</strong>.</div>
       <div class="agent-readiness">${readinessRows(s)}</div>
@@ -125,9 +155,7 @@
           dailyFollowupEmailLimit: Number(card.querySelector('[data-agent-followups]').value),
           minFitScore: Number(card.querySelector('[data-agent-fit]').value),
           minConfidence: Number(card.querySelector('[data-agent-confidence]').value),
-          businessPostalAddress: card.querySelector('[data-agent-address]').value.trim(),
-          interventionAlertPhone: card.querySelector('[data-agent-alert-phone]').value.trim(),
-          interventionAlertsEnabled: card.querySelector('[data-agent-alert-enabled]').checked
+          businessPostalAddress: card.querySelector('[data-agent-address]').value.trim()
         };
         await api('/api/autopilot/config', { method: 'PUT', body: { config } });
         toast('Booking Agent settings saved');
