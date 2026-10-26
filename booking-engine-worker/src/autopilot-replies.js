@@ -48,6 +48,29 @@ async function interventionAlertBody(env, contactId, messageId, classification) 
   ].filter(Boolean).join('\n').slice(0, 1550);
 }
 
+async function sendOwnerInterventionSms(env, to, body) {
+  if (env.SMS_BLAST && typeof env.SMS_BLAST.fetch === 'function') {
+    const response = await env.SMS_BLAST.fetch(new Request('https://sms-blast.internal/api/conversations/reply', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ phone: to, message: body })
+    }));
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.error || `SMS Blast alert failed with ${response.status}.`);
+    }
+    return { ok: true, provider: 'sms-blast-service', providerMessageId: data?.sid || null, status: data?.status || 'sent' };
+  }
+
+  const sent = await sendTwilioText(env, {
+    approved: true,
+    textOk: true,
+    to,
+    body
+  });
+  return { ...sent, provider: 'twilio-direct' };
+}
+
 async function sendInterventionAlert(env, config, contactId, messageId, classification, escalationId) {
   if (!config || config.interventionAlertsEnabled === false) return;
 
@@ -61,12 +84,11 @@ async function sendInterventionAlert(env, config, contactId, messageId, classifi
   }
 
   try {
-    const sent = await sendTwilioText(env, {
-      approved: true,
-      textOk: true,
+    const sent = await sendOwnerInterventionSms(
+      env,
       to,
-      body: await interventionAlertBody(env, contactId, messageId, classification)
-    });
+      await interventionAlertBody(env, contactId, messageId, classification)
+    );
     await event(env, contactId, 'autopilot_intervention_alert_sent', 'sms', {
       escalationId,
       providerMessageId: sent.providerMessageId
