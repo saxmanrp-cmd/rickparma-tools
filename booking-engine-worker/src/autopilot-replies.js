@@ -10,15 +10,86 @@ import {
   todayEventCount, storeOutbound, storeDraft, mirrorOverride, nowIso
 } from './autopilot-common.js';
 
-async function createEscalation(env, contactId, messageId, classification) {
+function alertClip(value, max = 1500) {
+  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+async function interventionAlertBody(env, contactId, messageId, classification) {
+  const prospect = contactId ? await getProspect(env, contactId) : null;
+  const message = messageId
+    ? await env.DB.prepare('SELECT sender,subject,body FROM messages WHERE id=? LIMIT 1').bind(messageId).first()
+    : null;
+
+  const venue = prospect?.entity || 'Booking contact';
+  const person = [prospect?.contact_name, prospect?.contact_role].filter(Boolean).join(' — ')
+    || message?.sender
+    || prospect?.email
+    || 'Unknown contact';
+  const contact = [prospect?.phone, prospect?.email].filter(Boolean).join(' • ');
+  const summary = alertClip(classification.summary || 'A booking conversation needs your attention.', 700);
+  const why = [
+    classification.extractedDateOrWindow ? `Dates: ${classification.extractedDateOrWindow}` : '',
+    classification.extractedMoneyOrTerms ? `Money/terms: ${classification.extractedMoneyOrTerms}` : '',
+    classification.humanHandoffReason || ''
+  ].filter(Boolean).join(' | ');
+  const recommended = alertClip(classification.recommendedAction || '', 300);
+
+  return [
+    `NEEDS RICK — ${venue}`,
+    person,
+    contact,
+    message?.subject ? `Subject: ${message.subject}` : '',
+    '',
+    `Conversation: ${summary}`,
+    why ? `Why now: ${why}` : '',
+    recommended ? `Suggested: ${recommended}` : '',
+    '',
+    'Open Booking Engine → Needs Rick. If you are calling them, tap “I’m Calling • Pause Emails” first.'
+  ].filter(Boolean).join('\n').slice(0, 1550);
+}
+
+async function sendInterventionAlert(env, config, contactId, messageId, classification, escalationId) {
+  if (!config || config.interventionAlertsEnabled === false) return;
+
+  const to = String(config.interventionAlertPhone || env.BOOKING_ALERT_PHONE || '').trim();
+  if (!to) {
+    await event(env, contactId, 'autopilot_intervention_alert_skipped', 'sms', {
+      escalationId,
+      reason: 'Intervention alert phone is not configured.'
+    });
+    return;
+  }
+
+  try {
+    const sent = await sendTwilioText(env, {
+      approved: true,
+      textOk: true,
+      to,
+      body: await interventionAlertBody(env, contactId, messageId, classification)
+    });
+    await event(env, contactId, 'autopilot_intervention_alert_sent', 'sms', {
+      escalationId,
+      providerMessageId: sent.providerMessageId
+    });
+  } catch (error) {
+    await event(env, contactId, 'autopilot_intervention_alert_failed', 'sms', {
+      escalationId,
+      error: String(error?.message || error).slice(0, 500)
+    });
+  }
+}
+
+async function createEscalation(env, contactId, messageId, classification, config = null) {
   const existing = await env.DB.prepare("SELECT id FROM escalations WHERE message_id=? AND status='open' LIMIT 1")
     .bind(messageId).first();
   if (existing?.id) return existing.id;
+
   const id = crypto.randomUUID();
   const high = ['availability_request', 'rate_request', 'offer_or_hold'].includes(classification.category);
   const availabilityNote = classification.calendarAvailability?.summary
     ? ` Calendar: ${classification.calendarAvailability.summary}`
     : '';
+
   await env.DB.prepare(`
     INSERT INTO escalations (id,contact_id,message_id,category,priority,summary,proposed_action,metadata_json)
     VALUES (?,?,?,?,?,?,?,?)
@@ -32,11 +103,15 @@ async function createEscalation(env, contactId, messageId, classification) {
     classification.recommendedAction || '',
     JSON.stringify(classification)
   ).run();
+
   await event(env, contactId, 'autopilot_escalation_created', classification.channel || null, {
     escalationId: id,
     category: classification.category,
-    calendarAvailability: classification.calendarAvailability || null
+    calendarAvailability: classification.calendarAvailability || null,
+    humanHandoffReason: classification.humanHandoffReason || null
   });
+
+  await sendInterventionAlert(env, config, contactId, messageId, classification, id);
   return id;
 }
 
@@ -187,7 +262,7 @@ async function backfillReplyContacts(env, limit = 4) {
   return { scanned, enriched };
 }
 
-async function applyClassification(env, message, classification) {
+async function applyClassification(env, message, classification, config = null) {
   const id = message.contact_id;
   if (!id) return;
   const category = classification.category;
@@ -284,7 +359,7 @@ async function applyClassification(env, message, classification) {
     await createEscalation(env, id, message.id, {
       ...classification,
       summary: classification.summary || 'Contact redirected Rick to an official artist submission route.'
-    });
+    }, config);
     await mirrorOverride(env, id, { Status: 'Replied', 'Next Follow-up': null });
     return;
   }
@@ -389,6 +464,36 @@ async function sendReply(env, message, classification, draft) {
   return outId;
 }
 
+async function humanHandoffNeeded(env, message, classification) {
+  if (!message?.contact_id) return { needed: false, reason: '' };
+
+  const category = String(classification?.category || '');
+  const meaningful = new Set(['positive_interest', 'request_materials', 'question']);
+  const suggestedCall = /\b(call|phone|speak|talk|conversation)\b/i.test(String(classification?.recommendedAction || ''));
+
+  if (!meaningful.has(category) && !suggestedCall) return { needed: false, reason: '' };
+
+  const row = await env.DB.prepare(`
+    SELECT COUNT(*) AS n
+    FROM messages
+    WHERE contact_id=? AND direction='inbound' AND channel='email'
+  `).bind(message.contact_id).first();
+
+  const inboundCount = Number(row?.n || 0);
+
+  if (suggestedCall) {
+    return { needed: true, reason: 'The recommended next step is a direct conversation with Rick.' };
+  }
+  if (inboundCount >= 2) {
+    return {
+      needed: true,
+      reason: `This is meaningful reply #${inboundCount} in the email conversation; Rick should step in before more automated back-and-forth.`
+    };
+  }
+
+  return { needed: false, reason: '' };
+}
+
 export async function processInboundCycle(env, config) {
   const contactBackfill = await backfillReplyContacts(env);
 
@@ -411,6 +516,8 @@ export async function processInboundCycle(env, config) {
   const twilioReady = twilioStatus(env).configured;
 
   for (const message of rows.results || []) {
+    const prospectAtStart = message.contact_id ? await getProspect(env, message.contact_id) : null;
+    const rickHandling = String(prospectAtStart?.status || '').toLowerCase() === 'rick handling';
     let metadata = safeJson(message.metadata_json, {});
     let classification = metadata.classification;
 
@@ -429,7 +536,7 @@ export async function processInboundCycle(env, config) {
       });
       classification = await ensureReplyContactLearning(env, message, classification);
       await saveClassification(env, message, classification, 'classified');
-      await applyClassification(env, message, classification);
+      if (!rickHandling) await applyClassification(env, message, classification, config);
       classified++;
       metadata = { ...metadata, classification };
     } else if (!classification.calendarAvailability && (classification.requestedDates?.length || ['availability_request','offer_or_hold'].includes(classification.category))) {
@@ -443,10 +550,29 @@ export async function processInboundCycle(env, config) {
       metadata = { ...metadata, classification };
     }
 
+    if (rickHandling) {
+      await saveClassification(env, { ...message, metadata_json: JSON.stringify(metadata) }, classification, 'processed');
+      await event(env, message.contact_id, 'rick_handling_inbound_received', message.channel, { messageId: message.id });
+      stopped++;
+      continue;
+    }
+
     const policy = categoryPolicy(classification.category);
-    if (classification.mustEscalate || policy.escalate) {
-      await createEscalation(env, message.contact_id, message.id, classification);
+    const handoff = await humanHandoffNeeded(env, message, classification);
+    const needsRick = !!classification.mustEscalate || !!policy.escalate || handoff.needed;
+
+    if (needsRick) {
+      const escalationClassification = handoff.needed
+        ? { ...classification, humanHandoffReason: handoff.reason }
+        : classification;
+
+      await createEscalation(env, message.contact_id, message.id, escalationClassification, config);
       escalated++;
+
+      // Once Rick is needed, hold automated email so the text alert gives him a real chance to step in.
+      await saveClassification(env, { ...message, metadata_json: JSON.stringify(metadata) }, escalationClassification, 'processed');
+      stopped++;
+      continue;
     }
 
     if (policy.noReply) {
