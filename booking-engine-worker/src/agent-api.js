@@ -2,6 +2,7 @@ import { bearerToken, verifySession } from './auth.js';
 import { bookingAgentStatus, setBookingAgentConfig, runAutonomousBookingAgent, listBookingEscalations, resolveBookingEscalation } from './autopilot-agent.js';
 import { respondToEscalation } from './escalation-response.js';
 import { importProspects, listProspects } from './prospects.js';
+import { event, mirrorOverride, nowIso, safeJson } from './autopilot-common.js';
 import { listProspectContacts } from './contacts.js';
 import { getAutopilotConfig, appendComplianceFooter } from './autopilot-policy.js';
 
@@ -83,6 +84,55 @@ export async function handleAgentApi(request, env) {
       const body = await readJson(request);
       return json({ ok: true, ...(await importProspects(env, Array.isArray(body.contacts) ? body.contacts : [], body.state || {})) }, request, env);
     }
+    const handlingMatch = url.pathname.match(/^\/api\/prospects\/([^/]+)\/rick-handling$/);
+    if (handlingMatch && request.method === 'POST') {
+      const id = decodeURIComponent(handlingMatch[1]);
+      const body = await readJson(request);
+      const action = String(body.action || 'pause').toLowerCase();
+      if (!['pause','resume'].includes(action)) return json({ error: 'Action must be pause or resume.' }, request, env, 400);
+
+      const prospect = await env.DB.prepare(
+        'SELECT id,status,campaign_active,next_action_at,metadata_json FROM prospects WHERE id=? LIMIT 1'
+      ).bind(id).first();
+      if (!prospect?.id) return json({ error: 'Prospect not found.' }, request, env, 404);
+
+      const metadata = safeJson(prospect.metadata_json, {});
+      if (action === 'pause') {
+        const prior = metadata.rickHandling?.active ? metadata.rickHandling : {
+          active: true,
+          pausedAt: nowIso(),
+          previousStatus: prospect.status || 'Replied',
+          previousCampaignActive: Number(prospect.campaign_active || 0),
+          previousNextActionAt: prospect.next_action_at || null
+        };
+        metadata.rickHandling = { ...prior, active: true, pausedAt: prior.pausedAt || nowIso() };
+
+        await env.DB.prepare(`
+          UPDATE prospects
+          SET status='Rick Handling',campaign_active=0,next_action_at=NULL,metadata_json=?
+          WHERE id=?
+        `).bind(JSON.stringify(metadata), id).run();
+        await mirrorOverride(env, id, { Status: 'Rick Handling', 'Next Follow-up': null });
+        await event(env, id, 'rick_handling_started', 'manual', { reason: body.reason || 'Rick is taking over by phone.' });
+        return json({ ok: true, id, handling: true, status: 'Rick Handling' }, request, env);
+      }
+
+      const prior = metadata.rickHandling || {};
+      const restoredStatus = String(prior.previousStatus || 'Replied');
+      const restoredCampaignActive = Number(prior.previousCampaignActive || 0) ? 1 : 0;
+      const restoredNextActionAt = prior.previousNextActionAt || null;
+      metadata.rickHandling = { ...prior, active: false, resumedAt: nowIso() };
+
+      await env.DB.prepare(`
+        UPDATE prospects
+        SET status=?,campaign_active=?,next_action_at=?,metadata_json=?
+        WHERE id=?
+      `).bind(restoredStatus, restoredCampaignActive, restoredNextActionAt, JSON.stringify(metadata), id).run();
+      await mirrorOverride(env, id, { Status: restoredStatus, 'Next Follow-up': restoredNextActionAt });
+      await event(env, id, 'rick_handling_resumed', 'manual', {});
+      return json({ ok: true, id, handling: false, status: restoredStatus }, request, env);
+    }
+
     const contactsMatch = url.pathname.match(/^\/api\/prospects\/([^/]+)\/contacts$/);
     if (contactsMatch && request.method === 'GET') {
       const id = decodeURIComponent(contactsMatch[1]);
