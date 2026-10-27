@@ -24,6 +24,12 @@ export const PACKAGE_RATES = Object.freeze({
       ]
     }
   ],
+  smallVenue: {
+    title: 'Small Venues',
+    description: 'Bars, lounges and restaurants',
+    rate: '$300–$500',
+    note: 'Depending on the day and frequency of booking.'
+  },
   note: 'Equipment package pricing varies based on venue size, guest count, sound requirements, lighting, setup needs and production requirements. Rates are starting guidelines and may vary based on event size, location, travel and specific client needs.'
 });
 
@@ -37,6 +43,10 @@ export function packageRatesForReply() {
       group.minimum,
       ...group.items.map(item => `${item.label} — ${item.rate}`)
     ]),
+    PACKAGE_RATES.smallVenue.title,
+    `${PACKAGE_RATES.smallVenue.description} — ${PACKAGE_RATES.smallVenue.rate}`,
+    PACKAGE_RATES.smallVenue.note,
+    'The 3-hour minimum above applies to DJ & MC packages; no minimum is specified for small-venue bookings.',
     PACKAGE_RATES.note
   ].join('\n');
 }
