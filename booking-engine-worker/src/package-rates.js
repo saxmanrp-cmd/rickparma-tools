@@ -1,7 +1,7 @@
 export const PACKAGE_RATES = Object.freeze({
   label: 'Basic Package Rates',
-  title: 'DJ & MC Packages',
-  intro: 'Starting package rates for private events, weddings and corporate events. All packages have a 3-hour minimum.',
+  title: 'Musician/DJ/MC Packages',
+  intro: 'Starting package rates for private events, weddings and corporate events.',
   groups: [
     {
       title: 'Private Parties & Social Events',
@@ -38,15 +38,15 @@ export function packageRatesForReply() {
     PACKAGE_RATES.label,
     PACKAGE_RATES.title,
     PACKAGE_RATES.intro,
+    PACKAGE_RATES.smallVenue.title,
+    `${PACKAGE_RATES.smallVenue.description} — ${PACKAGE_RATES.smallVenue.rate}`,
+    PACKAGE_RATES.smallVenue.note,
     ...PACKAGE_RATES.groups.flatMap(group => [
       group.title,
       group.minimum,
       ...group.items.map(item => `${item.label} — ${item.rate}`)
     ]),
-    PACKAGE_RATES.smallVenue.title,
-    `${PACKAGE_RATES.smallVenue.description} — ${PACKAGE_RATES.smallVenue.rate}`,
-    PACKAGE_RATES.smallVenue.note,
-    'The 3-hour minimum above applies to DJ & MC packages; no minimum is specified for small-venue bookings.',
+    'The 3-hour minimum applies to private party, wedding and corporate packages; no minimum is specified for small-venue bookings.',
     PACKAGE_RATES.note
   ].join('\n');
 }
