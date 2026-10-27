@@ -5,6 +5,7 @@ import { importProspects, listProspects } from './prospects.js';
 import { event, mirrorOverride, nowIso, safeJson } from './autopilot-common.js';
 import { listProspectContacts } from './contacts.js';
 import { getAutopilotConfig, appendComplianceFooter } from './autopilot-policy.js';
+import { PACKAGE_RATES } from './package-rates.js';
 
 function corsHeaders(request, env) {
   const origin = request.headers.get('origin') || '';
@@ -51,6 +52,9 @@ export async function handleAgentApi(request, env) {
   if (!env.DB) return json({ error: 'D1 database is not configured.' }, request, env, 503);
 
   try {
+    if (url.pathname === '/api/autopilot/rates' && request.method === 'GET') {
+      return json({ rates: PACKAGE_RATES }, request, env);
+    }
     if (url.pathname === '/api/autopilot/status' && request.method === 'GET') {
       return json(await bookingAgentStatus(env), request, env);
     }

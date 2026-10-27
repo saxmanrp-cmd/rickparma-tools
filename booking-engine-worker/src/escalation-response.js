@@ -4,6 +4,7 @@ import { draftBookingReply } from './providers/openai.js';
 import { getAutopilotConfig, appendComplianceFooter } from './autopilot-policy.js';
 import { getProspect } from './prospects.js';
 import { safeJson, artistContext, assetText, priorThread, storeOutbound, event, nowIso } from './autopilot-common.js';
+import { packageRatesForReply } from './package-rates.js';
 
 async function loadEscalation(env, id) {
   return env.DB.prepare(`
@@ -66,6 +67,7 @@ export async function respondToEscalation(env, id, decision = '') {
       body: escalation.inbound_body
     },
     artistContext: artistContext(profile),
+    rateSheet: packageRatesForReply(),
     assets: assetText(profile),
     priorMessages: `${await priorThread(env, prospect.id)}\n\nRICK'S AUTHORITATIVE DECISION:\n${authoritativeDecision}`,
     calendarAvailability: classification.calendarAvailability || null
