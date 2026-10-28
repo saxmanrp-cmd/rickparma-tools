@@ -1,0 +1,14 @@
+{
+  "name": "gazelle-outreach-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "check": "node --check src/index.js && node --check src/snhd.js",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:local": "wrangler d1 execute gazelle-food-safety-outreach-db --local --file=./schema.sql",
+    "db:remote": "wrangler d1 execute gazelle-food-safety-outreach-db --remote --file=./schema.sql"
+  },
+  "devDependencies": { "wrangler": "^4.128.0" }
+}
