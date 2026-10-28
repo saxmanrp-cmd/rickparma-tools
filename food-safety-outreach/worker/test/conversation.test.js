@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { recordReply } from '../src/workflow.js';
 import { renderPage } from '../src/ui.js';
 import { sendConversationReplies } from '../src/conversations.js';
+import { SOURCE_URL } from '../src/snhd.js';
 
 function sampleDatabase({mode='test',paused='1',conversationMode='off',postalAddress='123 Test Street, Las Vegas, NV 89101'}={}){
   const raw=new DatabaseSync(':memory:');
@@ -91,4 +92,33 @@ test('Test, Pause, and the separate conversation Off switch prevent reply sendin
     const {db}=sampleDatabase(options);
     assert.equal(await sendConversationReplies({DB:db},1,async()=>true),0);
   }
+});
+
+test('an approved automatic answer uses the existing Microsoft thread once',async()=>{
+  const {db,raw}=sampleDatabase({mode:'live',paused:'0',conversationMode:'auto'});
+  raw.prepare('INSERT INTO source_runs(id,source,url,sha256,checked_at,rows_seen,qualified,held) VALUES(1,?,?,?,?,1000,1,0)')
+    .run('Southern Nevada Health District',SOURCE_URL,'sample',new Date().toISOString());
+  await recordReply(db,inbound('six','What does it cost?'));
+  const calls=[];
+  const originalFetch=globalThis.fetch;
+  globalThis.fetch=async (url,options={})=>{
+    calls.push({url:String(url),method:options.method||'GET'});
+    if(String(url).startsWith('https://login.microsoftonline.com/'))
+      return new Response(JSON.stringify({access_token:'test-access',refresh_token:'test-refresh',expires_in:3600}),{status:200});
+    if(String(url).includes('/me?$select=mail,userPrincipalName'))
+      return new Response(JSON.stringify({mail:'support@foodsafetywithgazelle.com'}),{status:200});
+    if(String(url).includes('/SentItems/messages?'))
+      return new Response(JSON.stringify({value:[]}),{status:200});
+    if(String(url).endsWith('/reply'))return new Response(null,{status:202});
+    throw Error('Unexpected Microsoft request');
+  };
+  try{
+    const env={DB:db,GAZELLE_MS_CLIENT_ID:'client',GAZELLE_MS_TENANT:'tenant',
+      GAZELLE_TOKEN_KEY:Buffer.alloc(32,7).toString('base64'),GAZELLE_INITIAL_REFRESH_TOKEN:'test-refresh'};
+    assert.equal(await sendConversationReplies(env,1,async()=>true),1);
+    assert.equal(raw.prepare('SELECT status FROM conversation_messages').get().status,'sent');
+    assert.equal(raw.prepare('SELECT needs_handoff FROM replies').get().needs_handoff,0);
+    assert.equal(calls.filter(x=>x.url.endsWith('/reply')&&x.method==='POST').length,1);
+    assert.equal(await sendConversationReplies(env,1,async()=>true),0);
+  }finally{globalThis.fetch=originalFetch;}
 });
