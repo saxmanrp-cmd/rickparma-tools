@@ -16,7 +16,7 @@ The Worker checks the official Southern Nevada Health District download and Micr
 
 Richard gives Gazelle the one-time setup link stored privately on the T7 at `food-safety-outreach/data/passkey-setup-link.txt`. She opens that link on her own device and taps **Set up Face ID**. Her device may offer Face ID, Touch ID, a screen lock, or a nearby phone. After setup, she uses the normal tools link and taps **Open with Face ID**. No Gazelle passphrase was created. The setup link works once and expires after seven days; Richard can issue a new one if needed. Sign out on a shared computer.
 
-The panel has five pages: Home, Places, Letters, Replies, and Settings. Settings shows whether sending is on, the daily limit and hours, missing business details, and the never-contact list.
+The panel has five pages: Home, Places, Letters, Replies, and Settings. Settings shows whether sending is on, the daily limit and hours, missing business details, the never-contact list, and back-and-forth email controls. Reply automation is **Off** by default. Gazelle may review every drafted answer or allow short, bounded automatic answers only after approved campaign wording, complete business details, and Live mode. A phone number or question needing judgment stops automation and appears in Replies.
 
 The official import is hourly, so the database updates at least weekly even when the Mac is off. The local SQLite database on the T7 remains a backup; it is not the hosted database. Back up the D1 database periodically with Cloudflare's export tools, and restore it only to Gazelle's dedicated database.
 
@@ -28,4 +28,4 @@ If Microsoft's delegated connection expires, Richard must reconnect `support@foo
 
 ## Before live outreach
 
-Richard and Gazelle must supply a valid business postal address, the actual service offer, approved message style, and sending limits; review sample drafts and the opt-out wording; confirm the mailbox works; and explicitly activate Live mode in Settings. Only approved letters can send, during the chosen weekday business hours. A current official B or C record and a verified public contact email are required for each lead.
+Richard and Gazelle must supply a valid business postal address, the actual service offer, approved message style, campaign service focus, call invitation, and sending limits; review sample first letters and conversation answers; confirm the mailbox works; and explicitly activate Live mode in Settings. Only approved first letters can send, during the chosen weekday business hours. Conversation answers require separate approval or the explicit Automatic setting. A current official B or C record and a verified public contact email are required for each lead.

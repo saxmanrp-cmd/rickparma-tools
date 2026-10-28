@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { parseCSV } from '../src/snhd.js';
 import { renderLetter, classifyReply } from '../src/workflow.js';
 import { profileMissing } from '../src/store.js';
+import { decideConversation, renderConversationReply } from '../src/conversations.js';
 
 const profile={
   business_name:'Food Safety with Gazelle',services:'food safety consulting',offer:'I can help your team prepare a practical food safety plan.',
@@ -45,4 +46,23 @@ test('replies flag opt-outs, bounces, pricing, and interest for review',()=>{
   assert.equal(classifyReply('Re: Hello','What does it cost?','owner@example.com'),'pricing');
   assert.equal(classifyReply('Re: Hello',"I'm interested",'owner@example.com'),'interested');
   assert.equal(classifyReply('Re: Hello','Thanks','owner@example.com'),'needs_review');
+});
+
+test('bounded conversation answers routine requests and hands phone numbers and unclear questions to Gazelle',()=>{
+  assert.equal(decideConversation('What does it cost?','pricing').intent,'pricing');
+  assert.equal(decideConversation('What services do you offer?','needs_review').intent,'services');
+  assert.equal(decideConversation('HACCP would be useful','needs_review','services',1).intent,'call_invitation');
+  assert.equal(decideConversation('Call me at 702-555-0123','interested').kind,'handoff');
+  assert.equal(decideConversation('Can you interpret this violation?','needs_review').kind,'handoff');
+  assert.equal(decideConversation('Tell me more','interested','interest',3).kind,'handoff');
+  assert.equal(decideConversation('Please unsubscribe','opt_out').kind,'handoff');
+});
+
+test('conversation answers use approved wording and identify the sender without invented prices',()=>{
+  const body=renderConversationReply('pricing',profile,'inspection preparation','I can offer a short call.');
+  assert.match(body,/Pricing depends on the work involved/);
+  assert.doesNotMatch(body,/\$\d+/);
+  assert.match(body,/Gazelle Jacobs/);
+  assert.match(body,/123 Test Street/);
+  assert.match(body,/unsubscribe/);
 });

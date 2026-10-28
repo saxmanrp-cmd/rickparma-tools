@@ -5,6 +5,7 @@ import { PASSKEY_CLIENT } from './passkey-client.js';
 import { now, setting, setSetting, audit, importOfficial, saveContact, addSuppression, profile, profileMissing, normalizeEmail } from './store.js';
 import { createDrafts, sendApproved, recordReply, withinHours } from './workflow.js';
 import { mailReady, pollInbox } from './graph.js';
+import { sendConversationReplies } from './conversations.js';
 
 function html(body,status=200,headers={}){
   return new Response(body,{status,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','X-Robots-Tag':'noindex, nofollow','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; script-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'",...headers}});
@@ -69,6 +70,17 @@ async function action(path,form,env){
     await db.batch([['daily_limit',daily],['followup_days',follow],['hour_start',start],['hour_end',end],['mention_grade',text(form,'mention_grade')==='1'?'1':'0']].map(([key,value])=>db.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(key,String(value))));
     await audit(db,'limits_changed',{daily,follow,start,end});return 'Sending limits saved.';
   }
+  if(path==='/conversation-config'){
+    const focus=text(form,'focus'),callOffer=text(form,'call_offer'),mode=text(form,'conversation_mode');
+    if(!['off','review','auto'].includes(mode)||focus.length>300||callOffer.length>300)throw Error('Use a short service focus and call offer.');
+    if(mode==='auto'&&(!focus||!callOffer||profileMissing(await profile(db)).length))throw Error('Add the focus, call offer, and complete business details before automatic replies.');
+    const updates=[...([['conversation_focus',focus],['conversation_call_offer',callOffer],['conversation_mode',mode]].map(([key,value])=>db.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(key,value)))];
+    if(mode!=='auto'||focus!==await setting(db,'conversation_focus')||callOffer!==await setting(db,'conversation_call_offer'))
+      updates.push(db.prepare("UPDATE conversation_messages SET status='draft',approved_at=NULL WHERE status='auto_approved'"));
+    await db.batch(updates);
+    await audit(db,'conversation_settings_changed',{mode,focus_set:!!focus,call_offer_set:!!callOffer});
+    return mode==='auto'?'Automatic replies are ready, but cannot send unless Live mode is on and emails are unpaused.':'Reply setting saved. No automatic replies will send.';
+  }
   if(path==='/pause'){
     const value=text(form,'value');if(!['0','1'].includes(value))throw Error('Invalid sending control');
     await setSetting(db,'paused',value);await audit(db,'pause_changed',{paused:value});return value==='1'?'Emails paused.':'Emails may go out only in Live mode during your chosen hours.';
@@ -92,9 +104,37 @@ async function action(path,form,env){
     await db.prepare("UPDATE messages SET status='approved',approved_at=? WHERE id=? AND status='draft'").bind(now(),id).run();
     await audit(db,'draft_approved',{message_id:id},message.business_key);return 'Letter approved. No email was sent.';
   }
+  if(path==='/approve-reply'){
+    const id=text(form,'external_id');
+    const row=await db.prepare("SELECT business_key FROM conversation_messages WHERE inbound_external_id=? AND status='draft'").bind(id).first();
+    if(!row)throw Error('Only a reply draft can be approved');
+    await db.prepare("UPDATE conversation_messages SET status='approved',approved_at=? WHERE inbound_external_id=? AND status='draft'").bind(now(),id).run();
+    await audit(db,'conversation_reply_approved',{inbound:id},row.business_key);
+    return 'Reply approved. It can send in Review or Automatic mode only when Live is on and emails are unpaused.';
+  }
+  if(path==='/edit-reply'){
+    const id=text(form,'external_id'),body=text(form,'body');
+    if(!body||body.length>5000)throw Error('Use a short reply with a signature and opt-out.');
+    const changed=await db.prepare("UPDATE conversation_messages SET body=? WHERE inbound_external_id=? AND status='draft'").bind(body,id).run();
+    if(!changed.meta.changes)throw Error('Only a reply draft can be edited');
+    await audit(db,'conversation_reply_edited',{inbound:id});
+    return 'Reply wording saved.';
+  }
+  if(path==='/stop-conversation'){
+    const key=text(form,'business_key');
+    if(!await db.prepare('SELECT 1 FROM businesses WHERE business_key=?').bind(key).first())throw Error('Unknown place');
+    await db.batch([db.prepare("INSERT INTO conversation_states(business_key,status,reason,updated_at) VALUES(?,'human','Stopped in panel',?) ON CONFLICT(business_key) DO UPDATE SET status='human',reason=excluded.reason,updated_at=excluded.updated_at").bind(key,now()),
+      db.prepare("UPDATE conversation_messages SET status='stale',error='Conversation stopped in panel' WHERE business_key=? AND status IN ('draft','approved','auto_approved')").bind(key),
+      db.prepare('INSERT INTO audit(at,event,business_key,detail) VALUES(?,?,?,?)').bind(now(),'conversation_stopped',key,'{}')]);
+    return 'Gazelle will handle this conversation. Automatic replies are stopped.';
+  }
   if(path==='/handoff'){
     const id=Number(text(form,'id'));
-    await db.prepare('UPDATE replies SET needs_handoff=0 WHERE id=?').bind(id).run();
+    const row=await db.prepare('SELECT business_key FROM replies WHERE id=?').bind(id).first();
+    if(!row)throw Error('Unknown reply');
+    const batch=[db.prepare('UPDATE replies SET needs_handoff=0 WHERE id=?').bind(id)];
+    if(row.business_key)batch.push(db.prepare("INSERT INTO conversation_states(business_key,status,reason,updated_at) VALUES(?,'human','Gazelle handled reply',?) ON CONFLICT(business_key) DO UPDATE SET status='human',reason=excluded.reason,updated_at=excluded.updated_at").bind(row.business_key,now()));
+    await db.batch(batch);
     await audit(db,'handoff_reviewed',{reply_id:id});return 'Reply marked handled.';
   }
   throw Error('Unknown action');
@@ -115,8 +155,14 @@ async function hourly(env){
   }catch(error){await audit(db,'source_import_failed',{error:String(error).slice(0,300)});}
   try{if(await mailReady(env))await pollInbox(env,message=>recordReply(db,message));}
   catch(error){await audit(db,'mail_check_failed',{error:String(error).slice(0,300)});}
-  if(runId&&live&&approved>0){
-    try{await sendApproved(env,runId);}catch(error){await audit(db,'send_cycle_failed',{error:String(error).slice(0,300)});}
+  const queued=(await db.prepare("SELECT COUNT(*) AS n FROM conversation_messages WHERE status IN ('approved','auto_approved')").first()).n;
+  if(live&&queued>0&&await withinHours(db)&&!runId){
+    try{const result=await importOfficial(db);runId=result.run_id;await createDrafts(db);}
+    catch(error){await audit(db,'source_import_failed',{error:String(error).slice(0,300)});}
+  }
+  if(runId&&live){
+    try{if(approved>0)await sendApproved(env,runId);}catch(error){await audit(db,'send_cycle_failed',{error:String(error).slice(0,300)});}
+    try{if(queued>0)await sendConversationReplies(env,runId,withinHours);}catch(error){await audit(db,'conversation_send_cycle_failed',{error:String(error).slice(0,300)});}
   }
   await db.prepare('DELETE FROM sessions WHERE expires_at<?').bind(now()).run();
 }
@@ -146,7 +192,7 @@ export default {
     const form=request.headers.get('Content-Type')?await request.formData():new FormData();
     if((request.headers.get('Origin')&&!['null',url.origin].includes(request.headers.get('Origin')))||!await validCsrf(request,env,form.get('csrf')))
       return html(await privatePage('/settings',env,'Invalid form token',request),403);
-    const returnPage=path==='/refresh'?'/':path==='/contact'||path==='/research'?'/places':path==='/edit'||path==='/approve'?'/letters':path==='/handoff'||path==='/check-mail'?'/replies':'/settings';
+    const returnPage=path==='/refresh'?'/':path==='/contact'||path==='/research'?'/places':path==='/edit'||path==='/approve'?'/letters':path==='/handoff'||path==='/check-mail'||path==='/approve-reply'||path==='/edit-reply'||path==='/stop-conversation'?'/replies':'/settings';
     try{return redirect(`${returnPage}?notice=${encodeURIComponent(await action(path,form,env))}`);}
     catch(error){return html(await privatePage(returnPage,env,String(error),request),400);}
   },

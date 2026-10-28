@@ -47,6 +47,18 @@ CREATE TABLE IF NOT EXISTS replies (
   business_key TEXT, from_email TEXT, subject TEXT, classification TEXT NOT NULL,
   excerpt TEXT, received_at TEXT NOT NULL, needs_handoff INTEGER NOT NULL DEFAULT 1
 );
+CREATE TABLE IF NOT EXISTS conversation_states (
+  business_key TEXT PRIMARY KEY, status TEXT NOT NULL, reason TEXT,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS conversation_messages (
+  inbound_external_id TEXT PRIMARY KEY, business_key TEXT NOT NULL,
+  graph_message_id TEXT NOT NULL, conversation_id TEXT NOT NULL,
+  recipient TEXT NOT NULL, intent TEXT NOT NULL, body TEXT NOT NULL,
+  status TEXT NOT NULL, received_at TEXT NOT NULL, created_at TEXT NOT NULL,
+  approved_at TEXT, send_started_at TEXT, sent_at TEXT, error TEXT
+);
+CREATE INDEX IF NOT EXISTS conversation_messages_queue ON conversation_messages(status,created_at);
 CREATE TABLE IF NOT EXISTS audit (
   id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, event TEXT NOT NULL,
   business_key TEXT, detail TEXT NOT NULL
@@ -73,6 +85,10 @@ INSERT OR IGNORE INTO settings VALUES ('hour_end','17:00');
 INSERT OR IGNORE INTO settings VALUES ('followup_days','7');
 INSERT OR IGNORE INTO settings VALUES ('mention_grade','0');
 INSERT OR IGNORE INTO settings VALUES ('mail_provider','microsoft365');
+INSERT OR IGNORE INTO settings VALUES ('conversation_mode','off');
+INSERT OR IGNORE INTO settings VALUES ('conversation_focus','');
+INSERT OR IGNORE INTO settings VALUES ('conversation_call_offer','');
+INSERT OR IGNORE INTO settings VALUES ('conversation_max_replies','3');
 INSERT OR IGNORE INTO settings VALUES ('profile_business_name','Food Safety with Gazelle');
 INSERT OR IGNORE INTO settings VALUES ('profile_services','Food Safety Inspections, HACCP Planning, Food Handler Certification, Retail Compliance, Vendor Food Safety, Health Department Prep');
 INSERT OR IGNORE INTO settings VALUES ('profile_sender_name','Gazelle Jacobs');

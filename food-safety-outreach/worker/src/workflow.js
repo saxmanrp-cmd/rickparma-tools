@@ -1,6 +1,7 @@
 import { now, setting, profile, profileMissing, suppressed, normalizeEmail, audit } from './store.js';
 import { mailReady, sendMail } from './graph.js';
 import { SOURCE_URL } from './snhd.js';
+import { planIncoming } from './conversations.js';
 
 const activeSend=new Set(['sending','sent','uncertain']);
 const escText=value=>String(value||'').trim();
@@ -81,8 +82,10 @@ export async function sendApproved(env,runId){
   if(!run||run.url!==SOURCE_URL||Date.now()-Date.parse(run.checked_at)>3600000)throw Error('A fresh official check is required before sending');
   const local=localParts();
   const today=`${local.year}-${local.month}-${local.day}`;
-  const recent=(await db.prepare("SELECT send_started_at FROM messages WHERE status IN ('sending','sent','uncertain') AND send_started_at>=?").bind(new Date(Date.now()-172800000).toISOString()).all()).results;
-  const sentToday=recent.filter(item=>{
+  const since=new Date(Date.now()-172800000).toISOString();
+  const recent=(await db.prepare("SELECT send_started_at FROM messages WHERE status IN ('sending','sent','uncertain') AND send_started_at>=?").bind(since).all()).results;
+  const conversation=(await db.prepare("SELECT send_started_at FROM conversation_messages WHERE status IN ('sending','sent','uncertain') AND send_started_at>=?").bind(since).all()).results;
+  const sentToday=[...recent,...conversation].filter(item=>{
     const date=localParts(new Date(item.send_started_at));
     return `${date.year}-${date.month}-${date.day}`===today;
   }).length;
@@ -122,6 +125,7 @@ export function classifyReply(subject,preview,from){
   const text=`${subject}\n${String(preview||'').split(/-----original message-----/i)[0]}`.toLowerCase();
   if(/unsubscribe|remove me|stop emailing|do not contact|opt out/.test(text))return 'opt_out';
   if(/complaint|unprofessional|angry|harassment/.test(text))return 'complaint';
+  if(/no thanks|not interested|please leave us alone/.test(text))return 'not_interested';
   if(/price|pricing|rate|cost|quote/.test(text))return 'pricing';
   if(/interested|let's talk|call me|schedule|more information/.test(text))return 'interested';
   return 'needs_review';
@@ -140,7 +144,20 @@ export async function recordReply(db,message){
     if(related){from=match.toLowerCase();break;}
   }
   const businessKey=related?.business_key||null,time=now();
-  const batch=[db.prepare('INSERT INTO replies(external_id,business_key,from_email,subject,classification,excerpt,received_at) VALUES(?,?,?,?,?,?,?)').bind(external,businessKey,from,subject,classification,preview,time),db.prepare('INSERT INTO audit(at,event,business_key,detail) VALUES(?,?,?,?)').bind(time,'reply_received',businessKey,JSON.stringify({external_id:external,classification,from,subject}))];
+  const receivedAt=Number.isFinite(Date.parse(message.receivedDateTime))?new Date(message.receivedDateTime).toISOString():time;
+  const plan=await planIncoming(db,message,businessKey,from,classification,preview);
+  const needsHandoff=plan.kind==='reply'&&plan.status==='auto_approved'?0:1;
+  const batch=[db.prepare('INSERT INTO replies(external_id,business_key,from_email,subject,classification,excerpt,received_at,needs_handoff) VALUES(?,?,?,?,?,?,?,?)').bind(external,businessKey,from,subject,classification,preview,receivedAt,needsHandoff),db.prepare('INSERT INTO audit(at,event,business_key,detail) VALUES(?,?,?,?)').bind(time,'reply_received',businessKey,JSON.stringify({external_id:external,classification,from,subject}))];
+  if(businessKey&&plan.kind==='reply'){
+    batch.push(db.prepare('INSERT INTO conversation_messages(inbound_external_id,business_key,graph_message_id,conversation_id,recipient,intent,body,status,received_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)')
+      .bind(external,businessKey,message.id,message.conversationId,from,plan.intent,plan.body,plan.status,receivedAt,time));
+    batch.push(db.prepare("INSERT INTO conversation_states(business_key,status,updated_at) VALUES(?,'open',?) ON CONFLICT(business_key) DO UPDATE SET updated_at=excluded.updated_at").bind(businessKey,time));
+    batch.push(db.prepare('INSERT INTO audit(at,event,business_key,detail) VALUES(?,?,?,?)').bind(time,'conversation_reply_drafted',businessKey,JSON.stringify({inbound:external,intent:plan.intent,status:plan.status})));
+  }else if(businessKey){
+    batch.push(db.prepare("INSERT INTO conversation_states(business_key,status,reason,updated_at) VALUES(?,'human',?,?) ON CONFLICT(business_key) DO UPDATE SET status='human',reason=excluded.reason,updated_at=excluded.updated_at").bind(businessKey,plan.reason||classification,time));
+    batch.push(db.prepare("UPDATE conversation_messages SET status='stale',error='New reply needs Gazelle' WHERE business_key=? AND status IN ('draft','approved','auto_approved')").bind(businessKey));
+    batch.push(db.prepare('INSERT INTO audit(at,event,business_key,detail) VALUES(?,?,?,?)').bind(time,'conversation_handoff',businessKey,JSON.stringify({inbound:external,reason:plan.reason||classification})));
+  }
   if(['opt_out','bounce'].includes(classification)){
     if(from)batch.push(db.prepare('INSERT OR IGNORE INTO suppressions(kind,value,reason,created_at) VALUES(?,?,?,?)').bind('email',from,classification,time));
     if(businessKey)batch.push(db.prepare('INSERT OR IGNORE INTO suppressions(kind,value,reason,created_at) VALUES(?,?,?,?)').bind('business',businessKey,classification,time));

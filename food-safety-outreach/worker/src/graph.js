@@ -55,7 +55,7 @@ export async function graph(env,path,options={}){
   const url=path.startsWith('https://')?path:GRAPH+path.replace(/^\//,'');
   if(!url.startsWith(GRAPH))throw Error('Unexpected Microsoft Graph URL');
   const token=await accessToken(env);
-  const response=await fetch(url,{...options,headers:{Accept:'application/json',Authorization:`Bearer ${token}`,...options.headers}});
+  const response=await fetch(url,{...options,headers:{Accept:'application/json',Authorization:`Bearer ${token}`,Prefer:'IdType="ImmutableId"',...options.headers}});
   if(!response.ok)throw Error(`Microsoft mail request failed (${response.status})`);
   if(response.status===202||response.status===204)return null;
   return response.json();
@@ -66,6 +66,31 @@ export async function sendMail(env,message){
     message:{subject:message.subject,body:{contentType:'Text',content:message.body},
       from:{emailAddress:{address:message.sender,name:message.senderName}},
       toRecipients:[{emailAddress:{address:message.recipient}}]},saveToSentItems:true})});
+}
+
+export async function replyMail(env,messageId,body){
+  if(!messageId||!body)throw Error('Reply needs an existing message and body');
+  await graph(env,`me/messages/${encodeURIComponent(messageId)}/reply`,{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({comment:body})
+  });
+}
+
+export async function sentInConversationAfter(env,conversationId,receivedAt){
+  if(!conversationId||!receivedAt)throw Error('Conversation check needs an ID and time');
+  const query=new URLSearchParams({
+    '$filter':`sentDateTime ge ${receivedAt}`,
+    '$select':'id,conversationId,sentDateTime',
+    '$orderby':'sentDateTime desc',
+    '$top':'100'
+  });
+  let url=`me/mailFolders/SentItems/messages?${query}`;
+  for(let page=0;page<5;page++){
+    const data=await graph(env,url);
+    if((data.value||[]).some(item=>item.conversationId===conversationId&&Date.parse(item.sentDateTime)>Date.parse(receivedAt)))return true;
+    if(!data['@odata.nextLink'])return false;
+    url=data['@odata.nextLink'];
+  }
+  throw Error('Could not finish checking Gazelle’s sent mail');
 }
 
 export async function pollInbox(env,recordReply){
@@ -80,7 +105,7 @@ export async function pollInbox(env,recordReply){
       if(!first){
         for(const item of data.value||[]){
           if(!item.id||item['@removed'])continue;
-          const message=await graph(env,`me/messages/${encodeURIComponent(item.id)}?$select=id,from,subject,bodyPreview,receivedDateTime,internetMessageId`);
+          const message=await graph(env,`me/messages/${encodeURIComponent(item.id)}?$select=id,from,replyTo,subject,bodyPreview,receivedDateTime,internetMessageId,conversationId`);
           if(await recordReply(message))count++;
         }
       }
