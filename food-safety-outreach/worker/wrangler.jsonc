@@ -1,0 +1,13 @@
+{
+  "name": "gazelle-food-safety-outreach",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-07",
+  "workers_dev": true,
+  "triggers": { "crons": ["0 * * * *"] },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "gazelle-food-safety-outreach-db",
+    "database_id": "36850579-ca7a-460c-88b8-d1db4d7d1281"
+  }],
+  "observability": { "enabled": true }
+}
