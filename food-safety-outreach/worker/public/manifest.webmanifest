@@ -1,0 +1,13 @@
+{
+  "name": "Food Safety with Gazelle",
+  "short_name": "Gazelle",
+  "description": "Private food safety outreach panel",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#176c40",
+  "icons": [
+    { "src": "/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

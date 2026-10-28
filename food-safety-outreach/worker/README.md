@@ -1,6 +1,6 @@
 # Food Safety with Gazelle: private outreach engine
 
-This is the hosted engine behind Richard's tools-repo shortcut, `gazelle.html`. It runs as a dedicated Cloudflare Worker with its own D1 database. No database records, mailbox tokens, access codes, or secrets belong in this public repository.
+This is the hosted engine behind Richard's tools-repo shortcut, `gazelle.html`. It runs as a dedicated Cloudflare Worker with its own D1 database. Gazelle signs in with a device passkey after opening a one-time setup link. No database records, mailbox tokens, setup links, or secrets belong in this public repository.
 
 The private panel has five pages: Home, Places, Letters, Replies, and Settings. It starts in **Test mode** and **Paused**. Live sending requires complete business details, a verified Microsoft mailbox connection, human-approved drafts, and a deliberate switch to Live mode. The current official inspection record is downloaded again before an approved live send.
 

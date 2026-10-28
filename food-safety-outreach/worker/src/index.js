@@ -1,11 +1,13 @@
-import { session, login, logout, csrfToken, validCsrf } from './auth.js';
-import { loginPage, renderPage } from './ui.js';
+import { session, logout, csrfToken, validCsrf } from './auth.js';
+import { loginPage, setupPage, renderPage } from './ui.js';
+import { handlePasskey, validSetupToken } from './passkeys.js';
+import { PASSKEY_CLIENT } from './passkey-client.js';
 import { now, setting, setSetting, audit, importOfficial, saveContact, addSuppression, profile, profileMissing, normalizeEmail } from './store.js';
 import { createDrafts, sendApproved, recordReply, withinHours } from './workflow.js';
 import { mailReady, pollInbox } from './graph.js';
 
 function html(body,status=200,headers={}){
-  return new Response(body,{status,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'",...headers}});
+  return new Response(body,{status,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','X-Robots-Tag':'noindex, nofollow','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; script-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'",...headers}});
 }
 function redirect(path,cookie){return new Response(null,{status:303,headers:{Location:path,'Cache-Control':'no-store',...(cookie?{'Set-Cookie':cookie}:{})}});}
 async function privatePage(path,env,notice,request){
@@ -123,13 +125,15 @@ export default {
   async fetch(request,env){
     const url=new URL(request.url),path=url.pathname;
     if(path==='/health')return new Response('ok',{headers:{'Cache-Control':'no-store'}});
+    if(path==='/passkey-client.js')return new Response(PASSKEY_CLIENT,{headers:{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
+    if(path.startsWith('/webauthn/'))return handlePasskey(request,env);
+    if(path==='/setup'){
+      if(request.method!=='GET')return new Response('Method not allowed',{status:405});
+      return await validSetupToken(env.DB,url.searchParams.get('token'))?html(setupPage()):html(loginPage('That setup link is no longer valid. Ask Richard for a new one.'),403);
+    }
     if(path==='/login'){
       if(request.method==='GET')return await session(request,env)?redirect('/'):html(loginPage());
-      if(request.method!=='POST')return new Response('Method not allowed',{status:405});
-      if(Number(request.headers.get('Content-Length')||0)>4096)return html(loginPage('Please try again.'),400);
-      if(request.headers.get('Origin')&&!['null',url.origin].includes(request.headers.get('Origin')))return html(loginPage('Please try again.'),403);
-      const result=await login(request,env);
-      return result.ok?redirect('/',result.cookie):html(loginPage(result.message),result.status);
+      return new Response('Use a passkey to open Gazelle.',{status:405,headers:{'Cache-Control':'no-store'}});
     }
     if(path==='/logout'){
       await logout(request,env);

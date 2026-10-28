@@ -54,6 +54,17 @@ CREATE TABLE IF NOT EXISTS audit (
 CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, expires_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS login_attempts (ip_hash TEXT PRIMARY KEY, count INTEGER NOT NULL, first_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS private_tokens (name TEXT PRIMARY KEY, ciphertext TEXT NOT NULL, updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS passkeys (
+  id TEXT PRIMARY KEY, public_key TEXT NOT NULL, counter INTEGER NOT NULL DEFAULT 0,
+  transports TEXT NOT NULL DEFAULT '[]', created_at TEXT NOT NULL, last_used_at TEXT
+);
+CREATE TABLE IF NOT EXISTS enrollment_tokens (
+  token_hash TEXT PRIMARY KEY, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, used_at TEXT
+);
+CREATE TABLE IF NOT EXISTS webauthn_challenges (
+  id_hash TEXT PRIMARY KEY, challenge TEXT NOT NULL, purpose TEXT NOT NULL,
+  setup_hash TEXT, expires_at TEXT NOT NULL
+);
 INSERT OR IGNORE INTO settings VALUES ('mode','test');
 INSERT OR IGNORE INTO settings VALUES ('paused','1');
 INSERT OR IGNORE INTO settings VALUES ('daily_limit','5');
