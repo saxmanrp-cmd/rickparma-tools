@@ -1,4 +1,4 @@
-import { now, setting, profile, profileMissing, suppressed, normalizeEmail, audit } from './store.js';
+import { now, setting, profile, profileMissing, suppressed, normalizeEmail, audit, sendingAllowance } from './store.js';
 import { mailReady, sendMail } from './graph.js';
 import { SOURCE_URL } from './snhd.js';
 import { planIncoming } from './conversations.js';
@@ -8,6 +8,9 @@ const escText=value=>String(value||'').trim();
 
 export function renderLetter(p,b,kind,mentionGrade=false){
   const ad=`Advertisement from ${p.business_name}\n\n`;
+  const focus=escText(p.campaign_focus||p.services);
+  const experience=escText(p.experience);
+  const introduction=`I'm ${p.sender_name} with ${p.business_name}. ${experience?`${experience} `:''}I help food businesses with ${focus}.`;
   let grade='';
   if(mentionGrade&&b.eligible&&['B','C'].includes(b.grade)&&b.inspection_date){
     const date=new Date(`${b.inspection_date}T12:00:00Z`).toLocaleDateString('en-US',{timeZone:'UTC',year:'numeric',month:'long',day:'numeric'});
@@ -15,8 +18,8 @@ export function renderLetter(p,b,kind,mentionGrade=false){
   }
   const subject=kind==='first'?`Food safety support for ${b.name}`:`Following up: food safety support for ${b.name}`;
   const opening=kind==='first'
-    ?`Hello,\n\nI'm ${p.sender_name} with ${p.business_name}. We help food businesses with ${p.services}.\n\n${grade}${p.offer}\n\nIf this would be useful, just reply and I'll follow up personally.`
-    :`Hello,\n\nI'm following up once on my note about ${p.services}. ${p.offer}\n\nIf it is useful, reply and I'll follow up personally.`;
+    ?`Hello,\n\n${introduction}\n\n${grade}${p.offer}\n\nIf this would be useful, just reply and I'll follow up personally.`
+    :`Hello,\n\nI'm following up once on my note about ${focus}. ${p.offer}\n\nIf it is useful, reply and I'll follow up personally.`;
   const instagram=p.instagram?`\nInstagram: ${p.instagram}`:'';
   const body=`${ad}${opening}\n\n${p.sender_name}\n${p.title}\n${p.business_name}\n${p.contact_details}${instagram}\n\n${p.postal_address}\nTo opt out, reply with 'unsubscribe' and we will not contact you again.`;
   return {subject,body};
@@ -24,6 +27,7 @@ export function renderLetter(p,b,kind,mentionGrade=false){
 
 export async function createDrafts(db,limit=50){
   const p=await profile(db); if(profileMissing(p).length)return 0;
+  p.campaign_focus=await setting(db,'conversation_focus');
   const mention=(await setting(db,'mention_grade'))==='1';
   const businesses=(await db.prepare('SELECT * FROM businesses WHERE eligible=1 AND contact_email IS NOT NULL ORDER BY inspection_date DESC LIMIT 500').all()).results;
   const messages=(await db.prepare('SELECT m.*,b.facility_id,b.name,b.address FROM messages m JOIN businesses b ON b.business_key=m.business_key').all()).results;
@@ -80,17 +84,7 @@ export async function sendApproved(env,runId){
   if(!await withinHours(db))return 0;
   const run=await db.prepare('SELECT * FROM source_runs WHERE id=?').bind(runId).first();
   if(!run||run.url!==SOURCE_URL||Date.now()-Date.parse(run.checked_at)>3600000)throw Error('A fresh official check is required before sending');
-  const local=localParts();
-  const today=`${local.year}-${local.month}-${local.day}`;
-  const since=new Date(Date.now()-172800000).toISOString();
-  const recent=(await db.prepare("SELECT send_started_at FROM messages WHERE status IN ('sending','sent','uncertain') AND send_started_at>=?").bind(since).all()).results;
-  const conversation=(await db.prepare("SELECT send_started_at FROM conversation_messages WHERE status IN ('sending','sent','uncertain') AND send_started_at>=?").bind(since).all()).results;
-  const sentToday=[...recent,...conversation].filter(item=>{
-    const date=localParts(new Date(item.send_started_at));
-    return `${date.year}-${date.month}-${date.day}`===today;
-  }).length;
-  const limit=Number(await setting(db,'daily_limit','5'));
-  const allowance=Math.max(0,limit-sentToday);
+  const allowance=(await sendingAllowance(db)).available;
   if(!allowance)return 0;
   const approved=(await db.prepare("SELECT * FROM messages WHERE status='approved' ORDER BY approved_at,id LIMIT ?").bind(allowance).all()).results;
   let sent=0;
