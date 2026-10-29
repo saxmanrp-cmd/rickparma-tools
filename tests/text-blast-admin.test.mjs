@@ -63,3 +63,16 @@ test('multiple send-later blasts stay easy to queue', () => {
   assert.match(appScript, /prepareAnotherScheduledBlast\(wasEditing \? 'Saved changes! You can schedule another blast below\.' : 'Scheduled! Add another blast below\.'\)/);
   assert.match(appScript, /apiFetch\(editingScheduledId \? '\/api\/scheduled\/update' : '\/api\/scheduled'/);
 });
+
+test('AI writer supports calendar shows and custom prompts without sending automatically', () => {
+  assert.match(html, /id="aiWriterEvent"/);
+  assert.match(html, /id="aiWriterPrompt"/);
+  assert.match(html, /id="aiWriterBtn"/);
+  assert.match(appScript, /apiFetch\('\/api\/ai-writer\/calendar'/);
+  assert.match(appScript, /apiFetch\('\/api\/ai-writer\/draft'/);
+  assert.match(appScript, /JSON\.stringify\(\{ eventId, prompt \}\)/);
+  assert.match(appScript, /blastMessage\.value = sanitizeToGSM7\(data\.draft \|\| ''\)/);
+  assert.match(appScript, /updateStatsLine\(\)/);
+  const writerHandler = appScript.match(/aiWriterBtn\.addEventListener\('click',[\s\S]*?\n      \}\);/)?.[0] || '';
+  assert.doesNotMatch(writerHandler, /\/api\/send|\/api\/scheduled/);
+});

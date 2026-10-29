@@ -197,6 +197,22 @@
     margin: -6px 0 12px 0;
   }
 
+  .ai-writer {
+    margin: 14px 0;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(141, 178, 229, 0.07);
+  }
+
+  .ai-writer h3 {
+    margin: 0 0 5px;
+    color: var(--steel);
+    font: 700 1rem 'Josefin Sans', sans-serif;
+  }
+
+  .ai-writer textarea { min-height: 78px; }
+
   .row {
     display: flex;
     gap: 8px;
@@ -468,6 +484,19 @@
         <select id="templateSelect">
           <option value="">— None —</option>
         </select>
+
+        <div class="ai-writer">
+          <h3>AI Text Writer</h3>
+          <p class="subtitle" style="margin-bottom:12px;">Choose a show from RickParma.com, describe another blast, or use both.</p>
+          <label for="aiWriterEvent">Upcoming show (optional)</label>
+          <select id="aiWriterEvent">
+            <option value="">Loading upcoming shows...</option>
+          </select>
+          <label for="aiWriterPrompt">What should the text say? (optional)</label>
+          <textarea id="aiWriterPrompt" placeholder="Examples: Make this feel urgent; promote holiday party bookings; thank everyone for a great year."></textarea>
+          <button class="btn btn-secondary" id="aiWriterBtn" type="button">Write My Text</button>
+          <div class="message-status" id="aiWriterStatus"></div>
+        </div>
 
         <label for="blastMessage">Message</label>
         <textarea id="blastMessage" placeholder="Hey {{first_name}}! Catch me live this Friday at..."></textarea>
@@ -914,6 +943,7 @@ function renderScheduledList(items) {
       app.classList.remove('hidden');
       loadBalance();
       loadTemplates();
+      loadAIWriterCalendar();
       loadAutoRules();
       loadConversations();
       loadBlastHistory();
@@ -1402,6 +1432,10 @@ async function loadBalance() { const wrap = document.getElementById('balanceWrap
   });
 
   const blastMessage = document.getElementById('blastMessage');
+  const aiWriterEvent = document.getElementById('aiWriterEvent');
+  const aiWriterPrompt = document.getElementById('aiWriterPrompt');
+  const aiWriterBtn = document.getElementById('aiWriterBtn');
+  const aiWriterStatus = document.getElementById('aiWriterStatus');
   const statsLine = document.getElementById('statsLine');
   const previewBtn = document.getElementById('previewBtn');
   const sendStatus = document.getElementById('sendStatus');
@@ -1577,6 +1611,58 @@ const GSM7_BASIC = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ 
           el.setSelectionRange(before.length, before.length);
         }
       }
+
+      async function loadAIWriterCalendar() {
+        aiWriterEvent.innerHTML = '<option value="">Loading upcoming shows...</option>';
+        try {
+          const res = await apiFetch('/api/ai-writer/calendar');
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Could not load the calendar.');
+          const events = Array.isArray(data.events) ? data.events : [];
+          aiWriterEvent.innerHTML = '<option value="">No show - use my prompt only</option>' + events.map(event => {
+            const date = event.start ? new Date(event.start).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+            return `<option value="${escapeHtml(event.id)}">${escapeHtml(date)} - ${escapeHtml(event.title)}${event.location ? ` - ${escapeHtml(event.location)}` : ''}</option>`;
+          }).join('');
+          if (!events.length) aiWriterStatus.textContent = 'No upcoming shows are currently listed. You can still write from a prompt.';
+        } catch (error) {
+          aiWriterEvent.innerHTML = '<option value="">No show - use my prompt only</option>';
+          aiWriterStatus.className = 'message-status error';
+          aiWriterStatus.textContent = error.message;
+        }
+      }
+
+      aiWriterBtn.addEventListener('click', async () => {
+        const eventId = aiWriterEvent.value;
+        const prompt = aiWriterPrompt.value.trim();
+        if (!eventId && !prompt) {
+          aiWriterStatus.className = 'message-status error';
+          aiWriterStatus.textContent = 'Choose a show or tell me what you want to announce.';
+          return;
+        }
+        aiWriterBtn.disabled = true;
+        aiWriterBtn.textContent = 'Writing...';
+        aiWriterStatus.className = 'message-status';
+        aiWriterStatus.textContent = 'Creating a draft...';
+        try {
+          const res = await apiFetch('/api/ai-writer/draft', {
+            method: 'POST',
+            body: JSON.stringify({ eventId, prompt }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Could not create a draft.');
+          blastMessage.value = sanitizeToGSM7(data.draft || '');
+          updateStatsLine();
+          aiWriterStatus.className = 'message-status success';
+          aiWriterStatus.textContent = 'Draft added below. Edit it any way you want, then preview it.';
+          blastMessage.focus();
+        } catch (error) {
+          aiWriterStatus.className = 'message-status error';
+          aiWriterStatus.textContent = error.message;
+        } finally {
+          aiWriterBtn.disabled = false;
+          aiWriterBtn.textContent = 'Write My Text';
+        }
+      });
 
       function classifyMessage(str) {
         let effLen = 0;

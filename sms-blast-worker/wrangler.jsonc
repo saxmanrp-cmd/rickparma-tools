@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sms-blast",
+  "main": "worker.js",
+  "compatibility_date": "2026-07-24",
+  "kv_namespaces": [
+    {
+      "binding": "SUBSCRIBERS_KV",
+      "id": "b95db7e7be86435f90af09b151bada43"
+    }
+  ],
+  "vars": {
+    "JSONBIN_BIN_ID": "6a63d14bda38895dfe8bc88b",
+    "TWILIO_FROM_NUMBER": "+18559242976"
+  },
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  }
+}
