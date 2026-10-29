@@ -52,3 +52,14 @@ test('conversation, delete, remove, and JOIN recovery behavior remains wired', (
 test('Auto Reply copy reflects production command ordering', () => {
   assert.match(html, /STOP variants and START\/YES\/UNSTOP are handled automatically before these rules\./);
 });
+
+test('multiple send-later blasts stay easy to queue', () => {
+  assert.match(html, /id="scheduleAnotherBlastBtn"/);
+  assert.match(html, /id="scheduledQueueCount">0 queued/);
+  assert.match(appScript, /pendingItems\.length} queued/);
+  assert.match(appScript, /prepareAnotherScheduledBlast\(statusText = ''\)/);
+  assert.match(appScript, /blastWhen\.value = 'scheduled'/);
+  assert.match(appScript, /blastScheduleFields\.classList\.remove\('hidden'\)/);
+  assert.match(appScript, /prepareAnotherScheduledBlast\(wasEditing \? 'Saved changes! You can schedule another blast below\.' : 'Scheduled! Add another blast below\.'\)/);
+  assert.match(appScript, /apiFetch\(editingScheduledId \? '\/api\/scheduled\/update' : '\/api\/scheduled'/);
+});
