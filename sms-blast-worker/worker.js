@@ -92,7 +92,10 @@ async function getUpcomingShows() {
     timeMin: (/* @__PURE__ */ new Date()).toISOString()
   });
   const calendarUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(RICKPARMA_CALENDAR_ID)}/events?${params}`;
-  const response = await fetch(calendarUrl);
+  const response = await fetch(calendarUrl, {
+    headers: { Accept: "application/json", Referer: "https://rickparma.com/" },
+    cf: { cacheTtl: 120, cacheEverything: false }
+  });
   if (!response.ok) throw new Error("RickParma.com calendar is unavailable right now.");
   const data = await response.json();
   return (Array.isArray(data.items) ? data.items : []).filter((event) => event.status !== "cancelled").map((event) => ({

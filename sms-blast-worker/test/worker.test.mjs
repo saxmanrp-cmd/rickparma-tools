@@ -32,8 +32,9 @@ function calendarPayload() {
 
 test('calendar endpoint returns normalized upcoming RickParma.com events', async () => {
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async url => {
+  globalThis.fetch = async (url, options) => {
     assert.match(String(url), /googleapis\.com\/calendar\/v3/);
+    assert.equal(options.headers.Referer, 'https://rickparma.com/');
     return Response.json(calendarPayload());
   };
   try {
