@@ -13,9 +13,9 @@ export function decideConversation(preview,classification,priorIntent='',sentCou
     return {kind:'handoff',reason:'specific advice needs Gazelle'};
   if(phone.test(text))return {kind:'handoff',reason:'phone number provided'};
   if(/\b(no thanks|not interested|please stop|leave us alone)\b/.test(text))return {kind:'handoff',reason:'declined'};
+  if(classification==='pricing'||/\b(price|pricing|rates?|cost|quote|estimate|fee)\b/.test(text))
+    return {kind:'handoff',reason:'pricing needs Gazelle'};
   if(sentCount>=maxReplies)return {kind:'handoff',reason:'automatic reply limit reached'};
-  if(/\b(price|pricing|rates?|cost|quote|estimate|fee)\b/.test(text))
-    return {kind:'reply',intent:'pricing'};
   if(/\b(what services|what do you do|how can you help|tell me about|food safety inspection|retail compliance|vendor food safety|food handler|haccp|department prep|training)\b/.test(text))
     return {kind:'reply',intent:['services','interest'].includes(priorIntent)?'call_invitation':'services'};
   if(/\b(call me|phone call|talk on the phone|schedule a call|let.s talk)\b/.test(text))
@@ -31,7 +31,6 @@ export function renderConversationReply(intent,p,focus,callOffer){
   let message;
   if(intent==='services')message=`Thanks for asking. I help food businesses with ${focus}. ${callOffer} Which area would be most useful for your team?`;
   else if(intent==='interest')message=`Thanks for getting back to me. ${callOffer} What kind of food safety support would be most useful to you?`;
-  else if(intent==='pricing')message='Thanks for asking. Pricing depends on the work involved. I can discuss the scope and pricing with you by phone. What number and time work best for a short call?';
   else if(intent==='call_invitation')message='Thanks for sharing that. A short call would help me understand what you need. What number and time work best for me to call?';
   else if(intent==='call_details')message='I would be glad to speak with you. What phone number and time work best for a short call?';
   else throw Error('Unknown conversation reply');
@@ -77,6 +76,13 @@ export async function sendConversationReplies(env,runId,withinHours){
   const queue=(await db.prepare("SELECT * FROM conversation_messages WHERE status IN ('approved','auto_approved') ORDER BY created_at LIMIT 20").all()).results;
   let sent=0;
   for(const item of queue){
+    if(item.intent==='pricing'){
+      await db.batch([db.prepare("UPDATE conversation_messages SET status='stale',error='Pricing needs Gazelle' WHERE inbound_external_id=? AND status IN ('approved','auto_approved')").bind(item.inbound_external_id),
+        db.prepare('UPDATE replies SET needs_handoff=1 WHERE external_id=?').bind(item.inbound_external_id),
+        db.prepare("INSERT INTO conversation_states(business_key,status,reason,updated_at) VALUES(?,'human','Pricing needs Gazelle',?) ON CONFLICT(business_key) DO UPDATE SET status='human',reason=excluded.reason,updated_at=excluded.updated_at").bind(item.business_key,now()),
+        db.prepare('INSERT INTO audit(at,event,business_key,detail) VALUES(?,?,?,?)').bind(now(),'conversation_handoff',item.business_key,JSON.stringify({inbound:item.inbound_external_id,reason:'pricing needs Gazelle'}))]);
+      continue;
+    }
     if(item.status==='auto_approved'&&conversationMode!=='auto'){
       await db.prepare("UPDATE conversation_messages SET status='draft',approved_at=NULL WHERE inbound_external_id=? AND status='auto_approved'").bind(item.inbound_external_id).run();
       continue;
