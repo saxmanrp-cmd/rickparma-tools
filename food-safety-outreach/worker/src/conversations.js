@@ -1,4 +1,4 @@
-import { now, setting, profile, profileMissing, suppressed, audit } from './store.js';
+import { now, setting, profile, profileMissing, suppressed, audit, sendingAllowance } from './store.js';
 import { replyMail, sentInConversationAfter } from './graph.js';
 import { SOURCE_URL } from './snhd.js';
 
@@ -87,13 +87,7 @@ export async function sendConversationReplies(env,runId,withinHours){
       await db.prepare("UPDATE conversation_messages SET status='draft',approved_at=NULL WHERE inbound_external_id=? AND status='auto_approved'").bind(item.inbound_external_id).run();
       continue;
     }
-    const limit=Number(await setting(db,'daily_limit','5'));
-    const since=new Date(Date.now()-172800000).toISOString();
-    const first=(await db.prepare("SELECT send_started_at FROM messages WHERE status IN ('sending','sent','uncertain') AND send_started_at>=?").bind(since).all()).results;
-    const follow=(await db.prepare("SELECT send_started_at FROM conversation_messages WHERE status IN ('sending','sent','uncertain') AND send_started_at>=?").bind(since).all()).results;
-    const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-    const used=[...first,...follow].filter(x=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(x.send_started_at))===today).length;
-    if(used>=limit)break;
+    if(!(await sendingAllowance(db)).available)break;
     const b=await db.prepare('SELECT * FROM businesses WHERE business_key=?').bind(item.business_key).first();
     const state=await db.prepare('SELECT status FROM conversation_states WHERE business_key=?').bind(item.business_key).first();
     const newer=await db.prepare('SELECT 1 FROM replies WHERE business_key=? AND received_at>? LIMIT 1').bind(item.business_key,item.received_at).first();
