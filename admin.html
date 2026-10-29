@@ -1619,10 +1619,14 @@ const GSM7_BASIC = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ 
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Could not load the calendar.');
           const events = Array.isArray(data.events) ? data.events : [];
-          aiWriterEvent.innerHTML = '<option value="">No show - use my prompt only</option>' + events.map(event => {
+          aiWriterEvent.innerHTML = '<option value="">No show - use my prompt only</option>';
+          events.forEach(event => {
             const date = event.start ? new Date(event.start).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
-            return `<option value="${escapeHtml(event.id)}">${escapeHtml(date)} - ${escapeHtml(event.title)}${event.location ? ` - ${escapeHtml(event.location)}` : ''}</option>`;
-          }).join('');
+            const option = document.createElement('option');
+            option.value = event.id || '';
+            option.textContent = `${date} - ${event.title || 'Rick Parma Live'}${event.location ? ` - ${event.location}` : ''}`;
+            aiWriterEvent.appendChild(option);
+          });
           if (events.length) {
             aiWriterEvent.value = events[0].id;
             aiWriterStatus.className = 'message-status success';
