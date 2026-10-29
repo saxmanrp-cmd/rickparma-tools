@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { recordReply } from '../src/workflow.js';
 import { renderPage } from '../src/ui.js';
 import { sendConversationReplies } from '../src/conversations.js';
+import { pollInbox } from '../src/graph.js';
 import { SOURCE_URL } from '../src/snhd.js';
 
 function sampleDatabase({mode='test',paused='1',conversationMode='off',postalAddress='123 Test Street, Las Vegas, NV 89101'}={}){
@@ -120,5 +121,35 @@ test('an approved automatic answer uses the existing Microsoft thread once',asyn
     assert.equal(raw.prepare('SELECT needs_handoff FROM replies').get().needs_handoff,0);
     assert.equal(calls.filter(x=>x.url.endsWith('/reply')&&x.method==='POST').length,1);
     assert.equal(await sendConversationReplies(env,1,async()=>true),0);
+  }finally{globalThis.fetch=originalFetch;}
+});
+
+test('mailbox scan recovers an expired cursor and skips a message moved during the scan',async()=>{
+  const {db,raw}=sampleDatabase();
+  raw.prepare("INSERT INTO settings(key,value) VALUES('graph_inbox_baseline_done','1')").run();
+  raw.prepare("INSERT INTO settings(key,value) VALUES('graph_inbox_delta_url','https://graph.microsoft.com/v1.0/expired')").run();
+  const calls=[];
+  const originalFetch=globalThis.fetch;
+  globalThis.fetch=async url=>{
+    const path=String(url);calls.push(path);
+    if(path.startsWith('https://login.microsoftonline.com/'))return new Response(JSON.stringify({access_token:'test-access',refresh_token:'test-refresh',expires_in:3600}),{status:200});
+    if(path.includes('/me?$select=mail,userPrincipalName'))return new Response(JSON.stringify({mail:'support@foodsafetywithgazelle.com'}),{status:200});
+    if(path.endsWith('/expired'))return new Response(null,{status:410});
+    if(path.includes('/Inbox/messages/delta?'))return Response.json({value:[{id:'moved'},{id:'new'}],'@odata.deltaLink':'https://graph.microsoft.com/v1.0/inbox-next'});
+    if(path.includes('/JunkEmail/messages/delta?'))return Response.json({value:[],'@odata.deltaLink':'https://graph.microsoft.com/v1.0/junk-next'});
+    if(path.includes('/DeletedItems/messages/delta?'))return Response.json({value:[],'@odata.deltaLink':'https://graph.microsoft.com/v1.0/deleted-next'});
+    if(path.includes('/me/messages/moved?'))return new Response(null,{status:410});
+    if(path.includes('/me/messages/new?'))return Response.json({id:'new'});
+    throw Error('Unexpected Microsoft request: '+path);
+  };
+  try{
+    const env={DB:db,GAZELLE_MS_CLIENT_ID:'client',GAZELLE_MS_TENANT:'tenant',
+      GAZELLE_TOKEN_KEY:Buffer.alloc(32,7).toString('base64'),GAZELLE_INITIAL_REFRESH_TOKEN:'test-refresh'};
+    const seen=[];
+    assert.equal(await pollInbox(env,async message=>{seen.push(message.id);return true;}),1);
+    assert.deepEqual(seen,['new']);
+    assert.equal(raw.prepare("SELECT value FROM settings WHERE key='graph_inbox_delta_url'").get().value,'https://graph.microsoft.com/v1.0/inbox-next');
+    assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM audit WHERE event='mail_sync_reset'").get().n,1);
+    assert.equal(calls.filter(path=>path.endsWith('/expired')).length,1);
   }finally{globalThis.fetch=originalFetch;}
 });
