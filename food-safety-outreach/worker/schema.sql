@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS webauthn_challenges (
 INSERT OR IGNORE INTO settings VALUES ('mode','test');
 INSERT OR IGNORE INTO settings VALUES ('paused','1');
 INSERT OR IGNORE INTO settings VALUES ('daily_limit','5');
+INSERT OR IGNORE INTO settings VALUES ('weekly_limit','3');
 INSERT OR IGNORE INTO settings VALUES ('hour_start','09:00');
 INSERT OR IGNORE INTO settings VALUES ('hour_end','17:00');
 INSERT OR IGNORE INTO settings VALUES ('followup_days','7');
