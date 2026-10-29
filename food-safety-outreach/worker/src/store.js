@@ -47,6 +47,27 @@ export function profileMissing(p){
 }
 export const normalizeEmail = value => /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(String(value||'').trim())?String(value).trim().toLowerCase():'';
 
+function pacificDay(date){
+  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date).map(part=>[part.type,part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+export async function sendingAllowance(db,date=new Date()){
+  const daily=Math.max(1,Math.min(100,Number(await setting(db,'daily_limit','5'))||5));
+  const weekly=Math.max(1,Math.min(100,Number(await setting(db,'weekly_limit','3'))||3));
+  const today=pacificDay(date);
+  const monday=new Date(`${today}T00:00:00Z`);
+  monday.setUTCDate(monday.getUTCDate()-(monday.getUTCDay()+6)%7);
+  const weekStart=monday.toISOString().slice(0,10);
+  const since=new Date(date.getTime()-8*86400000).toISOString();
+  const outgoing=(await db.prepare("SELECT send_started_at FROM messages WHERE status IN ('sending','sent','uncertain') AND send_started_at>=?").bind(since).all()).results;
+  const answers=(await db.prepare("SELECT send_started_at FROM conversation_messages WHERE status IN ('sending','sent','uncertain') AND send_started_at>=?").bind(since).all()).results;
+  const days=[...outgoing,...answers].filter(row=>row.send_started_at).map(row=>pacificDay(new Date(row.send_started_at)));
+  const dayUsed=days.filter(day=>day===today).length;
+  const weekUsed=days.filter(day=>day>=weekStart&&day<=today).length;
+  return {dailyRemaining:Math.max(0,daily-dayUsed),weeklyRemaining:Math.max(0,weekly-weekUsed),available:Math.max(0,Math.min(daily-dayUsed,weekly-weekUsed))};
+}
+
 export async function suppressed(db,key,email){
   return !!await db.prepare("SELECT 1 FROM suppressions WHERE (kind='business' AND value=?) OR (kind='email' AND value=?) LIMIT 1").bind(key,email).first();
 }
