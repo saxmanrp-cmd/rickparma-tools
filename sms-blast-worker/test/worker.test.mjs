@@ -108,7 +108,29 @@ test('prompt-only drafts do not require a calendar request', async () => {
   }
 });
 
-test('AI writer remains behind admin authentication', async () => {
-  const response = await worker.fetch(new Request('https://sms-blast.test/api/ai-writer/calendar'), env(), {});
+test('draft generation remains behind admin authentication', async () => {
+  const response = await worker.fetch(new Request('https://sms-blast.test/api/ai-writer/draft', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: 'Write a booking message' }),
+  }), env(), {});
   assert.equal(response.status, 401);
+});
+
+test('public calendar falls back to the Google ICS feed', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async url => {
+    if (String(url).includes('googleapis.com')) return new Response('blocked', { status: 403 });
+    assert.match(String(url), /calendar\.google\.com\/calendar\/ical/);
+    return new Response('BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:show-2\nSUMMARY:Easys Cocktail Lounge\nLOCATION:Las Vegas\nDTSTART:20261113T200000\nDTEND:20261113T230000\nEND:VEVENT\nEND:VCALENDAR', { headers: { 'Content-Type': 'text/calendar' } });
+  };
+  try {
+    const response = await worker.fetch(new Request('https://sms-blast.test/api/ai-writer/calendar'), env(), {});
+    assert.equal(response.status, 200);
+    const data = await response.json();
+    assert.equal(data.events[0].title, 'Easys Cocktail Lounge');
+    assert.equal(data.events[0].location, 'Las Vegas');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

@@ -92,23 +92,66 @@ async function getUpcomingShows() {
     timeMin: (/* @__PURE__ */ new Date()).toISOString()
   });
   const calendarUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(RICKPARMA_CALENDAR_ID)}/events?${params}`;
-  const response = await fetch(calendarUrl, {
-    headers: { Accept: "application/json", Referer: "https://rickparma.com/" },
-    cf: { cacheTtl: 120, cacheEverything: false }
-  });
-  if (!response.ok) throw new Error("RickParma.com calendar is unavailable right now.");
-  const data = await response.json();
-  return (Array.isArray(data.items) ? data.items : []).filter((event) => event.status !== "cancelled").map((event) => ({
-    id: event.id,
-    title: event.summary || "Rick Parma Live",
-    location: event.location || "",
-    description: event.description || "",
-    start: event.start && (event.start.dateTime || event.start.date) || "",
-    end: event.end && (event.end.dateTime || event.end.date) || "",
-    url: event.htmlLink || ""
-  }));
+  try {
+    const response = await fetch(calendarUrl, {
+      headers: { Accept: "application/json", Referer: "https://rickparma.com/" },
+      cf: { cacheTtl: 120, cacheEverything: false }
+    });
+    if (!response.ok) throw new Error(`Google Calendar API returned ${response.status}.`);
+    const data = await response.json();
+    return (Array.isArray(data.items) ? data.items : []).filter((event) => event.status !== "cancelled").map((event) => ({
+      id: event.id,
+      title: event.summary || "Rick Parma Live",
+      location: event.location || "",
+      description: event.description || "",
+      start: event.start && (event.start.dateTime || event.start.date) || "",
+      end: event.end && (event.end.dateTime || event.end.date) || "",
+      url: event.htmlLink || ""
+    }));
+  } catch (error) {
+    return getUpcomingShowsFromIcs();
+  }
 }
 __name(getUpcomingShows, "getUpcomingShows");
+function decodeIcs(value = "") {
+  return String(value).replace(/\\n/gi, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
+}
+__name(decodeIcs, "decodeIcs");
+function parseIcsDate(value = "") {
+  const raw = String(value).trim();
+  if (/^\d{8}$/.test(raw)) return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}T12:00:00`;
+  const match = raw.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})?(Z)?$/);
+  if (!match) return "";
+  const [, year, month, day, hour, minute, second = "00", zulu] = match;
+  return `${year}-${month}-${day}T${hour}:${minute}:${second}${zulu ? "Z" : ""}`;
+}
+__name(parseIcsDate, "parseIcsDate");
+async function getUpcomingShowsFromIcs() {
+  const endpoint = `https://calendar.google.com/calendar/ical/${encodeURIComponent(RICKPARMA_CALENDAR_ID)}/public/basic.ics`;
+  const response = await fetch(endpoint, { headers: { Accept: "text/calendar" }, cf: { cacheTtl: 120 } });
+  if (!response.ok) throw new Error("RickParma.com calendar is unavailable right now.");
+  const text = String(await response.text()).replace(/\r?\n[ \t]/g, "");
+  const now = Date.now() - 2 * 60 * 60 * 1000;
+  return text.split("BEGIN:VEVENT").slice(1).map((block) => block.split("END:VEVENT")[0]).map((block) => {
+    const fields = {};
+    for (const line of block.split(/\r?\n/)) {
+      const colon = line.indexOf(":");
+      if (colon < 0) continue;
+      const key = line.slice(0, colon).split(";")[0].toUpperCase();
+      if (!(key in fields)) fields[key] = line.slice(colon + 1);
+    }
+    return {
+      id: decodeIcs(fields.UID || crypto.randomUUID()),
+      title: decodeIcs(fields.SUMMARY || "Rick Parma Live"),
+      location: decodeIcs(fields.LOCATION || ""),
+      description: decodeIcs(fields.DESCRIPTION || ""),
+      start: parseIcsDate(fields.DTSTART),
+      end: parseIcsDate(fields.DTEND),
+      url: decodeIcs(fields.URL || "")
+    };
+  }).filter((event) => event.start && new Date(event.end || event.start).getTime() >= now).sort((a, b) => String(a.start).localeCompare(String(b.start))).slice(0, 25);
+}
+__name(getUpcomingShowsFromIcs, "getUpcomingShowsFromIcs");
 function extractResponseText(data) {
   if (typeof data.output_text === "string") return data.output_text.trim();
   const texts = [];
@@ -302,7 +345,8 @@ var worker_default = {
     const internalBookingReply = request.method === "POST"
       && path === "/api/conversations/reply"
       && url.hostname === "sms-blast.internal";
-    if (!internalBookingReply && !checkAuth(request, env)) {
+    const publicCalendarRequest = request.method === "GET" && path === "/api/ai-writer/calendar";
+    if (!internalBookingReply && !publicCalendarRequest && !checkAuth(request, env)) {
       return json({ error: "Unauthorized" }, 401);
     }
     let body = {};
