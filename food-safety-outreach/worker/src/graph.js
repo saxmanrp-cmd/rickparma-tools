@@ -56,7 +56,11 @@ export async function graph(env,path,options={}){
   if(!url.startsWith(GRAPH))throw Error('Unexpected Microsoft Graph URL');
   const token=await accessToken(env);
   const response=await fetch(url,{...options,headers:{Accept:'application/json',Authorization:`Bearer ${token}`,Prefer:'IdType="ImmutableId"',...options.headers}});
-  if(!response.ok)throw Error(`Microsoft mail request failed (${response.status})`);
+  if(!response.ok){
+    const error=Error(`Microsoft mail request failed (${response.status})`);
+    error.status=response.status;
+    throw error;
+  }
   if(response.status===202||response.status===204)return null;
   return response.json();
 }
@@ -99,24 +103,43 @@ export async function pollInbox(env,recordReply){
     const cursorKey=`graph_${folder.toLowerCase()}_delta_url`;
     const baselineKey=`graph_${folder.toLowerCase()}_baseline_done`;
     const first=(await setting(env.DB,baselineKey))!=='1';
-    let url=await setting(env.DB,cursorKey)||`${GRAPH}me/mailFolders/${folder}/messages/delta?%24select=id,receivedDateTime&%24top=50`;
+    const initialUrl=`${GRAPH}me/mailFolders/${folder}/messages/delta?%24select=id,receivedDateTime&%24top=50`;
+    let url=await setting(env.DB,cursorKey)||initialUrl;
+    let resetTried=false,completed=false;
     for(let page=0;page<100;page++){
-      const data=await graph(env,url);
+      let data;
+      try{data=await graph(env,url);}
+      catch(error){
+        if(error.status!==410||resetTried||url===initialUrl)throw error;
+        // Microsoft can invalidate a delta cursor. Rescan the folder and let
+        // recordReply's message ID check discard anything already seen.
+        url=initialUrl;resetTried=true;page--;
+        await audit(env.DB,'mail_sync_reset',{folder});
+        continue;
+      }
       if(!first){
         for(const item of data.value||[]){
           if(!item.id||item['@removed'])continue;
-          const message=await graph(env,`me/messages/${encodeURIComponent(item.id)}?$select=id,from,replyTo,subject,bodyPreview,receivedDateTime,internetMessageId,conversationId`);
+          let message;
+          try{message=await graph(env,`me/messages/${encodeURIComponent(item.id)}?$select=id,from,replyTo,subject,bodyPreview,receivedDateTime,internetMessageId,conversationId`);}
+          catch(error){
+            // A message can move or be deleted between the delta page and fetch.
+            if(error.status===404||error.status===410)continue;
+            throw error;
+          }
           if(await recordReply(message))count++;
         }
       }
       if(data['@odata.deltaLink']){
         await setSetting(env.DB,cursorKey,data['@odata.deltaLink']);
         await setSetting(env.DB,baselineKey,'1');
+        completed=true;
         break;
       }
       if(!data['@odata.nextLink'])throw Error('Microsoft mailbox did not return a cursor');
       url=data['@odata.nextLink'];
     }
+    if(!completed)throw Error('Microsoft mailbox scan exceeded 100 pages');
   }
   if(count)await audit(env.DB,'mail_checked',{replies:count});
   return count;
