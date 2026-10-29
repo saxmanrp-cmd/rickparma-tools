@@ -33,6 +33,13 @@ test('a grade is optional in the letter and its date and independence are explic
   assert.doesNotMatch(renderLetter(profile,{...place,eligible:0},'first',true).body,/B grade/);
 });
 
+test('first letter uses Gazelle’s experience and the short campaign focus',()=>{
+  const letter=renderLetter({...profile,experience:'I bring over 30 years of experience in the food industry.',campaign_focus:'training and inspection readiness'},place,'first');
+  assert.match(letter.body,/over 30 years of experience in the food industry/);
+  assert.match(letter.body,/training and inspection readiness/);
+  assert.doesNotMatch(letter.body,/B grade/);
+});
+
 test('postal address, offer, and style remain required before drafting',()=>{
   assert.deepEqual(profileMissing(profile),[]);
   assert.ok(profileMissing({...profile,postal_address:'support@foodsafetywithgazelle.com'}).includes('postal_address'));
