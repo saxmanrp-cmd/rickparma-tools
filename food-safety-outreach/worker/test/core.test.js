@@ -48,8 +48,8 @@ test('replies flag opt-outs, bounces, pricing, and interest for review',()=>{
   assert.equal(classifyReply('Re: Hello','Thanks','owner@example.com'),'needs_review');
 });
 
-test('bounded conversation answers routine requests and hands phone numbers and unclear questions to Gazelle',()=>{
-  assert.equal(decideConversation('What does it cost?','pricing').intent,'pricing');
+test('bounded conversation answers routine requests and hands pricing, phone numbers, and unclear questions to Gazelle',()=>{
+  assert.equal(decideConversation('What does it cost?','pricing').reason,'pricing needs Gazelle');
   assert.equal(decideConversation('What services do you offer?','needs_review').intent,'services');
   assert.equal(decideConversation('HACCP would be useful','needs_review','services',1).intent,'call_invitation');
   assert.equal(decideConversation('Call me at 702-555-0123','interested').kind,'handoff');
@@ -58,9 +58,9 @@ test('bounded conversation answers routine requests and hands phone numbers and 
   assert.equal(decideConversation('Please unsubscribe','opt_out').kind,'handoff');
 });
 
-test('conversation answers use approved wording and identify the sender without invented prices',()=>{
-  const body=renderConversationReply('pricing',profile,'inspection preparation','I can offer a short call.');
-  assert.match(body,/Pricing depends on the work involved/);
+test('routine conversation answers use approved wording and identify the sender',()=>{
+  const body=renderConversationReply('services',profile,'inspection preparation','I can offer a short call.');
+  assert.match(body,/inspection preparation/);
   assert.doesNotMatch(body,/\$\d+/);
   assert.match(body,/Gazelle Jacobs/);
   assert.match(body,/123 Test Street/);
