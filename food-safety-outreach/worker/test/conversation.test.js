@@ -7,6 +7,7 @@ import { renderPage } from '../src/ui.js';
 import { sendConversationReplies } from '../src/conversations.js';
 import { pollInbox } from '../src/graph.js';
 import { SOURCE_URL } from '../src/snhd.js';
+import { sendingAllowance } from '../src/store.js';
 
 function sampleDatabase({mode='test',paused='1',conversationMode='off',postalAddress='123 Test Street, Las Vegas, NV 89101'}={}){
   const raw=new DatabaseSync(':memory:');
@@ -43,6 +44,23 @@ function inbound(id,body){
     receivedDateTime:'2026-10-28T18:00:00.000Z',from:{emailAddress:{address:'owner@example.com'}},
     subject:'Re: Food safety support',bodyPreview:body,replyTo:[]};
 }
+
+test('three emails per Pacific week stops automated sending and resets Monday',async()=>{
+  const {db,raw}=sampleDatabase();
+  const insert=raw.prepare("INSERT INTO messages(business_key,kind,recipient,subject,body,status,grade_at_draft,date_at_draft,created_at,send_started_at) VALUES(?, 'first', 'owner@example.com', 'Sample', 'Sample', 'sent', 'B', '2026-10-20', ?, ?)");
+  for(const [key,at] of [
+    ['previous-sunday','2026-10-26T06:30:00.000Z'],
+    ['monday','2026-10-26T18:00:00.000Z'],
+    ['tuesday','2026-10-27T18:00:00.000Z'],
+    ['wednesday','2026-10-28T17:00:00.000Z']
+  ])insert.run(key,at,at);
+  const wednesday=await sendingAllowance(db,new Date('2026-10-28T18:00:00.000Z'));
+  assert.equal(wednesday.dailyRemaining,4);
+  assert.equal(wednesday.weeklyRemaining,0);
+  assert.equal(wednesday.available,0);
+  const nextMonday=await sendingAllowance(db,new Date('2026-11-02T18:00:00.000Z'));
+  assert.equal(nextMonday.available,3);
+});
 
 test('a reply is drafted for review while outreach is off',async()=>{
   const {db,raw}=sampleDatabase();
@@ -90,6 +108,8 @@ test('the private panel shows reply drafts and simple conversation controls',asy
   assert.match(replies,/Gazelle will take over/);
   assert.match(settings,/Back-and-forth emails/);
   assert.match(settings,/Off — show drafts only/);
+  assert.match(settings,/Most emails in one week/);
+  assert.match(settings,/See a sample letter/);
 });
 
 test('Test, Pause, and the separate conversation Off switch prevent reply sending',async()=>{
