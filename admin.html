@@ -541,8 +541,9 @@
     <!-- SCHEDULE TAB -->
     <div class="tab-panel" id="tab-schedule">
       <div class="card">
-        <h2>Upcoming Scheduled Blasts</h2>
-        <p class="subtitle" style="margin-bottom:12px;">To schedule a blast, compose it on the Blast tab and choose "Schedule for later" under When.</p>
+        <h2>Upcoming Scheduled Blasts <span class="count-pill" id="scheduledQueueCount">0 queued</span></h2>
+        <p class="subtitle" style="margin-bottom:12px;">Queue as many blasts as you need. Each one keeps its own recipients, message, media, and send time.</p>
+        <button class="btn btn-secondary" id="scheduleAnotherBlastBtn" style="margin-bottom:14px;">+ Schedule another blast</button>
         <div id="scheduledList">Loading...</div>
       </div>
     </div>
@@ -796,13 +797,19 @@
   });
 
   // ---- Scheduling (list/cancel only, composing happens on the Blast tab) ----
+const scheduledQueueCount = document.getElementById('scheduledQueueCount');
+const scheduleAnotherBlastBtn = document.getElementById('scheduleAnotherBlastBtn');
+
 function renderScheduledList(items) {
   const el = document.getElementById('scheduledList');
-  if (!items || !items.length) {
+  const scheduledItems = Array.isArray(items) ? items : [];
+  const pendingItems = scheduledItems.filter(item => (item.status || 'pending') === 'pending');
+  scheduledQueueCount.textContent = `${pendingItems.length} queued`;
+  if (!scheduledItems.length) {
     el.innerHTML = '<p>No scheduled blasts.</p>';
     return;
   }
-  el.innerHTML = items.map((item) => {
+  el.innerHTML = scheduledItems.slice().sort((a, b) => new Date(a.nextRun || 0) - new Date(b.nextRun || 0)).map((item) => {
     const when = item.nextRun ? new Date(item.nextRun).toLocaleString() : '(none)';
     const rec = item.recurrence ? item.recurrence.freq : 'one-time';
     const status = item.status || 'pending';
@@ -841,6 +848,10 @@ function renderScheduledList(items) {
     });
   });
 }
+
+  scheduleAnotherBlastBtn.addEventListener('click', () => {
+    prepareAnotherScheduledBlast();
+  });
 
   async function loadScheduledBlasts() {
     const el = document.getElementById('scheduledList');
@@ -1748,6 +1759,33 @@ blastPhoto.addEventListener('change', updateStatsLine);
     editBlastBtn.disabled = false;
   });
 
+  function prepareAnotherScheduledBlast(statusText = '') {
+    editingScheduledId = null;
+    blastMessage.value = '';
+    manualNumbers = [];
+    renderManualNumbers();
+    blastMediaUrl = null;
+    blastPhoto.value = '';
+    blastPhotoPreviewWrap.classList.add('hidden');
+    blastPhotoStatus.textContent = '';
+    blastWhen.value = 'scheduled';
+    blastScheduleFields.classList.remove('hidden');
+    blastRecurrence.value = '';
+    blastSendAt.value = '';
+    updateBlastScheduleRowsVisibility();
+    confirmScheduleBtn.textContent = 'Schedule Blast';
+    editingScheduleBanner.classList.add('hidden');
+    previewCard.classList.add('hidden');
+    document.querySelectorAll('#tab-blast .card').forEach(card => card.classList.remove('hidden'));
+    sendStatus.className = statusText ? 'message-status success' : 'message-status';
+    sendStatus.textContent = statusText;
+    updateStatsLine();
+    updateRecipientSummary();
+    document.querySelector('[data-tab="blast"]').click();
+    blastMessage.focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   confirmScheduleBtn.addEventListener('click', async () => {
     const message = blastMessage.value.trim();
 
@@ -1786,26 +1824,8 @@ blastPhoto.addEventListener('change', updateStatsLine);
         editBlastBtn.disabled = false;
         return;
       }
-      sendStatus.className = 'message-status success';
-      sendStatus.textContent = editingScheduledId ? 'Saved changes!' : 'Scheduled!';
-      blastMessage.value = '';
-      manualNumbers = [];
-      renderManualNumbers();
-      blastMediaUrl = null;
-      blastPhoto.value = '';
-      blastPhotoPreviewWrap.classList.add('hidden');
-      blastPhotoStatus.textContent = '';
-      blastWhen.value = 'now';
-      blastScheduleFields.classList.add('hidden');
-      blastRecurrence.value = '';
-      blastSendAt.value = '';
-    editingScheduledId = null;
-    confirmScheduleBtn.textContent = 'Schedule Blast';
-    editingScheduleBanner.classList.add('hidden');
-      updateStatsLine();
-      updateRecipientSummary();
-      previewCard.classList.add('hidden');
-      document.querySelectorAll('#tab-blast .card').forEach(c => c.classList.remove('hidden'));
+      const wasEditing = Boolean(editingScheduledId);
+      prepareAnotherScheduledBlast(wasEditing ? 'Saved changes! You can schedule another blast below.' : 'Scheduled! Add another blast below.');
       if (typeof loadScheduledBlasts === 'function') loadScheduledBlasts();
     } catch (e) {
       sendStatus.className = 'message-status error';
