@@ -73,6 +73,8 @@ test('AI writer supports calendar shows and custom prompts without sending autom
   assert.match(appScript, /JSON\.stringify\(\{ eventId, prompt \}\)/);
   assert.match(appScript, /blastMessage\.value = sanitizeToGSM7\(data\.draft \|\| ''\)/);
   assert.match(appScript, /updateStatsLine\(\)/);
+  assert.match(appScript, /aiWriterEvent\.value = events\[0\]\.id/);
+  assert.match(appScript, /upcoming shows loaded\. The next show is selected\./);
   const writerHandler = appScript.match(/aiWriterBtn\.addEventListener\('click',[\s\S]*?\n      \}\);/)?.[0] || '';
   assert.doesNotMatch(writerHandler, /\/api\/send|\/api\/scheduled/);
 });

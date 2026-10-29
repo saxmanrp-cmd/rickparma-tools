@@ -1623,7 +1623,13 @@ const GSM7_BASIC = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ 
             const date = event.start ? new Date(event.start).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
             return `<option value="${escapeHtml(event.id)}">${escapeHtml(date)} - ${escapeHtml(event.title)}${event.location ? ` - ${escapeHtml(event.location)}` : ''}</option>`;
           }).join('');
-          if (!events.length) aiWriterStatus.textContent = 'No upcoming shows are currently listed. You can still write from a prompt.';
+          if (events.length) {
+            aiWriterEvent.value = events[0].id;
+            aiWriterStatus.className = 'message-status success';
+            aiWriterStatus.textContent = `${events.length} upcoming shows loaded. The next show is selected.`;
+          } else {
+            aiWriterStatus.textContent = 'No upcoming shows are currently listed. You can still write from a prompt.';
+          }
         } catch (error) {
           aiWriterEvent.innerHTML = '<option value="">No show - use my prompt only</option>';
           aiWriterStatus.className = 'message-status error';
