@@ -58,17 +58,17 @@ async function action(path,form,env){
     return 'Added to the permanent never-contact list.';
   }
   if(path==='/profile'){
-    const fields=['business_name','services','offer','style','sender_name','title','sender_email','postal_address','contact_details','instagram'];
+    const fields=['business_name','services','offer','style','sender_name','title','sender_email','postal_address','contact_details','instagram','experience'];
     if(!normalizeEmail(text(form,'sender_email')))throw Error('Add a valid sender email');
     const batch=fields.map(name=>db.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(`profile_${name}`,text(form,name)));
     batch.push(db.prepare('INSERT INTO audit(at,event,business_key,detail) VALUES(?,?,?,?)').bind(now(),'profile_updated',null,JSON.stringify({fields:fields.filter(name=>text(form,name))})));
     await db.batch(batch);return 'Business details saved.';
   }
   if(path==='/limits'){
-    const daily=Number(text(form,'daily_limit')),follow=Number(text(form,'followup_days')),start=text(form,'hour_start'),end=text(form,'hour_end');
-    if(!Number.isInteger(daily)||daily<1||daily>100||!Number.isInteger(follow)||follow<7||follow>30||!/^\d\d:\d\d$/.test(start)||!/^\d\d:\d\d$/.test(end)||start>=end)throw Error('Use 1–100 emails a day, 7–30 follow-up days, and valid increasing hours.');
-    await db.batch([['daily_limit',daily],['followup_days',follow],['hour_start',start],['hour_end',end],['mention_grade',text(form,'mention_grade')==='1'?'1':'0']].map(([key,value])=>db.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(key,String(value))));
-    await audit(db,'limits_changed',{daily,follow,start,end});return 'Sending limits saved.';
+    const daily=Number(text(form,'daily_limit')),weekly=Number(text(form,'weekly_limit')),follow=Number(text(form,'followup_days')),start=text(form,'hour_start'),end=text(form,'hour_end');
+    if(!Number.isInteger(daily)||daily<1||daily>100||!Number.isInteger(weekly)||weekly<1||weekly>100||!Number.isInteger(follow)||follow<7||follow>30||!/^\d\d:\d\d$/.test(start)||!/^\d\d:\d\d$/.test(end)||start>=end)throw Error('Use 1–100 emails a day and week, 7–30 follow-up days, and valid increasing hours.');
+    await db.batch([['daily_limit',daily],['weekly_limit',weekly],['followup_days',follow],['hour_start',start],['hour_end',end],['mention_grade',text(form,'mention_grade')==='1'?'1':'0']].map(([key,value])=>db.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(key,String(value))));
+    await audit(db,'limits_changed',{daily,weekly,follow,start,end});return 'Sending limits saved.';
   }
   if(path==='/conversation-config'){
     const focus=text(form,'focus'),callOffer=text(form,'call_offer'),mode=text(form,'conversation_mode');
@@ -161,8 +161,8 @@ async function hourly(env){
     catch(error){await audit(db,'source_import_failed',{error:String(error).slice(0,300)});}
   }
   if(runId&&live){
-    try{if(approved>0)await sendApproved(env,runId);}catch(error){await audit(db,'send_cycle_failed',{error:String(error).slice(0,300)});}
     try{if(queued>0)await sendConversationReplies(env,runId,withinHours);}catch(error){await audit(db,'conversation_send_cycle_failed',{error:String(error).slice(0,300)});}
+    try{if(approved>0)await sendApproved(env,runId);}catch(error){await audit(db,'send_cycle_failed',{error:String(error).slice(0,300)});}
   }
   await db.prepare('DELETE FROM sessions WHERE expires_at<?').bind(now()).run();
 }
