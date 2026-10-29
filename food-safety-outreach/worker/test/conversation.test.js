@@ -54,15 +54,23 @@ test('a reply is drafted for review while outreach is off',async()=>{
 
 test('automatic reply is queued only after complete details and explicit live settings',async()=>{
   const enabled=sampleDatabase({mode:'live',paused:'0',conversationMode:'auto'});
-  await recordReply(enabled.db,inbound('two','What does it cost?'));
+  await recordReply(enabled.db,inbound('two','What services do you offer?'));
   const row=enabled.raw.prepare('SELECT status,body FROM conversation_messages').get();
   assert.equal(row.status,'auto_approved');
-  assert.match(row.body,/Pricing depends on the work involved/);
+  assert.match(row.body,/food safety inspections and staff training/);
   assert.match(row.body,/123 Test Street/);
   const incomplete=sampleDatabase({mode:'live',paused:'0',conversationMode:'auto',postalAddress:''});
-  await recordReply(incomplete.db,inbound('three','What does it cost?'));
+  await recordReply(incomplete.db,inbound('three','What services do you offer?'));
   assert.equal(incomplete.raw.prepare('SELECT COUNT(*) AS n FROM conversation_messages').get().n,0);
   assert.equal(incomplete.raw.prepare('SELECT needs_handoff FROM replies').get().needs_handoff,1);
+});
+
+test('a pricing question goes directly to Gazelle',async()=>{
+  const {db,raw}=sampleDatabase({mode:'live',paused:'0',conversationMode:'auto'});
+  await recordReply(db,inbound('price','What does it cost?'));
+  assert.equal(raw.prepare('SELECT COUNT(*) AS n FROM conversation_messages').get().n,0);
+  assert.equal(raw.prepare('SELECT needs_handoff FROM replies').get().needs_handoff,1);
+  assert.equal(raw.prepare('SELECT reason FROM conversation_states').get().reason,'pricing needs Gazelle');
 });
 
 test('an opt-out stops the conversation and suppresses future contact',async()=>{
@@ -99,7 +107,7 @@ test('an approved automatic answer uses the existing Microsoft thread once',asyn
   const {db,raw}=sampleDatabase({mode:'live',paused:'0',conversationMode:'auto'});
   raw.prepare('INSERT INTO source_runs(id,source,url,sha256,checked_at,rows_seen,qualified,held) VALUES(1,?,?,?,?,1000,1,0)')
     .run('Southern Nevada Health District',SOURCE_URL,'sample',new Date().toISOString());
-  await recordReply(db,inbound('six','What does it cost?'));
+  await recordReply(db,inbound('six','What services do you offer?'));
   const calls=[];
   const originalFetch=globalThis.fetch;
   globalThis.fetch=async (url,options={})=>{
