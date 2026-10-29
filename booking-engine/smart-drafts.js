@@ -88,9 +88,9 @@
     return {
       profile: type === 'agent' ? 'agency' : type,
       proof: 'Las Vegas singer / saxophonist',
-      media: [{ label: 'Website', url: 'https://rickparma.com/' }],
-      links: [{ label: 'Website', url: 'https://rickparma.com/' }],
-      signature: 'Rick Parma\nSinger • Saxophonist • Entertainer\nLas Vegas, NV\nhttps://rickparma.com/'
+      media: [{ label: 'Website', url: 'https://parmaentertainmentgroup.com' }],
+      links: [{ label: 'Website', url: 'https://parmaentertainmentgroup.com' }],
+      signature: 'Rick Parma\nParma Entertainment Group\nSinger • Saxophonist • Entertainer\ncontact@parmaentertainmentgroup.com\nhttps://parmaentertainmentgroup.com'
     };
   }
 
@@ -100,11 +100,11 @@
 
   function calendarUrl(c, campaign) {
     const pack = packageFor(c, campaign);
-    return pack.links.find(x => x.key === 'calendar')?.url || 'https://rickparma.com/#calendar';
+    return pack.links.find(x => x.key === 'calendar')?.url || '';
   }
 
   function signatureBlock(c, campaign) {
-    return packageFor(c, campaign).signature || 'Rick Parma\nSinger • Saxophonist • Entertainer\nhttps://rickparma.com/';
+    return packageFor(c, campaign).signature || 'Rick Parma\nParma Entertainment Group\nSinger • Saxophonist • Entertainer\ncontact@parmaentertainmentgroup.com\nhttps://parmaentertainmentgroup.com';
   }
 
   function representationLine() {
@@ -136,7 +136,7 @@
   function quickLook(c, campaign) {
     const media = mediaBlock(c, campaign, 2);
     const calendar = calendarUrl(c, campaign);
-    return `Quick look:\n${media}${media ? '\n' : ''}Current dates: ${calendar}`;
+    return `Quick look:\n${media}${calendar ? `${media ? '\n' : ''}Current dates: ${calendar}` : ''}`;
   }
 
   function knownIntro(c, campaign) {
@@ -185,7 +185,6 @@
     const step = campaign?.step || 0;
     const profile = packageFor(c, campaign).profile;
     const oneMedia = mediaBlock(c, campaign, 1);
-    const calendar = calendarUrl(c, campaign);
     const what = profile === 'festival'
       ? 'festival or concert-series programming'
       : profile === 'corporate'
@@ -195,9 +194,9 @@
           : 'live music dates';
 
     if (step >= 3) {
-      return `${hello(c)}\n\nOne last quick follow-up in case you’re currently filling ${what}. I’d still love to be considered if something fits.\n\n${oneMedia}\nCurrent dates: ${calendar}\n\nThanks,\nRick`;
+      return `${hello(c)}\n\nOne last quick follow-up in case you’re currently filling ${what}. I’d still love to be considered if something fits.\n\n${oneMedia}\n\nThanks,\nRick`;
     }
-    return `${hello(c)}\n\nJust bringing this back up in case you’re currently filling ${what}. If there’s a fit, I’d be glad to send anything else you need.\n\n${oneMedia}\nCurrent dates: ${calendar}\n\nThanks,\nRick`;
+    return `${hello(c)}\n\nJust bringing this back up in case you’re currently filling ${what}. If there’s a fit, I’d be glad to send anything else you need.\n\n${oneMedia}\n\nThanks,\nRick`;
   }
 
   function textMessage(c, campaign) {

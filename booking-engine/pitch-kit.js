@@ -4,14 +4,14 @@
   const STORAGE_KEY = 'rick-booking-engine-v1';
 
   const DEFAULTS = {
-    website: 'https://rickparma.com/',
-    calendar: 'https://rickparma.com/#calendar',
-    bookingPage: 'https://rickparma.com/#booking',
+    website: 'https://parmaentertainmentgroup.com',
+    calendar: '',
+    bookingPage: 'https://parmaentertainmentgroup.com',
     instagram: 'https://instagram.com/rickparmaofficial',
     facebook: 'https://www.facebook.com/rickparmaofficial',
     tiktok: 'https://www.tiktok.com/@rickparmaofficial',
-    personalEmail: 'saxman@rickparma.com',
-    bookingEmail: 'booking@rickparma.com',
+    personalEmail: 'contact@parmaentertainmentgroup.com',
+    bookingEmail: 'contact@parmaentertainmentgroup.com',
     epk: '',
     soloPromo: 'https://www.youtube.com/watch?v=A7bKax1LS_g',
     compilation: 'https://www.youtube.com/watch?v=ePFoNTC85XY',
@@ -74,7 +74,17 @@ Today, Parma is firmly established in the Las Vegas entertainment scene, where h
 
   function kit() {
     const state = readState();
-    return { ...DEFAULTS, ...(state.pitchKit || {}) };
+    const saved = { ...(state.pitchKit || {}) };
+    for (const [key, oldValue] of Object.entries({
+      website: 'https://rickparma.com/',
+      bookingPage: 'https://rickparma.com/#booking',
+      personalEmail: 'saxman@rickparma.com',
+      bookingEmail: 'booking@rickparma.com'
+    })) {
+      if (saved[key] === oldValue) saved[key] = DEFAULTS[key];
+    }
+    if (saved.calendar === 'https://rickparma.com/#calendar') saved.calendar = '';
+    return { ...DEFAULTS, ...saved };
   }
 
   function saveKit(next) {
@@ -130,11 +140,7 @@ Today, Parma is firmly established in the Las Vegas entertainment scene, where h
   function supportLinks(contact, forcedType = '') {
     const k = kit();
     const profile = profileFor(contact, forcedType);
-    const keys = profile === 'room'
-      ? ['website', 'calendar', 'instagram']
-      : profile === 'corporate'
-        ? ['website', 'calendar', 'instagram']
-        : ['website', 'calendar', 'instagram'];
+    const keys = ['website', 'instagram'];
     return keys.map(key => ({ key, label: LABELS[key], url: k[key] })).filter(x => x.url);
   }
 
@@ -164,9 +170,8 @@ Today, Parma is firmly established in the Las Vegas entertainment scene, where h
     const k = kit();
     const links = supportLinks(contact, forcedType);
     const website = links.find(x => x.key === 'website')?.url || k.website;
-    const calendar = links.find(x => x.key === 'calendar')?.url || k.calendar;
     const instagram = links.find(x => x.key === 'instagram')?.url || k.instagram;
-    return `Rick Parma\nSinger • Saxophonist • Entertainer\nLas Vegas, NV\n${website}\nLive dates: ${calendar}\nInstagram: ${instagram}`;
+    return `Rick Parma\nParma Entertainment Group\nSinger • Saxophonist • Entertainer\ncontact@parmaentertainmentgroup.com\n${website}\nInstagram: ${instagram}`;
   }
 
   function campaignPackage(contact, forcedType = '') {
@@ -195,7 +200,7 @@ Today, Parma is firmly established in the Las Vegas entertainment scene, where h
       <h3>Campaign Asset Library</h3>
       <p>The engine automatically chooses the right bio, credentials, video and links for each type of buyer. These are your master campaign assets.</p>
       <label>Main website<input id="kitWebsite" type="url" value="${escapeHtml(k.website)}"></label>
-      <label>Live calendar<input id="kitCalendar" type="url" value="${escapeHtml(k.calendar)}"></label>
+          <label>Live calendar<input id="kitCalendar" type="url" value="${escapeHtml(k.calendar)}" placeholder="No public calendar"></label>
       <label>Booking page<input id="kitBooking" type="url" value="${escapeHtml(k.bookingPage)}"></label>
       <label>Instagram<input id="kitInstagram" type="url" value="${escapeHtml(k.instagram)}"></label>
       <label>Facebook<input id="kitFacebook" type="url" value="${escapeHtml(k.facebook)}"></label>

@@ -1,5 +1,7 @@
-import { microsoftStatus, sendMicrosoftEmail } from './providers/microsoft.js';
+import { microsoftStatus, sendMicrosoftEmail, replyMicrosoftEmail, resolveOutboundMailbox } from './providers/microsoft.js';
 import { twilioStatus, sendTwilioText } from './providers/twilio.js';
+import { getAutopilotConfig, appendComplianceFooter } from './autopilot-policy.js';
+import { businessForMailbox, legacyMailbox } from './outbound-identity.js';
 import { authStatus, bearerToken, createSession, verifySession } from './auth.js';
 import {
   passkeyStatus,
@@ -220,9 +222,33 @@ async function listMessages(url, env) {
 async function sendEmail(request, env) {
   const body = await readJson(request);
   if (!body) return { error: 'Invalid JSON body.', status: 400 };
+  if (body.approved !== true) return { error: 'Explicit approval is required before sending.', status: 400 };
   if (body.complianceOk !== true) return { error: 'Compliance approval is required.', status: 400 };
+  if (!String(body.subject || '').trim() || !String(body.body || '').trim()) return { error: 'Email subject and body are required.', status: 400 };
 
-  const result = await sendMicrosoftEmail(env, body);
+  const mailbox = await resolveOutboundMailbox(env, { contactId: body.contactId, to: body.to });
+  const business = businessForMailbox(env, mailbox);
+  const config = await getAutopilotConfig(env);
+  const content = appendComplianceFooter(body.body, config, business);
+  const existingInbound = body.contactId
+    ? await env.DB.prepare(`
+        SELECT provider_message_id,recipient,thread_id,subject
+        FROM messages
+        WHERE contact_id=? AND direction='inbound' AND channel='email' AND provider='microsoft-graph'
+          AND provider_message_id IS NOT NULL
+          AND COALESCE(json_extract(metadata_json,'$.sourceFolder'),'')!='deleteditems'
+        ORDER BY COALESCE(received_at,created_at) DESC LIMIT 1
+      `).bind(body.contactId).first()
+    : null;
+  const result = existingInbound
+    ? await replyMicrosoftEmail(env, {
+        approved: true,
+        sourceMessageId: existingInbound.provider_message_id,
+        mailbox: existingInbound.recipient || mailbox,
+        body: content
+      })
+    : await sendMicrosoftEmail(env, { ...body, body: content });
+  const sentSubject = result.subject || existingInbound?.subject || body.subject;
   const sentAt = new Date().toISOString();
   const message = await addMessageData(env, {
     contactId: body.contactId || null,
@@ -231,13 +257,15 @@ async function sendEmail(request, env) {
     provider: result.provider,
     sender: result.sender,
     recipient: result.recipient,
-    subject: body.subject,
-    body: body.body,
+    subject: sentSubject,
+    body: content,
     status: 'sent',
     providerMessageId: result.providerMessageId,
     threadId: result.threadId,
     metadata: {
       requestedFrom: result.requestedFrom,
+      replyTo: result.replyTo || result.sender,
+      inExistingThread: !!existingInbound,
       internetMessageId: result.internetMessageId || null,
       campaignId: body.campaignId || null
     },

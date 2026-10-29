@@ -1,14 +1,17 @@
+import { NEW_BUSINESS, LEGACY_BUSINESS } from './outbound-identity.js';
+
 export const ARTIST_PROFILE = Object.freeze({
   name: 'Rick Parma',
   base: 'Las Vegas, NV',
-  website: 'https://rickparma.com/',
+  businessName: NEW_BUSINESS.name,
+  website: NEW_BUSINESS.website,
   epk: 'https://rickparma.com/epk/',
   calendar: 'https://rickparma.com/#calendar',
   instagram: 'https://instagram.com/rickparmaofficial',
   facebook: 'https://www.facebook.com/rickparmaofficial',
   tiktok: 'https://www.tiktok.com/@rickparmaofficial',
   personalEmail: 'saxman@rickparma.com',
-  bookingEmail: 'booking@rickparma.com',
+  bookingEmail: NEW_BUSINESS.email,
   shortPromo: 'https://www.youtube.com/watch?v=A7bKax1LS_g',
   compilation: 'https://www.youtube.com/watch?v=ePFoNTC85XY',
   fullBandPromo: 'https://www.youtube.com/watch?v=6WmPyq6eoRk',
@@ -35,12 +38,14 @@ export const ARTIST_PROFILE = Object.freeze({
   ]
 });
 
-export function campaignAssets(profile = 'room') {
+export function campaignAssets(profile = 'room', business = NEW_BUSINESS) {
   const p = ARTIST_PROFILE;
-  const assets = [
-    { label: 'EPK', url: p.epk },
-    { label: 'Current Calendar', url: p.calendar }
-  ];
+  const assets = [{ label: 'EPK', url: p.epk }];
+  if (business.name === LEGACY_BUSINESS.name) {
+    assets.push({ label: 'Current Calendar', url: p.calendar });
+  } else {
+    assets.push({ label: 'Parma Entertainment Group Website', url: business.website });
+  }
   if (profile === 'festival' || profile === 'agency') {
     assets.push({ label: 'Full Band Promo', url: p.fullBandPromo });
   }

@@ -1,81 +1,28 @@
 (() => {
   'use strict';
 
-  const STORAGE_KEY = 'rick-booking-engine-v1';
-  const DEFAULT_POLICY = {
-    personalEmail: 'saxman@rickparma.com',
-    bookingEmail: 'booking@rickparma.com',
-    coldSender: 'personal',
-    relationshipSender: 'personal',
-    logisticsSender: 'booking'
-  };
-
-  function readState() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
-    catch { return {}; }
-  }
-
-  function writeState(state) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }
-
-  function policy() {
-    const state = readState();
-    return { ...DEFAULT_POLICY, ...(state.senderPolicy || {}) };
-  }
-
-  function savePolicy(next) {
-    const state = readState();
-    state.senderPolicy = { ...policy(), ...next };
-    writeState(state);
-  }
-
-  function senderFor(contact, mode = 'campaign') {
-    const p = policy();
-    const relationship = readState().relationships?.[contact?.['Contact ID']] || 'Cold';
-    const isKnown = ['Familiar', 'Know Them', 'Worked Together', 'Current Booker'].includes(relationship);
-
-    if (mode === 'logistics') return { email: p.bookingEmail, label: 'Rick Parma Booking' };
-    if (isKnown && p.relationshipSender === 'booking') return { email: p.bookingEmail, label: 'Rick Parma Booking' };
-    if (!isKnown && p.coldSender === 'booking') return { email: p.bookingEmail, label: 'Rick Parma Booking' };
-    return { email: p.personalEmail, label: 'Rick Parma' };
+  function senderFor() {
+    return { email: 'contact@parmaentertainmentgroup.com', label: 'Parma Entertainment Group' };
   }
 
   function injectSettings() {
     const settingsView = document.querySelector('[data-view="settings"]');
     if (!settingsView || settingsView.querySelector('[data-sender-policy]')) return;
 
-    const p = policy();
     const card = document.createElement('div');
     card.className = 'settings-card';
     card.dataset.senderPolicy = 'true';
     card.innerHTML = `
       <h3>Campaign Senders</h3>
-      <p>Personal outreach stays personal. Booking logistics can come from your new assistant alias.</p>
-      <label>Rick / personal sender
-        <input id="senderPersonal" type="email" value="${p.personalEmail}" />
-      </label>
-      <label>Booking assistant sender
-        <input id="senderBooking" type="email" value="${p.bookingEmail}" />
-      </label>
+      <p>New outreach is sent by Parma Entertainment Group. Existing email threads keep their original sender.</p>
       <div style="display:grid;gap:10px;margin:8px 0 16px">
-        <div class="detail-box"><span>Cold introductions</span><strong>Rick Parma &lt;${p.personalEmail}&gt;</strong></div>
-        <div class="detail-box"><span>Buyer / agent relationships</span><strong>Rick Parma &lt;${p.personalEmail}&gt;</strong></div>
-        <div class="detail-box"><span>Scheduling / logistics</span><strong>Rick Parma Booking &lt;${p.bookingEmail}&gt;</strong></div>
+        <div class="detail-box"><span>New outreach and logistics</span><strong>Parma Entertainment Group &lt;contact@parmaentertainmentgroup.com&gt;</strong></div>
       </div>
-      <button class="primary" id="saveSenderPolicy">Save Sender Setup</button>
     `;
 
     const firstCard = settingsView.querySelector('.settings-card');
     if (firstCard) firstCard.after(card); else settingsView.appendChild(card);
 
-    card.querySelector('#saveSenderPolicy')?.addEventListener('click', () => {
-      savePolicy({
-        personalEmail: card.querySelector('#senderPersonal')?.value.trim() || DEFAULT_POLICY.personalEmail,
-        bookingEmail: card.querySelector('#senderBooking')?.value.trim() || DEFAULT_POLICY.bookingEmail
-      });
-      showToast('Sender setup saved');
-    });
   }
 
   function contactByEntity(entityName) {
@@ -111,14 +58,6 @@
     });
   }
 
-  function showToast(message) {
-    const toast = document.querySelector('#toast');
-    if (!toast) return;
-    toast.textContent = message;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 1800);
-  }
-
   function loadModule(src, marker) {
     if (document.querySelector(`script[${marker}]`)) return;
     const script = document.createElement('script');
@@ -142,7 +81,7 @@
     loadModule('./research-guard.js', 'data-research-guard-loader');
   }
 
-  window.BookingSenderPolicy = { policy, senderFor };
+  window.BookingSenderPolicy = { senderFor };
 
   const observer = new MutationObserver(() => {
     injectSettings();

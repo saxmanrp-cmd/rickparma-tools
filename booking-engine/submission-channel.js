@@ -73,18 +73,18 @@
       profile: 'room',
       bio: 'Rick Parma is a Las Vegas-based vocalist and saxophonist performing R&B, Motown, soul, funk, pop, Top 40 and neo-soul from solo singer/sax through full band.',
       proof: '30+ years professional • Las Vegas singer / saxophonist',
-      media: [{ label: 'Website', url: 'https://rickparma.com/' }],
-      links: [{ key: 'website', label: 'Website', url: 'https://rickparma.com/' }]
+      media: [{ label: 'Website', url: 'https://parmaentertainmentgroup.com' }],
+      links: [{ key: 'website', label: 'Website', url: 'https://parmaentertainmentgroup.com' }]
     };
     const k = kit?.kit?.() || {
-      website: 'https://rickparma.com/',
-      calendar: 'https://rickparma.com/#calendar',
+      website: 'https://parmaentertainmentgroup.com',
+      calendar: 'https://parmaentertainmentgroup.com',
       instagram: 'https://instagram.com/rickparmaofficial',
-      bookingEmail: 'booking@rickparma.com'
+      bookingEmail: 'contact@parmaentertainmentgroup.com'
     };
     const media = pack.media.slice(0, 2).map(a => `${a.label}: ${a.url}`).join('\n');
 
-    return `RICK PARMA\nVocalist • Saxophonist • Entertainer • Las Vegas, NV\n\nBIO\n${pack.bio}\n\nSELECTED CREDITS\n${pack.proof}\n\nMEDIA\n${media}\n\nWebsite: ${k.website}\nCurrent dates: ${k.calendar}\nInstagram: ${k.instagram}\nBooking: ${k.bookingEmail}`;
+    return `RICK PARMA\nParma Entertainment Group\nVocalist • Saxophonist • Entertainer • Las Vegas, NV\n\nBIO\n${pack.bio}\n\nSELECTED CREDITS\n${pack.proof}\n\nMEDIA\n${media}\n\nWebsite: ${k.website}\nInstagram: ${k.instagram}\nBooking: ${k.bookingEmail}`;
   }
 
   async function openSubmission(c) {

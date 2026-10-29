@@ -1,4 +1,5 @@
 import { microsoftStatus, syncMicrosoftInbox, syncMicrosoftDeletedBounces } from './providers/microsoft.js';
+import { legacyMailbox, newOutboundMailbox, isNewMailboxEnabled } from './outbound-identity.js';
 
 const encoder = new TextEncoder();
 
@@ -117,7 +118,7 @@ function emailsInText(value) {
   )].map(normalizeEmail);
 }
 
-async function matchMicrosoftBounce(env, message, selfAddresses) {
+async function matchMicrosoftBounce(env, message, selfAddresses, mailbox) {
   const candidates = emailsInText(`${message.subject || ''}\n${message.body || ''}\n${message.bodyPreview || ''}`)
     .filter(email => email && !selfAddresses.has(email));
 
@@ -125,10 +126,10 @@ async function matchMicrosoftBounce(env, message, selfAddresses) {
     const outbound = await env.DB.prepare(`
       SELECT id,contact_id,sent_at,thread_id,recipient
       FROM messages
-      WHERE direction='outbound' AND channel='email' AND lower(recipient)=?
+      WHERE direction='outbound' AND channel='email' AND lower(recipient)=? AND lower(sender)=?
       ORDER BY COALESCE(sent_at,created_at) DESC
       LIMIT 1
-    `).bind(email).first();
+    `).bind(email, mailbox).first();
 
     if (outbound?.contact_id) {
       return { ...outbound, matchedBy:'bounce-recipient', bounceTarget:email };
@@ -138,15 +139,15 @@ async function matchMicrosoftBounce(env, message, selfAddresses) {
   return null;
 }
 
-async function storeDeletedFolderBounces(env, selfAddresses) {
-  const result = await syncMicrosoftDeletedBounces(env, 35);
+async function storeDeletedFolderBounces(env, selfAddresses, mailbox) {
+  const result = await syncMicrosoftDeletedBounces(env, 35, mailbox);
   let matched = 0;
   let stored = 0;
 
   for (const message of result.messages || []) {
     if (!message.id || await alreadyStored(env, 'microsoft-graph', message.id)) continue;
 
-    const outbound = await matchMicrosoftBounce(env, message, selfAddresses);
+    const outbound = await matchMicrosoftBounce(env, message, selfAddresses, mailbox);
     if (!outbound?.contact_id) continue;
     matched++;
 
@@ -156,7 +157,7 @@ async function storeDeletedFolderBounces(env, selfAddresses) {
       channel: 'email',
       provider: 'microsoft-graph',
       sender: message.from,
-      recipient: env.MS_SENDER_USER,
+      recipient: mailbox,
       subject: message.subject,
       body,
       providerMessageId: message.id,
@@ -189,14 +190,14 @@ async function storeDeletedFolderBounces(env, selfAddresses) {
   return { checked: (result.messages || []).length, matched, stored };
 }
 
-async function matchMicrosoftOutbound(env, message, sender) {
+async function matchMicrosoftOutbound(env, message, sender, mailbox) {
   if (message.conversationId) {
     const byThread = await env.DB.prepare(`
       SELECT id, contact_id, sent_at, thread_id
       FROM messages
-      WHERE direction='outbound' AND channel='email' AND thread_id=?
+      WHERE direction='outbound' AND channel='email' AND thread_id=? AND lower(sender)=?
       ORDER BY sent_at DESC, created_at DESC LIMIT 1
-    `).bind(message.conversationId).first();
+    `).bind(message.conversationId, mailbox).first();
     if (byThread?.contact_id) return { ...byThread, matchedBy: 'thread' };
   }
 
@@ -206,31 +207,31 @@ async function matchMicrosoftOutbound(env, message, sender) {
     const byRecipient = await env.DB.prepare(`
       SELECT id, contact_id, sent_at, thread_id
       FROM messages
-      WHERE direction='outbound' AND channel='email' AND lower(recipient)=?
+      WHERE direction='outbound' AND channel='email' AND lower(recipient)=? AND lower(sender)=?
       ORDER BY sent_at DESC, created_at DESC LIMIT 1
-    `).bind(sender).first();
+    `).bind(sender, mailbox).first();
     if (byRecipient?.contact_id) return { ...byRecipient, matchedBy: 'sender' };
   }
   return null;
 }
 
-export async function syncMicrosoftReplies(env) {
-  if (!env.DB || !microsoftStatus(env).configured) return { ok: true, skipped: true, reason: 'Microsoft or DB not configured.' };
-
-  const providerKey = 'microsoft-inbox';
+async function syncOneMicrosoftMailbox(env, mailbox) {
+  // Keep the original cursor name untouched. Its delta link belongs to the
+  // legacy mailbox and must never be reused for the new mailbox.
+  const providerKey = mailbox === legacyMailbox(env) ? 'microsoft-inbox' : `microsoft-inbox:${mailbox}`;
   const cursor = await getSyncCursor(env, providerKey);
-  const result = await syncMicrosoftInbox(env, cursor);
+  const result = await syncMicrosoftInbox(env, cursor, mailbox);
   let matched = 0;
   let stored = 0;
   let matchedByThread = 0;
   let matchedBySender = 0;
-  const selfAddresses = new Set([env.MS_SENDER_USER, env.MS_BOOKING_ALIAS].map(normalizeEmail).filter(Boolean));
+  const selfAddresses = new Set([legacyMailbox(env), env.MS_BOOKING_ALIAS, newOutboundMailbox(env)].map(normalizeEmail).filter(Boolean));
 
   for (const message of result.messages) {
     const sender = normalizeEmail(message.from);
     if (!sender || selfAddresses.has(sender)) continue;
 
-    const outbound = await matchMicrosoftOutbound(env, message, sender);
+    const outbound = await matchMicrosoftOutbound(env, message, sender, mailbox);
     if (!outbound?.contact_id) continue;
     if (outbound.sent_at && message.receivedDateTime && String(message.receivedDateTime) <= String(outbound.sent_at)) continue;
     matched++;
@@ -243,7 +244,7 @@ export async function syncMicrosoftReplies(env) {
       channel: 'email',
       provider: 'microsoft-graph',
       sender: message.from,
-      recipient: env.MS_SENDER_USER,
+      recipient: mailbox,
       subject: message.subject,
       body,
       providerMessageId: message.id,
@@ -286,10 +287,11 @@ export async function syncMicrosoftReplies(env) {
     });
   }
 
-  const deletedBounces = await storeDeletedFolderBounces(env, selfAddresses);
+  const deletedBounces = await storeDeletedFolderBounces(env, selfAddresses, mailbox);
 
   return {
     ok: true,
+    mailbox,
     checked: result.messages.length,
     matched,
     stored,
@@ -297,6 +299,30 @@ export async function syncMicrosoftReplies(env) {
     matchedBySender,
     pages: result.pages,
     deletedBounces
+  };
+}
+
+export async function syncMicrosoftReplies(env) {
+  if (!env.DB || !microsoftStatus(env).configured) return { ok: true, skipped: true, reason: 'Microsoft or DB not configured.' };
+  const mailboxes = [legacyMailbox(env)];
+  if (isNewMailboxEnabled(env) && newOutboundMailbox(env) && newOutboundMailbox(env) !== mailboxes[0]) {
+    mailboxes.push(newOutboundMailbox(env));
+  }
+  const results = [];
+  const errors = [];
+  for (const mailbox of mailboxes) {
+    try {
+      results.push(await syncOneMicrosoftMailbox(env, mailbox));
+    } catch (error) {
+      errors.push({ mailbox, error: String(error?.message || error).slice(0, 300) });
+    }
+  }
+  return {
+    ok: errors.length === 0,
+    mailboxes: results,
+    errors,
+    matched: results.reduce((total, result) => total + result.matched, 0),
+    stored: results.reduce((total, result) => total + result.stored, 0)
   };
 }
 

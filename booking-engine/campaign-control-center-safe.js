@@ -147,7 +147,7 @@
       ${p.evidence_summary && p.evidence_summary !== p.fit_reason ? `<p class="ccs-copy muted">${esc(p.evidence_summary)}</p>` : ''}
       <div class="ccs-sources">${sourceLinks.length ? sourceLinks.map((u,i) => `<a href="${esc(u)}" target="_blank" rel="noopener">Source ${i+1} ↗</a>`).join('') : '<span>No stored source yet.</span>'}</div>
       <div class="ccs-actions"><button type="button" class="primary" data-ccs-draft ${d ? '' : 'disabled'}>${d ? 'View Draft' : 'No Draft Yet'}</button><button type="button" class="secondary" data-ccs-refresh>Refresh</button><button type="button" class="secondary" data-ccs-settings>Agent Settings</button></div>
-      ${d ? `<div class="ccs-draft" data-ccs-draft-panel hidden><div><span>From</span><strong>booking@rickparma.com</strong></div><div><span>Subject</span><strong>${esc(d.subject || '')}</strong></div><pre>${esc(d.body || '')}</pre></div>` : ''}`;
+      ${d ? `<div class="ccs-draft" data-ccs-draft-panel hidden><div><span>From</span><strong>contact@parmaentertainmentgroup.com</strong></div><div><span>Subject</span><strong>${esc(d.subject || '')}</strong></div><pre>${esc(d.body || '')}</pre></div>` : ''}`;
   }
 
   function render() {

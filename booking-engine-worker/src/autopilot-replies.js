@@ -5,6 +5,7 @@ import { categoryPolicy, canAutonomouslySend, withinSendWindow, appendCompliance
 import { getProspect, suppressProspect } from './prospects.js';
 import { learnContactsFromReply } from './contacts.js';
 import { checkRickAvailability } from './calendar-availability.js';
+import { businessForMailbox, legacyMailbox } from './outbound-identity.js';
 import {
   safeJson, daysFromNow, event, artistContext, assetText, priorThread,
   todayEventCount, storeOutbound, storeDraft, mirrorOverride, nowIso
@@ -394,18 +395,19 @@ async function draftReplyForMessage(env, config, message, classification) {
   const prospect = await getProspect(env, message.contact_id);
   if (!prospect) return null;
   const profile = prospect.profile || prospect.campaign_type || 'room';
+  const business = businessForMailbox(env, message.recipient || legacyMailbox(env));
   const draft = await draftBookingReply(env, {
     classification,
     inbound: { channel: message.channel, from: message.sender, subject: message.subject, body: message.body },
-    artistContext: artistContext(profile),
-    assets: assetText(profile),
+    artistContext: artistContext(profile, business),
+    assets: assetText(profile, business),
     priorMessages: await priorThread(env, prospect.id),
     calendarAvailability: classification.calendarAvailability || null
   });
   return {
     prospect,
     subject: draft.data.subject || `Re: ${message.subject || 'Booking'}`,
-    body: message.channel === 'sms' ? String(draft.data.body || '').slice(0, 1500) : appendComplianceFooter(draft.data.body, config),
+    body: message.channel === 'sms' ? String(draft.data.body || '').slice(0, 1500) : appendComplianceFooter(draft.data.body, config, business),
     responseId: draft.responseId || null
   };
 }
@@ -458,6 +460,7 @@ async function sendReply(env, message, classification, draft) {
   const sent = await replyMicrosoftEmail(env, {
     approved: true,
     sourceMessageId: message.provider_message_id,
+    mailbox: message.recipient || legacyMailbox(env),
     body: draft.body
   });
   const outId = await storeOutbound(env, {

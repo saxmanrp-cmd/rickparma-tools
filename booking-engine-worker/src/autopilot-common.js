@@ -1,4 +1,5 @@
 import { ARTIST_PROFILE, campaignAssets, compactCredentials } from './artist-profile.js';
+import { NEW_BUSINESS, LEGACY_BUSINESS } from './outbound-identity.js';
 
 export function nowIso() { return new Date().toISOString(); }
 export function daysFromNow(days) { return new Date(Date.now() + Number(days || 0) * 86400000).toISOString(); }
@@ -44,21 +45,23 @@ export function prospectForPrompt(p) {
   };
 }
 
-export function artistContext(profile = 'room') {
+export function artistContext(profile = 'room', business = NEW_BUSINESS) {
   return [
     `${ARTIST_PROFILE.name} — ${ARTIST_PROFILE.positioning.join('; ')}.`,
+    `Business: ${business.name}`,
+    `Booking email: ${business.email}`,
     `Formats: ${ARTIST_PROFILE.formats.join(', ')}.`,
     `Music: ${ARTIST_PROFILE.styles.join(', ')}.`,
     compactCredentials(profile),
-    `Website: ${ARTIST_PROFILE.website}`,
+    `Website: ${business.website}`,
     `EPK: ${ARTIST_PROFILE.epk}`,
-    `Calendar: ${ARTIST_PROFILE.calendar}`,
+    business.name === LEGACY_BUSINESS.name ? `Calendar: ${ARTIST_PROFILE.calendar}` : '',
     `Instagram: ${ARTIST_PROFILE.instagram}`
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
-export function assetText(profile = 'room') {
-  return campaignAssets(profile).map(x => `${x.label}: ${x.url}`).join('\n');
+export function assetText(profile = 'room', business = NEW_BUSINESS) {
+  return campaignAssets(profile, business).map(x => `${x.label}: ${x.url}`).join('\n');
 }
 
 export async function priorThread(env, contactId, limit = 8) {

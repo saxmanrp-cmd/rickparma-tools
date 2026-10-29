@@ -54,7 +54,7 @@
     const r = s.readiness || {};
     return `
       <div class="agent-status-row"><span>AI research + writing</span><strong class="${r.openai?.configured ? 'good' : 'warn'}">${r.openai?.configured ? 'Ready' : 'Needs API key'}</strong></div>
-      <div class="agent-status-row"><span>Microsoft email</span><strong class="${r.microsoft?.configured ? 'good' : 'warn'}">${r.microsoft?.configured ? 'Ready' : 'Needs Graph setup'}</strong></div>
+      <div class="agent-status-row"><span>Microsoft email</span><strong class="${r.microsoft?.configured ? 'good' : 'warn'}">${r.microsoft?.configured ? `New outreach: ${r.microsoft?.newOutboundMailbox || ''}${r.newOutboundMailboxVerification?.status === 'verified' && r.microsoft?.newOutboundEnabled ? ' (verified)' : ' (paused)'}` : 'Needs Graph setup'}</strong></div>
       <div class="agent-status-row"><span>Autonomous sending</span><strong class="${r.canSend ? 'good' : 'warn'}">${r.canSend ? 'Ready' : esc(r.sendBlocker || 'Blocked')}</strong></div>
       <div class="agent-status-row"><span>Send window right now</span><strong>${r.sendWindowOpen ? 'Open' : 'Closed'}</strong></div>
       <div class="agent-status-row"><span>Intervention text alerts</span><strong class="${r.interventionTextAlerts?.configured ? 'good' : 'warn'}">${r.interventionTextAlerts?.configured ? 'Ready' : 'Add text number / check Twilio'}</strong></div>`;

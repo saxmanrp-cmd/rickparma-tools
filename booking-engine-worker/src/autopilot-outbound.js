@@ -1,14 +1,14 @@
-import { ARTIST_PROFILE } from './artist-profile.js';
-import { sendMicrosoftEmail } from './providers/microsoft.js';
+import { sendMicrosoftEmail, resolveOutboundMailbox } from './providers/microsoft.js';
 import { draftBookingEmail } from './providers/openai.js';
 import { canAutonomouslySend, withinSendWindow, prospectEligible, appendComplianceFooter } from './autopilot-policy.js';
+import { businessForMailbox, isNewMailboxEnabled } from './outbound-identity.js';
 import { listProspects } from './prospects.js';
 import {
   nowIso, daysFromNow, event, prospectForPrompt, artistContext, assetText,
   priorThread, todayEventCount, storeOutbound, storeDraft, mirrorOverride
 } from './autopilot-common.js';
 
-const DRAFT_FORMAT_VERSION = 'signature-v2';
+const DRAFT_FORMAT_VERSION = 'signature-v3';
 
 function recipientKey(email) { return String(email || '').trim().toLowerCase(); }
 
@@ -40,23 +40,23 @@ async function promptProspect(env, prospect) {
   return prompt;
 }
 
-async function draftInitial(env, prospect) {
+async function draftInitial(env, prospect, business) {
   const profile = prospect.profile || prospect.campaign_type || 'room';
   const ai = await draftBookingEmail(env, {
     prospect: await promptProspect(env, prospect),
-    artistContext: artistContext(profile),
-    assets: assetText(profile),
+    artistContext: artistContext(profile, business),
+    assets: assetText(profile, business),
     purpose: 'initial outreach'
   });
   return { ...ai.data, responseId: ai.responseId || null };
 }
 
-async function draftFollowup(env, prospect) {
+async function draftFollowup(env, prospect, business) {
   const profile = prospect.profile || prospect.campaign_type || 'room';
   const ai = await draftBookingEmail(env, {
     prospect: await promptProspect(env, prospect),
-    artistContext: artistContext(profile),
-    assets: assetText(profile),
+    artistContext: artistContext(profile, business),
+    assets: assetText(profile, business),
     purpose: `follow-up touch ${Number(prospect.touch_count || 0) + 1}`,
     priorMessages: await priorThread(env, prospect.id)
   });
@@ -127,12 +127,14 @@ async function attachDuplicateToExistingThread(env, prospect, owner) {
 }
 
 async function sendDraft(env, config, prospect, draft, purpose) {
-  const body = appendComplianceFooter(draft.body, config);
+  const mailbox = await resolveOutboundMailbox(env, { contactId: prospect.id, to: prospect.email });
+  const business = businessForMailbox(env, mailbox);
+  const body = appendComplianceFooter(draft.body, config, business);
   const result = await sendMicrosoftEmail(env, {
     approved: true,
     complianceOk: true,
     to: prospect.email,
-    from: ARTIST_PROFILE.bookingEmail,
+    from: mailbox,
     subject: draft.subject,
     body,
     contactId: prospect.id,
@@ -150,7 +152,7 @@ async function sendDraft(env, config, prospect, draft, purpose) {
     internetMessageId: result.internetMessageId,
     metadata: {
       purpose,
-      requestedFrom: ARTIST_PROFILE.bookingEmail,
+      requestedFrom: mailbox,
       aiResponseId: draft.responseId || null,
       formatVersion: DRAFT_FORMAT_VERSION
     }
@@ -226,6 +228,16 @@ export async function processOutboundCycle(env, config) {
       };
     }
 
+    const approvedMailbox = await resolveOutboundMailbox(env, { contactId: approved.id, to: approved.email });
+    if (approvedMailbox !== env.MS_SENDER_USER && !isNewMailboxEnabled(env)) {
+      return {
+        drafted, sentInitial, sentFollowups, grouped, skipped: skipped + 1,
+        sendGate: 'new outbound mailbox is paused pending verification',
+        windowOpen,
+        pilotLock: 'The Parma Entertainment Group mailbox has not been verified yet.'
+      };
+    }
+
     if (!sendGate.ok || !windowOpen || initialUsed >= config.dailyInitialEmailLimit) {
       return {
         drafted, sentInitial, sentFollowups, grouped, skipped,
@@ -278,10 +290,14 @@ export async function processOutboundCycle(env, config) {
       continue;
     }
 
+    if (!isNewMailboxEnabled(env)) { skipped++; continue; }
+
     if (config.mode !== 'shadow' && (!sendGate.ok || !windowOpen || initialUsed + sentInitial >= config.dailyInitialEmailLimit)) break;
     if (config.mode === 'shadow' && await hasShadowDraft(env, prospect.id, 'initial')) continue;
 
-    const draft = await draftInitial(env, prospect);
+    const mailbox = await resolveOutboundMailbox(env, { contactId: prospect.id, to: prospect.email });
+    const business = businessForMailbox(env, mailbox);
+    const draft = await draftInitial(env, prospect, business);
     if (config.mode === 'shadow') {
       const stored = await shadowDraft(env, config, prospect, draft, 'initial');
       if (stored.created) drafted++;
@@ -304,7 +320,10 @@ export async function processOutboundCycle(env, config) {
     const purpose = `followup-${Number(prospect.touch_count || 0) + 1}`;
     if (config.mode === 'shadow' && await hasShadowDraft(env, prospect.id, purpose)) continue;
 
-    const draft = await draftFollowup(env, prospect);
+    const mailbox = await resolveOutboundMailbox(env, { contactId: prospect.id, to: prospect.email });
+    if (mailbox !== env.MS_SENDER_USER && !isNewMailboxEnabled(env)) { skipped++; continue; }
+    const business = businessForMailbox(env, mailbox);
+    const draft = await draftFollowup(env, prospect, business);
     if (config.mode === 'shadow') {
       const stored = await shadowDraft(env, config, prospect, draft, purpose);
       if (stored.created) drafted++;

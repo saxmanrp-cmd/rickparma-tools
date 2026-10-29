@@ -56,7 +56,7 @@ export async function bookingAgentStatus(env) {
   const twilio = twilioStatus(env);
   const smsServiceConfigured = !!(env.SMS_BLAST && typeof env.SMS_BLAST.fetch === 'function');
   const alertPhoneConfigured = !!String(config.interventionAlertPhone || env.BOOKING_ALERT_PHONE || '').trim();
-  const [prospects, escalations, latest, drafts] = await Promise.all([
+  const [prospects, escalations, latest, drafts, mailboxVerification] = await Promise.all([
     env.DB.prepare(`SELECT
       COUNT(*) total,
       SUM(CASE WHEN automation_safe='YES_TARGETED' AND suppressed=0 AND current_venue=0 THEN 1 ELSE 0 END) verified,
@@ -67,16 +67,23 @@ export async function bookingAgentStatus(env) {
       FROM prospects`).first(),
     env.DB.prepare("SELECT COUNT(*) n FROM escalations WHERE status='open'").first(),
     env.DB.prepare("SELECT * FROM autopilot_runs WHERE run_type='autopilot-cycle' ORDER BY started_at DESC LIMIT 1").first(),
-    env.DB.prepare("SELECT COUNT(*) n FROM messages WHERE status='draft'").first()
+    env.DB.prepare("SELECT COUNT(*) n FROM messages WHERE status='draft'").first(),
+    env.DB.prepare("SELECT cursor,metadata_json,updated_at FROM sync_state WHERE provider='microsoft-new-outbound-verification'").first()
   ]);
+  const newMailboxReady = microsoft.newOutboundEnabled && mailboxVerification?.cursor === 'verified';
 
   return {
     config,
     readiness: {
-      canSend: gate.ok && microsoft.configured && openai.configured,
-      sendBlocker: !gate.ok ? gate.reason : !microsoft.configured ? 'Microsoft email is not configured.' : !openai.configured ? 'OpenAI is not configured.' : '',
+      canSend: gate.ok && microsoft.configured && openai.configured && newMailboxReady,
+      sendBlocker: !gate.ok ? gate.reason : !microsoft.configured ? 'Microsoft email is not configured.' : !openai.configured ? 'OpenAI is not configured.' : !newMailboxReady ? 'The Parma Entertainment Group mailbox has not passed verification or is not enabled.' : '',
       sendWindowOpen: withinSendWindow(config),
       microsoft,
+      newOutboundMailboxVerification: {
+        status: mailboxVerification?.cursor || 'not-requested',
+        updatedAt: mailboxVerification?.updated_at || null,
+        details: safeJson(mailboxVerification?.metadata_json, {})
+      },
       openai,
       interventionTextAlerts: {
         enabled: config.interventionAlertsEnabled !== false,

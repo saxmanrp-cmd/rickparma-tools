@@ -14,7 +14,7 @@
     contactPrefs: {},
     roomPrefs: {},
     settings: {
-      website: 'https://RickParma.com',
+      website: 'https://parmaentertainmentgroup.com',
       epk: 'https://RickParma.com/epk/',
       representation: DATA.profile?.representation || 'Booking coordination available through Justin Young Entertainment.',
       includeRepresentation: true
@@ -62,6 +62,9 @@
         contactPrefs: saved?.contactPrefs || {},
         roomPrefs: saved?.roomPrefs || {}
       };
+      if (merged.settings.website === 'https://RickParma.com' || merged.settings.website === 'https://rickparma.com/') {
+        merged.settings.website = 'https://parmaentertainmentgroup.com';
+      }
       if (!String(merged.settings?.epk || '').trim()) merged.settings.epk = defaultState.settings.epk;
       return merged;
     } catch {

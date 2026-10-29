@@ -32,7 +32,7 @@
   }
 
   function senderFor(c) {
-    return window.BookingSenderPolicy?.senderFor?.(c, 'campaign') || { email: 'saxman@rickparma.com', label: 'Rick Parma' };
+    return window.BookingSenderPolicy?.senderFor?.(c, 'campaign') || { email: 'contact@parmaentertainmentgroup.com', label: 'Parma Entertainment Group' };
   }
 
   function textOk(id) { return !!readState().textOk?.[id]; }
@@ -53,7 +53,9 @@
     if (!window.BookingCloud || !sessionReady()) return false;
     try {
       const providers = await window.BookingCloud.providerStatus();
-      return channel === 'Email' ? !!providers?.email?.configured : channel === 'Text' ? !!providers?.sms?.configured : false;
+      return channel === 'Email'
+        ? !!providers?.email?.configured && !!providers?.email?.newOutboundEnabled && providers?.email?.newOutboundMailbox === 'contact@parmaentertainmentgroup.com'
+        : channel === 'Text' ? !!providers?.sms?.configured : false;
     } catch {
       return false;
     }
@@ -228,13 +230,13 @@
     if (!draft || !['Email', 'Text'].includes(draft.channel)) return;
     if (!sessionReady()) return;
 
-    // We own the click only when a secure provider is actually configured. Otherwise
-    // the existing manual mailto/sms behavior remains untouched.
+    // Email must go through Graph so the verified M365 mailbox supplies From and Reply-To.
     e.preventDefault();
     e.stopImmediatePropagation();
     const ready = await providerReady(draft.channel);
     if (!ready) {
-      manualFallback(draft);
+      if (draft.channel === 'Text') manualFallback(draft);
+      else toast('Parma Entertainment Group email is not verified and enabled yet.');
       return;
     }
     const stop = blocked(draft.c);

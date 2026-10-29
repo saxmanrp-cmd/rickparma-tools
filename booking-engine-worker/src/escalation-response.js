@@ -5,13 +5,14 @@ import { getAutopilotConfig, appendComplianceFooter } from './autopilot-policy.j
 import { getProspect } from './prospects.js';
 import { safeJson, artistContext, assetText, priorThread, storeOutbound, event, nowIso } from './autopilot-common.js';
 import { packageRatesForReply } from './package-rates.js';
+import { businessForMailbox, legacyMailbox } from './outbound-identity.js';
 
 async function loadEscalation(env, id) {
   return env.DB.prepare(`
     SELECT
       e.*,
       m.channel AS inbound_channel,m.sender AS inbound_sender,m.subject AS inbound_subject,
-      m.body AS inbound_body,m.provider_message_id AS inbound_provider_message_id,m.thread_id AS inbound_thread_id,
+      m.body AS inbound_body,m.provider_message_id AS inbound_provider_message_id,m.thread_id AS inbound_thread_id,m.recipient AS inbound_recipient,
       p.text_ok
     FROM escalations e
     LEFT JOIN messages m ON m.id=e.message_id
@@ -58,6 +59,7 @@ export async function respondToEscalation(env, id, decision = '') {
     recommendedAction: `Rick's authoritative decision: ${authoritativeDecision}. Express exactly that decision without inventing or adding terms.`
   };
   const profile = prospect.profile || prospect.campaign_type || 'room';
+  const business = businessForMailbox(env, escalation.inbound_recipient || legacyMailbox(env));
   const draft = await draftBookingReply(env, {
     classification: safeClassification,
     inbound: {
@@ -66,9 +68,9 @@ export async function respondToEscalation(env, id, decision = '') {
       subject: escalation.inbound_subject,
       body: escalation.inbound_body
     },
-    artistContext: artistContext(profile),
+    artistContext: artistContext(profile, business),
     rateSheet: packageRatesForReply(),
-    assets: assetText(profile),
+    assets: assetText(profile, business),
     priorMessages: `${await priorThread(env, prospect.id)}\n\nRICK'S AUTHORITATIVE DECISION:\n${authoritativeDecision}`,
     calendarAvailability: classification.calendarAvailability || null
   });
@@ -89,10 +91,11 @@ export async function respondToEscalation(env, id, decision = '') {
   } else {
     if (!microsoftStatus(env).configured) throw new Error('Microsoft email is not configured.');
     if (!escalation.inbound_provider_message_id) throw new Error('The source Microsoft message is missing.');
-    const body = appendComplianceFooter(draft.data.body, config);
+    const body = appendComplianceFooter(draft.data.body, config, business);
     const sent = await replyMicrosoftEmail(env, {
       approved: true,
       sourceMessageId: escalation.inbound_provider_message_id,
+      mailbox: escalation.inbound_recipient || legacyMailbox(env),
       body
     });
     outboundId = await storeOutbound(env, {

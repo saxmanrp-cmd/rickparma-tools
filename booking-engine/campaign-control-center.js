@@ -191,7 +191,7 @@
         <button type="button" class="secondary" data-cc-refresh>Refresh</button>
         <button type="button" class="secondary" data-cc-settings>Agent Settings</button>
       </div>
-      ${draft ? `<div class="cc-draft-wrap" data-cc-draft-panel hidden><div class="cc-draft-head"><div><span>From</span><strong>booking@rickparma.com</strong></div><div><span>Subject</span><strong>${esc(draft.subject || '')}</strong></div></div><pre>${esc(draft.body || '')}</pre></div>` : ''}`;
+      ${draft ? `<div class="cc-draft-wrap" data-cc-draft-panel hidden><div class="cc-draft-head"><div><span>From</span><strong>contact@parmaentertainmentgroup.com</strong></div><div><span>Subject</span><strong>${esc(draft.subject || '')}</strong></div></div><pre>${esc(draft.body || '')}</pre></div>` : ''}`;
   }
 
   function render() {

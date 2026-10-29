@@ -1,3 +1,5 @@
+import { NEW_BUSINESS, LEGACY_BUSINESS } from './outbound-identity.js';
+
 const THROUGHPUT_PROFILE_VERSION = 3;
 
 export const DEFAULT_AUTOPILOT_CONFIG = Object.freeze({
@@ -161,12 +163,12 @@ export function prospectEligible(config, prospect) {
 function cleanBodyBeforeSignature(body, config = {}) {
   let text = String(body || '').replace(/\r\n/g, '\n').trim();
 
-  // The standardized signature owns Rick's website and booking email. Remove common
-  // AI-generated website blocks and standalone copies so those details appear once.
+  // The selected mailbox owns the business website and booking email. Remove
+  // generated copies so a legacy thread cannot acquire the new signature.
   text = text
-    .replace(/(^|\n)(?:Website|More about my work|More about me|More info(?:rmation)?|Learn more|About my work):\s*\nhttps?:\/\/(?:www\.)?rickparma\.com\/?\s*(?=\n|$)/gi, '$1')
-    .replace(/(^|\n)https?:\/\/(?:www\.)?rickparma\.com\/?\s*(?=\n|$)/gi, '$1')
-    .replace(/(^|\n)Booking(?: email)?:\s*booking@rickparma\.com\s*(?=\n|$)/gi, '$1')
+    .replace(/(^|\n)(?:Website|More about my work|More about me|More info(?:rmation)?|Learn more|About my work):\s*\nhttps?:\/\/(?:www\.)?(?:rickparma|parmaentertainmentgroup)\.com\/?\s*(?=\n|$)/gi, '$1')
+    .replace(/(^|\n)https?:\/\/(?:www\.)?(?:rickparma|parmaentertainmentgroup)\.com\/?\s*(?=\n|$)/gi, '$1')
+    .replace(/(^|\n)Booking(?: email)?:\s*(?:booking@rickparma\.com|contact@parmaentertainmentgroup\.com)\s*(?=\n|$)/gi, '$1')
     .replace(/(^|\n)(?:Website|More about my work|More about me|More info(?:rmation)?|Learn more|About my work):\s*(?=\n\s*\n|\n?$)/gi, '$1');
 
   let lines = text.split('\n').map(line => line.replace(/[ \t]+$/g, ''));
@@ -185,7 +187,7 @@ function cleanBodyBeforeSignature(body, config = {}) {
     if (lines[i].trim().toLowerCase() !== 'rick parma') continue;
     const tail = lines.slice(i + 1).join(' ').toLowerCase();
     const looksSystemGenerated =
-      /booking@rickparma\.com|rickparma\.com|singer|vocalist|saxophonist|entertainer/.test(tail)
+      /booking@rickparma\.com|contact@parmaentertainmentgroup\.com|rickparma\.com|parmaentertainmentgroup\.com|singer|vocalist|saxophonist|entertainer/.test(tail)
       || (addressNeedle && tail.includes(addressNeedle))
       || /\b(?:las vegas|north las vegas),?\s+nv\b/.test(tail)
       || /\b\d{5}(?:-\d{4})?\b/.test(tail);
@@ -200,7 +202,7 @@ function cleanBodyBeforeSignature(body, config = {}) {
   for (let i = lines.length - 1; i >= Math.max(0, lines.length - 8); i--) {
     if (lines[i].trim().toLowerCase() !== 'rick parma') continue;
     const tail = lines.slice(i + 1).join(' ').toLowerCase();
-    if (!tail || /singer|vocalist|saxophonist|entertainer|booking@rickparma|rickparma\.com/.test(tail)) {
+    if (!tail || /singer|vocalist|saxophonist|entertainer|booking@rickparma|contact@parmaentertainmentgroup|rickparma\.com|parmaentertainmentgroup\.com/.test(tail)) {
       lines = lines.slice(0, i);
       while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
       break;
@@ -210,17 +212,13 @@ function cleanBodyBeforeSignature(body, config = {}) {
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-export function appendComplianceFooter(body, config) {
+export function appendComplianceFooter(body, config, business = NEW_BUSINESS) {
   const content = cleanBodyBeforeSignature(body, config);
-  const signature = [
-    'Rick Parma',
-    'Singer • Saxophonist • DJ • Entertainer',
-    'booking@rickparma.com',
-    'RickParma.com',
-    config.businessPostalAddress || ''
-  ].filter(Boolean).join('\n');
+  const signature = business.name === LEGACY_BUSINESS.name
+    ? ['Rick Parma', 'Singer • Saxophonist • DJ • Entertainer', LEGACY_BUSINESS.email, 'RickParma.com', config.businessPostalAddress || '']
+    : ['Rick Parma', NEW_BUSINESS.name, 'Singer • Saxophonist • DJ • Entertainer', NEW_BUSINESS.email, NEW_BUSINESS.website, config.businessPostalAddress || ''];
 
-  return [content, signature, config.optOutLine || ''].filter(Boolean).join('\n\n');
+  return [content, signature.filter(Boolean).join('\n'), config.optOutLine || ''].filter(Boolean).join('\n\n');
 }
 
 export function categoryPolicy(category) {
