@@ -175,7 +175,9 @@ async function writeBlastWithAI(env, prompt, event) {
     body: JSON.stringify({
       model: "gpt-5-mini",
       store: false,
-      max_output_tokens: 300,
+      reasoning: { effort: "minimal" },
+      text: { verbosity: "low" },
+      max_output_tokens: 2e3,
       instructions: "Write one ready-to-send SMS blast in Rick Parma's friendly first-person voice. Return only the message, with no label, quotation marks, or commentary. Use only facts supplied in the request. Never invent a venue, date, time, price, link, booking detail, or offer. Keep it concise, usually under 320 characters. Plain text only: no emoji, smart quotes, or em dashes. You may use {{first_name}} when it feels natural. Include a clear call to action. If a calendar event is supplied, accurately promote that show. If no event is supplied, follow the custom request.",
       input: `Custom request: ${prompt || "Write an inviting announcement for the selected show."}${eventContext}`
     })
@@ -183,7 +185,13 @@ async function writeBlastWithAI(env, prompt, event) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error && data.error.message || "The AI writer could not create a draft.");
   const draft = extractResponseText(data);
-  if (!draft) throw new Error("The AI writer returned an empty draft.");
+  if (!draft) {
+    const reason = data.incomplete_details && data.incomplete_details.reason;
+    if (data.status === "incomplete" && reason === "max_output_tokens") {
+      throw new Error("The AI writer ran out of response space. Please tap Write My Text again.");
+    }
+    throw new Error("The AI writer did not return message text. Please try again.");
+  }
   return draft;
 }
 __name(writeBlastWithAI, "writeBlastWithAI");
