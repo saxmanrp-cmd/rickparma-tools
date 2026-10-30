@@ -4,13 +4,24 @@ import {
 } from '../outbound-identity.js';
 const GRAPH_ROOT = 'https://graph.microsoft.com/v1.0';
 
-function missing(env) {
-  const keys = ['MS_TENANT_ID', 'MS_CLIENT_ID', 'MS_CLIENT_SECRET', 'MS_SENDER_USER'];
-  return keys.filter(key => !String(env[key] || '').trim());
+function credentialKeys(mailbox, env) {
+  if (normalizedEmail(mailbox) === newOutboundMailbox(env)) {
+    return ['MS_NEW_OUTBOUND_TENANT_ID', 'MS_NEW_OUTBOUND_CLIENT_ID', 'MS_NEW_OUTBOUND_CLIENT_SECRET'];
+  }
+  return ['MS_TENANT_ID', 'MS_CLIENT_ID', 'MS_CLIENT_SECRET'];
+}
+
+function missing(env, mailbox = legacyMailbox(env)) {
+  const mailboxKey = normalizedEmail(mailbox) === newOutboundMailbox(env)
+    ? 'MS_NEW_OUTBOUND_USER'
+    : 'MS_SENDER_USER';
+  return [...credentialKeys(mailbox, env), mailboxKey]
+    .filter(key => !String(env[key] || '').trim());
 }
 
 export function microsoftStatus(env) {
   const absent = missing(env);
+  const newOutboundMissing = missing(env, newOutboundMailbox(env));
   return {
     provider: 'microsoft-graph',
     configured: absent.length === 0,
@@ -18,6 +29,8 @@ export function microsoftStatus(env) {
     legacyMailbox: legacyMailbox(env) || null,
     newOutboundMailbox: newOutboundMailbox(env) || null,
     newOutboundEnabled: isNewMailboxEnabled(env),
+    newOutboundConfigured: newOutboundMissing.length === 0,
+    newOutboundMissing,
     bookingAlias: env.MS_BOOKING_ALIAS || null
   };
 }
@@ -44,18 +57,20 @@ export async function resolveOutboundMailbox(env, { contactId = '', to = '' } = 
   return newOutboundMailbox(env);
 }
 
-async function accessToken(env) {
-  const absent = missing(env);
-  if (absent.length) throw new Error(`Microsoft Graph is not configured: ${absent.join(', ')}`);
+async function accessToken(env, mailbox = legacyMailbox(env)) {
+  const keys = credentialKeys(mailbox, env);
+  const absent = missing(env, mailbox);
+  if (absent.length) throw new Error(`Microsoft Graph is not configured for ${mailbox}: ${absent.join(', ')}`);
+  const [tenantId, clientId, clientSecret] = keys.map(key => env[key]);
 
   const body = new URLSearchParams({
-    client_id: env.MS_CLIENT_ID,
-    client_secret: env.MS_CLIENT_SECRET,
+    client_id: clientId,
+    client_secret: clientSecret,
     scope: 'https://graph.microsoft.com/.default',
     grant_type: 'client_credentials'
   });
 
-  const response = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(env.MS_TENANT_ID)}/oauth2/v2.0/token`, {
+  const response = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(tenantId)}/oauth2/v2.0/token`, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body
@@ -105,7 +120,7 @@ export async function sendMicrosoftEmail(env, input = {}, { verification = false
     throw new Error('New Parma Entertainment Group outreach is paused until its Microsoft mailbox is verified.');
   }
   const replyTo = mailbox;
-  const token = await accessToken(env);
+  const token = await accessToken(env, mailbox);
   const headers = {
     authorization: `Bearer ${token}`,
     'content-type': 'application/json'
@@ -175,7 +190,7 @@ export async function sendMicrosoftMailboxVerification(env) {
     body: `This is an automated sender verification for ${mailbox}. It was sent only to the same mailbox to confirm Microsoft Graph From and Reply-To settings.`
   }, { verification: true });
 
-  const token = await accessToken(env);
+  const token = await accessToken(env, mailbox);
   const url = `${GRAPH_ROOT}/users/${encodeURIComponent(mailbox)}/mailFolders/sentitems/messages?$top=25&$orderby=sentDateTime%20desc&$select=id,subject,from,replyTo,toRecipients,conversationId,internetMessageId,sentDateTime`;
   let match = null;
   for (let attempt = 0; attempt < 4 && !match; attempt++) {
@@ -210,7 +225,7 @@ export async function replyMicrosoftEmail(env, input = {}) {
   if (!content) throw new Error('Reply body is required.');
 
   const mailbox = requireKnownMailbox(env, input.mailbox || legacyMailbox(env));
-  const token = await accessToken(env);
+  const token = await accessToken(env, mailbox);
   const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
   const replyDraft = await graphJson(
     `${GRAPH_ROOT}/users/${encodeURIComponent(mailbox)}/messages/${encodeURIComponent(sourceMessageId)}/createReply`,
@@ -253,8 +268,8 @@ export async function replyMicrosoftEmail(env, input = {}) {
 }
 
 export async function syncMicrosoftDeletedBounces(env, limit = 25, selectedMailbox = '') {
-  const token = await accessToken(env);
   const mailbox = requireKnownMailbox(env, selectedMailbox || legacyMailbox(env));
+  const token = await accessToken(env, mailbox);
   const cap = Math.max(1, Math.min(100, Number(limit) || 25));
   const url = `${GRAPH_ROOT}/users/${encodeURIComponent(mailbox)}/mailFolders/deleteditems/messages?$top=${cap}&$orderby=receivedDateTime%20desc&$select=id,conversationId,internetMessageId,from,toRecipients,subject,body,bodyPreview,receivedDateTime`;
 
@@ -287,8 +302,8 @@ export async function syncMicrosoftDeletedBounces(env, limit = 25, selectedMailb
 }
 
 export async function syncMicrosoftInbox(env, deltaLink = '', selectedMailbox = '') {
-  const token = await accessToken(env);
   const mailbox = requireKnownMailbox(env, selectedMailbox || legacyMailbox(env));
+  const token = await accessToken(env, mailbox);
   let url = deltaLink || `${GRAPH_ROOT}/users/${encodeURIComponent(mailbox)}/mailFolders/inbox/messages/delta?$select=id,conversationId,internetMessageId,from,toRecipients,subject,body,bodyPreview,receivedDateTime`;
   const messages = [];
   let finalDeltaLink = deltaLink || '';
