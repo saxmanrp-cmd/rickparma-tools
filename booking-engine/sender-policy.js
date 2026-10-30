@@ -14,7 +14,7 @@
     card.dataset.senderPolicy = 'true';
     card.innerHTML = `
       <h3>Campaign Senders</h3>
-      <p>New outreach is sent by Parma Entertainment Group. Existing email threads keep their original sender.</p>
+      <p>All future booking emails are sent by Parma Entertainment Group from contact@parmaentertainmentgroup.com. For prospects previously contacted from the legacy mailbox, the first post-switch email starts a new thread and explains the updated website and email. Earlier CRM and email history remains available.</p>
       <div style="display:grid;gap:10px;margin:8px 0 16px">
         <div class="detail-box"><span>New outreach and logistics</span><strong>Parma Entertainment Group &lt;contact@parmaentertainmentgroup.com&gt;</strong></div>
       </div>
