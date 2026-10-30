@@ -116,13 +116,17 @@ function parsedJson(value, fallback = {}) {
 
 export function verifiedBounceReplacement(existing, item = {}) {
   const metadata = parsedJson(existing?.metadata_json, {});
+  const bounceRecoveryPending = metadata.bounceRecoveryPending === true
+    || (String(existing?.status || '').toLowerCase() === 'research needed'
+      && !!metadata.lastBounceEmail
+      && !!metadata.lastBounceMessageId);
   const email = normEmail(item.email);
   const invalidEmails = Array.isArray(metadata.invalidEmails)
     ? metadata.invalidEmails.map(value => normEmail(value)).filter(Boolean)
     : [];
   const bouncedEmail = normEmail(metadata.lastBounceEmail);
   return !!(
-    metadata.bounceRecoveryPending === true
+    bounceRecoveryPending
     && email
     && email !== bouncedEmail
     && !invalidEmails.includes(email)
@@ -243,7 +247,7 @@ export async function upsertResearchedProspect(env, item = {}, fallbackId = '') 
   const bounceRecoveryReady = verifiedBounceReplacement(existing, item);
   const metadata = {
     ...existingMetadata,
-    ...(bounceRecoveryReady ? { bounceRecoveryEmail: email } : {}),
+    ...(bounceRecoveryReady ? { bounceRecoveryPending: true, bounceRecoveryEmail: email } : {}),
     lastResearchResponse: {
       fitReason: item.fitReason || '',
       evidenceSummary: item.evidenceSummary || '',
