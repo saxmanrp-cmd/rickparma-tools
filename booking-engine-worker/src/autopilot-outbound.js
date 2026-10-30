@@ -5,7 +5,7 @@ import { businessForMailbox, isNewMailboxEnabled } from './outbound-identity.js'
 import { prepareIdentityTransition, transitionMetadata } from './sender-transition.js';
 import { listProspects } from './prospects.js';
 import {
-  nowIso, daysFromNow, event, prospectForPrompt, artistContext, assetText,
+  nowIso, daysFromNow, event, prospectForPrompt, artistContext, assetText, safeJson,
   priorThread, todayEventCount, storeOutbound, storeDraft, mirrorOverride
 } from './autopilot-common.js';
 
@@ -131,7 +131,8 @@ async function sendDraft(env, config, prospect, draft, purpose) {
   const mailbox = await resolveOutboundMailbox(env, { contactId: prospect.id, to: prospect.email });
   const business = businessForMailbox(env, mailbox);
   const transition = await prepareIdentityTransition(env, {
-    contactId: prospect.id, to: prospect.email, body: draft.body
+    contactId: prospect.id, to: prospect.email, body: draft.body,
+    force: purpose === 'bounce-recovery'
   });
   const body = appendComplianceFooter(transition.body, config, business);
   const result = await sendMicrosoftEmail(env, {
@@ -168,26 +169,38 @@ async function sendDraft(env, config, prospect, draft, purpose) {
   const nextAction = delay == null ? null : daysFromNow(delay);
   await env.DB.prepare(`
     UPDATE prospects SET
-      status='Contacted',campaign_active=?,campaign_stage=?,touch_count=?,last_contacted_at=?,next_action_at=?
+      status='Contacted',campaign_active=?,campaign_stage=?,touch_count=?,last_contacted_at=?,next_action_at=?,
+      metadata_json=CASE WHEN ?='bounce-recovery' THEN json_remove(metadata_json,'$.bounceRecoveryPending','$.bounceRecoveryEmail') ELSE metadata_json END
     WHERE id=?
-  `).bind(delay == null ? 0 : 1, touchCount, touchCount, nowIso(), nextAction, prospect.id).run();
+  `).bind(delay == null ? 0 : 1, touchCount, touchCount, nowIso(), nextAction, purpose, prospect.id).run();
+  const recovery = purpose === 'bounce-recovery';
+  const prospectMetadata = safeJson(prospect.metadata_json, {});
+  if (recovery && prospectMetadata.lastBounceMessageId) {
+    await env.DB.prepare(`
+      UPDATE escalations
+      SET status='resolved',resolved_at=?,metadata_json=json_set(COALESCE(metadata_json,'{}'),'$.resolution','Automated contact recovery sent from the Parma Entertainment Group mailbox.')
+      WHERE contact_id=? AND message_id=? AND status='open'
+    `).bind(nowIso(), prospect.id, prospectMetadata.lastBounceMessageId).run();
+  }
   await mirrorOverride(env, prospect.id, {
     Status: 'Sent',
     'Last Contacted': nowIso(),
     'Next Follow-up': nextAction
   });
-  await event(env, prospect.id, purpose === 'initial' ? 'autopilot_initial_sent' : 'autopilot_followup_sent', 'email', {
+  await event(env, prospect.id, purpose === 'initial' || recovery ? 'autopilot_initial_sent' : 'autopilot_followup_sent', 'email', {
     messageId,
     providerMessageId: result.providerMessageId,
     threadId: result.threadId,
-    touchCount
+    touchCount,
+    ...(recovery ? { bounceRecovery: true } : {})
   });
   return messageId;
 }
 
 async function shadowDraft(env, config, prospect, draft, purpose) {
   const transition = await prepareIdentityTransition(env, {
-    contactId: prospect.id, to: prospect.email, body: draft.body
+    contactId: prospect.id, to: prospect.email, body: draft.body,
+    force: purpose === 'bounce-recovery'
   });
   const body = appendComplianceFooter(transition.body, config);
   const stored = await storeDraft(env, prospect.id, draft.subject, body, {
@@ -318,27 +331,44 @@ export async function processOutboundCycle(env, config) {
 
   const due = prospects.filter(p => Number(p.campaign_active || 0) && p.next_action_at && String(p.next_action_at) <= nowIso());
   for (const prospect of due) {
+    const prospectMetadata = safeJson(prospect.metadata_json, {});
+    const bounceRecovery = prospectMetadata.bounceRecoveryPending === true
+      && prospectMetadata.bounceRecoveryEmail === recipientKey(prospect.email);
     const eligibility = prospectEligible(config, prospect);
     if (!eligibility.ok) { skipped++; continue; }
-    if (Number(prospect.touch_count || 0) >= config.maxColdTouches) {
+    if (!bounceRecovery && Number(prospect.touch_count || 0) >= config.maxColdTouches) {
       await env.DB.prepare("UPDATE prospects SET campaign_active=0,next_action_at=NULL,status='Nurture' WHERE id=?")
         .bind(prospect.id).run();
       continue;
     }
-    if (config.mode !== 'shadow' && (!sendGate.ok || !windowOpen || followupUsed + sentFollowups >= config.dailyFollowupEmailLimit)) break;
-    const purpose = `followup-${Number(prospect.touch_count || 0) + 1}`;
+    const purpose = bounceRecovery ? 'bounce-recovery' : `followup-${Number(prospect.touch_count || 0) + 1}`;
+    const quotaReached = bounceRecovery
+      ? initialUsed + sentInitial >= config.dailyInitialEmailLimit
+      : followupUsed + sentFollowups >= config.dailyFollowupEmailLimit;
+    if (config.mode !== 'shadow' && (!sendGate.ok || !windowOpen || quotaReached)) break;
     if (config.mode === 'shadow' && await hasShadowDraft(env, prospect.id, purpose)) continue;
 
     const mailbox = await resolveOutboundMailbox(env, { contactId: prospect.id, to: prospect.email });
     if (mailbox !== env.MS_SENDER_USER && !isNewMailboxEnabled(env)) { skipped++; continue; }
+    if (bounceRecovery) {
+      const owner = await existingRecipientThread(env, prospect);
+      if (owner && owner.contact_id !== prospect.id) {
+        await attachDuplicateToExistingThread(env, prospect, owner);
+        grouped++;
+        continue;
+      }
+    }
     const business = businessForMailbox(env, mailbox);
-    const draft = await draftFollowup(env, prospect, business);
+    const draft = bounceRecovery
+      ? await draftInitial(env, prospect, business)
+      : await draftFollowup(env, prospect, business);
     if (config.mode === 'shadow') {
       const stored = await shadowDraft(env, config, prospect, draft, purpose);
       if (stored.created) drafted++;
     } else {
       await sendDraft(env, config, prospect, draft, purpose);
-      sentFollowups++;
+      if (bounceRecovery) sentInitial++;
+      else sentFollowups++;
     }
   }
 

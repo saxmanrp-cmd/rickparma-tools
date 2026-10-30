@@ -114,6 +114,26 @@ function parsedJson(value, fallback = {}) {
   catch { return fallback; }
 }
 
+export function verifiedBounceReplacement(existing, item = {}) {
+  const metadata = parsedJson(existing?.metadata_json, {});
+  const email = normEmail(item.email);
+  const invalidEmails = Array.isArray(metadata.invalidEmails)
+    ? metadata.invalidEmails.map(value => normEmail(value)).filter(Boolean)
+    : [];
+  const bouncedEmail = normEmail(metadata.lastBounceEmail);
+  return !!(
+    metadata.bounceRecoveryPending === true
+    && email
+    && email !== bouncedEmail
+    && !invalidEmails.includes(email)
+    && String(item.automationSafe || '') === 'YES_TARGETED'
+    && Number(item.fitScore || 0) >= 82
+    && Number(item.confidence || 0) >= 0.82
+    && Array.isArray(item.sourceUrls)
+    && item.sourceUrls.length > 0
+  );
+}
+
 async function existingForImport(env, id, key) {
   const byId = id ? await env.DB.prepare('SELECT * FROM prospects WHERE id=? LIMIT 1').bind(id).first() : null;
   if (byId) return byId;
@@ -219,8 +239,11 @@ export async function upsertResearchedProspect(env, item = {}, fallbackId = '') 
   const id = existing?.id || requestedId || `AUTO-${crypto.randomUUID()}`;
   const conflictingKey = byId && byKey && byId.id !== byKey.id;
   const safeKey = conflictingKey ? byId.dedupe_key : key;
+  const existingMetadata = parsedJson(existing?.metadata_json, {});
+  const bounceRecoveryReady = verifiedBounceReplacement(existing, item);
   const metadata = {
-    ...parsedJson(existing?.metadata_json, {}),
+    ...existingMetadata,
+    ...(bounceRecoveryReady ? { bounceRecoveryEmail: email } : {}),
     lastResearchResponse: {
       fitReason: item.fitReason || '',
       evidenceSummary: item.evidenceSummary || '',
@@ -235,13 +258,19 @@ export async function upsertResearchedProspect(env, item = {}, fallbackId = '') 
         dedupe_key=?, entity=?, room=?, category=?, profile=?, contact_name=?, contact_role=?, email=?, phone=?,
         website_url=?, booking_url=?, contact_route=?, fit_score=?, confidence=?, automation_safe=?, fit_reason=?,
         evidence_summary=?, source_urls_json=?, campaign_type=?, verified_at=CURRENT_TIMESTAMP,
-        last_researched_at=CURRENT_TIMESTAMP, metadata_json=?
+        last_researched_at=CURRENT_TIMESTAMP,
+        status=CASE WHEN ?=1 THEN 'Contacted' ELSE status END,
+        campaign_active=CASE WHEN ?=1 THEN 1 ELSE campaign_active END,
+        next_action_at=CASE WHEN ?=1 THEN ? ELSE next_action_at END,
+        metadata_json=?
       WHERE id=?
     `).bind(
       safeKey, entity, text(item.room), text(item.category), text(item.profile || 'room'), text(item.contactName),
       text(item.contactRole), email, phone, text(item.websiteUrl), text(item.bookingUrl), text(item.contactRoute || 'unknown'),
       Number(item.fitScore || 0), Number(item.confidence || 0), text(item.automationSafe || 'MANUAL'), text(item.fitReason),
       text(item.evidenceSummary), JSON.stringify(Array.isArray(item.sourceUrls) ? item.sourceUrls : []), text(item.profile || 'room'),
+      bounceRecoveryReady ? 1 : 0, bounceRecoveryReady ? 1 : 0, bounceRecoveryReady ? 1 : 0,
+      bounceRecoveryReady ? new Date().toISOString() : null,
       JSON.stringify(metadata), existing.id
     ).run();
     return existing.id;

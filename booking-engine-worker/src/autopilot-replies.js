@@ -332,7 +332,8 @@ async function applyClassification(env, message, classification, config = null) 
       invalidEmails,
       lastBounceAt: nowIso(),
       lastBounceMessageId: message.id,
-      lastBounceEmail: bouncedEmail || null
+      lastBounceEmail: bouncedEmail || null,
+      bounceRecoveryPending: true
     };
 
     await env.DB.prepare(`
@@ -608,7 +609,12 @@ export async function processInboundCycle(env, config) {
     const needsRick = !!classification.mustEscalate || !!policy.escalate || handoff.needed;
 
     if (needsRick) {
-      const escalationClassification = handoff.needed
+      const escalationClassification = classification.category === 'bounce'
+        ? {
+            ...classification,
+            recommendedAction: 'The Booking Agent will research a new direct, publicly verified booking contact and send a fresh email from contact@parmaentertainmentgroup.com with the business contact update. If no reliable direct email is found, this will stay flagged for Rick.'
+          }
+        : handoff.needed
         ? { ...classification, humanHandoffReason: handoff.reason }
         : classification;
 
