@@ -115,9 +115,9 @@ npx wrangler secret put MS_NEW_OUTBOUND_CLIENT_ID
 npx wrangler secret put MS_NEW_OUTBOUND_CLIENT_SECRET
 ```
 
-`MS_NEW_OUTBOUND_TENANT_ID` and `MS_NEW_OUTBOUND_USER` are non-secret settings in `wrangler.jsonc`. The new sender remains paused (`MS_NEW_OUTBOUND_ENABLED=false`) until same-mailbox verification succeeds. Set it to `true` only after Graph confirms From, Reply-To, and Sent Items for the Parma mailbox.
+`MS_NEW_OUTBOUND_TENANT_ID` and `MS_NEW_OUTBOUND_USER` are non-secret settings in `wrangler.jsonc`. `MS_NEW_OUTBOUND_ENABLED` must remain `true` only after Graph confirms From, Reply-To, and Sent Items for the Parma mailbox; production is enabled after that verification.
 
-New contacts use Parma Entertainment Group. The provider creates a Microsoft draft first, captures message/conversation IDs and then sends it. Existing conversations retain the legacy mailbox, and automated replies use `createReply` within their original thread.
+All future email sends use Parma Entertainment Group. If a message is sent in response to an older thread in the legacy mailbox, the Worker starts a new thread from the Parma mailbox and includes a one-time contact transition notice for that recipient. The old messages remain in CRM history. Messages already in a Parma mailbox thread can continue in that thread. The provider creates a Microsoft draft first, captures message/conversation IDs and then sends it.
 
 ## Business postal address / commercial email safety
 

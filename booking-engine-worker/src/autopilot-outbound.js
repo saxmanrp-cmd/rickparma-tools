@@ -2,13 +2,14 @@ import { sendMicrosoftEmail, resolveOutboundMailbox } from './providers/microsof
 import { draftBookingEmail } from './providers/openai.js';
 import { canAutonomouslySend, withinSendWindow, prospectEligible, appendComplianceFooter } from './autopilot-policy.js';
 import { businessForMailbox, isNewMailboxEnabled } from './outbound-identity.js';
+import { prepareIdentityTransition, transitionMetadata } from './sender-transition.js';
 import { listProspects } from './prospects.js';
 import {
   nowIso, daysFromNow, event, prospectForPrompt, artistContext, assetText,
   priorThread, todayEventCount, storeOutbound, storeDraft, mirrorOverride
 } from './autopilot-common.js';
 
-const DRAFT_FORMAT_VERSION = 'signature-v3';
+const DRAFT_FORMAT_VERSION = 'signature-v4-parma-transition';
 
 function recipientKey(email) { return String(email || '').trim().toLowerCase(); }
 
@@ -129,7 +130,10 @@ async function attachDuplicateToExistingThread(env, prospect, owner) {
 async function sendDraft(env, config, prospect, draft, purpose) {
   const mailbox = await resolveOutboundMailbox(env, { contactId: prospect.id, to: prospect.email });
   const business = businessForMailbox(env, mailbox);
-  const body = appendComplianceFooter(draft.body, config, business);
+  const transition = await prepareIdentityTransition(env, {
+    contactId: prospect.id, to: prospect.email, body: draft.body
+  });
+  const body = appendComplianceFooter(transition.body, config, business);
   const result = await sendMicrosoftEmail(env, {
     approved: true,
     complianceOk: true,
@@ -154,7 +158,8 @@ async function sendDraft(env, config, prospect, draft, purpose) {
       purpose,
       requestedFrom: mailbox,
       aiResponseId: draft.responseId || null,
-      formatVersion: DRAFT_FORMAT_VERSION
+      formatVersion: DRAFT_FORMAT_VERSION,
+      ...transitionMetadata(transition)
     }
   });
 
@@ -181,11 +186,15 @@ async function sendDraft(env, config, prospect, draft, purpose) {
 }
 
 async function shadowDraft(env, config, prospect, draft, purpose) {
-  const body = appendComplianceFooter(draft.body, config);
+  const transition = await prepareIdentityTransition(env, {
+    contactId: prospect.id, to: prospect.email, body: draft.body
+  });
+  const body = appendComplianceFooter(transition.body, config);
   const stored = await storeDraft(env, prospect.id, draft.subject, body, {
     purpose,
     aiResponseId: draft.responseId || null,
-    formatVersion: DRAFT_FORMAT_VERSION
+    formatVersion: DRAFT_FORMAT_VERSION,
+    ...transitionMetadata(transition)
   });
   if (stored.created) await event(env, prospect.id, 'autopilot_shadow_draft', 'email', { purpose, messageId: stored.id });
   return stored;

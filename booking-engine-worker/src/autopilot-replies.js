@@ -1,11 +1,12 @@
-import { replyMicrosoftEmail, microsoftStatus } from './providers/microsoft.js';
+import { replyMicrosoftEmail, sendMicrosoftEmail, microsoftStatus } from './providers/microsoft.js';
 import { sendTwilioText, twilioStatus } from './providers/twilio.js';
 import { classifyBookingReply, draftBookingReply } from './providers/openai.js';
 import { categoryPolicy, canAutonomouslySend, withinSendWindow, appendComplianceFooter } from './autopilot-policy.js';
 import { getProspect, suppressProspect } from './prospects.js';
 import { learnContactsFromReply } from './contacts.js';
 import { checkRickAvailability } from './calendar-availability.js';
-import { businessForMailbox, legacyMailbox } from './outbound-identity.js';
+import { businessForMailbox, legacyMailbox, newOutboundMailbox } from './outbound-identity.js';
+import { isNewSender, prepareIdentityTransition, transitionMetadata } from './sender-transition.js';
 import {
   safeJson, daysFromNow, event, artistContext, assetText, priorThread,
   todayEventCount, storeOutbound, storeDraft, mirrorOverride, nowIso
@@ -395,7 +396,7 @@ async function draftReplyForMessage(env, config, message, classification) {
   const prospect = await getProspect(env, message.contact_id);
   if (!prospect) return null;
   const profile = prospect.profile || prospect.campaign_type || 'room';
-  const business = businessForMailbox(env, message.recipient || legacyMailbox(env));
+  const business = businessForMailbox(env, message.channel === 'email' ? newOutboundMailbox(env) : (message.recipient || legacyMailbox(env)));
   const draft = await draftBookingReply(env, {
     classification,
     inbound: { channel: message.channel, from: message.sender, subject: message.subject, body: message.body },
@@ -457,27 +458,47 @@ async function sendReply(env, message, classification, draft) {
     return outId;
   }
 
-  const sent = await replyMicrosoftEmail(env, {
-    approved: true,
-    sourceMessageId: message.provider_message_id,
-    mailbox: message.recipient || legacyMailbox(env),
-    body: draft.body
+  const keepCurrentThread = isNewSender(env, message.recipient);
+  const transition = await prepareIdentityTransition(env, {
+    contactId: draft.prospect.id,
+    to: message.sender,
+    body: draft.body,
+    force: !keepCurrentThread
   });
+  const sent = keepCurrentThread
+    ? await replyMicrosoftEmail(env, {
+        approved: true,
+        sourceMessageId: message.provider_message_id,
+        mailbox: message.recipient,
+        body: transition.body
+      })
+    : await sendMicrosoftEmail(env, {
+        approved: true,
+        complianceOk: true,
+        to: message.sender,
+        from: newOutboundMailbox(env),
+        subject: draft.subject,
+        body: transition.body,
+        contactId: draft.prospect.id,
+        campaignId: `AUTO-REPLY-${draft.prospect.id}`
+      });
   const outId = await storeOutbound(env, {
     contactId: draft.prospect.id,
     sender: sent.sender,
     recipient: sent.recipient || message.sender,
     subject: draft.subject,
-    body: draft.body,
+    body: transition.body,
     providerMessageId: sent.providerMessageId,
-    threadId: sent.threadId || message.thread_id,
+    threadId: sent.threadId || (keepCurrentThread ? message.thread_id : null),
     internetMessageId: sent.internetMessageId,
     metadata: {
       purpose: 'auto-reply',
       replyingTo: message.id,
       replyCategory: classification.category,
       calendarAvailability: classification.calendarAvailability || null,
-      aiResponseId: draft.responseId
+      aiResponseId: draft.responseId,
+      inExistingThread: keepCurrentThread,
+      ...transitionMetadata(transition)
     }
   });
   await event(env, draft.prospect.id, 'autopilot_reply_sent', 'email', {

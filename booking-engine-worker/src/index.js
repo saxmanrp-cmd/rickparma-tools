@@ -1,7 +1,8 @@
 import { microsoftStatus, sendMicrosoftEmail, replyMicrosoftEmail, resolveOutboundMailbox } from './providers/microsoft.js';
 import { twilioStatus, sendTwilioText } from './providers/twilio.js';
 import { getAutopilotConfig, appendComplianceFooter } from './autopilot-policy.js';
-import { businessForMailbox, legacyMailbox } from './outbound-identity.js';
+import { businessForMailbox, legacyMailbox, newOutboundMailbox } from './outbound-identity.js';
+import { isNewSender, prepareIdentityTransition, transitionMetadata } from './sender-transition.js';
 import { authStatus, bearerToken, createSession, verifySession } from './auth.js';
 import {
   passkeyStatus,
@@ -229,10 +230,10 @@ async function sendEmail(request, env) {
   const mailbox = await resolveOutboundMailbox(env, { contactId: body.contactId, to: body.to });
   const business = businessForMailbox(env, mailbox);
   const config = await getAutopilotConfig(env);
-  const content = appendComplianceFooter(body.body, config, business);
+  const recipient = String(body.to || '').trim();
   const existingInbound = body.contactId
     ? await env.DB.prepare(`
-        SELECT provider_message_id,recipient,thread_id,subject
+        SELECT provider_message_id,recipient,sender,thread_id,subject
         FROM messages
         WHERE contact_id=? AND direction='inbound' AND channel='email' AND provider='microsoft-graph'
           AND provider_message_id IS NOT NULL
@@ -240,14 +241,22 @@ async function sendEmail(request, env) {
         ORDER BY COALESCE(received_at,created_at) DESC LIMIT 1
       `).bind(body.contactId).first()
     : null;
-  const result = existingInbound
+  const keepCurrentThread = !!existingInbound && isNewSender(env, existingInbound.recipient);
+  const transition = await prepareIdentityTransition(env, {
+    contactId: body.contactId || '',
+    to: recipient || existingInbound?.sender || '',
+    body: body.body,
+    force: !!existingInbound && !keepCurrentThread
+  });
+  const content = appendComplianceFooter(transition.body, config, business);
+  const result = keepCurrentThread
     ? await replyMicrosoftEmail(env, {
         approved: true,
         sourceMessageId: existingInbound.provider_message_id,
         mailbox: existingInbound.recipient || mailbox,
         body: content
       })
-    : await sendMicrosoftEmail(env, { ...body, body: content });
+    : await sendMicrosoftEmail(env, { ...body, to: recipient || existingInbound?.sender, from: newOutboundMailbox(env), body: content });
   const sentSubject = result.subject || existingInbound?.subject || body.subject;
   const sentAt = new Date().toISOString();
   const message = await addMessageData(env, {
@@ -265,7 +274,8 @@ async function sendEmail(request, env) {
     metadata: {
       requestedFrom: result.requestedFrom,
       replyTo: result.replyTo || result.sender,
-      inExistingThread: !!existingInbound,
+      inExistingThread: keepCurrentThread,
+      ...transitionMetadata(transition),
       internetMessageId: result.internetMessageId || null,
       campaignId: body.campaignId || null
     },

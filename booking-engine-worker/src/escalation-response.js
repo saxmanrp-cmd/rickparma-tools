@@ -1,11 +1,12 @@
-import { replyMicrosoftEmail, microsoftStatus } from './providers/microsoft.js';
+import { replyMicrosoftEmail, sendMicrosoftEmail, microsoftStatus } from './providers/microsoft.js';
 import { sendTwilioText, twilioStatus } from './providers/twilio.js';
 import { draftBookingReply } from './providers/openai.js';
 import { getAutopilotConfig, appendComplianceFooter } from './autopilot-policy.js';
 import { getProspect } from './prospects.js';
 import { safeJson, artistContext, assetText, priorThread, storeOutbound, event, nowIso } from './autopilot-common.js';
 import { packageRatesForReply } from './package-rates.js';
-import { businessForMailbox, legacyMailbox } from './outbound-identity.js';
+import { businessForMailbox, legacyMailbox, newOutboundMailbox } from './outbound-identity.js';
+import { isNewSender, prepareIdentityTransition, transitionMetadata } from './sender-transition.js';
 
 async function loadEscalation(env, id) {
   return env.DB.prepare(`
@@ -59,7 +60,8 @@ export async function respondToEscalation(env, id, decision = '') {
     recommendedAction: `Rick's authoritative decision: ${authoritativeDecision}. Express exactly that decision without inventing or adding terms.`
   };
   const profile = prospect.profile || prospect.campaign_type || 'room';
-  const business = businessForMailbox(env, escalation.inbound_recipient || legacyMailbox(env));
+  const keepCurrentThread = escalation.inbound_channel !== 'email' || isNewSender(env, escalation.inbound_recipient);
+  const business = businessForMailbox(env, escalation.inbound_channel === 'email' ? newOutboundMailbox(env) : (escalation.inbound_recipient || legacyMailbox(env)));
   const draft = await draftBookingReply(env, {
     classification: safeClassification,
     inbound: {
@@ -91,13 +93,30 @@ export async function respondToEscalation(env, id, decision = '') {
   } else {
     if (!microsoftStatus(env).configured) throw new Error('Microsoft email is not configured.');
     if (!escalation.inbound_provider_message_id) throw new Error('The source Microsoft message is missing.');
-    const body = appendComplianceFooter(draft.data.body, config, business);
-    const sent = await replyMicrosoftEmail(env, {
-      approved: true,
-      sourceMessageId: escalation.inbound_provider_message_id,
-      mailbox: escalation.inbound_recipient || legacyMailbox(env),
-      body
+    const transition = await prepareIdentityTransition(env, {
+      contactId: prospect.id,
+      to: escalation.inbound_sender,
+      body: draft.data.body,
+      force: !keepCurrentThread
     });
+    const body = appendComplianceFooter(transition.body, config, business);
+    const sent = keepCurrentThread
+      ? await replyMicrosoftEmail(env, {
+          approved: true,
+          sourceMessageId: escalation.inbound_provider_message_id,
+          mailbox: escalation.inbound_recipient || newOutboundMailbox(env),
+          body
+        })
+      : await sendMicrosoftEmail(env, {
+          approved: true,
+          complianceOk: true,
+          to: escalation.inbound_sender,
+          from: newOutboundMailbox(env),
+          subject: draft.data.subject || `Re: ${escalation.inbound_subject || 'Booking'}`,
+          body,
+          contactId: prospect.id,
+          campaignId: `RICK-DECISION-${prospect.id}`
+        });
     outboundId = await storeOutbound(env, {
       contactId: prospect.id,
       sender: sent.sender,
@@ -105,9 +124,12 @@ export async function respondToEscalation(env, id, decision = '') {
       subject: draft.data.subject || `Re: ${escalation.inbound_subject || 'Booking'}`,
       body,
       providerMessageId: sent.providerMessageId,
-      threadId: sent.threadId || escalation.inbound_thread_id,
+      threadId: sent.threadId || (keepCurrentThread ? escalation.inbound_thread_id : null),
       internetMessageId: sent.internetMessageId,
-      metadata: { purpose:'rick-decision', escalationId:escalation.id, aiResponseId:draft.responseId || null }
+      metadata: {
+        purpose:'rick-decision', escalationId:escalation.id, aiResponseId:draft.responseId || null,
+        inExistingThread: keepCurrentThread, ...transitionMetadata(transition)
+      }
     });
   }
 

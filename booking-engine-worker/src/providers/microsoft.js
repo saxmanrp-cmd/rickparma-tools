@@ -36,24 +36,10 @@ export function microsoftStatus(env) {
 }
 
 export async function resolveOutboundMailbox(env, { contactId = '', to = '' } = {}) {
-  const recipient = normalizedEmail(to);
-  const id = String(contactId || '').trim();
-  if (env.DB && (id || recipient)) {
-    const prior = await env.DB.prepare(`
-      SELECT direction,sender,recipient FROM messages
-      WHERE channel='email' AND status!='draft'
-        AND ((?!='' AND contact_id=?) OR (?!='' AND lower(recipient)=?) OR (?!='' AND lower(sender)=?))
-      ORDER BY CASE WHEN ?!='' AND contact_id=? THEN 0 ELSE 1 END,
-               COALESCE(sent_at,received_at,created_at) ASC
-      LIMIT 1
-    `).bind(id, id, recipient, recipient, recipient, recipient, id, id).first();
-    if (prior) {
-      const address = normalizedEmail(prior.direction === 'inbound' ? prior.recipient : prior.sender);
-      if (address === newOutboundMailbox(env)) return newOutboundMailbox(env);
-      // Existing records predate this change and belong to the original mailbox.
-      return legacyMailbox(env);
-    }
-  }
+  // All future outbound campaigns use Parma Entertainment Group. Legacy CRM
+  // messages remain available as context, but they no longer select the sender.
+  void contactId;
+  void to;
   return newOutboundMailbox(env);
 }
 
