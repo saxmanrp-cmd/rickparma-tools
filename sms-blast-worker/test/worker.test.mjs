@@ -65,6 +65,9 @@ test('AI draft fetches the selected event server-side and uses the Responses API
       const body = JSON.parse(options.body);
       assert.equal(body.model, 'gpt-5-mini');
       assert.equal(body.store, false);
+      assert.deepEqual(body.reasoning, { effort: 'minimal' });
+      assert.deepEqual(body.text, { verbosity: 'low' });
+      assert.equal(body.max_output_tokens, 2000);
       assert.match(body.input, /The Smith Center/);
       assert.match(body.input, /Make it upbeat/);
       return Response.json({ output: [{ content: [{ type: 'output_text', text: 'Hey {{first_name}}! Join me at The Smith Center.' }] }] });
