@@ -98,7 +98,9 @@ They can be changed without changing the campaign code.
 
 The provider uses Microsoft Graph rather than SMTP AUTH.
 
-Configure an Entra/Microsoft app with the required application mail permissions and admin consent, then add:
+Configure separate single-tenant Entra apps for the legacy and Parma mailboxes. Keep the legacy app credentials in place so existing threads continue with their original sender. The Parma app must have only the Graph application permissions it needs, scoped to `contact@parmaentertainmentgroup.com` through Exchange Application RBAC. Do not grant unscoped tenant-wide mail roles.
+
+Legacy mailbox secrets:
 
 ```bash
 npx wrangler secret put MS_TENANT_ID
@@ -106,14 +108,16 @@ npx wrangler secret put MS_CLIENT_ID
 npx wrangler secret put MS_CLIENT_SECRET
 ```
 
-The non-secret sender values are already in `wrangler.jsonc`:
+Parma mailbox secrets:
 
-- `MS_SENDER_USER`: `saxman@rickparma.com`
-- `MS_BOOKING_ALIAS`: `booking@rickparma.com`
+```bash
+npx wrangler secret put MS_NEW_OUTBOUND_CLIENT_ID
+npx wrangler secret put MS_NEW_OUTBOUND_CLIENT_SECRET
+```
 
-Initial outreach uses Rick's personal sender identity. The provider creates a Microsoft draft first, captures message/conversation IDs and then sends it. Automated replies use `createReply`, so they stay inside the existing buyer thread.
+`MS_NEW_OUTBOUND_TENANT_ID` and `MS_NEW_OUTBOUND_USER` are non-secret settings in `wrangler.jsonc`. The new sender remains paused (`MS_NEW_OUTBOUND_ENABLED=false`) until same-mailbox verification succeeds. Set it to `true` only after Graph confirms From, Reply-To, and Sent Items for the Parma mailbox.
 
-GoDaddy/Microsoft may still rewrite the alias to the licensed mailbox. That does not block the personal-sender campaign path.
+New contacts use Parma Entertainment Group. The provider creates a Microsoft draft first, captures message/conversation IDs and then sends it. Existing conversations retain the legacy mailbox, and automated replies use `createReply` within their original thread.
 
 ## Business postal address / commercial email safety
 
