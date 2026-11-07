@@ -9,14 +9,14 @@ const inv = { id: 'test', invoiceNumber: 1234, createdAt: '2026-11-06', clientNa
 function app() {
   const elements = new Map();
   const context = vm.createContext({
-    URLSearchParams, location: { search: '' }, setInterval() {},
+    URLSearchParams, File, Blob, location: { search: '' }, setInterval() {},
     localStorage: { getItem() { return null; }, setItem() {} },
-    document: { hidden: true, addEventListener() {}, getElementById(id) {
+    document: { hidden: true, addEventListener() {}, querySelectorAll() { return []; }, getElementById(id) {
       if (!elements.has(id)) elements.set(id, { innerHTML: '', value: '', textContent: '', open: false, showModal() { this.open = true; }, close() { this.open = false; }, style: {}, classList: { toggle() {}, add() {}, remove() {} } });
       return elements.get(id);
     } },
     fetch: async () => ({ json: async () => ({ record: { invoices: [] } }) }),
-    console
+    console: { ...console, error() {} }
   });
   // Skip startup; tests render fixtures without accessing live invoice records.
   vm.runInContext(script.slice(0, script.indexOf('if (signId) {')), context);
@@ -44,15 +44,97 @@ test('signed shared invoice retains actual signer and both signatures without bl
   assert.equal((output.match(/<img /g) || []).length, 2);
 });
 
-test('PDF export failure restores save control and offers print fallback', async () => {
+test('PDF preparation failure restores controls and offers retry or print', async () => {
+  const { context, elements } = app();
+  await context.prepareInvoicePDF();
+  assert.match(elements.get('pdf-export-status').textContent, /Tap Save PDF to retry, or use Print/);
+  assert.equal(vm.runInContext('invoicePDFState.preparing', context), false);
+});
+
+function readyPDF(context) {
+  vm.runInContext("invoicePDFState.file = new File(['%PDF-1.3'], 'Invoice-1234.pdf', { type: 'application/pdf' });", context);
+}
+
+test('Save PDF passes an actual PDF file to native sharing immediately, without a web URL', async () => {
   const { context } = app();
-  let message;
-  context.alert = value => { message = value; };
-  const button = { textContent: 'Save PDF', disabled: false };
-  await context.saveInvoicePDF(button);
+  readyPDF(context);
+  let shared;
+  let downloads = 0;
+  context.downloadInvoicePDF = () => downloads++;
+  context.navigator = { canShare: data => data.files[0] instanceof File, share: data => { shared = data; return Promise.resolve(); } };
+  const button = { disabled: false };
+  const pending = context.saveInvoicePDF(button);
+  // Must happen synchronously in the tap, before any asynchronous PDF generation.
+  assert.equal(shared.files[0].type, 'application/pdf');
+  assert.equal(shared.files[0].name, 'Invoice-1234.pdf');
+  assert.equal(shared.url, undefined);
+  assert.equal(await shared.files[0].text(), '%PDF-1.3');
+  await pending;
+  assert.equal(downloads, 0);
   assert.equal(button.disabled, false);
-  assert.equal(button.textContent, 'Save PDF');
-  assert.match(message, /use Print/);
+});
+
+test('closing native sharing does not open a PDF page or trigger a download', async () => {
+  const { context, elements } = app();
+  readyPDF(context);
+  let downloads = 0;
+  context.downloadInvoicePDF = () => downloads++;
+  context.navigator = { canShare: () => true, share: () => Promise.reject({ name: 'AbortError' }) };
+  const button = { disabled: false };
+  await context.saveInvoicePDF(button);
+  assert.equal(downloads, 0);
+  assert.equal(elements.get('pdf-export-status').textContent, '');
+  assert.equal(button.disabled, false);
+});
+
+test('share permission failure keeps the PDF ready for another tap without navigating', async () => {
+  const { context, elements } = app();
+  readyPDF(context);
+  let downloads = 0;
+  context.downloadInvoicePDF = () => downloads++;
+  context.navigator = { canShare: () => true, share: () => Promise.reject({ name: 'NotAllowedError' }) };
+  const button = { disabled: false };
+  await context.saveInvoicePDF(button);
+  assert.equal(downloads, 0);
+  assert.match(elements.get('pdf-export-status').textContent, /Tap Save PDF again/);
+  assert.equal(vm.runInContext('invoicePDFState.file.name', context), 'Invoice-1234.pdf');
+  assert.equal(button.disabled, false);
+});
+
+test('browsers without PDF file sharing receive a file download', async () => {
+  const { context } = app();
+  readyPDF(context);
+  let downloaded;
+  context.navigator = {};
+  context.downloadInvoicePDF = file => { downloaded = file; };
+  await context.saveInvoicePDF({ disabled: false });
+  assert.equal(downloaded.name, 'Invoice-1234.pdf');
+});
+
+test('a slower previous invoice cannot replace the current prepared PDF', async () => {
+  const { context } = app();
+  const view = context.document.getElementById('view-print');
+  let number = 'old';
+  Object.assign(view, {
+    querySelector: () => ({ dataset: { invoiceNumber: number } }),
+    cloneNode: () => ({ style: {}, classList: { add() {} }, querySelectorAll: () => [] })
+  });
+  const pending = [];
+  context.html2pdf = () => ({ set() { return this; }, from() { return this; }, outputPdf(type) {
+    assert.equal(type, 'blob');
+    return new Promise(resolve => pending.push(resolve));
+  } });
+  const first = context.prepareInvoicePDF();
+  number = 'new';
+  const second = context.prepareInvoicePDF();
+  for (let i = 0; i < 8 && pending.length < 2; i++) await Promise.resolve();
+  assert.equal(pending.length, 2);
+  pending[1](new Blob(['new']));
+  await second;
+  pending[0](new Blob(['old']));
+  await first;
+  assert.equal(vm.runInContext('invoicePDFState.file.name', context), 'Invoice-new.pdf');
+  assert.equal(await vm.runInContext('invoicePDFState.file.text()', context), 'new');
 });
 
 for (const [action, kind] of [['shareForSignature', 'sign'], ['sharePaymentLink', 'pay'], ['shareReceiptLink', 'receipt']]) {
