@@ -151,13 +151,18 @@
   #view-print .total-row td { border-top: 2px solid #1a1a1a; border-bottom: none; font-weight: 700; font-size: 16.5px; padding-top: 12px; }
   #view-print .note-box { border: 1px solid #ccc; border-radius: 6px; padding: 12px 14px; font-size: 13px; margin-top: 14px; background: #fafafa; line-height: 1.6; }
   #view-print .note-box a { color: #1a1a1a; text-decoration: underline; font-weight: 700; }
-  #view-print .sig-grid { display: flex; gap: 24px; margin-top: 54px; }
+  #view-print .sig-grid { display: flex; gap: 24px; margin-top: 54px; break-inside: avoid; }
+  #view-print .no-print button.btn { border-color: #24548c; color: #24548c; }
+  #view-print .no-print button.btn.solid { background: #24548c; color: #fff; }
+  #view-print .btn-row { flex-wrap: wrap; }
+  #view-print .btn-row .btn { flex: 1 1 140px; width: auto; }
   #view-print .sig-col { flex: 1; min-width: 0; }
   #view-print .sig-col .sig-slot { height: 55px; display: flex; align-items: flex-end; overflow: hidden; }
   #view-print .sig-col img { max-height: 55px; max-width: 100%; width: auto; height: auto; object-fit: contain; }
   #view-print .sig-col img.rick-sig { max-height: 36px; }
   #view-print .sig-col .line { border-top: 1px solid #1a1a1a; margin-top: 6px; padding-top: 5px; font-size: 11.5px; color: #555; }
   #view-print .sig-col .printed { font-size: 13px; margin-top: 3px; font-weight: 700; }
+  #view-print .date-blank { display: inline-block; width: 100px; border-bottom: 1px solid #555; }
   #view-print .sig-col .date-line { font-size: 12.5px; color: #555; margin-top: 2px; }
   #view-print .thanks { margin-top: 26px; font-size: 13.5px; color: #444; text-align: center; font-style: italic; }
   .sign-card {
@@ -289,7 +294,8 @@
 
   <div id="view-print">
     <div class="no-print btn-row" id="print-admin-controls">
-      <button class="btn solid" onclick="window.print()">Print / Save as PDF</button>
+      <button class="btn solid" onclick="saveInvoicePDF(this)">Save PDF</button>
+      <button class="btn" onclick="window.print()">Print</button>
       <button class="btn" onclick="showView('form')">Back to Edit</button>
     </div>
     <div id="print-content"></div>
@@ -297,6 +303,7 @@
 
 </main>
 
+<script src="vendor/html2pdf-0.14.0.bundle.min.js" defer></script>
 <script>
 function snapTimeToHalfHour(el){
   if(!el.value) return;
@@ -896,7 +903,7 @@ function buildInvoiceBody(data, total) {
     <div class="event-line">${fmtDateLong(data.eventDate)}</div>
     ${timeRange ? `<div class="event-line">${timeRange}</div>` : ''}`;
   return `
-    <div class="p-top">
+    <div class="p-top" data-invoice-number="${esc(String(data.invoiceNumber || 'invoice'))}">
       <div>
         <div class="biz-name">${BIZ.name}</div>
         <div class="biz-detail">${BIZ.phone} &nbsp;•&nbsp; ${BIZ.email}</div>
@@ -932,26 +939,61 @@ function buildInvoiceBody(data, total) {
   `;
 }
 
+function buildSignatureBlock(data) {
+  const clientSigCol = data.clientSignatureImg
+    ? `<div class="sig-slot"><img src="${data.clientSignatureImg}" alt="Client signature"></div><div class="line">${esc(data.clientSignedName || data.clientName)}</div><div class="date-line">Signed ${fmtDateLong(data.clientSignDate)}</div>`
+    : `<div class="sig-slot"></div><div class="line">Client Signature</div><div class="date-line">Date: <span class="date-blank"></span></div>`;
+  return `
+    <div class="sig-grid">
+      <div class="sig-col">${clientSigCol}</div>
+      <div class="sig-col">
+        <div class="sig-slot">${savedSignature ? `<img class="rick-sig" src="${savedSignature}" alt="Rick Parma signature">` : ''}</div>
+        <div class="line">${BIZ.name}</div>
+        <div class="date-line">Date: ${fmtDateLong(data.createdAt)}</div>
+      </div>
+    </div>
+  `;
+}
+
+async function saveInvoicePDF(button) {
+  const label = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Preparing PDF…';
+  try {
+    if (typeof html2pdf !== 'function') throw new Error('PDF export unavailable');
+    if (document.fonts) await document.fonts.ready;
+    const view = document.getElementById('view-print');
+    await Promise.all(Array.from(view.querySelectorAll('#print-content img')).map(img => img.decode()));
+    // Export a copy so interactive signing/payment controls never appear in the PDF.
+    const printable = view.cloneNode(true);
+    printable.querySelectorAll('.no-print').forEach(el => el.remove());
+    Object.assign(printable.style, { width: '100%', maxWidth: 'none', margin: '0', padding: '0', borderRadius: '0' });
+    const number = view.querySelector('[data-invoice-number]').dataset.invoiceNumber;
+    const filename = 'Invoice-' + number.replace(/[^a-z0-9_-]/gi, '-') + '.pdf';
+    await html2pdf().set({
+      margin: 0.5,
+      filename,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, backgroundColor: '#ffffff', scrollY: 0 },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'], avoid: ['.sig-grid', 'tr'] }
+    }).from(printable).save();
+  } catch (error) {
+    alert('Could not save the PDF. Please try again, or use Print to save a PDF from your device’s print options.');
+  } finally {
+    button.disabled = false;
+    button.textContent = label;
+  }
+}
+
 function renderPrintView() {
   const data = collectFormData();
   const total = invoiceTotal(data);
   const body = buildInvoiceBody(data, total);
 
-  const rickSigBlock = savedSignature ? `<img class="rick-sig" src="${savedSignature}">` : '';
-  const clientSigCol = data.clientSignatureImg
-    ? `<div class="sig-slot"><img src="${data.clientSignatureImg}"></div><div class="line">${esc(data.clientName)}</div><div class="date-line">Signed ${fmtDateLong(data.clientSignDate)}</div>`
-    : `<div class="sig-slot"></div><div class="line">Client Signature</div><div class="date-line">Date: _______________</div>`;
-
   document.getElementById('print-content').innerHTML = `
     ${body}
-    <div class="sig-grid">
-      <div class="sig-col">${clientSigCol}</div>
-      <div class="sig-col">
-        <div class="sig-slot">${rickSigBlock}</div>
-        <div class="line">${BIZ.name}</div>
-        <div class="date-line">Date: ${fmtDateLong(data.createdAt)}</div>
-      </div>
-    </div>
+    ${buildSignatureBlock(data)}
     <p class="thanks">Thank you for your business!</p>
   `;
 }
@@ -992,7 +1034,7 @@ async function initClientView(invId) {
 function renderClientInvoice(inv) {
   const total = invoiceTotal(inv);
   const body = buildInvoiceBody(inv, total);
-  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn" onclick="window.print()">Print This Copy</button></div>`;
+  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn solid" onclick="saveInvoicePDF(this)">Save PDF</button><button class="btn" onclick="window.print()">Print This Copy</button></div>`;
 
   let sigSection;
   if (inv.clientSignatureImg) {
@@ -1001,23 +1043,13 @@ function renderClientInvoice(inv) {
       ? `<p style="text-align:center;font-size:13.5px;color:#444;margin-top:10px">Payment reported: $${parseFloat(clientPayment.amount).toFixed(2)} (${clientPayment.type === 'partial' ? 'Partial Payment' : 'Paid in Full'}) via ${esc(clientPayment.method)}</p>`
       : '';
     sigSection = `
-      <div class="sig-grid">
-        <div class="sig-col">
-          <div class="sig-slot"><img src="${inv.clientSignatureImg}"></div>
-          <div class="line">${esc(inv.clientSignedName || inv.clientName)}</div>
-          <div class="date-line">Signed ${fmtDateLong(inv.clientSignDate)}</div>
-        </div>
-        <div class="sig-col">
-          <div class="sig-slot">${savedSignature ? '<img class="rick-sig" src="'+savedSignature+'">' : ''}</div>
-          <div class="line">${BIZ.name}</div>
-          <div class="date-line">Date: ${fmtDateLong(inv.createdAt)}</div>
-        </div>
-      </div>
+      ${buildSignatureBlock(inv)}
       ${paymentNote}
       <p class="thanks">Thank you — this invoice has been signed and confirmed.</p>
     `;
   } else {
     sigSection = `
+      ${buildSignatureBlock(inv)}
       <div class="sign-card no-print">
         <h2>Payment</h2>
         <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:4px">Payment Type</label>
@@ -1178,7 +1210,7 @@ function renderPaymentView(inv) {
   const paidSoFar = paymentsTotal(inv.payments);
   const balance = total - paidSoFar;
   const body = buildInvoiceBody(inv, total);
-  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn" onclick="window.print()">Print This Page</button></div>`;
+  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn solid" onclick="saveInvoicePDF(this)">Save PDF</button><button class="btn" onclick="window.print()">Print This Page</button></div>`;
 
   let paySection;
   if (balance <= 0) {
@@ -1322,7 +1354,7 @@ function renderReceiptView(inv) {
   const paid = paymentsTotal(inv.payments);
   const balance = total - paid;
   const body = buildInvoiceBody(inv, total);
-  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn" onclick="window.print()">Print This Receipt</button></div>`;
+  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn solid" onclick="saveInvoicePDF(this)">Save PDF</button><button class="btn" onclick="window.print()">Print This Receipt</button></div>`;
 
   const historyRows = (inv.payments || []).map(p =>
     `<tr><td>${p.date}</td><td>${esc(p.method)}</td><td class="amt">$${parseFloat(p.amount).toFixed(2)}</td></tr>`
