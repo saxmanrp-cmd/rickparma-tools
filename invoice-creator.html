@@ -83,6 +83,10 @@
   .btn-row { display: flex; gap: 10px; margin-top: 10px; }
   .btn-row .btn { margin-top: 0; }
   .hint { font-size: 12px; color: var(--text-dim); margin-top: 6px; line-height: 1.4; }
+  #invoice-share-dialog { width: calc(100% - 32px); max-width: 440px; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); color: var(--text); }
+  #invoice-share-dialog::backdrop { background: rgba(0, 0, 0, 0.65); }
+  #invoice-share-dialog h2 { margin: 0 0 12px; color: var(--accent); font-size: 20px; }
+  #invoice-share-status { min-height: 34px; }
   .line-item { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px; }
   .line-item .desc { flex: 3; }
   .line-item .amt { flex: 1; }
@@ -302,6 +306,17 @@
   </div>
 
 </main>
+
+<dialog id="invoice-share-dialog" class="no-print" aria-labelledby="invoice-share-title">
+  <h2 id="invoice-share-title">Share Invoice</h2>
+  <button id="invoice-share-text" class="btn solid" onclick="sendSelectedInvoiceText()">Send Text Message</button>
+  <button id="invoice-share-copy" class="btn" onclick="copyInvoiceShareLink()">Copy Link</button>
+  <p class="hint">Copy the link to paste it into an email or message.</p>
+  <label for="invoice-share-link">Invoice link</label>
+  <input id="invoice-share-link" type="url" readonly onclick="this.select()">
+  <p id="invoice-share-status" class="hint" role="status" aria-live="polite"></p>
+  <button id="invoice-share-close" class="btn" onclick="document.getElementById('invoice-share-dialog').close()">Close</button>
+</dialog>
 
 <script src="vendor/html2pdf-0.14.0.bundle.min.js" defer></script>
 <script>
@@ -715,7 +730,7 @@ async function saveInvoice() {
       } catch (err) {
               const phoneEl = document.getElementById('f-phone');
               const phone = phoneEl ? phoneEl.value.replace(/[^\d+]/g, '') : '';
-              const link = `https://saxmanrp-cmd.github.io/rickparma-tools/invoice-creator.html?${kind}=${encodeURIComponent(currentId)}`;
+              const link = invoiceShareLink(kind, currentId);
               const msg = kind === 'sign'
                 ? `Please review and sign your invoice from Rick Parma: ${link}`
                         : kind === 'receipt'
@@ -821,19 +836,79 @@ function addToAppleCalendar() {
 }
 
 async function shareForSignature() {
-    await saveInvoiceCore();
-    await sendInvoiceText('sign', 'Signature request');
+  await openInvoiceShare('sign', 'Signature request');
 }
 
-  async function sharePaymentLink() {
-      await saveInvoiceCore();
-      await sendInvoiceText('pay', 'Payment link');
-  }
+async function sharePaymentLink() {
+  await openInvoiceShare('pay', 'Payment link');
+}
 
-  async function shareReceiptLink() {
-      await saveInvoiceCore();
-      await sendInvoiceText('receipt', 'Receipt');
+async function shareReceiptLink() {
+  await openInvoiceShare('receipt', 'Receipt');
+}
+
+let selectedInvoiceShare = null;
+let preparingInvoiceShare = false;
+
+function invoiceShareLink(kind, invoiceId) {
+  return `https://saxmanrp-cmd.github.io/rickparma-tools/invoice-creator.html?${kind}=${encodeURIComponent(invoiceId)}`;
+}
+
+async function openInvoiceShare(kind, label) {
+  if (preparingInvoiceShare || document.getElementById('invoice-share-dialog').open) return;
+  preparingInvoiceShare = true;
+  try {
+    await saveInvoiceCore();
+    selectedInvoiceShare = { kind, label };
+    document.getElementById('invoice-share-title').textContent = label;
+    document.getElementById('invoice-share-link').value = invoiceShareLink(kind, currentId);
+    document.getElementById('invoice-share-status').textContent = '';
+    document.getElementById('invoice-share-dialog').showModal();
+  } catch (error) {
+    alert('Could not prepare this invoice for sharing. Please try again.');
+  } finally {
+    preparingInvoiceShare = false;
   }
+}
+
+async function copyInvoiceShareLink() {
+  const input = document.getElementById('invoice-share-link');
+  const status = document.getElementById('invoice-share-status');
+  try {
+    // Keep the clipboard call directly in the tap handler for iPhone/Safari.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(input.value);
+    } else {
+      input.focus();
+      input.select();
+      input.setSelectionRange(0, input.value.length);
+      if (!document.execCommand('copy')) throw new Error('Copy unavailable');
+    }
+    status.textContent = 'Link copied — paste it into an email or message.';
+  } catch (error) {
+    input.focus();
+    input.select();
+    input.setSelectionRange(0, input.value.length);
+    status.textContent = 'Touch and hold the selected link, then choose Copy.';
+  }
+}
+
+async function sendSelectedInvoiceText() {
+  if (!selectedInvoiceShare) return;
+  const button = document.getElementById('invoice-share-text');
+  if (button.disabled) return;
+  button.disabled = true;
+  button.textContent = 'Sending…';
+  document.getElementById('invoice-share-close').disabled = true;
+  try {
+    await sendInvoiceText(selectedInvoiceShare.kind, selectedInvoiceShare.label);
+    document.getElementById('invoice-share-dialog').close();
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Send Text Message';
+    document.getElementById('invoice-share-close').disabled = false;
+  }
+}
 
 function fmtTime(t) {
   if (!t) return '';

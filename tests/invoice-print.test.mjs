@@ -12,7 +12,7 @@ function app() {
     URLSearchParams, location: { search: '' }, setInterval() {},
     localStorage: { getItem() { return null; }, setItem() {} },
     document: { hidden: true, addEventListener() {}, getElementById(id) {
-      if (!elements.has(id)) elements.set(id, { innerHTML: '', value: '', style: {}, classList: { toggle() {}, add() {}, remove() {} } });
+      if (!elements.has(id)) elements.set(id, { innerHTML: '', value: '', textContent: '', open: false, showModal() { this.open = true; }, close() { this.open = false; }, style: {}, classList: { toggle() {}, add() {}, remove() {} } });
       return elements.get(id);
     } },
     fetch: async () => ({ json: async () => ({ record: { invoices: [] } }) }),
@@ -53,4 +53,43 @@ test('PDF export failure restores save control and offers print fallback', async
   assert.equal(button.disabled, false);
   assert.equal(button.textContent, 'Save PDF');
   assert.match(message, /use Print/);
+});
+
+for (const [action, kind] of [['shareForSignature', 'sign'], ['sharePaymentLink', 'pay'], ['shareReceiptLink', 'receipt']]) {
+  test(`${action} offers a link without sending a text until selected`, async () => {
+    const { context, elements } = app();
+    let saves = 0;
+    const texts = [];
+    let copied;
+    context.saveInvoiceCore = async () => { saves++; vm.runInContext("currentId = 'test invoice';", context); };
+    context.sendInvoiceText = async (...args) => { texts.push(args); };
+    context.navigator = { clipboard: { writeText: async value => { copied = value; } } };
+    await context[action]();
+    assert.equal(saves, 1);
+    assert.equal(elements.get('invoice-share-dialog').open, true);
+    assert.deepEqual(texts, []);
+    await context.copyInvoiceShareLink();
+    assert.equal(copied, `https://saxmanrp-cmd.github.io/rickparma-tools/invoice-creator.html?${kind}=test%20invoice`);
+    assert.deepEqual(texts, []);
+    assert.match(elements.get('invoice-share-status').textContent, /Link copied/);
+    await context.sendSelectedInvoiceText();
+    assert.equal(texts.length, 1);
+    assert.equal(texts[0][0], kind);
+    assert.equal(elements.get('invoice-share-dialog').open, false);
+    assert.equal(elements.get('invoice-share-text').disabled, false);
+  });
+}
+
+test('blocked clipboard leaves the link selected for manual copying', async () => {
+  const { context, elements } = app();
+  context.navigator = { clipboard: { writeText: async () => { throw new Error('Blocked'); } } };
+  const input = context.document.getElementById('invoice-share-link');
+  input.value = 'https://example.com/';
+  let selected = false;
+  input.focus = () => {};
+  input.select = () => { selected = true; };
+  input.setSelectionRange = () => {};
+  await context.copyInvoiceShareLink();
+  assert.equal(selected, true);
+  assert.match(elements.get('invoice-share-status').textContent, /Touch and hold/);
 });
