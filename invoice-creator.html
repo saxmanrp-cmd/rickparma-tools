@@ -298,10 +298,11 @@
 
   <div id="view-print">
     <div class="no-print btn-row" id="print-admin-controls">
-      <button class="btn solid" onclick="saveInvoicePDF(this)">Save PDF</button>
+      <button class="btn solid" data-save-pdf onclick="saveInvoicePDF(this)">Save PDF</button>
       <button class="btn" onclick="window.print()">Print</button>
       <button class="btn" onclick="showView('form')">Back to Edit</button>
     </div>
+    <p id="pdf-export-status" class="hint no-print" role="status" style="color:#444"></p>
     <div id="print-content"></div>
   </div>
 
@@ -1030,34 +1031,98 @@ function buildSignatureBlock(data) {
   `;
 }
 
-async function saveInvoicePDF(button) {
-  const label = button.textContent;
-  button.disabled = true;
-  button.textContent = 'Preparing PDF…';
+const invoicePDFLibraryReady = document.readyState === 'loading'
+  ? new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve, { once: true }))
+  : Promise.resolve();
+let invoicePDFState = { revision: 0, file: null, preparing: false };
+
+function setPDFControls(preparing) {
+  document.querySelectorAll('[data-save-pdf]').forEach(button => {
+    button.disabled = preparing;
+    button.textContent = preparing ? 'Preparing PDF…' : 'Save PDF';
+  });
+}
+
+function setInvoicePrintContent(html) {
+  document.getElementById('print-content').innerHTML = html;
+  // Prepare before the tap so Safari can open its native share sheet immediately.
+  prepareInvoicePDF();
+}
+
+async function prepareInvoicePDF() {
+  const revision = invoicePDFState.revision + 1;
+  invoicePDFState = { revision, file: null, preparing: true };
+  setPDFControls(true);
+  const status = document.getElementById('pdf-export-status');
+  status.textContent = '';
   try {
-    if (typeof html2pdf !== 'function') throw new Error('PDF export unavailable');
-    if (document.fonts) await document.fonts.ready;
     const view = document.getElementById('view-print');
-    await Promise.all(Array.from(view.querySelectorAll('#print-content img')).map(img => img.decode()));
-    // Export a copy so interactive signing/payment controls never appear in the PDF.
-    const printable = view.cloneNode(true);
-    printable.querySelectorAll('.no-print').forEach(el => el.remove());
-    Object.assign(printable.style, { width: '100%', maxWidth: 'none', margin: '0', padding: '0', borderRadius: '0' });
     const number = view.querySelector('[data-invoice-number]').dataset.invoiceNumber;
     const filename = 'Invoice-' + number.replace(/[^a-z0-9_-]/gi, '-') + '.pdf';
-    await html2pdf().set({
+    const printable = view.cloneNode(true);
+    printable.classList.add('showing');
+    printable.querySelectorAll('.no-print').forEach(el => el.remove());
+    Object.assign(printable.style, { width: '100%', maxWidth: 'none', margin: '0', padding: '0', borderRadius: '0' });
+    await invoicePDFLibraryReady;
+    if (typeof html2pdf !== 'function') throw new Error('PDF export unavailable');
+    if (document.fonts) await document.fonts.ready;
+    await Promise.all(Array.from(printable.querySelectorAll('img')).map(img => img.decode()));
+    const blob = await html2pdf().set({
       margin: 0.5,
-      filename,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, backgroundColor: '#ffffff', scrollY: 0 },
       jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
       pagebreak: { mode: ['css', 'legacy'], avoid: ['.sig-grid', 'tr'] }
-    }).from(printable).save();
+    }).from(printable).outputPdf('blob');
+    if (invoicePDFState.revision !== revision) return;
+    invoicePDFState.file = new File([blob], filename, { type: 'application/pdf' });
   } catch (error) {
-    alert('Could not save the PDF. Please try again, or use Print to save a PDF from your device’s print options.');
+    if (invoicePDFState.revision === revision) {
+      console.error('Could not prepare invoice PDF:', error);
+      status.textContent = 'Could not prepare the PDF. Tap Save PDF to retry, or use Print.';
+    }
   } finally {
-    button.disabled = false;
-    button.textContent = label;
+    if (invoicePDFState.revision === revision) {
+      invoicePDFState.preparing = false;
+      setPDFControls(false);
+    }
+  }
+}
+
+function downloadInvoicePDF(file) {
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = file.name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+
+async function saveInvoicePDF(button) {
+  const file = invoicePDFState.file;
+  if (!file) {
+    if (!invoicePDFState.preparing) prepareInvoicePDF();
+    return;
+  }
+  const status = document.getElementById('pdf-export-status');
+  status.textContent = '';
+  button.disabled = true;
+  try {
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      // No async work before share(): preserve the user gesture required by Safari.
+      await navigator.share({ files: [file], title: file.name });
+    } else {
+      downloadInvoicePDF(file);
+    }
+  } catch (error) {
+    // Closing the Apple share sheet is a normal cancellation, not a download request.
+    if (error.name !== 'AbortError') {
+      status.textContent = 'Could not open share options. Tap Save PDF again, or use Print.';
+    }
+  } finally {
+    button.disabled = invoicePDFState.preparing;
   }
 }
 
@@ -1066,11 +1131,11 @@ function renderPrintView() {
   const total = invoiceTotal(data);
   const body = buildInvoiceBody(data, total);
 
-  document.getElementById('print-content').innerHTML = `
+  setInvoicePrintContent(`
     ${body}
     ${buildSignatureBlock(data)}
     <p class="thanks">Thank you for your business!</p>
-  `;
+  `);
 }
 
 async function drawCursive(name) {
@@ -1109,7 +1174,7 @@ async function initClientView(invId) {
 function renderClientInvoice(inv) {
   const total = invoiceTotal(inv);
   const body = buildInvoiceBody(inv, total);
-  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn solid" onclick="saveInvoicePDF(this)">Save PDF</button><button class="btn" onclick="window.print()">Print This Copy</button></div>`;
+  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn solid" data-save-pdf onclick="saveInvoicePDF(this)">Save PDF</button><button class="btn" onclick="window.print()">Print This Copy</button></div>`;
 
   let sigSection;
   if (inv.clientSignatureImg) {
@@ -1160,7 +1225,7 @@ function renderClientInvoice(inv) {
     `;
   }
 
-  document.getElementById('print-content').innerHTML = actions + body + sigSection;
+  setInvoicePrintContent(actions + body + sigSection);
   const dateInput = document.getElementById('client-date-input');
   if (dateInput) dateInput.value = todayLocal();
 }
@@ -1285,7 +1350,7 @@ function renderPaymentView(inv) {
   const paidSoFar = paymentsTotal(inv.payments);
   const balance = total - paidSoFar;
   const body = buildInvoiceBody(inv, total);
-  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn solid" onclick="saveInvoicePDF(this)">Save PDF</button><button class="btn" onclick="window.print()">Print This Page</button></div>`;
+  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn solid" data-save-pdf onclick="saveInvoicePDF(this)">Save PDF</button><button class="btn" onclick="window.print()">Print This Page</button></div>`;
 
   let paySection;
   if (balance <= 0) {
@@ -1306,7 +1371,7 @@ function renderPaymentView(inv) {
                                                                     `;
   }
 
-  document.getElementById('print-content').innerHTML = actions + body + paySection;
+  setInvoicePrintContent(actions + body + paySection);
 }
 
 function togglePmtAmount() {
@@ -1429,7 +1494,7 @@ function renderReceiptView(inv) {
   const paid = paymentsTotal(inv.payments);
   const balance = total - paid;
   const body = buildInvoiceBody(inv, total);
-  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn solid" onclick="saveInvoicePDF(this)">Save PDF</button><button class="btn" onclick="window.print()">Print This Receipt</button></div>`;
+  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn solid" data-save-pdf onclick="saveInvoicePDF(this)">Save PDF</button><button class="btn" onclick="window.print()">Print This Receipt</button></div>`;
 
   const historyRows = (inv.payments || []).map(p =>
     `<tr><td>${p.date}</td><td>${esc(p.method)}</td><td class="amt">$${parseFloat(p.amount).toFixed(2)}</td></tr>`
@@ -1457,14 +1522,14 @@ function renderReceiptView(inv) {
     </div>
   ` : '';
 
-  document.getElementById('print-content').innerHTML = `
+  setInvoicePrintContent(`
     ${actions}
     ${body}
     ${sigBlock}
     ${statusLine}
     <div class="note-box"><strong>Payment History</strong>${historyTable}</div>
     <p class="thanks">Thank you for your business!</p>
-  `;
+  `);
 }
 
 const setMeta = (attr, key, content) => {
