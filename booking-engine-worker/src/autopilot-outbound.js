@@ -1,3 +1,4 @@
+import { recipientHasActiveOutreachHold } from './outreach-hold.js';
 import { sendMicrosoftEmail, resolveOutboundMailbox } from './providers/microsoft.js';
 import { draftBookingEmail } from './providers/openai.js';
 import { canAutonomouslySend, withinSendWindow, prospectEligible, appendComplianceFooter } from './autopilot-policy.js';
@@ -137,6 +138,7 @@ async function attachDuplicateToExistingThread(env, prospect, owner) {
 }
 
 async function sendDraft(env, config, prospect, draft, purpose) {
+  if (await recipientHasActiveOutreachHold(env, prospect)) return null;
   const mailbox = await resolveOutboundMailbox(env, { contactId: prospect.id, to: prospect.email });
   const business = businessForMailbox(env, mailbox);
   const transition = await prepareIdentityTransition(env, {
@@ -289,25 +291,26 @@ export async function processOutboundCycle(env, config, { vendorOnly = false } =
       };
     }
 
-    await sendDraft(env, config, approved, {
+    const sent = await sendDraft(env, config, approved, {
       subject: approved.subject,
       body: approved.body,
       responseId: null
     }, 'initial');
 
-    sentInitial++;
+    if (sent) sentInitial++;
 
     return {
       drafted, sentInitial, sentFollowups, grouped, skipped,
       sendGate: 'ready',
       windowOpen,
-      pilotLock: 'Approved draft sent.'
+      pilotLock: sent ? 'Approved draft sent.' : 'Approved recipient is on an outreach hold.'
     };
   }
 
   const initialCandidates = prospects.filter(p => !p.last_contacted_at && !Number(p.campaign_active || 0));
   for (const prospect of initialCandidates) {
     if (isVendorProspect(prospect) && await recipientBlocked(env, prospect)) { skipped++; continue; }
+    if (await recipientHasActiveOutreachHold(env, prospect)) { skipped++; continue; }
     const eligibility = prospectEligible(config, prospect);
     if (!eligibility.ok) { skipped++; continue; }
     const key = recipientKey(prospect.email);
@@ -335,8 +338,8 @@ export async function processOutboundCycle(env, config, { vendorOnly = false } =
       const stored = await shadowDraft(env, config, prospect, draft, 'initial');
       if (stored.created) drafted++;
     } else {
-      await sendDraft(env, config, prospect, draft, 'initial');
-      sentInitial++;
+      if (await sendDraft(env, config, prospect, draft, 'initial')) sentInitial++;
+      else skipped++;
     }
   }
 
@@ -346,6 +349,7 @@ export async function processOutboundCycle(env, config, { vendorOnly = false } =
     const prospectMetadata = safeJson(prospect.metadata_json, {});
     const bounceRecovery = prospectMetadata.bounceRecoveryPending === true
       && prospectMetadata.bounceRecoveryEmail === recipientKey(prospect.email);
+    if (await recipientHasActiveOutreachHold(env, prospect)) { skipped++; continue; }
     const eligibility = prospectEligible(config, prospect);
     if (!eligibility.ok) { skipped++; continue; }
     if (!bounceRecovery && Number(prospect.touch_count || 0) >= config.maxColdTouches) {
@@ -378,8 +382,9 @@ export async function processOutboundCycle(env, config, { vendorOnly = false } =
       const stored = await shadowDraft(env, config, prospect, draft, purpose);
       if (stored.created) drafted++;
     } else {
-      await sendDraft(env, config, prospect, draft, purpose);
-      if (bounceRecovery) sentInitial++;
+      const sent = await sendDraft(env, config, prospect, draft, purpose);
+      if (!sent) skipped++;
+      else if (bounceRecovery) sentInitial++;
       else sentFollowups++;
     }
   }

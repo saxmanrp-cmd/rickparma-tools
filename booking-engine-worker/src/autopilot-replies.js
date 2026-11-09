@@ -9,6 +9,7 @@ import { businessForMailbox, legacyMailbox, newOutboundMailbox } from './outboun
 import { isNewSender, prepareIdentityTransition, transitionMetadata } from './sender-transition.js';
 import { isVendorProspect } from './vendor-campaign.js';
 import { normalizeVendorReceipt, escalationIdentity } from './reply-guards.js';
+import { applyVendorReviewHold, outreachHold, REVIEW_HOLD_VERSION } from './outreach-hold.js';
 import {
   safeJson, daysFromNow, event, artistContext, assetText, priorThread,
   todayEventCount, storeOutbound, storeDraft, mirrorOverride, nowIso
@@ -549,7 +550,7 @@ async function humanHandoffNeeded(env, message, classification) {
 
 export async function settleVendorReviewReceipts(env) {
   const rows = await env.DB.prepare(`
-    SELECT e.id AS escalation_id,m.id,m.contact_id,m.body,m.metadata_json,p.profile,p.campaign_type
+    SELECT e.id AS escalation_id,m.id,m.contact_id,m.body,m.metadata_json,m.received_at,m.created_at,p.profile,p.campaign_type
     FROM escalations e JOIN messages m ON m.id=e.message_id JOIN prospects p ON p.id=e.contact_id
     WHERE e.status='open' AND e.category='submission_redirect'
     ORDER BY e.created_at DESC LIMIT 30
@@ -561,10 +562,28 @@ export async function settleVendorReviewReceipts(env) {
     if (classification.category !== 'vendor_review_pending') continue;
     await env.DB.prepare("UPDATE escalations SET status='resolved',resolved_at=CURRENT_TIMESTAMP,metadata_json=json_set(COALESCE(metadata_json,'{}'),'$.resolution','Vendor information is already under review; no duplicate submission or acknowledgement is needed.') WHERE id=? AND status='open'").bind(row.escalation_id).run();
     await saveClassification(env, row, classification, 'processed');
-    await env.DB.prepare("UPDATE prospects SET status='Awaiting Vendor Review',campaign_active=0,next_action_at=NULL WHERE id=? AND lower(status) NOT IN ('rick handling','do not contact','pass','booked') AND NOT EXISTS (SELECT 1 FROM escalations WHERE contact_id=? AND status='open' AND category!='submission_redirect')").bind(row.contact_id, row.contact_id).run();
+    await applyVendorReviewHold(env, row);
     // Keep history; resolve the unnecessary task without sending any message.
     await event(env, row.contact_id, 'autopilot_vendor_review_recorded', 'email', { messageId: row.id, escalationId: row.escalation_id });
     resolved++;
+  }
+  const recent = await env.DB.prepare(`
+    SELECT m.*,p.profile,p.campaign_type,p.metadata_json AS prospect_metadata_json
+    FROM messages m JOIN prospects p ON p.id=m.contact_id
+    WHERE m.direction='inbound' AND m.channel='email' AND m.status='processed'
+      AND datetime(COALESCE(m.received_at,m.created_at))>=datetime('now','-60 days')
+      AND COALESCE(json_extract(p.metadata_json,'$.outreachHold.version'),0)!=?
+      AND NOT EXISTS (SELECT 1 FROM messages newer WHERE newer.contact_id=m.contact_id AND newer.direction='inbound'
+        AND datetime(COALESCE(newer.received_at,newer.created_at))>datetime(COALESCE(m.received_at,m.created_at)))
+    ORDER BY COALESCE(m.received_at,m.created_at) DESC LIMIT 100
+  `).bind(REVIEW_HOLD_VERSION).all();
+  for (const row of recent.results || []) {
+    const classification = normalizeVendorReceipt(row, row, safeJson(row.metadata_json, {}).classification || {});
+    if (classification.category !== 'vendor_review_pending') continue;
+    const prospect = await getProspect(env, row.contact_id);
+    if (outreachHold(prospect)?.version === REVIEW_HOLD_VERSION) continue;
+    await applyVendorReviewHold(env, row);
+    await saveClassification(env, row, classification, 'processed');
   }
   return resolved;
 }
@@ -643,8 +662,7 @@ export async function processInboundCycle(env, baseConfig) {
     classification = normalizeVendorReceipt(prospectAtStart, message, classification);
     // A referral already in review needs no fresh submission, acknowledgement or alert.
     if (classification.category === 'vendor_review_pending') {
-      await env.DB.prepare("UPDATE prospects SET status='Awaiting Vendor Review',campaign_active=0,next_action_at=NULL WHERE id=? AND lower(status) NOT IN ('rick handling','do not contact','pass','booked')").bind(message.contact_id).run();
-      await mirrorOverride(env, message.contact_id, { Status: 'Awaiting Vendor Review', 'Next Follow-up': null });
+      await applyVendorReviewHold(env, message);
       await saveClassification(env, { ...message, metadata_json: JSON.stringify(metadata) }, classification, 'processed');
       stopped++;
       continue;

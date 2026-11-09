@@ -1,3 +1,4 @@
+import { activeOutreachHold } from './outreach-hold.js';
 import { NEW_BUSINESS, LEGACY_BUSINESS } from './outbound-identity.js';
 
 const THROUGHPUT_PROFILE_VERSION = 3;
@@ -145,8 +146,10 @@ export function canAutonomouslySend(config) {
   return { ok: true };
 }
 
-export function prospectEligible(config, prospect) {
+export function prospectEligible(config, prospect, now = new Date()) {
   if (!prospect) return { ok: false, reason: 'Missing prospect.' };
+  const hold = activeOutreachHold(prospect, now);
+  if (hold) return { ok: false, reason: `Outreach is paused until ${hold.until}.` };
   if (Number(prospect.suppressed || 0)) return { ok: false, reason: 'Suppressed.' };
   if (Number(prospect.current_venue || 0)) return { ok: false, reason: 'Current venue.' };
   if (['skip', 'SKIP', 'PERFORMING'].includes(String(prospect.room_preference || ''))) return { ok: false, reason: 'Room preference excludes outreach.' };
@@ -228,7 +231,7 @@ export function categoryPolicy(category) {
     'positive_interest', 'request_materials', 'follow_up_later', 'submission_redirect',
     'question'
   ]);
-  const noReply = new Set(['bounce', 'opt_out', 'not_interested', 'not_booking_contact', 'out_of_office']);
+  const noReply = new Set(['vendor_review_pending','bounce', 'opt_out', 'not_interested', 'not_booking_contact', 'out_of_office']);
   const escalate = new Set(['availability_request', 'rate_request', 'offer_or_hold', 'other']);
   return {
     autoReply: autoReply.has(category),
