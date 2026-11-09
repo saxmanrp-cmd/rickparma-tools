@@ -7,7 +7,7 @@ export async function runResearchCycle(env, config) {
   const runId = await startRun(env, 'research', config.mode);
   try {
     const batchSize = 10;
-    const targets = await verificationTargets(env, config.verifyDailyTarget);
+    const targets = await verificationTargets(env, config.verifyDailyTarget, { preferVendor: config.vendorCampaignEnabled });
     const totalBatches = Math.max(
       1,
       Math.ceil(Math.max(0, Number(config.researchDailyTarget || 0)) / batchSize),
@@ -36,6 +36,7 @@ export async function runResearchCycle(env, config) {
           email: x.email,
           phone: x.phone,
           status: x.status,
+          profile: x.profile,
           invalidEmails: x.invalidEmails || []
         })),
         discoverCount
@@ -43,6 +44,7 @@ export async function runResearchCycle(env, config) {
 
       for (const item of ai.data.verified || []) {
         if (!item.requestedId) continue;
+        if (verifyBatch.find(p => p.id === item.requestedId)?.profile === 'vendor') item.profile = 'vendor';
         item.sourceUrls = trustedSourceList(item.sourceUrls, ai.sources);
         await upsertResearchedProspect(env, item, item.requestedId);
         verified++;

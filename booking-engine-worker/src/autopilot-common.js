@@ -46,6 +46,15 @@ export function prospectForPrompt(p) {
 }
 
 export function artistContext(profile = 'room', business = NEW_BUSINESS) {
+  if (profile === 'vendor') return [
+    `Business: ${NEW_BUSINESS.name}`,
+    'Las Vegas and Laughlin entertainment supplier for weddings, corporate functions, holiday parties and private events.',
+    'Services: professional DJs, MCs, live singers, saxophonists, small ensembles, bands and live/DJ combinations.',
+    'Company-first language. No personal introduction or Rick-only pitch in the body. Rick Parma appears only in the signature as Owner.',
+    'Do not claim approved-vendor status, insurance, roster availability, prices or commitments without explicit supporting facts.',
+    `Website: ${NEW_BUSINESS.website}`,
+    `Email: ${NEW_BUSINESS.email}`
+  ].join('\n');
   return [
     `${ARTIST_PROFILE.name} — ${ARTIST_PROFILE.positioning.join('; ')}.`,
     `Business: ${business.name}`,
@@ -61,6 +70,7 @@ export function artistContext(profile = 'room', business = NEW_BUSINESS) {
 }
 
 export function assetText(profile = 'room', business = NEW_BUSINESS) {
+  if (profile === 'vendor') return `Company website: ${NEW_BUSINESS.website}`;
   return campaignAssets(profile, business).map(x => `${x.label}: ${x.url}`).join('\n');
 }
 

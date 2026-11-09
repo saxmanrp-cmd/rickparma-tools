@@ -46,12 +46,17 @@ jobs:
           done < <(find src -type f -name '*.js' -print0 | sort -z)
 
       - name: Deploy Worker
-        run: npm run deploy
+        run: |
+          node --test test/vendor-campaign.test.mjs
+          npm run deploy
 
       - name: Live health smoke test
         run: |
           curl --fail --silent --show-error --max-time 20             https://rick-booking-engine.saxmanrp.workers.dev/api/health | tee /tmp/booking-health.json
           grep -q '"ok":true' /tmp/booking-health.json
+
+      - name: Activate authorized preferred vendor campaign
+        run: node scripts/launch-vendor-campaign.mjs
 
       - name: Report deploy success
         if: success()

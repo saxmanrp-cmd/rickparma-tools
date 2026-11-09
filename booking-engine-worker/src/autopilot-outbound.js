@@ -4,6 +4,7 @@ import { canAutonomouslySend, withinSendWindow, prospectEligible, appendComplian
 import { businessForMailbox, isNewMailboxEnabled } from './outbound-identity.js';
 import { prepareIdentityTransition, transitionMetadata } from './sender-transition.js';
 import { listProspects } from './prospects.js';
+import { isVendorProspect, vendorDraft } from './vendor-campaign.js';
 import {
   nowIso, daysFromNow, event, prospectForPrompt, artistContext, assetText, safeJson,
   priorThread, todayEventCount, storeOutbound, storeDraft, mirrorOverride
@@ -42,6 +43,7 @@ async function promptProspect(env, prospect) {
 }
 
 async function draftInitial(env, prospect, business) {
+  if (isVendorProspect(prospect)) return vendorDraft();
   const profile = prospect.profile || prospect.campaign_type || 'room';
   const ai = await draftBookingEmail(env, {
     prospect: await promptProspect(env, prospect),
@@ -53,6 +55,7 @@ async function draftInitial(env, prospect, business) {
 }
 
 async function draftFollowup(env, prospect, business) {
+  if (isVendorProspect(prospect)) return vendorDraft({ followup: true });
   const profile = prospect.profile || prospect.campaign_type || 'room';
   const ai = await draftBookingEmail(env, {
     prospect: await promptProspect(env, prospect),
@@ -112,6 +115,12 @@ async function existingRecipientThread(env, prospect) {
     WHERE direction='outbound' AND channel='email' AND lower(recipient)=? AND status!='draft'
     ORDER BY COALESCE(sent_at,created_at) DESC LIMIT 1
   `).bind(email).first();
+}
+
+async function recipientBlocked(env, prospect) {
+  return !!(await env.DB.prepare(`SELECT id FROM prospects WHERE lower(email)=lower(?)
+    AND (suppressed=1 OR current_venue=1 OR lower(status) IN ('do not contact','rick handling','pass','booked','replied')
+      OR room_preference IN ('SKIP','PERFORMING')) LIMIT 1`).bind(prospect.email).first());
 }
 
 async function attachDuplicateToExistingThread(env, prospect, owner) {
@@ -213,10 +222,11 @@ async function shadowDraft(env, config, prospect, draft, purpose) {
   return stored;
 }
 
-export async function processOutboundCycle(env, config) {
+export async function processOutboundCycle(env, config, { vendorOnly = false } = {}) {
   const sendGate = canAutonomouslySend(config);
   const windowOpen = withinSendWindow(config);
-  const prospects = await listProspects(env, { limit: 300, eligibleOnly: true });
+  const prospects = (await listProspects(env, { limit: 300, eligibleOnly: true, vendorOnly }))
+    .filter(p => isVendorProspect(p) === vendorOnly);
   let drafted = 0;
   let sentInitial = 0;
   let sentFollowups = 0;
@@ -297,6 +307,7 @@ export async function processOutboundCycle(env, config) {
 
   const initialCandidates = prospects.filter(p => !p.last_contacted_at && !Number(p.campaign_active || 0));
   for (const prospect of initialCandidates) {
+    if (isVendorProspect(prospect) && await recipientBlocked(env, prospect)) { skipped++; continue; }
     const eligibility = prospectEligible(config, prospect);
     if (!eligibility.ok) { skipped++; continue; }
     const key = recipientKey(prospect.email);
@@ -331,6 +342,7 @@ export async function processOutboundCycle(env, config) {
 
   const due = prospects.filter(p => Number(p.campaign_active || 0) && p.next_action_at && String(p.next_action_at) <= nowIso());
   for (const prospect of due) {
+    if (isVendorProspect(prospect) && await recipientBlocked(env, prospect)) { skipped++; continue; }
     const prospectMetadata = safeJson(prospect.metadata_json, {});
     const bounceRecovery = prospectMetadata.bounceRecoveryPending === true
       && prospectMetadata.bounceRecoveryEmail === recipientKey(prospect.email);

@@ -4,6 +4,7 @@ const THROUGHPUT_PROFILE_VERSION = 3;
 
 export const DEFAULT_AUTOPILOT_CONFIG = Object.freeze({
   mode: 'shadow',
+  vendorCampaignEnabled: false,
   timezone: 'America/Los_Angeles',
   throughputProfileVersion: THROUGHPUT_PROFILE_VERSION,
   researchDailyTarget: 40,
@@ -65,6 +66,7 @@ export function normalizeAutopilotConfig(input = {}) {
     ? out.followupDays.map(v => clampInt(v, 1, 365, 5)).slice(0, 8)
     : [...DEFAULT_AUTOPILOT_CONFIG.followupDays];
   out.allowColdSms = false;
+  out.vendorCampaignEnabled = out.vendorCampaignEnabled === true;
   out.interventionAlertsEnabled = out.interventionAlertsEnabled !== false;
   out.interventionAlertPhone = String(out.interventionAlertPhone || '').trim().slice(0, 40);
   out.businessPostalAddress = String(out.businessPostalAddress || '').trim().slice(0, 300);
@@ -216,7 +218,7 @@ export function appendComplianceFooter(body, config, business = NEW_BUSINESS) {
   const content = cleanBodyBeforeSignature(body, config);
   const signature = business.name === LEGACY_BUSINESS.name
     ? ['Rick Parma', 'Singer • Saxophonist • DJ • Entertainer', LEGACY_BUSINESS.email, 'RickParma.com', config.businessPostalAddress || '']
-    : ['Rick Parma', NEW_BUSINESS.name, 'Singer • Saxophonist • DJ • Entertainer', NEW_BUSINESS.email, NEW_BUSINESS.website, config.businessPostalAddress || ''];
+    : ['Rick Parma', 'Owner', NEW_BUSINESS.name, NEW_BUSINESS.email, NEW_BUSINESS.website, config.businessPostalAddress || ''];
 
   return [content, signature.filter(Boolean).join('\n'), config.optOutLine || ''].filter(Boolean).join('\n\n');
 }

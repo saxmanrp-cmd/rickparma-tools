@@ -1,5 +1,5 @@
 export const NEW_BUSINESS = Object.freeze({
-  name: 'Parma Entertainment Group',
+  name: 'Parma Entertainment Group, LLC',
   email: 'contact@parmaentertainmentgroup.com',
   website: 'https://parmaentertainmentgroup.com'
 });

@@ -15,7 +15,7 @@ function sameLocalDay(iso, timezone) {
 export async function runAutonomousBookingAgent(env, { forceResearch = false } = {}) {
   if (!env.DB) return { ok: false, skipped: true, reason: 'D1 database is not configured.' };
   const config = await getAutopilotConfig(env);
-  if (config.mode === 'off') return { ok: true, skipped: true, mode: 'off' };
+  if (config.mode === 'off' && !config.vendorCampaignEnabled) return { ok: true, skipped: true, mode: 'off' };
   if (!openaiStatus(env).configured) {
     return { ok: false, skipped: true, mode: config.mode, reason: 'OpenAI research/automation provider is not configured.' };
   }
@@ -27,9 +27,13 @@ export async function runAutonomousBookingAgent(env, { forceResearch = false } =
     const urgentResearch = await env.DB.prepare(
       "SELECT COUNT(*) AS n FROM prospects WHERE status='Research Needed' AND suppressed=0 AND current_venue=0 AND verified_at IS NULL"
     ).first();
+    const vendorResearch = config.vendorCampaignEnabled ? await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM prospects WHERE profile='vendor' AND verified_at IS NULL AND suppressed=0 AND current_venue=0 AND room_preference NOT IN ('SKIP','PERFORMING')"
+    ).first() : null;
     if (
       forceResearch
       || Number(urgentResearch?.n || 0) > 0
+      || Number(vendorResearch?.n || 0) > 0
       || !latestResearch
       || !sameLocalDay(latestResearch.started_at, config.timezone)
     ) {
@@ -38,8 +42,11 @@ export async function runAutonomousBookingAgent(env, { forceResearch = false } =
 
     // A buyer response always gets processed before any new outbound work.
     const inbound = await processInboundCycle(env, config);
-    const outbound = await processOutboundCycle(env, config);
-    const summary = { mode: config.mode, research, inbound, outbound };
+    const vendorOutbound = config.vendorCampaignEnabled
+      ? await processOutboundCycle(env, { ...config, mode: 'live', pilotApprovedDraftId: '' }, { vendorOnly: true })
+      : null;
+    const outbound = config.mode === 'off' ? null : await processOutboundCycle(env, config);
+    const summary = { mode: config.mode, research, inbound, outbound, vendorOutbound };
     await finishRun(env, runId, summary);
     return { ok: true, ...summary };
   } catch (error) {

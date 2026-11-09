@@ -296,9 +296,9 @@ export async function upsertResearchedProspect(env, item = {}, fallbackId = '') 
   return id;
 }
 
-export async function verificationTargets(env, limit = 6) {
+export async function verificationTargets(env, limit = 6, { preferVendor = false } = {}) {
   const result = await env.DB.prepare(`
-    SELECT id,entity,room,contact_name,contact_role,email,phone,automation_safe,confidence,last_researched_at,status,metadata_json
+    SELECT id,entity,room,profile,contact_name,contact_role,email,phone,automation_safe,confidence,last_researched_at,status,metadata_json
     FROM prospects
     WHERE suppressed=0
       AND current_venue=0
@@ -308,7 +308,7 @@ export async function verificationTargets(env, limit = 6) {
         OR source_urls_json IS NULL
         OR source_urls_json='[]'
       )
-    ORDER BY CASE WHEN status='Research Needed' THEN 0 ELSE 1 END,fit_score DESC,confidence ASC,last_researched_at ASC
+    ORDER BY ${preferVendor ? "CASE WHEN profile='vendor' THEN 0 ELSE 1 END," : ''} CASE WHEN status='Research Needed' THEN 0 ELSE 1 END,fit_score DESC,confidence ASC,last_researched_at ASC
     LIMIT ?
   `).bind(Math.max(1, Math.min(60, Number(limit) || 6))).all();
   return (result.results || []).map(row => {
@@ -320,11 +320,13 @@ export async function verificationTargets(env, limit = 6) {
   });
 }
 
-export async function listProspects(env, { limit = 100, status = '', eligibleOnly = false, includeSuppressed = false } = {}) {
+export async function listProspects(env, { limit = 100, status = '', eligibleOnly = false, includeSuppressed = false, vendorOnly = null } = {}) {
   const cap = Math.max(1, Math.min(500, Number(limit) || 100));
   let sql = 'SELECT * FROM prospects WHERE 1=1';
   const binds = [];
   if (!includeSuppressed) sql += ' AND suppressed=0';
+  if (vendorOnly === true) sql += " AND (profile='vendor' OR campaign_type='vendor')";
+  if (vendorOnly === false) sql += " AND COALESCE(profile,'')!='vendor' AND COALESCE(campaign_type,'')!='vendor'";
   if (status) { sql += ' AND status=?'; binds.push(status); }
   if (eligibleOnly) {
     sql += " AND suppressed=0 AND current_venue=0 AND automation_safe='YES_TARGETED' AND email IS NOT NULL AND email!=''";
