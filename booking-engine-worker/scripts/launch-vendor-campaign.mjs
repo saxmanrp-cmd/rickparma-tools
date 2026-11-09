@@ -59,7 +59,7 @@ for (const row of rows) {
     VALUES (?,?,?,?,'vendor',?,?,?,?,?,?,85,0,'MANUAL',?,?,?,'discovered','vendor',?)`,
     [id,key,entity,row.Category,row['Named contact'],row['Buyer role'],email,row['Public phone'],row['Source URL'],email ? 'email' : 'unknown',
       `Preferred entertainment vendor for weddings, corporate and private events in ${row.Area}`,notes,JSON.stringify([row['Source URL']]),
-      JSON.stringify({ campaign: marker, priority: row.Priority, sourceDate: '2026-11-09' })]);
+      JSON.stringify({ campaign: marker, priority: row.Priority, sourceDate: '2026-11-09', vendorSentence: row['Approved venue sentence'] })]);
   existing.push({ id, entity, email });
   staged++;
 }

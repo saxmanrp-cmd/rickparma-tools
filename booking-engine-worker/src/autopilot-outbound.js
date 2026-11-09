@@ -43,7 +43,7 @@ async function promptProspect(env, prospect) {
 }
 
 async function draftInitial(env, prospect, business) {
-  if (isVendorProspect(prospect)) return vendorDraft();
+  if (isVendorProspect(prospect)) return vendorDraft({ prospect });
   const profile = prospect.profile || prospect.campaign_type || 'room';
   const ai = await draftBookingEmail(env, {
     prospect: await promptProspect(env, prospect),
@@ -55,7 +55,7 @@ async function draftInitial(env, prospect, business) {
 }
 
 async function draftFollowup(env, prospect, business) {
-  if (isVendorProspect(prospect)) return vendorDraft({ followup: true });
+  if (isVendorProspect(prospect)) return vendorDraft({ followup: true, prospect });
   const profile = prospect.profile || prospect.campaign_type || 'room';
   const ai = await draftBookingEmail(env, {
     prospect: await promptProspect(env, prospect),
