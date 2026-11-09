@@ -21,11 +21,14 @@ const config={interventionAlertsEnabled:true,interventionAlertPhone:'+1555555000
 test('vendor referral receipts wait without another email or an owner decision',()=>{
  const result=normalizeVendorReceipt({profile:'vendor'},{body},classification);
  assert.equal(result.category,'vendor_review_pending');assert.equal(result.autoReplyAllowed,false);assert.equal(result.mustEscalate,false);
- assert.equal(normalizeVendorReceipt({profile:'room'},{body},classification),classification);
- for(const change of [{submissionUrl:'https://example.com/apply'},{mustEscalate:true},{extractedMoneyOrTerms:'Commission'},{requestedDates:['2026-12-01']},{category:'rate_request'}]) {
+ assert.equal(normalizeVendorReceipt({profile:'room'},{body},classification).category,'vendor_review_pending');
+ for(const change of [{mustEscalate:true},{extractedMoneyOrTerms:'Commission'},{requestedDates:['2026-12-01']},{category:'rate_request'}]) {
   const input={...classification,...change};assert.equal(normalizeVendorReceipt({profile:'vendor'},{body},input),input);
  }
- assert.equal(normalizeVendorReceipt({profile:'vendor'},{body:'Please complete our vendor application.'},classification),classification);
+ const application={...classification,summary:'Please complete our vendor application.',recommendedAction:'Submit the requested form.',submissionUrl:'https://example.com/apply'};
+ assert.equal(normalizeVendorReceipt({profile:'vendor'},{body:'Please complete our vendor application.'},application),application);
+ const forwarded={...classification,summary:'Information was forwarded to the Talent and Vendor team for review.',recommendedAction:'Do not send a duplicate submission. Wait for their follow-up.',submissionUrl:'https://example.com'};
+ assert.equal(normalizeVendorReceipt({profile:'vendor'},{body:'Thank you for reaching out.'},forwarded).category,'vendor_review_pending');
 });
 test('four concurrent processors and four copies of the same logical reply send only one alert',async()=>{
  const {sql,env}=fixture();

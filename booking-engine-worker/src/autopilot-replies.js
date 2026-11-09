@@ -552,7 +552,6 @@ export async function settleVendorReviewReceipts(env) {
     SELECT e.id AS escalation_id,m.id,m.contact_id,m.body,m.metadata_json,p.profile,p.campaign_type
     FROM escalations e JOIN messages m ON m.id=e.message_id JOIN prospects p ON p.id=e.contact_id
     WHERE e.status='open' AND e.category='submission_redirect'
-      AND (p.profile='vendor' OR p.campaign_type='vendor')
     ORDER BY e.created_at DESC LIMIT 30
   `).all();
   let resolved = 0;
