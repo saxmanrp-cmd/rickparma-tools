@@ -7,6 +7,7 @@ import { learnContactsFromReply } from './contacts.js';
 import { checkRickAvailability } from './calendar-availability.js';
 import { businessForMailbox, legacyMailbox, newOutboundMailbox } from './outbound-identity.js';
 import { isNewSender, prepareIdentityTransition, transitionMetadata } from './sender-transition.js';
+import { isVendorProspect } from './vendor-campaign.js';
 import {
   safeJson, daysFromNow, event, artistContext, assetText, priorThread,
   todayEventCount, storeOutbound, storeDraft, mirrorOverride, nowIso
@@ -541,7 +542,8 @@ async function humanHandoffNeeded(env, message, classification) {
   return { needed: false, reason: '' };
 }
 
-export async function processInboundCycle(env, config) {
+export async function processInboundCycle(env, baseConfig) {
+  const config = baseConfig;
   const contactBackfill = await backfillReplyContacts(env);
 
   const rows = await env.DB.prepare(`
@@ -564,6 +566,11 @@ export async function processInboundCycle(env, config) {
 
   for (const message of rows.results || []) {
     const prospectAtStart = message.contact_id ? await getProspect(env, message.contact_id) : null;
+    const config = baseConfig.vendorCampaignEnabled && isVendorProspect(prospectAtStart)
+      ? { ...baseConfig, mode: 'live', pilotApprovedDraftId: '' }
+      : baseConfig;
+    const gate = canAutonomouslySend(config);
+    const windowOpen = withinSendWindow(config);
     const rickHandling = String(prospectAtStart?.status || '').toLowerCase() === 'rick handling';
     let metadata = safeJson(message.metadata_json, {});
     let classification = metadata.classification;
