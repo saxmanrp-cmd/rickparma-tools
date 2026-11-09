@@ -56,6 +56,7 @@
       <div class="agent-status-row"><span>AI research + writing</span><strong class="${r.openai?.configured ? 'good' : 'warn'}">${r.openai?.configured ? 'Ready' : 'Needs API key'}</strong></div>
       <div class="agent-status-row"><span>Microsoft email</span><strong class="${r.microsoft?.configured ? 'good' : 'warn'}">${r.microsoft?.configured ? `New outreach: ${r.microsoft?.newOutboundMailbox || ''}${r.newOutboundMailboxVerification?.status === 'verified' && r.microsoft?.newOutboundEnabled ? ' (verified)' : ' (paused)'}` : 'Needs Graph setup'}</strong></div>
       <div class="agent-status-row"><span>Autonomous sending</span><strong class="${r.canSend ? 'good' : 'warn'}">${r.canSend ? 'Ready' : esc(r.sendBlocker || 'Blocked')}</strong></div>
+      <div class="agent-status-row"><span>Preferred vendor campaign</span><strong>${s.config?.vendorCampaignEnabled ? 'Enabled — verified contacts only' : 'Paused'}</strong></div>
       <div class="agent-status-row"><span>Send window right now</span><strong>${r.sendWindowOpen ? 'Open' : 'Closed'}</strong></div>
       <div class="agent-status-row"><span>Intervention text alerts</span><strong class="${r.interventionTextAlerts?.configured ? 'good' : 'warn'}">${r.interventionTextAlerts?.configured ? 'Ready' : 'Add text number / check Twilio'}</strong></div>`;
   }
@@ -144,8 +145,8 @@
 
     card.innerHTML = `
       <div class="agent-title-row"><div><div class="eyebrow">AUTONOMOUS BOOKING</div><h3>Booking Agent</h3></div><span class="agent-mode mode-${esc(c.mode)}">${esc(modeLabel(c.mode))}</span></div>
-      <p><strong>Shadow</strong> researches and writes but sends nothing. <strong>Pilot</strong> runs automatically with small daily limits. <strong>Live</strong> is the full autonomous engine.</p>
-      <label>Mode
+      <p>For artist and DJ campaigns, <strong>Shadow</strong> researches and writes without sending. <strong>Pilot</strong> runs with daily limits. <strong>Live</strong> sends automatically. The preferred vendor campaign has its own switch below and shares these limits.</p>
+      <label>Artist and DJ campaign mode
         <select data-agent-mode>
           <option value="off" ${c.mode==='off'?'selected':''}>Off</option>
           <option value="shadow" ${c.mode==='shadow'?'selected':''}>Shadow — no sending</option>
@@ -153,6 +154,7 @@
           <option value="live" ${c.mode==='live'?'selected':''}>Live — autonomous</option>
         </select>
       </label>
+      <label><input data-agent-vendor type="checkbox" ${c.vendorCampaignEnabled ? 'checked' : ''}>Enable Parma Entertainment Group, LLC preferred vendor campaign for weddings, corporate and private events</label>
       <div class="agent-grid">
         <label>New emails / day<input data-agent-initial type="number" min="0" max="50" value="${Number(c.dailyInitialEmailLimit ?? 3)}"></label>
         <label>Follow-ups / day<input data-agent-followups type="number" min="0" max="100" value="${Number(c.dailyFollowupEmailLimit ?? 5)}"></label>
@@ -179,6 +181,7 @@
         const config = {
           ...c,
           mode: card.querySelector('[data-agent-mode]').value,
+          vendorCampaignEnabled: card.querySelector('[data-agent-vendor]').checked,
           dailyInitialEmailLimit: Number(card.querySelector('[data-agent-initial]').value),
           dailyFollowupEmailLimit: Number(card.querySelector('[data-agent-followups]').value),
           minFitScore: Number(card.querySelector('[data-agent-fit]').value),
