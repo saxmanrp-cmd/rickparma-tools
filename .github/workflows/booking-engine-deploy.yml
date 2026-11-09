@@ -47,7 +47,7 @@ jobs:
 
       - name: Deploy Worker
         run: |
-          node --test test/vendor-campaign.test.mjs
+          node --test test/*.test.mjs
           npm run deploy
 
       - name: Live health smoke test
@@ -57,6 +57,12 @@ jobs:
 
       - name: Activate authorized preferred vendor campaign
         run: node scripts/launch-vendor-campaign.mjs
+
+      - name: Settle routine vendor receipt tasks without sending messages
+        run: node scripts/settle-vendor-receipts.mjs
+
+      - name: Verify aggregate alert diagnostics
+        run: node ../ops/booking-alert-audit.mjs
 
       - name: Report deploy success
         if: success()

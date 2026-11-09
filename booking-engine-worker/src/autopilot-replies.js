@@ -8,6 +8,7 @@ import { checkRickAvailability } from './calendar-availability.js';
 import { businessForMailbox, legacyMailbox, newOutboundMailbox } from './outbound-identity.js';
 import { isNewSender, prepareIdentityTransition, transitionMetadata } from './sender-transition.js';
 import { isVendorProspect } from './vendor-campaign.js';
+import { normalizeVendorReceipt, escalationIdentity } from './reply-guards.js';
 import {
   safeJson, daysFromNow, event, artistContext, assetText, priorThread,
   todayEventCount, storeOutbound, storeDraft, mirrorOverride, nowIso
@@ -104,19 +105,21 @@ async function sendInterventionAlert(env, config, contactId, messageId, classifi
   }
 }
 
-async function createEscalation(env, contactId, messageId, classification, config = null) {
-  const existing = await env.DB.prepare("SELECT id FROM escalations WHERE message_id=? AND status='open' LIMIT 1")
+export async function createEscalation(env, contactId, messageId, classification, config = null) {
+  const existing = await env.DB.prepare("SELECT id FROM escalations WHERE message_id=? LIMIT 1")
     .bind(messageId).first();
   if (existing?.id) return existing.id;
 
-  const id = crypto.randomUUID();
+  if (!messageId) throw new Error('An escalation requires a source message.');
+  const sourceMessage = await env.DB.prepare('SELECT provider,provider_message_id,metadata_json FROM messages WHERE id=? LIMIT 1').bind(messageId).first();
+  const id = await escalationIdentity(sourceMessage, messageId);
   const high = ['availability_request', 'rate_request', 'offer_or_hold'].includes(classification.category);
   const availabilityNote = classification.calendarAvailability?.summary
     ? ` Calendar: ${classification.calendarAvailability.summary}`
     : '';
 
-  await env.DB.prepare(`
-    INSERT INTO escalations (id,contact_id,message_id,category,priority,summary,proposed_action,metadata_json)
+  const inserted = await env.DB.prepare(`
+    INSERT OR IGNORE INTO escalations (id,contact_id,message_id,category,priority,summary,proposed_action,metadata_json)
     VALUES (?,?,?,?,?,?,?,?)
   `).bind(
     id,
@@ -128,6 +131,8 @@ async function createEscalation(env, contactId, messageId, classification, confi
     classification.recommendedAction || '',
     JSON.stringify(classification)
   ).run();
+  // Only the run that atomically inserts this logical reply may notify Rick.
+  if (Number(inserted?.meta?.changes || 0) !== 1) return id;
 
   await event(env, contactId, 'autopilot_escalation_created', classification.channel || null, {
     escalationId: id,
@@ -542,8 +547,32 @@ async function humanHandoffNeeded(env, message, classification) {
   return { needed: false, reason: '' };
 }
 
+export async function settleVendorReviewReceipts(env) {
+  const rows = await env.DB.prepare(`
+    SELECT e.id AS escalation_id,m.id,m.contact_id,m.body,m.metadata_json,p.profile,p.campaign_type
+    FROM escalations e JOIN messages m ON m.id=e.message_id JOIN prospects p ON p.id=e.contact_id
+    WHERE e.status='open' AND e.category='submission_redirect'
+      AND (p.profile='vendor' OR p.campaign_type='vendor')
+    ORDER BY e.created_at DESC LIMIT 30
+  `).all();
+  let resolved = 0;
+  for (const row of rows.results || []) {
+    const metadata = safeJson(row.metadata_json, {});
+    const classification = normalizeVendorReceipt(row, row, metadata.classification || {});
+    if (classification.category !== 'vendor_review_pending') continue;
+    await env.DB.prepare("UPDATE escalations SET status='resolved',resolved_at=CURRENT_TIMESTAMP,metadata_json=json_set(COALESCE(metadata_json,'{}'),'$.resolution','Vendor information is already under review; no duplicate submission or acknowledgement is needed.') WHERE id=? AND status='open'").bind(row.escalation_id).run();
+    await saveClassification(env, row, classification, 'processed');
+    await env.DB.prepare("UPDATE prospects SET status='Awaiting Vendor Review',campaign_active=0,next_action_at=NULL WHERE id=? AND lower(status) NOT IN ('rick handling','do not contact','pass','booked') AND NOT EXISTS (SELECT 1 FROM escalations WHERE contact_id=? AND status='open' AND category!='submission_redirect')").bind(row.contact_id, row.contact_id).run();
+    // Keep history; resolve the unnecessary task without sending any message.
+    await event(env, row.contact_id, 'autopilot_vendor_review_recorded', 'email', { messageId: row.id, escalationId: row.escalation_id });
+    resolved++;
+  }
+  return resolved;
+}
+
 export async function processInboundCycle(env, baseConfig) {
   const config = baseConfig;
+  const vendorReceiptsResolved = await settleVendorReviewReceipts(env);
   const contactBackfill = await backfillReplyContacts(env);
 
   const rows = await env.DB.prepare(`
@@ -589,6 +618,7 @@ export async function processInboundCycle(env, baseConfig) {
         dispositionVersion: REPLY_DISPOSITION_VERSION
       });
       classification = await ensureReplyContactLearning(env, message, classification);
+      classification = normalizeVendorReceipt(prospectAtStart, message, classification);
       await saveClassification(env, message, classification, 'classified');
       if (!rickHandling) await applyClassification(env, message, classification, config);
       classified++;
@@ -607,6 +637,24 @@ export async function processInboundCycle(env, baseConfig) {
     if (rickHandling) {
       await saveClassification(env, { ...message, metadata_json: JSON.stringify(metadata) }, classification, 'processed');
       await event(env, message.contact_id, 'rick_handling_inbound_received', message.channel, { messageId: message.id });
+      stopped++;
+      continue;
+    }
+
+    classification = normalizeVendorReceipt(prospectAtStart, message, classification);
+    // A referral already in review needs no fresh submission, acknowledgement or alert.
+    if (classification.category === 'vendor_review_pending') {
+      await env.DB.prepare("UPDATE prospects SET status='Awaiting Vendor Review',campaign_active=0,next_action_at=NULL WHERE id=? AND lower(status) NOT IN ('rick handling','do not contact','pass','booked')").bind(message.contact_id).run();
+      await mirrorOverride(env, message.contact_id, { Status: 'Awaiting Vendor Review', 'Next Follow-up': null });
+      await saveClassification(env, { ...message, metadata_json: JSON.stringify(metadata) }, classification, 'processed');
+      stopped++;
+      continue;
+    }
+    // Real submission redirects already create a manual task in applyClassification.
+    // Do not send an automatic acknowledgement that can trigger another receipt.
+    if (classification.category === 'submission_redirect') {
+      await createEscalation(env, message.contact_id, message.id, classification, config);
+      await saveClassification(env, { ...message, metadata_json: JSON.stringify(metadata) }, classification, 'processed');
       stopped++;
       continue;
     }
@@ -691,6 +739,7 @@ export async function processInboundCycle(env, baseConfig) {
     stopped,
     shadowDrafted,
     contactBackfill,
+    vendorReceiptsResolved,
     sendGate: gate.ok ? 'ready' : gate.reason,
     windowOpen,
     microsoftReady,
