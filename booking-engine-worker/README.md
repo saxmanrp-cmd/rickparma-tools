@@ -230,3 +230,9 @@ The deploy workflow applies `src/d1-read-indexes.js` through `scripts/optimize-d
 If the account is already daily-quota blocked, deployment records the migration as pending and skips D1-dependent post-deploy tasks. The scheduled Worker checks the primary-keyed `sync_state` marker `booking-d1-read-indexes-v1` before other work. It applies the transactional index batch once D1 is available, then resumes the existing sync/campaign cycle. Failures do not set the marker and remain retryable. No billing plan is changed, and migrations send no messages. Index creation consumes a one-time amount of D1 read/write usage.
 
 Validation: `node --test test/*.test.mjs` includes the actual cross-recipient hold query against 20,001 synthetic prospects, verifies its plan changes from a table scan to indexed searches, and covers quota recovery and transactional migration retries.
+
+### Daily campaign cadence
+
+As requested on November 11, 2026, prospect research and campaign outreach run at most once per local day during the existing send window (including the weekday setting). The first scheduled check in that window claims `booking-campaign-day:YYYY-MM-DD` atomically in `sync_state`; concurrent cron or manual Run requests cannot create another batch. Failed or interrupted attempts keep their claim to avoid repeating a partially sent batch. Queued research and follow-ups wait for the next eligible day; the existing email limits and every targeting/hold/opt-out rule remain in force.
+
+The ten-minute trigger is retained for mailbox synchronization and handling buyer replies. Those reply checks do not start new prospect research or another campaign batch after the daily claim. This remains email outreach; cold SMS is disabled.

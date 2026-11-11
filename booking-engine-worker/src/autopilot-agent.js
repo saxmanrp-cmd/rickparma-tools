@@ -1,18 +1,14 @@
 import { microsoftStatus } from './providers/microsoft.js';
 import { twilioStatus } from './providers/twilio.js';
 import { openaiStatus } from './providers/openai.js';
-import { getAutopilotConfig, saveAutopilotConfig, canAutonomouslySend, withinSendWindow, localParts } from './autopilot-policy.js';
+import { getAutopilotConfig, saveAutopilotConfig, canAutonomouslySend, withinSendWindow } from './autopilot-policy.js';
 import { runResearchCycle } from './autopilot-research.js';
 import { processOutboundCycle } from './autopilot-outbound.js';
 import { processInboundCycle } from './autopilot-replies.js';
-import { lastCompletedRun, startRun, finishRun, safeJson } from './autopilot-common.js';
+import { startRun, finishRun, safeJson } from './autopilot-common.js';
+import { claimDailyCampaign, finishDailyCampaign } from './campaign-cadence.js';
 
-function sameLocalDay(iso, timezone) {
-  if (!iso) return false;
-  return localParts(new Date(iso), timezone).dateKey === localParts(new Date(), timezone).dateKey;
-}
-
-export async function runAutonomousBookingAgent(env, { forceResearch = false } = {}) {
+export async function runAutonomousBookingAgent(env) {
   if (!env.DB) return { ok: false, skipped: true, reason: 'D1 database is not configured.' };
   const config = await getAutopilotConfig(env);
   if (config.mode === 'off' && !config.vendorCampaignEnabled) return { ok: true, skipped: true, mode: 'off' };
@@ -21,36 +17,34 @@ export async function runAutonomousBookingAgent(env, { forceResearch = false } =
   }
 
   const runId = await startRun(env, 'autopilot-cycle', config.mode);
+  let slot = null;
   try {
-    let research = null;
-    const latestResearch = await lastCompletedRun(env, 'research');
-    const urgentResearch = await env.DB.prepare(
-      "SELECT COUNT(*) AS n FROM prospects WHERE status='Research Needed' AND suppressed=0 AND current_venue=0 AND verified_at IS NULL"
-    ).first();
-    const vendorResearch = config.vendorCampaignEnabled ? await env.DB.prepare(
-      "SELECT COUNT(*) AS n FROM prospects WHERE profile='vendor' AND verified_at IS NULL AND suppressed=0 AND current_venue=0 AND room_preference NOT IN ('SKIP','PERFORMING')"
-    ).first() : null;
-    if (
-      forceResearch
-      || Number(urgentResearch?.n || 0) > 0
-      || Number(vendorResearch?.n || 0) > 0
-      || !latestResearch
-      || !sameLocalDay(latestResearch.started_at, config.timezone)
-    ) {
-      research = await runResearchCycle(env, config);
+    // Buyer responses stay prompt even when today's campaign batch has finished.
+    const inbound = await processInboundCycle(env, config);
+    slot = await claimDailyCampaign(env, config);
+    if (!slot.claimed) {
+      const summary = { mode: config.mode, inbound, research: null, outbound: null, vendorOutbound: null,
+        campaign: { cadence: 'daily', day: slot.day, skipped: true, reason: slot.reason } };
+      await finishRun(env, runId, summary);
+      return { ok: true, ...summary };
     }
 
-    // A buyer response always gets processed before any new outbound work.
-    const inbound = await processInboundCycle(env, config);
+    // One research pass per day. Urgent/unverified targets do not restart discovery
+    // every ten minutes; forceResearch also respects the same daily campaign claim.
+    const research = await runResearchCycle(env, config);
     const vendorOutbound = config.vendorCampaignEnabled
       ? await processOutboundCycle(env, { ...config, mode: 'live', pilotApprovedDraftId: '' }, { vendorOnly: true })
       : null;
     const outbound = config.mode === 'off' ? null : await processOutboundCycle(env, config);
-    const summary = { mode: config.mode, research, inbound, outbound, vendorOutbound };
+    const summary = { mode: config.mode, research, inbound, outbound, vendorOutbound,
+      campaign: { cadence: 'daily', day: slot.day, skipped: false } };
+    await finishDailyCampaign(env, slot, summary.campaign);
     await finishRun(env, runId, summary);
     return { ok: true, ...summary };
   } catch (error) {
-    await finishRun(env, runId, {}, String(error?.message || error));
+    const message = String(error?.message || error);
+    await finishDailyCampaign(env, slot, {}, message);
+    await finishRun(env, runId, {}, message);
     throw error;
   }
 }
@@ -85,6 +79,7 @@ export async function bookingAgentStatus(env) {
       canSend: gate.ok && microsoft.configured && openai.configured && newMailboxReady,
       sendBlocker: !gate.ok ? gate.reason : !microsoft.configured ? 'Microsoft email is not configured.' : !openai.configured ? 'OpenAI is not configured.' : !newMailboxReady ? 'The Parma Entertainment Group mailbox has not passed verification or is not enabled.' : '',
       sendWindowOpen: withinSendWindow(config),
+      campaignCadence: 'daily',
       microsoft,
       newOutboundMailboxVerification: {
         status: mailboxVerification?.cursor || 'not-requested',

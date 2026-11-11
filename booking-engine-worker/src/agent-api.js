@@ -67,8 +67,7 @@ export async function handleAgentApi(request, env) {
       return json({ ok: true, config: await setBookingAgentConfig(env, body.config || body) }, request, env);
     }
     if (url.pathname === '/api/autopilot/run' && request.method === 'POST') {
-      const body = await readJson(request);
-      return json(await runAutonomousBookingAgent(env, { forceResearch: body.forceResearch === true }), request, env);
+      return json(await runAutonomousBookingAgent(env), request, env);
     }
     if (url.pathname === '/api/autopilot/drafts' && request.method === 'GET') {
       const limit = Math.max(1, Math.min(100, Number(url.searchParams.get('limit')) || 30));
