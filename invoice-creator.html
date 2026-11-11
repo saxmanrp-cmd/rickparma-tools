@@ -83,9 +83,9 @@
   .btn-row { display: flex; gap: 10px; margin-top: 10px; }
   .btn-row .btn { margin-top: 0; }
   .hint { font-size: 12px; color: var(--text-dim); margin-top: 6px; line-height: 1.4; }
-  #invoice-share-dialog { width: calc(100% - 32px); max-width: 440px; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); color: var(--text); }
-  #invoice-share-dialog::backdrop { background: rgba(0, 0, 0, 0.65); }
-  #invoice-share-dialog h2 { margin: 0 0 12px; color: var(--accent); font-size: 20px; }
+  #invoice-share-dialog, #multiple-invoice-dialog { width: calc(100% - 32px); max-width: 440px; max-height: 85vh; overflow-y: auto; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); color: var(--text); }
+  #invoice-share-dialog::backdrop, #multiple-invoice-dialog::backdrop { background: rgba(0, 0, 0, 0.65); }
+  #invoice-share-dialog h2, #multiple-invoice-dialog h2 { margin: 0 0 12px; color: var(--accent); font-size: 20px; }
   #invoice-share-status { min-height: 34px; }
   .line-item { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px; }
   .line-item .desc { flex: 3; }
@@ -294,6 +294,9 @@
       <button class="btn" onclick="renderPrintView(); showView('print')">Print / Share PDF</button>
     </div>
     <div class="btn-row no-print">
+      <button class="btn" onclick="saveAsMultipleInvoices()">Save as Multiple Invoices</button>
+    </div>
+    <div class="btn-row no-print">
       <button class="btn solid" onclick="shareForSignature()">Share for Signature</button>
     </div>
     <div class="btn-row no-print">
@@ -335,6 +338,15 @@
   <button id="invoice-share-close" class="btn" onclick="document.getElementById('invoice-share-dialog').close()">Close</button>
 </dialog>
 
+<dialog id="multiple-invoice-dialog" class="no-print" aria-labelledby="multiple-invoice-title">
+  <h2 id="multiple-invoice-title">Invoices by Date</h2>
+  <p class="hint">One invoice stays in your app. Each date has its own link and signature.</p>
+  <div id="multiple-invoice-links"></div>
+  <button class="btn solid" onclick="shareAllDateLinks()">Share All Links</button>
+  <p id="multiple-invoice-status" class="hint" role="status" aria-live="polite"></p>
+  <button class="btn" onclick="document.getElementById('multiple-invoice-dialog').close()">Close</button>
+</dialog>
+
 <script src="vendor/html2pdf-0.14.0.bundle.min.js" defer></script>
 <script>
 function snapTimeToHalfHour(el){
@@ -366,6 +378,7 @@ let events = [];
 let locationCounter = 0;
 let invoiceDates = [];
 let dateCounter = 0;
+let splitByDate = false;
 let lineItems = [];
 let payments = [];
 const savedSignature = DEFAULT_SIGNATURE;
@@ -382,6 +395,7 @@ const urlParams = new URLSearchParams(location.search);
 const signId = urlParams.get('sign');
 const payId = urlParams.get('pay');
 const receiptId = urlParams.get('receipt');
+const signDateId = urlParams.get('date');
 
 function setSyncStatus(text) {
   const el = document.getElementById('sync-status');
@@ -428,14 +442,17 @@ async function persistInvoices() {
   localStorage.setItem(CACHE_KEY, JSON.stringify(invoices));
   setSyncStatus('Saving…');
   try {
-    await fetch(`${PROXY_BASE}/invoices`, {
+    const response = await fetch(`${PROXY_BASE}/invoices`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ invoices })
     });
+    if (!response.ok) throw new Error('Could not sync invoices');
     setSyncStatus('Synced');
+    return true;
   } catch (e) {
     setSyncStatus('Saved locally (sync failed — check connection)');
+    return false;
   }
 }
 
@@ -464,7 +481,10 @@ function renderHistory() {
     const paid = paymentsTotal(inv.payments);
     const bal = total - paid;
     const status = statusFor(total, paid);
-    const signedBadge = inv.clientSignatureImg ? '<div class="status-badge paid">✓ CLIENT SIGNED</div>' : '';
+    const signedCount = Object.keys(inv.dateSignatures || {}).length;
+    const dateCount = new Set((inv.events || []).map(event => event.dateId).filter(Boolean)).size;
+    const signedBadge = inv.clientSignatureImg ? '<div class="status-badge paid">✓ CLIENT SIGNED</div>'
+      : signedCount ? `<div class="status-badge paid">✓ ${signedCount}/${dateCount} DATES SIGNED</div>` : '';
     return `<div class="hist-card" onclick="editInvoice('${inv.id}')">
       <div class="top"><span class="name">${esc(inv.clientName||'Untitled')}</span><span class="amt">$${total.toFixed(2)}</span></div>
       <div class="meta">${inv.events && inv.events.length ? `${inv.events.length} date${inv.events.length === 1 ? '' : 's'} — ${esc(inv.events.map(e => e.eventDate).filter(Boolean).sort().join(', ') || 'no date')}` : `${esc(inv.eventType||'')} — ${esc(inv.eventDate||'no date')}`}</div>
@@ -505,6 +525,7 @@ function esc(s) { return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 function clearForm() {
   currentId = null;
   currentInvoiceNumber = null;
+  splitByDate = false;
   invoiceDates = [blankInvoiceDate()];
   events = [{ ...blankEvent(), dateId: invoiceDates[0].id }];
   lineItems = [];
@@ -524,6 +545,7 @@ function editInvoice(id) {
   if (!inv) return;
   currentId = id;
   currentInvoiceNumber = inv.invoiceNumber || null;
+  splitByDate = !!inv.splitByDate;
   document.getElementById('f-name').value = inv.clientName || '';
   document.getElementById('f-email').value = inv.clientEmail || '';
   document.getElementById('f-phone').value = inv.clientPhone || '';
@@ -866,7 +888,9 @@ function collectFormData() {
     payments: payments,
     clientSignatureImg: existingInv ? existingInv.clientSignatureImg : undefined,
     clientSignDate: existingInv ? existingInv.clientSignDate : undefined,
-    clientSignedName: existingInv ? existingInv.clientSignedName : undefined
+    clientSignedName: existingInv ? existingInv.clientSignedName : undefined,
+    splitByDate,
+    dateSignatures: existingInv ? (existingInv.dateSignatures || {}) : {}
   };
 }
 
@@ -881,15 +905,61 @@ async function saveInvoiceCore() {
       // keep whatever is already in memory if the refresh fails
     }
   const idx = invoices.findIndex(i => i.id === currentId);
+  if (idx >= 0) {
+    // A client may sign a date while the owner is editing another date.
+    data.dateSignatures = { ...data.dateSignatures, ...(invoices[idx].dateSignatures || {}) };
+    data.clientSignatureImg = invoices[idx].clientSignatureImg || data.clientSignatureImg;
+    data.clientSignDate = invoices[idx].clientSignDate || data.clientSignDate;
+    data.clientSignedName = invoices[idx].clientSignedName || data.clientSignedName;
+  }
   if (idx >= 0) invoices[idx] = data; else invoices.push(data);
-  await persistInvoices();
+  const synced = await persistInvoices();
   document.getElementById('delete-btn').style.display = 'block';
   renderHistory();
+  return synced;
 }
 
 async function saveInvoice() {
   await saveInvoiceCore();
   showView('history');
+}
+
+function invoiceDateIds(inv) {
+  return [...new Set((inv.events || []).map(event => event.dateId).filter(Boolean))];
+}
+
+function invoiceForDate(inv, dateId) {
+  const dateIds = invoiceDateIds(inv);
+  if (!dateIds.includes(dateId)) return null;
+  const dateIndex = dateIds.indexOf(dateId);
+  const count = dateIds.length;
+  // Divide shared charges in cents so the separate copies add up to the one app invoice.
+  const lineItems = (inv.lineItems || []).map(item => {
+    const cents = Math.round((parseFloat(item.amount) || 0) * 100);
+    const share = Math.trunc(cents / count) + (dateIndex < Math.abs(cents % count) ? Math.sign(cents) : 0);
+    return { ...item, amount: (share / 100).toFixed(2) };
+  });
+  const signature = (inv.dateSignatures || {})[dateId] || {};
+  return { ...inv, events:inv.events.filter(event => event.dateId === dateId), lineItems,
+    clientSignatureImg:signature.clientSignatureImg,
+    clientSignDate:signature.clientSignDate,
+    clientSignedName:signature.clientSignedName };
+}
+
+async function saveAsMultipleInvoices() {
+  const selectedDates = invoiceDates.filter(date => events.some(event => event.dateId === date.id));
+  if (selectedDates.length < 2) {
+    alert('Choose at least two dates in Event Info before saving as multiple invoices.');
+    return;
+  }
+  if (selectedDates.some(date => !date.eventDate)) {
+    alert('Set each selected date before sharing separate invoices.');
+    return;
+  }
+  splitByDate = true;
+  const synced = await saveInvoiceCore();
+  if (!synced) { alert('Saved locally, but could not sync. Reconnect and try again before sending date links.'); return; }
+  openMultipleInvoiceShares();
 }
 
 // Sends the given share kind ("pay" | "receipt" | "sign") for the current
@@ -1016,6 +1086,12 @@ function addToAppleCalendar() {
 }
 
 async function shareForSignature() {
+  if (splitByDate) {
+    const synced = await saveInvoiceCore();
+    if (!synced) { alert('Could not sync this invoice. Reconnect and try again before sending date links.'); return; }
+    openMultipleInvoiceShares();
+    return;
+  }
   await openInvoiceShare('sign', 'Signature request');
 }
 
@@ -1032,6 +1108,66 @@ let preparingInvoiceShare = false;
 
 function invoiceShareLink(kind, invoiceId) {
   return `https://saxmanrp-cmd.github.io/rickparma-tools/invoice-creator.html?${kind}=${encodeURIComponent(invoiceId)}`;
+}
+
+function dateSignatureLink(invoiceId, dateId) {
+  return invoiceShareLink('sign', invoiceId) + `&date=${encodeURIComponent(dateId)}`;
+}
+
+function openMultipleInvoiceShares() {
+  const inv = invoices.find(item => item.id === currentId);
+  if (!inv) return;
+  const ids = invoiceDateIds(inv);
+  document.getElementById('multiple-invoice-links').innerHTML = ids.map((id, idx) => {
+    const copy = invoiceForDate(inv, id);
+    const event = copy.events[0];
+    const label = `Invoice ${idx + 1} — ${event.eventDate ? fmtDateLong(event.eventDate) : 'Date to be set'}`;
+    const link = dateSignatureLink(inv.id, id);
+    const signed = (inv.dateSignatures || {})[id];
+    return `<div class="date-entry"><strong>${esc(label)}</strong>${signed ? ' ✓ Signed' : ''}
+      <div class="hint">${copy.events.length} location${copy.events.length === 1 ? '' : 's'} · $${invoiceTotal(copy).toFixed(2)}</div>
+      <input type="url" readonly value="${esc(link)}" aria-label="${esc(label)} link" onclick="this.select()">
+      <div class="btn-row"><button class="btn small" onclick="shareDateLink('${esc(id)}')">Send / Share</button><button class="btn small" onclick="copyDateLink('${esc(id)}')">Copy Link</button></div>
+    </div>`;
+  }).join('');
+  document.getElementById('multiple-invoice-status').textContent = '';
+  document.getElementById('multiple-invoice-dialog').showModal();
+}
+
+async function copyDateLink(dateId) {
+  const link = dateSignatureLink(currentId, dateId);
+  const status = document.getElementById('multiple-invoice-status');
+  try {
+    await navigator.clipboard.writeText(link);
+    status.textContent = 'Link copied — paste it into an email or message.';
+  } catch (error) {
+    const input = [...document.querySelectorAll('#multiple-invoice-links input')].find(el => el.value === link);
+    if (input) { input.focus(); input.select(); }
+    status.textContent = 'Touch and hold the selected link, then choose Copy.';
+  }
+}
+
+async function shareDateLinks(ids) {
+  const links = ids.map((id, idx) => `Invoice ${idx + 1}: ${dateSignatureLink(currentId, id)}`);
+  const message = `Please review and sign ${ids.length === 1 ? 'your invoice' : 'these invoices'} from Rick Parma:\n${links.join('\n')}`;
+  if (navigator.share) {
+    try { await navigator.share({ text:message }); return; }
+    catch (error) { if (error.name === 'AbortError') return; }
+  }
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(message);
+    document.getElementById('multiple-invoice-status').textContent = 'Links copied — paste them into a text or email.';
+  } else {
+    const input = document.querySelector('#multiple-invoice-links input');
+    if (input) { input.focus(); input.select(); }
+    document.getElementById('multiple-invoice-status').textContent = 'Select and copy the links above to send them.';
+  }
+}
+
+function shareDateLink(dateId) { return shareDateLinks([dateId]); }
+function shareAllDateLinks() {
+  const inv = invoices.find(item => item.id === currentId);
+  if (inv) return shareDateLinks(invoiceDateIds(inv));
 }
 
 async function openInvoiceShare(kind, label) {
@@ -1215,6 +1351,16 @@ function buildSignatureBlock(data) {
   `;
 }
 
+function buildDateSignatureBlocks(inv) {
+  return invoiceDateIds(inv).map((id, idx) => {
+    const copy = invoiceForDate(inv, id);
+    const day = copy.events[0].eventDate;
+    return `<div style="break-inside:avoid"><div class="section-divider"></div>
+      <div class="event-line">Date ${idx + 1}${day ? ' — ' + fmtDateLong(day) : ''}</div>
+      ${buildSignatureBlock(copy)}</div>`;
+  }).join('');
+}
+
 const invoicePDFLibraryReady = document.readyState === 'loading'
   ? new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve, { once: true }))
   : Promise.resolve();
@@ -1317,7 +1463,7 @@ function renderPrintView() {
 
   setInvoicePrintContent(`
     ${body}
-    ${buildSignatureBlock(data)}
+    ${data.splitByDate ? buildDateSignatureBlocks(data) : buildSignatureBlock(data)}
     <p class="thanks">Thank you for your business!</p>
   `);
 }
@@ -1349,31 +1495,37 @@ async function initClientView(invId) {
       document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Invoice not found. Please contact Richard Parma directly.</p>';
       return;
     }
-    renderClientInvoice(inv);
+    if (signDateId && !invoiceForDate(inv, signDateId)) {
+      document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">This date is no longer on the invoice. Please request an updated link.</p>';
+      return;
+    }
+    renderClientInvoice(inv, signDateId);
   } catch (e) {
     document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Could not load invoice. Check your connection and reload the page.</p>';
   }
 }
 
-function renderClientInvoice(inv) {
-  const total = invoiceTotal(inv);
-  const body = buildInvoiceBody(inv, total);
+function renderClientInvoice(inv, dateId = null) {
+  const shown = dateId ? invoiceForDate(inv, dateId) : inv;
+  if (!shown) return;
+  const total = invoiceTotal(shown);
+  const body = buildInvoiceBody(shown, total);
   const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn solid" data-save-pdf onclick="saveInvoicePDF(this)">Save PDF</button><button class="btn" onclick="window.print()">Print This Copy</button></div>`;
 
   let sigSection;
-  if (inv.clientSignatureImg) {
-    const clientPayment = (inv.payments || []).find(p => p.source === 'client');
+  if (shown.clientSignatureImg) {
+    const clientPayment = (inv.payments || []).find(p => p.source === 'client' && (!dateId || p.dateId === dateId));
     const paymentNote = clientPayment
       ? `<p style="text-align:center;font-size:13.5px;color:#444;margin-top:10px">Payment reported: $${parseFloat(clientPayment.amount).toFixed(2)} (${clientPayment.type === 'partial' ? 'Partial Payment' : 'Paid in Full'}) via ${esc(clientPayment.method)}</p>`
       : '';
     sigSection = `
-      ${buildSignatureBlock(inv)}
+      ${buildSignatureBlock(shown)}
       ${paymentNote}
       <p class="thanks">Thank you — this invoice has been signed and confirmed.</p>
     `;
   } else {
     sigSection = `
-      ${buildSignatureBlock(inv)}
+      ${buildSignatureBlock(shown)}
       <div class="sign-card no-print">
         <h2>Payment</h2>
         <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:4px">Payment Type</label>
@@ -1404,7 +1556,7 @@ function renderClientInvoice(inv) {
         <canvas id="cursive-canvas" width="500" height="80"></canvas>
         <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Date</label>
         <input id="client-date-input" type="date">
-        <button id="sign-submit-btn" class="btn solid" style="margin-top:14px" onclick="submitClientSignature('${inv.id}')">Confirm &amp; Send Signed Copy</button>
+        <button id="sign-submit-btn" class="btn solid" style="margin-top:14px" onclick="submitClientSignature('${inv.id}'${dateId ? `, '${esc(dateId)}'` : ''})">Confirm &amp; Send Signed Copy</button>
       </div>
     `;
   }
@@ -1449,7 +1601,7 @@ function updateClientPayButton(invId, total) {
   wrap.style.display = 'block';
 }
 
-async function recordClientPayment(invId) {
+async function recordClientPayment(invId, dateId = signDateId) {
   const method = document.getElementById('client-pay-method').value;
   const type = document.getElementById('client-pay-type').value;
   const wrap = document.getElementById('client-pay-btn-wrap');
@@ -1459,11 +1611,13 @@ async function recordClientPayment(invId) {
     const list = (data.record && data.record.invoices) || [];
     const idx = list.findIndex(i => i.id === invId);
     if (idx < 0) return;
-    const total = invoiceTotal(list[idx]);
+    const selected = dateId ? invoiceForDate(list[idx], dateId) : list[idx];
+    if (!selected) return;
+    const total = invoiceTotal(selected);
     const amount = type === 'full' ? total : (parseFloat(document.getElementById('client-pay-amount').value) || 0);
     if (amount <= 0) return;
     list[idx].payments = list[idx].payments || [];
-    list[idx].payments.push({ date: todayLocal(), amount, method, source: 'client', type });
+    list[idx].payments.push({ date: todayLocal(), amount, method, source: 'client', type, dateId });
     await fetch(`${PROXY_BASE}/invoices`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -1480,7 +1634,7 @@ function toggleClientPartialAmount() {
   document.getElementById('client-partial-amount-wrap').style.display = type === 'partial' ? 'block' : 'none';
 }
 
-async function submitClientSignature(invId) {
+async function submitClientSignature(invId, dateId = null) {
   const nameInput = document.getElementById('client-name-input');
   const dateInput = document.getElementById('client-date-input');
   const canvas = document.getElementById('cursive-canvas');
@@ -1496,15 +1650,18 @@ async function submitClientSignature(invId) {
     const idx = list.findIndex(i => i.id === invId);
     if (idx < 0) { alert('Could not find this invoice anymore. Please contact Richard Parma directly.'); return; }
 
-    list[idx].clientSignatureImg = sigDataUrl;
-    list[idx].clientSignDate = dateInput.value || todayLocal();
-    list[idx].clientSignedName = nameInput.value.trim();
+    const signed = { clientSignatureImg:sigDataUrl, clientSignDate:dateInput.value || todayLocal(), clientSignedName:nameInput.value.trim() };
+    if (dateId) {
+      if (!invoiceForDate(list[idx], dateId)) throw new Error('Date no longer exists');
+      list[idx].dateSignatures = list[idx].dateSignatures || {};
+      list[idx].dateSignatures[dateId] = signed;
+    } else Object.assign(list[idx], signed);
     await fetch(`${PROXY_BASE}/invoices`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ invoices: list })
     });
-    renderClientInvoice(list[idx]);
+    renderClientInvoice(list[idx], dateId);
   } catch (e) {
     alert('Could not send. Check your connection and try again.');
     btn.disabled = false;
@@ -1691,7 +1848,7 @@ function renderReceiptView(inv) {
     ? `<p style="text-align:center;font-size:16px;font-weight:700;color:#1a1a1a;margin-top:16px">✓ PAID IN FULL</p>`
     : `<p style="text-align:center;font-size:15px;font-weight:700;margin-top:16px">Balance Due: $${balance.toFixed(2)}</p>`;
 
-  const sigBlock = inv.clientSignatureImg ? `
+  const sigBlock = inv.splitByDate ? buildDateSignatureBlocks(inv) : inv.clientSignatureImg ? `
     <div class="sig-grid">
       <div class="sig-col">
         <div class="sig-slot"><img src="${inv.clientSignatureImg}"></div>

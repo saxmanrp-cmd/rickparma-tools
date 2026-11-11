@@ -12,7 +12,7 @@ function app() {
   let googleCalendarURL;
   const document = {
     getElementById(id) {
-      if (!elements.has(id)) elements.set(id, { value: '', innerHTML: '', style: {}, textContent: '', className: '', classList: { toggle() {} } });
+      if (!elements.has(id)) elements.set(id, { value: '', innerHTML: '', style: {}, textContent: '', className: '', open: false, showModal() { this.open = true; }, classList: { toggle() {} } });
       return elements.get(id);
     }
   };
@@ -160,4 +160,34 @@ test('removing a selected date reassigns its locations to the remaining date', (
   assert.equal(events()[1].eventDate, '2026-12-01');
   assert.equal(events()[1].dateId, events()[0].dateId);
   assert.equal(context.collectFormData().invoiceDates.length, 1);
+});
+
+test('one app invoice produces separate date copies whose totals include shared charges once', async () => {
+  const { context, elements } = app();
+  firstLocation(context);
+  context.addInvoiceDate();
+  context.setInvoiceDate(1, 'eventDate', '2026-12-02');
+  context.addInvoiceDate();
+  context.setInvoiceDate(2, 'eventDate', '2026-12-03');
+  context.addDate(0);
+  context.addDate(0);
+  vm.runInContext(`events[1].amount='900'; events[2].amount='1000';
+    lineItems=[{description:'Travel',amount:'10.00'}];
+    currentId='one-record'; splitByDate=true;`, context);
+  const master = context.collectFormData();
+  const ids = Array.from(context.invoiceDateIds(master));
+  assert.equal(ids.length, 3);
+  const copies = ids.map(id => context.invoiceForDate(master, id));
+  assert.deepEqual(copies.map(copy => copy.events.length), [1,1,1]);
+  assert.deepEqual(copies.map(copy => copy.lineItems[0].amount), ['3.34','3.33','3.33']);
+  assert.equal(copies.reduce((sum, copy) => sum + context.invoiceTotal(copy), 0), context.invoiceTotal(master));
+  assert.deepEqual(copies.map(copy => copy.events[0].eventDate), ['2026-12-01','2026-12-02','2026-12-03']);
+  vm.runInContext('invoices=[collectFormData()]', context);
+  context.openMultipleInvoiceShares();
+  assert.equal(elements.get('multiple-invoice-dialog').open, true);
+  assert.equal((elements.get('multiple-invoice-links').innerHTML.match(/Send \/ Share/g) || []).length, 3);
+  let shared;
+  context.navigator = { share: async value => { shared = value; } };
+  await context.shareAllDateLinks();
+  assert.equal((shared.text.match(/invoice-creator\.html\?sign=one-record&date=/g) || []).length, 3);
 });
