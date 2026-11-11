@@ -93,6 +93,8 @@
   .event-entry { border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 12px; background: var(--panel-2); }
   .event-entry h3 { color: var(--accent); font-size: 14px; margin: 0; }
   .event-entry .entry-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .event-entry .entry-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+  .event-entry .copy-previous { height: 34px; padding: 0 10px; border: 1px solid var(--accent); border-radius: 8px; background: transparent; color: var(--accent); font-size: 12px; font-weight: 700; }
   .event-entry .remove-x { width: auto; height: 34px; padding: 0 10px; font-size: 12px; }
   .event-entry input, .event-entry select { background: var(--panel); }
   .event-price { max-width: 180px; }
@@ -556,7 +558,10 @@ function eventSelect(idx, field, label, choices) {
 function renderEvents() {
   document.getElementById('event-entries').innerHTML = events.map((event, idx) => `
     <div class="event-entry">
-      <div class="entry-head"><h3>Event ${idx + 1}</h3>${events.length > 1 ? `<button class="remove-x" onclick="removeEvent(${idx})">Remove</button>` : ''}</div>
+      <div class="entry-head"><h3>Event ${idx + 1}</h3><div class="entry-actions">
+        ${idx > 0 ? `<button type="button" class="copy-previous" aria-label="Use previous event information for Event ${idx + 1}" onclick="usePreviousEvent(${idx})">Use Previous</button>` : ''}
+        ${events.length > 1 ? `<button type="button" class="remove-x" onclick="removeEvent(${idx})">Remove</button>` : ''}
+      </div></div>
       ${eventInput(idx, 'eventName', 'Event Name', 'text', 'placeholder="e.g. Sarah &amp; Tom\'s Wedding"')}
       ${eventInput(idx, 'venueName', 'Venue Name (if applicable)')}
       ${eventInput(idx, 'addrStreet', 'Street Address')}
@@ -582,6 +587,18 @@ function renderEvents() {
 
 function addEvent() { events.push(blankEvent()); renderEvents(); updateBalance(); }
 function removeEvent(idx) { events.splice(idx, 1); renderEvents(); updateBalance(); }
+function usePreviousEvent(idx) {
+  if (idx < 1 || idx >= events.length) return;
+  const current = events[idx];
+  events[idx] = {
+    ...blankEvent(), ...events[idx - 1],
+    eventDate: current.eventDate || '',
+    timeStart: current.timeStart || '',
+    timeEnd: current.timeEnd || ''
+  };
+  renderEvents();
+  updateBalance();
+}
 
 function addLineItem() {
   lineItems.push({description:'', amount:''});
