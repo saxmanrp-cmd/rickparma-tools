@@ -299,6 +299,7 @@
     <div class="btn-row no-print">
       <button class="btn solid" onclick="shareForSignature()">Share for Signature</button>
     </div>
+    <div class="hint no-print" style="margin:0 0 10px">One link and one signature for the entire invoice.</div>
     <div class="btn-row no-print">
       <button class="btn" onclick="sharePaymentLink()">Send Payment Link</button>
       <button class="btn" onclick="shareReceiptLink()">Send Receipt</button>
@@ -378,7 +379,6 @@ let events = [];
 let locationCounter = 0;
 let invoiceDates = [];
 let dateCounter = 0;
-let splitByDate = false;
 let lineItems = [];
 let payments = [];
 const savedSignature = DEFAULT_SIGNATURE;
@@ -525,7 +525,6 @@ function esc(s) { return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 function clearForm() {
   currentId = null;
   currentInvoiceNumber = null;
-  splitByDate = false;
   invoiceDates = [blankInvoiceDate()];
   events = [{ ...blankEvent(), dateId: invoiceDates[0].id }];
   lineItems = [];
@@ -545,7 +544,6 @@ function editInvoice(id) {
   if (!inv) return;
   currentId = id;
   currentInvoiceNumber = inv.invoiceNumber || null;
-  splitByDate = !!inv.splitByDate;
   document.getElementById('f-name').value = inv.clientName || '';
   document.getElementById('f-email').value = inv.clientEmail || '';
   document.getElementById('f-phone').value = inv.clientPhone || '';
@@ -889,7 +887,6 @@ function collectFormData() {
     clientSignatureImg: existingInv ? existingInv.clientSignatureImg : undefined,
     clientSignDate: existingInv ? existingInv.clientSignDate : undefined,
     clientSignedName: existingInv ? existingInv.clientSignedName : undefined,
-    splitByDate,
     dateSignatures: existingInv ? (existingInv.dateSignatures || {}) : {}
   };
 }
@@ -956,7 +953,6 @@ async function saveAsMultipleInvoices() {
     alert('Set each selected date before sharing separate invoices.');
     return;
   }
-  splitByDate = true;
   const synced = await saveInvoiceCore();
   if (!synced) { alert('Saved locally, but could not sync. Reconnect and try again before sending date links.'); return; }
   openMultipleInvoiceShares();
@@ -1086,12 +1082,6 @@ function addToAppleCalendar() {
 }
 
 async function shareForSignature() {
-  if (splitByDate) {
-    const synced = await saveInvoiceCore();
-    if (!synced) { alert('Could not sync this invoice. Reconnect and try again before sending date links.'); return; }
-    openMultipleInvoiceShares();
-    return;
-  }
   await openInvoiceShare('sign', 'Signature request');
 }
 
