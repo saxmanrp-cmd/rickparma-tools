@@ -74,6 +74,46 @@ test('Save PDF passes an actual PDF file to native sharing immediately, without 
   assert.equal(button.disabled, false);
 });
 
+test('Print opens native PDF sharing directly so iPhone can choose Print', async () => {
+  const { context, elements } = app();
+  readyPDF(context);
+  let shared;
+  let browserPrints = 0;
+  context.window = { print: () => browserPrints++ };
+  context.navigator = { canShare: data => data.files[0] instanceof File, share: data => { shared = data; return Promise.resolve(); } };
+  const button = { disabled: false };
+  const pending = context.printInvoice(button);
+  assert.equal(shared.files[0].name, 'Invoice-1234.pdf');
+  assert.equal(shared.files[0].type, 'application/pdf');
+  assert.match(elements.get('pdf-export-status').textContent, /Choose Print/);
+  await pending;
+  assert.equal(browserPrints, 0);
+  assert.equal(button.disabled, false);
+});
+
+test('Print uses the browser print dialog when file sharing is unavailable', async () => {
+  const { context } = app();
+  let printed = 0;
+  context.window = { print: () => printed++ };
+  context.navigator = {};
+  await context.printInvoice({ disabled: false });
+  assert.equal(printed, 1);
+});
+
+test('Print offers the PDF file on iPhone when native file sharing is unavailable', async () => {
+  const { context, elements } = app();
+  readyPDF(context);
+  let downloaded;
+  let browserPrints = 0;
+  context.navigator = { userAgent: 'iPhone' };
+  context.window = { print: () => browserPrints++ };
+  context.downloadInvoicePDF = file => { downloaded = file; };
+  await context.printInvoice({ disabled: false });
+  assert.equal(downloaded.name, 'Invoice-1234.pdf');
+  assert.equal(browserPrints, 0);
+  assert.match(elements.get('pdf-export-status').textContent, /Open the downloaded PDF/);
+});
+
 test('closing native sharing does not open a PDF page or trigger a download', async () => {
   const { context, elements } = app();
   readyPDF(context);

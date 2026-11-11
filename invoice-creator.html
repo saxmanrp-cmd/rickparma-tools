@@ -318,7 +318,7 @@
   <div id="view-print">
     <div class="no-print btn-row" id="print-admin-controls">
       <button class="btn solid" data-save-pdf onclick="saveInvoicePDF(this)">Save PDF</button>
-      <button class="btn" onclick="window.print()">Print</button>
+      <button class="btn" data-print-pdf data-ready-label="Print" onclick="printInvoice(this)">Print</button>
       <button class="btn" onclick="showView('form')">Back to Edit</button>
     </div>
     <p id="pdf-export-status" class="hint no-print" role="status" style="color:#444"></p>
@@ -1367,9 +1367,9 @@ const invoicePDFLibraryReady = document.readyState === 'loading'
 let invoicePDFState = { revision: 0, file: null, preparing: false };
 
 function setPDFControls(preparing) {
-  document.querySelectorAll('[data-save-pdf]').forEach(button => {
+  document.querySelectorAll('[data-save-pdf], [data-print-pdf]').forEach(button => {
     button.disabled = preparing;
-    button.textContent = preparing ? 'Preparing PDF…' : 'Save PDF';
+    button.textContent = preparing ? 'Preparing PDF…' : (button.dataset.readyLabel || 'Save PDF');
   });
 }
 
@@ -1456,6 +1456,36 @@ async function saveInvoicePDF(button) {
   }
 }
 
+async function printInvoice(button) {
+  const file = invoicePDFState.file;
+  const status = document.getElementById('pdf-export-status');
+  if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    // Open the native iPhone sheet directly from the tap; its Print action uses the PDF file.
+    status.textContent = 'Choose Print in the share options.';
+    button.disabled = true;
+    try {
+      await navigator.share({ files: [file], title: file.name });
+    } catch (error) {
+      if (error.name !== 'AbortError') status.textContent = 'Could not open print options. Tap Print again.';
+    } finally {
+      button.disabled = invoicePDFState.preparing;
+    }
+    return;
+  }
+  if (/iPhone|iPad|iPod/i.test(navigator.userAgent || '')) {
+    if (file) {
+      downloadInvoicePDF(file);
+      status.textContent = 'Open the downloaded PDF and choose Print from its share options.';
+    } else {
+      status.textContent = 'The PDF is not ready. Tap Print again after it finishes preparing.';
+      if (!invoicePDFState.preparing) prepareInvoicePDF();
+    }
+    return;
+  }
+  // Desktop browsers can print the visible invoice directly.
+  window.print();
+}
+
 function renderPrintView() {
   const data = collectFormData();
   const total = invoiceTotal(data);
@@ -1510,7 +1540,7 @@ function renderClientInvoice(inv, dateId = null) {
   if (!shown) return;
   const total = invoiceTotal(shown);
   const body = buildInvoiceBody(shown, total);
-  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn solid" data-save-pdf onclick="saveInvoicePDF(this)">Save PDF</button><button class="btn" onclick="window.print()">Print This Copy</button></div>`;
+  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn solid" data-save-pdf onclick="saveInvoicePDF(this)">Save PDF</button><button class="btn" data-print-pdf data-ready-label="Print This Copy" onclick="printInvoice(this)">Print This Copy</button></div>`;
 
   let sigSection;
   if (shown.clientSignatureImg) {
@@ -1691,7 +1721,7 @@ function renderPaymentView(inv) {
   const paidSoFar = paymentsTotal(inv.payments);
   const balance = total - paidSoFar;
   const body = buildInvoiceBody(inv, total);
-  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn solid" data-save-pdf onclick="saveInvoicePDF(this)">Save PDF</button><button class="btn" onclick="window.print()">Print This Page</button></div>`;
+  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn solid" data-save-pdf onclick="saveInvoicePDF(this)">Save PDF</button><button class="btn" data-print-pdf data-ready-label="Print This Page" onclick="printInvoice(this)">Print This Page</button></div>`;
 
   let paySection;
   if (balance <= 0) {
@@ -1835,7 +1865,7 @@ function renderReceiptView(inv) {
   const paid = paymentsTotal(inv.payments);
   const balance = total - paid;
   const body = buildInvoiceBody(inv, total);
-  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn solid" data-save-pdf onclick="saveInvoicePDF(this)">Save PDF</button><button class="btn" onclick="window.print()">Print This Receipt</button></div>`;
+  const actions = `<div class="no-print btn-row" style="margin-bottom:16px"><button class="btn solid" data-save-pdf onclick="saveInvoicePDF(this)">Save PDF</button><button class="btn" data-print-pdf data-ready-label="Print This Receipt" onclick="printInvoice(this)">Print This Receipt</button></div>`;
 
   const historyRows = (inv.payments || []).map(p =>
     `<tr><td>${p.date}</td><td>${esc(p.method)}</td><td class="amt">$${parseFloat(p.amount).toFixed(2)}</td></tr>`
