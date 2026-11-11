@@ -39,6 +39,20 @@ function firstLocation(context) {
   context.renderEvents();
 }
 
+test('business invoices have their own list, issuer, and shared client link', () => {
+  const { context } = app();
+  vm.runInContext(`invoices=[{id:'legacy',invoiceNumber:1001},{id:'agency',profileId:BUSINESS_PROFILE,invoiceNumber:1001}]; activeProfile=BUSINESS_PROFILE`, context);
+  assert.equal(vm.runInContext('visibleInvoices().length', context), 1);
+  assert.equal(vm.runInContext('visibleInvoices()[0].id', context), 'agency');
+  assert.equal(vm.runInContext('nextInvoiceNumber()', context), 1002);
+  assert.equal(vm.runInContext("issuerFor({profileId:BUSINESS_PROFILE}).email", context), 'contact@parmaentertainmentgroup.com');
+  assert.match(context.invoiceShareLink('pay', 'agency'), /profile=parma-entertainment-group-llc$/);
+  assert.equal(vm.runInContext("sharedInvoice(invoices,'agency')", context), undefined);
+  vm.runInContext('activeProfile=PERSONAL_PROFILE', context);
+  assert.equal(vm.runInContext('visibleInvoices()[0].id', context), 'legacy');
+  assert.doesNotMatch(context.invoiceShareLink('pay', 'legacy'), /profile=/);
+});
+
 test('dates appear between client and event info and control each chosen location date', () => {
   const { context, elements, events } = app();
   firstLocation(context);
