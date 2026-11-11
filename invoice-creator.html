@@ -1361,16 +1361,6 @@ function buildSignatureBlock(data) {
   `;
 }
 
-function buildDateSignatureBlocks(inv) {
-  return invoiceDateIds(inv).map((id, idx) => {
-    const copy = invoiceForDate(inv, id);
-    const day = copy.events[0].eventDate;
-    return `<div style="break-inside:avoid"><div class="section-divider"></div>
-      <div class="event-line">Date ${idx + 1}${day ? ' — ' + fmtDateLong(day) : ''}</div>
-      ${buildSignatureBlock(copy)}</div>`;
-  }).join('');
-}
-
 const invoicePDFLibraryReady = document.readyState === 'loading'
   ? new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve, { once: true }))
   : Promise.resolve();
@@ -1473,7 +1463,7 @@ function renderPrintView() {
 
   setInvoicePrintContent(`
     ${body}
-    ${data.splitByDate ? buildDateSignatureBlocks(data) : buildSignatureBlock(data)}
+    ${buildSignatureBlock(data)}
     <p class="thanks">Thank you for your business!</p>
   `);
 }
@@ -1858,7 +1848,7 @@ function renderReceiptView(inv) {
     ? `<p style="text-align:center;font-size:16px;font-weight:700;color:#1a1a1a;margin-top:16px">✓ PAID IN FULL</p>`
     : `<p style="text-align:center;font-size:15px;font-weight:700;margin-top:16px">Balance Due: $${balance.toFixed(2)}</p>`;
 
-  const sigBlock = inv.splitByDate ? buildDateSignatureBlocks(inv) : inv.clientSignatureImg ? `
+  const sigBlock = inv.clientSignatureImg ? `
     <div class="sig-grid">
       <div class="sig-col">
         <div class="sig-slot"><img src="${inv.clientSignatureImg}"></div>
