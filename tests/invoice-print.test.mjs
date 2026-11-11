@@ -202,6 +202,16 @@ for (const [action, kind] of [['shareForSignature', 'sign'], ['sharePaymentLink'
   });
 }
 
+test('Share for Signature offers one whole-invoice link even for a previously split invoice', async () => {
+  const { context, elements } = app();
+  vm.runInContext("currentId='old'; invoices=[{id:'old',splitByDate:true,events:[{dateId:'date-1'},{dateId:'date-2'}]}];", context);
+  context.saveInvoiceCore = async () => true;
+  await context.shareForSignature();
+  assert.equal(elements.get('invoice-share-dialog').open, true);
+  assert.equal(context.document.getElementById('multiple-invoice-dialog').open, false);
+  assert.equal(elements.get('invoice-share-link').value, 'https://saxmanrp-cmd.github.io/rickparma-tools/invoice-creator.html?sign=old');
+});
+
 test('blocked clipboard leaves the link selected for manual copying', async () => {
   const { context, elements } = app();
   context.navigator = { clipboard: { writeText: async () => { throw new Error('Blocked'); } } };

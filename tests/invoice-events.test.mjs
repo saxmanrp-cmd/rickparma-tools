@@ -215,7 +215,7 @@ test('one app invoice produces separate date copies whose totals include shared 
   context.addDate(0);
   vm.runInContext(`events[1].amount='900'; events[2].amount='1000';
     lineItems=[{description:'Travel',amount:'10.00'}];
-    currentId='one-record'; splitByDate=true;`, context);
+    currentId='one-record';`, context);
   const master = context.collectFormData();
   const ids = Array.from(context.invoiceDateIds(master));
   assert.equal(ids.length, 3);
@@ -234,13 +234,29 @@ test('one app invoice produces separate date copies whose totals include shared 
   assert.equal((shared.text.match(/invoice-creator\.html\?sign=one-record&date=/g) || []).length, 3);
 });
 
+test('previewing multiple invoices does not persist a sharing mode', async () => {
+  const { context } = app();
+  firstLocation(context);
+  context.addInvoiceDate();
+  context.setInvoiceDate(1, 'eventDate', '2026-12-02');
+  context.addDate(0);
+  let saves = 0;
+  let opened = 0;
+  context.saveInvoiceCore = async () => { saves++; return true; };
+  context.openMultipleInvoiceShares = () => { opened++; };
+  await context.saveAsMultipleInvoices();
+  assert.equal(saves, 1);
+  assert.equal(opened, 1);
+  assert.equal(context.collectFormData().splitByDate, undefined);
+});
+
 test('combined print has one signature while each separate date link has its own', () => {
   const { context, elements } = app();
   firstLocation(context);
   context.addInvoiceDate();
   context.setInvoiceDate(1, 'eventDate', '2026-12-02');
   context.addDate(0);
-  vm.runInContext("splitByDate=true; currentId='one-record';", context);
+  vm.runInContext("currentId='one-record';", context);
   context.prepareInvoicePDF = () => {};
   context.renderPrintView();
   const combined = elements.get('print-content').innerHTML;
