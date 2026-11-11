@@ -99,7 +99,8 @@
   .event-entry input, .event-entry select { background: var(--panel); }
   .event-price { max-width: 180px; }
   .date-entry { border-top: 1px dashed var(--border); padding-top: 12px; margin-top: 14px; }
-  .date-entry .entry-head { margin-bottom: 8px; }
+  .date-entry .entry-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .date-entry .remove-x { width: auto; height: 34px; padding: 0 10px; font-size: 12px; white-space: nowrap; }
   .date-entry h4 { margin: 0; color: var(--text); font-size: 13px; }
   .date-entry .all-day { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; }
   .date-entry .all-day input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
@@ -248,8 +249,15 @@
     </section>
 
     <section class="card">
-      <h2>Locations &amp; Dates</h2>
-      <div class="hint" style="margin-bottom:12px">Add dates under each location. Each date has its own schedule and price.</div>
+      <h2>Dates</h2>
+      <div class="hint" style="margin-bottom:12px">Select your dates and set All Day or a time frame for each one.</div>
+      <div id="invoice-dates"></div>
+      <button class="btn small" onclick="addInvoiceDate()">+ Add Date</button>
+    </section>
+
+    <section class="card">
+      <h2>Event Info</h2>
+      <div class="hint" style="margin-bottom:12px">Add a location and choose from the dates above. Each location date has its own price.</div>
       <div id="event-entries"></div>
       <button class="btn small" onclick="addLocation()">+ Add Location</button>
     </section>
@@ -356,6 +364,8 @@ let currentId = null;
 let currentInvoiceNumber = null;
 let events = [];
 let locationCounter = 0;
+let invoiceDates = [];
+let dateCounter = 0;
 let lineItems = [];
 let payments = [];
 const savedSignature = DEFAULT_SIGNATURE;
@@ -495,11 +505,13 @@ function esc(s) { return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 function clearForm() {
   currentId = null;
   currentInvoiceNumber = null;
-  events = [blankEvent()];
+  invoiceDates = [blankInvoiceDate()];
+  events = [{ ...blankEvent(), dateId: invoiceDates[0].id }];
   lineItems = [];
   payments = [];
   ['f-name','f-email','f-phone'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('delete-btn').style.display = 'none';
+  renderInvoiceDates();
   renderEvents();
   renderLineItems();
   renderPayments();
@@ -534,8 +546,10 @@ function editInvoice(id) {
     events = [first];
     lineItems = oldItems.slice(1);
   }
+  restoreInvoiceDates(inv);
   payments = inv.payments ? JSON.parse(JSON.stringify(inv.payments)) : [];
   document.getElementById('delete-btn').style.display = 'block';
+  renderInvoiceDates();
   renderEvents();
   renderLineItems();
   renderPayments();
@@ -559,6 +573,55 @@ function blankEvent() {
 }
 
 function newLocationId() { return `loc_${Date.now()}_${++locationCounter}`; }
+function blankInvoiceDate() { return { id: `date_${Date.now()}_${++dateCounter}`, eventDate:'', timeStart:'', timeEnd:'', allDay:false }; }
+
+function restoreInvoiceDates(inv) {
+  invoiceDates = Array.isArray(inv.invoiceDates) && inv.invoiceDates.length
+    ? inv.invoiceDates.map(date => ({ ...blankInvoiceDate(), ...date })) : [];
+  events.forEach(event => {
+    let date = invoiceDates.find(item => item.id === event.dateId);
+    if (!date) date = invoiceDates.find(item => item.eventDate === event.eventDate && item.timeStart === event.timeStart && item.timeEnd === event.timeEnd && isAllDay(item) === isAllDay(event));
+    if (!date) {
+      date = { ...blankInvoiceDate(), eventDate:event.eventDate || '', timeStart:event.timeStart || '', timeEnd:event.timeEnd || '', allDay:isAllDay(event) };
+      invoiceDates.push(date);
+    }
+    event.dateId = date.id;
+    copyInvoiceDate(event, date);
+  });
+  if (!invoiceDates.length) invoiceDates = [blankInvoiceDate()];
+}
+
+function copyInvoiceDate(event, date) {
+  ['eventDate','timeStart','timeEnd','allDay'].forEach(field => { event[field] = date[field]; });
+}
+
+function renderInvoiceDates() {
+  document.getElementById('invoice-dates').innerHTML = invoiceDates.map((date, idx) => `<div class="date-entry">
+    <div class="entry-head"><h4>Date ${idx + 1}</h4>${invoiceDates.length > 1 ? `<button type="button" class="remove-x" onclick="removeInvoiceDate(${idx})">Remove Date</button>` : ''}</div>
+    <label>Date</label><input type="date" value="${esc(date.eventDate)}" oninput="setInvoiceDate(${idx}, 'eventDate', this.value)">
+    <div class="all-day"><input id="invoice-all-day-${idx}" type="checkbox" ${isAllDay(date) ? 'checked' : ''} onchange="setInvoiceDate(${idx}, 'allDay', this.checked)"><label for="invoice-all-day-${idx}">All Day</label></div>
+    ${isAllDay(date) ? '' : `<div class="row2"><div><label>Start Time</label><input type="time" step="1800" value="${esc(date.timeStart)}" onchange="snapTimeToHalfHour(this); setInvoiceDate(${idx}, 'timeStart', this.value)"></div><div><label>End Time</label><input type="time" step="1800" value="${esc(date.timeEnd)}" onchange="snapTimeToHalfHour(this); setInvoiceDate(${idx}, 'timeEnd', this.value)"></div></div>`}
+  </div>`).join('');
+}
+
+function setInvoiceDate(idx, field, value) {
+  const date = invoiceDates[idx];
+  if (!date) return;
+  date[field] = value;
+  events.forEach(event => { if (event.dateId === date.id) copyInvoiceDate(event, date); });
+  if (field === 'allDay') renderInvoiceDates();
+  renderEvents();
+}
+
+function addInvoiceDate() { invoiceDates.push(blankInvoiceDate()); renderInvoiceDates(); renderEvents(); }
+function removeInvoiceDate(idx) {
+  if (invoiceDates.length < 2) return;
+  const [removed] = invoiceDates.splice(idx, 1);
+  events.forEach(event => {
+    if (event.dateId === removed.id) { event.dateId = invoiceDates[0].id; copyInvoiceDate(event, invoiceDates[0]); }
+  });
+  renderInvoiceDates(); renderEvents();
+}
 
 function ensureLocationIds() {
   events.forEach(event => { if (!event.locationId) event.locationId = newLocationId(); });
@@ -602,23 +665,13 @@ function setLocationField(idx, field, value) {
   events.forEach(event => { if (event.locationId === id) event[field] = value; });
 }
 
-function previousDateOptions(idx) {
-  const currentId = events[idx].locationId;
-  return events.slice(0, idx).map((event, sourceIndex) => ({ event, sourceIndex }))
-    .filter(({ event }) => event.locationId !== currentId && event.eventDate)
-    .map(({ event, sourceIndex }) => `<option value="${sourceIndex}">${esc(fmtDateLong(event.eventDate))}${isAllDay(event) ? ' — All Day' : event.timeStart ? ' — ' + esc(fmtTime(event.timeStart)) : ''}</option>`)
-    .join('');
-}
-
 function dateEntry(idx, dateNumber, datesInLocation) {
   const event = events[idx];
-  const previousDates = previousDateOptions(idx);
   return `<div class="date-entry">
     <div class="entry-head"><h4>Date ${dateNumber}</h4>${datesInLocation > 1 ? `<button type="button" class="remove-x" onclick="removeDate(${idx})">Remove Date</button>` : ''}</div>
-    ${previousDates ? `<label for="previous-date-${idx}">Use a previous date</label><select id="previous-date-${idx}" onchange="usePreviousDate(${idx}, this.value)"><option value="">Choose date...</option>${previousDates}</select>` : ''}
-    ${eventInput(idx, 'eventDate', 'Date', 'date')}
-    <div class="all-day"><input id="all-day-${idx}" type="checkbox" ${isAllDay(event) ? 'checked' : ''} onchange="toggleAllDay(${idx}, this.checked)"><label for="all-day-${idx}">All Day</label></div>
-    ${isAllDay(event) ? '' : `<div class="row2"><div>${eventInput(idx, 'timeStart', 'Start Time', 'time', 'step="1800" onchange="snapTimeToHalfHour(this); events['+idx+'].timeStart=this.value"')}</div><div>${eventInput(idx, 'timeEnd', 'End Time', 'time', 'step="1800" onchange="snapTimeToHalfHour(this); events['+idx+'].timeEnd=this.value"')}</div></div>`}
+    <label for="location-date-${idx}">Select Date</label><select id="location-date-${idx}" onchange="selectLocationDate(${idx}, this.value)">
+      ${invoiceDates.map((date, n) => `<option value="${esc(date.id)}" ${date.id === event.dateId ? 'selected' : ''}>Date ${n + 1}${date.eventDate ? ' — ' + esc(fmtDateLong(date.eventDate)) : ' — Select above'}${isAllDay(date) ? ' (All Day)' : ''}</option>`).join('')}
+    </select>
     <div class="event-price">${eventInput(idx, 'amount', 'Price for This Date', 'number', 'min="0" step="0.01"')}</div>
   </div>`;
 }
@@ -656,13 +709,22 @@ function renderEvents() {
   if (selected && Number(selected) < events.length) calendar.value = selected;
 }
 
-function addLocation() { events.push(blankEvent()); renderEvents(); updateBalance(); }
+function addLocation() {
+  const event = blankEvent();
+  event.dateId = invoiceDates[0].id;
+  copyInvoiceDate(event, invoiceDates[0]);
+  events.push(event); renderEvents(); updateBalance();
+}
 function addDate(idx) {
   const id = events[idx]?.locationId;
   if (!id) return;
   const last = events.findLastIndex(event => event.locationId === id);
   const previous = events[last];
-  events.splice(last + 1, 0, { ...previous, eventDate: '', timeStart: '', timeEnd: '', allDay: false });
+  let nextDate = invoiceDates.find(date => !events.some(event => event.locationId === id && event.dateId === date.id));
+  if (!nextDate) { nextDate = blankInvoiceDate(); invoiceDates.push(nextDate); renderInvoiceDates(); }
+  const entry = { ...previous, dateId: nextDate.id };
+  copyInvoiceDate(entry, nextDate);
+  events.splice(last + 1, 0, entry);
   renderEvents();
   updateBalance();
 }
@@ -691,12 +753,11 @@ function usePreviousEvent(idx) {
   renderEvents();
   updateBalance();
 }
-function toggleAllDay(idx, checked) { if (!events[idx]) return; events[idx].allDay = checked; renderEvents(); }
-function usePreviousDate(idx, sourceValue) {
-  const source = events[Number(sourceValue)];
-  if (!sourceValue || !events[idx] || !source?.eventDate || source.locationId === events[idx].locationId) return;
-  ['eventDate','timeStart','timeEnd'].forEach(field => { events[idx][field] = source[field] || ''; });
-  events[idx].allDay = isAllDay(source);
+function selectLocationDate(idx, dateId) {
+  const date = invoiceDates.find(item => item.id === dateId);
+  if (!events[idx] || !date) return;
+  events[idx].dateId = date.id;
+  copyInvoiceDate(events[idx], date);
   renderEvents();
 }
 
@@ -800,6 +861,7 @@ function collectFormData() {
     timeStart: first.timeStart,
     timeEnd: first.timeEnd,
     events: events.map(event => ({...event})),
+    invoiceDates: invoiceDates.map(date => ({...date})),
     lineItems: lineItems.filter(li => li.description || li.amount),
     payments: payments,
     clientSignatureImg: existingInv ? existingInv.clientSignatureImg : undefined,

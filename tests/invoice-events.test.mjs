@@ -30,31 +30,37 @@ function app() {
 }
 
 function firstLocation(context) {
-  vm.runInContext(`events = [{ ...blankEvent(), eventName: 'Jazz night', venueName: 'The Lounge',
-    addrStreet: '123 Main St', addrCity: 'Las Vegas', eventDate: '2026-12-01',
-    timeStart: '19:00', timeEnd: '21:00', perfType: 'Singer/Saxophonist',
-    description: 'Two sets', amount: '800' }];`, context);
+  vm.runInContext(`invoiceDates = [{ ...blankInvoiceDate(), eventDate:'2026-12-01', timeStart:'19:00', timeEnd:'21:00' }];
+    events = [{ ...blankEvent(), dateId:invoiceDates[0].id, eventName:'Jazz night', venueName:'The Lounge',
+    addrStreet:'123 Main St', addrCity:'Las Vegas', eventDate:'2026-12-01',
+    timeStart:'19:00', timeEnd:'21:00', perfType:'Singer/Saxophonist',
+    description:'Two sets', amount:'800' }];`, context);
+  context.renderInvoiceDates();
   context.renderEvents();
 }
 
-test('one location has multiple independently priced dates and per-date All Day settings', () => {
+test('dates appear between client and event info and control each chosen location date', () => {
   const { context, elements, events } = app();
   firstLocation(context);
+  assert.match(html, /<h2>Client Info<\/h2>[\s\S]*?<h2>Dates<\/h2>[\s\S]*?<h2>Event Info<\/h2>/);
   assert.doesNotMatch(elements.get('event-entries').innerHTML, /Use Previous/);
   assert.match(html, /onclick="addLocation\(\)">\+ Add Location/);
+  context.addInvoiceDate();
+  context.setInvoiceDate(1, 'eventDate', '2026-12-02');
+  context.setInvoiceDate(1, 'allDay', true);
+  assert.match(elements.get('invoice-dates').innerHTML, /id="invoice-all-day-1" type="checkbox" checked/);
   context.addDate(0);
-  vm.runInContext("events[1].eventDate = '2026-12-02';", context);
-  context.toggleAllDay(1, true);
   assert.equal(events()[0].locationId, events()[1].locationId);
   assert.equal(events()[1].venueName, 'The Lounge');
   assert.equal(events()[1].eventDate, '2026-12-02');
   assert.equal(events()[1].allDay, true);
   assert.equal(events()[0].allDay, false);
   assert.equal(elements.get('invoice-total').textContent, 'Invoice Total: $1600.00');
-  assert.match(elements.get('event-entries').innerHTML, /id="all-day-1" type="checkbox" checked/);
   assert.match(elements.get('event-entries').innerHTML, /onclick="addDate\(0\)">\+ Add Date/);
   context.setLocationField(0, 'venueName', 'New Venue');
   assert.deepEqual(events().map(event => event.venueName), ['New Venue', 'New Venue']);
+  context.setInvoiceDate(1, 'eventDate', '2026-12-03');
+  assert.equal(events()[1].eventDate, '2026-12-03');
   context.removeDate(1);
   assert.equal(events().length, 1);
   assert.equal(elements.get('invoice-total').textContent, 'Invoice Total: $800.00');
@@ -62,53 +68,51 @@ test('one location has multiple independently priced dates and per-date All Day 
   assert.equal(events().length, 1);
 });
 
-test('new locations can copy details and choose each earlier date independently', () => {
+test('locations can choose the dates selected above and retain their own prices', () => {
   const { context, elements, events } = app();
   firstLocation(context);
-  context.addDate(0);
-  vm.runInContext("events[1].eventDate = '2026-12-02';", context);
-  context.toggleAllDay(1, true);
+  context.addInvoiceDate();
+  context.setInvoiceDate(1, 'eventDate', '2026-12-02');
+  context.setInvoiceDate(1, 'allDay', true);
   context.addLocation();
-  assert.match(elements.get('event-entries').innerHTML, /onclick="usePreviousEvent\(2\)">Use Previous/);
-  assert.match(elements.get('event-entries').innerHTML, /onchange="usePreviousDate\(2, this.value\)"/);
+  assert.match(elements.get('event-entries').innerHTML, /onclick="usePreviousEvent\(1\)">Use Previous/);
+  assert.match(elements.get('event-entries').innerHTML, /onchange="selectLocationDate\(1, this.value\)"/);
   assert.match(elements.get('event-entries').innerHTML, /December 1, 2026/);
-  assert.match(elements.get('event-entries').innerHTML, /December 2, 2026 — All Day/);
-  context.usePreviousDate(2, '1');
-  context.usePreviousEvent(2);
-  assert.equal(events()[2].eventDate, '2026-12-02');
-  assert.equal(events()[2].allDay, true);
-  assert.equal(events()[2].venueName, 'The Lounge');
-  assert.equal(events()[2].amount, '800');
-  context.addDate(2);
-  context.usePreviousDate(3, '0');
-  assert.equal(events()[3].eventDate, '2026-12-01');
-  assert.equal(events()[3].timeStart, '19:00');
-  assert.equal(events()[3].timeEnd, '21:00');
-  assert.equal(events()[3].allDay, false);
-  assert.equal(events()[2].eventDate, '2026-12-02');
-  context.setLocationField(2, 'venueName', 'Second Venue');
-  assert.deepEqual(events().map(event => event.venueName), ['The Lounge','The Lounge','Second Venue','Second Venue']);
-  vm.runInContext("events[3].amount = '900';", context);
+  assert.match(elements.get('event-entries').innerHTML, /December 2, 2026 \(All Day\)/);
+  vm.runInContext("selectLocationDate(1, invoiceDates[1].id)", context);
+  context.usePreviousEvent(1);
+  assert.equal(events()[1].eventDate, '2026-12-02');
+  assert.equal(events()[1].allDay, true);
+  assert.equal(events()[1].amount, '800');
+  context.addDate(1);
+  vm.runInContext("selectLocationDate(2, invoiceDates[0].id)", context);
+  assert.equal(events()[2].eventDate, '2026-12-01');
+  assert.equal(events()[2].timeStart, '19:00');
+  assert.equal(events()[2].allDay, false);
+  context.setLocationField(1, 'venueName', 'Second Venue');
+  assert.deepEqual(events().map(event => event.venueName), ['The Lounge','Second Venue','Second Venue']);
+  vm.runInContext("events[2].amount = '900';", context);
   context.updateBalance();
-  assert.equal(elements.get('invoice-total').textContent, 'Invoice Total: $3300.00');
+  assert.equal(elements.get('invoice-total').textContent, 'Invoice Total: $2500.00');
   const invoice = { events: events(), lineItems: [], clientName: 'Client', invoiceNumber: 1001, createdAt: '2026-11-11' };
   const printable = context.buildInvoiceBody(invoice, context.invoiceTotal(invoice));
   assert.equal((printable.match(/Location 1 — Jazz night/g) || []).length, 1);
   assert.equal((printable.match(/Location 2 — Jazz night/g) || []).length, 1);
   assert.match(printable, /Date 1: December 2, 2026 — All Day/);
   assert.match(printable, /Date 2: December 1, 2026 — 7:00PM – 9:00PM/);
-  assert.match(printable, /\$3,300\.00|\$3300\.00/);
-  context.removeEvent(2);
-  assert.equal(events().length, 2);
-  assert.equal(elements.get('invoice-total').textContent, 'Invoice Total: $1600.00');
+  assert.match(printable, /\$2,500\.00|\$2500\.00/);
+  context.removeEvent(1);
+  assert.equal(events().length, 1);
+  assert.equal(elements.get('invoice-total').textContent, 'Invoice Total: $800.00');
 });
 
 test('calendar selection preserves the date-specific schedule and distinct Apple event IDs', async () => {
   const { context, elements, events, googleCalendarURL, calendarBlob } = app();
   firstLocation(context);
+  context.addInvoiceDate();
+  context.setInvoiceDate(1, 'eventDate', '2026-12-02');
+  context.setInvoiceDate(1, 'allDay', true);
   context.addDate(0);
-  vm.runInContext("events[1].eventDate = '2026-12-02';", context);
-  context.toggleAllDay(1, true);
   const invoice = { id: 'invoice-test', invoiceNumber: 1001, events: events() };
   elements.get('calendar-event').value = '1';
   assert.equal(context.selectedCalendarEvent(invoice).eventDate, '2026-12-02');
@@ -136,10 +140,24 @@ test('older invoices load as separate locations and keep all-day dates', () => {
   context.editInvoice('old');
   assert.equal(new Set(events().map(event => event.locationId)).size, 2);
   assert.match(elements.get('event-entries').innerHTML, /Location 2/);
-  assert.match(elements.get('event-entries').innerHTML, /id="all-day-0" type="checkbox" checked/);
+  assert.match(elements.get('invoice-dates').innerHTML, /id="invoice-all-day-0" type="checkbox" checked/);
   assert.equal(elements.get('invoice-total').textContent, 'Invoice Total: $1100.00');
   const saved = context.collectFormData();
   assert.equal(saved.events[0].addrStreet, '');
   assert.equal(saved.events[0].allDay, true);
   assert.equal(saved.events[1].allDay, true);
+  assert.equal(saved.invoiceDates.length, 2);
+});
+
+test('removing a selected date reassigns its locations to the remaining date', () => {
+  const { context, events } = app();
+  firstLocation(context);
+  context.addInvoiceDate();
+  context.setInvoiceDate(1, 'eventDate', '2026-12-02');
+  context.addLocation();
+  vm.runInContext('selectLocationDate(1, invoiceDates[1].id)', context);
+  context.removeInvoiceDate(1);
+  assert.equal(events()[1].eventDate, '2026-12-01');
+  assert.equal(events()[1].dateId, events()[0].dateId);
+  assert.equal(context.collectFormData().invoiceDates.length, 1);
 });
