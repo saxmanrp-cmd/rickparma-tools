@@ -1655,66 +1655,57 @@ function renderPaymentView(inv) {
     `;
   } else {
     paySection = `
-            <div class="sign-card no-print">
-                      <h2>Balance Due: $${balance.toFixed(2)}</h2>
-                                <div id="pmt-btn-wrap" style="margin-top:10px">
-                                            <button class="btn solid" onclick="payWithHub('${inv.id}', ${balance})">Pay $${balance.toFixed(2)} Now</button>
-                                                      </div>
-                                                              </div>
-                                                                    `;
+      <div class="sign-card no-print">
+        <h2>Balance Due: $${balance.toFixed(2)}</h2>
+        <label for="pmt-type" style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:4px">Payment Type</label>
+        <select id="pmt-type" onchange="updatePmtButton('${inv.id}', ${balance})">
+          <option value="">Select...</option>
+          <option value="full">Pay Full Balance ($${balance.toFixed(2)})</option>
+          <option value="partial">Partial Payment</option>
+        </select>
+        <div id="pmt-amount-wrap" style="display:none">
+          <label for="pmt-amount" style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Amount</label>
+          <input id="pmt-amount" type="number" min="0.01" max="${balance.toFixed(2)}" step="0.01" inputmode="decimal" oninput="updatePmtButton('${inv.id}', ${balance})">
+        </div>
+        <div id="pmt-method-wrap" style="display:none">
+          <label for="pmt-method" style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Payment Method</label>
+          <select id="pmt-method" onchange="updatePmtButton('${inv.id}', ${balance})">
+            <option value="">Select...</option>
+            <option value="PaymentHub">Card / Apple Pay / PayPal (Payment Hub)</option>
+            <option>Zelle</option><option>Venmo</option><option>CashApp</option><option>PayPal</option>
+          </select>
+        </div>
+        <div id="pmt-btn-wrap" style="display:none;margin-top:14px"></div>
+        <p id="pmt-error" style="color:#E8A3A3;font-size:12px;margin:8px 0 0" role="status"></p>
+      </div>`;
   }
 
   setInvoicePrintContent(actions + body + paySection);
 }
 
-function togglePmtAmount() {
-  const type = document.getElementById('pmt-type').value;
-  document.getElementById('pmt-amount-wrap').style.display = type === 'partial' ? 'block' : 'none';
-}
-
-function revealPmtMethod() {
-  const type = document.getElementById('pmt-type').value;
-  const wrap = document.getElementById('pmt-method-wrap');
-  wrap.style.display = type ? 'block' : 'none';
-  if (!type) {
-    document.getElementById('pmt-method').value = '';
-    document.getElementById('pmt-btn-wrap').style.display = 'none';
-    document.getElementById('pmt-btn-wrap').innerHTML = '';
-  }
-}
-
 function updatePmtButton(invId, balance) {
-  const method = document.getElementById('pmt-method').value;
   const type = document.getElementById('pmt-type').value;
+  const amountWrap = document.getElementById('pmt-amount-wrap');
+  const methodWrap = document.getElementById('pmt-method-wrap');
+  const error = document.getElementById('pmt-error');
+  amountWrap.style.display = type === 'partial' ? 'block' : 'none';
+  methodWrap.style.display = type ? 'block' : 'none';
+  const method = document.getElementById('pmt-method').value;
   const amount = type === 'partial' ? parseFloat(document.getElementById('pmt-amount').value) : balance;
   const wrap = document.getElementById('pmt-btn-wrap');
-  const valid = type && method && amount > 0;
-  if (!valid) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
-  const link = paymentLinkFor(method, amount);
-  const label = link ? `Pay via ${method === 'CashApp' ? 'Cash App' : method}` : 'Confirm Payment';
-  wrap.innerHTML = link
-    ? `<a class="btn solid" href="${link}" target="_blank" rel="noopener" onclick="recordPmtPayment('${invId}')">${label}</a>`
-    : `<button class="btn solid" onclick="recordPmtPayment('${invId}')">${label}</button>`;
-  wrap.style.display = 'block';
-}
-  function updatePmtButton(invId, balance) {
-  const method = document.getElementById('pmt-method').value;
-  const type = document.getElementById('pmt-type').value;
-  const amount = type === 'partial' ? parseFloat(document.getElementById('pmt-amount').value) : balance;
-  const wrap = document.getElementById('pmt-btn-wrap');
-  const valid = type && method && amount > 0;
-  if (!valid) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  error.textContent = type === 'partial' && Number.isFinite(amount) && (amount <= 0 || amount >= balance)
+    ? `Enter an amount greater than $0.00 and less than $${balance.toFixed(2)}.` : '';
+  if (!type || !method || !Number.isFinite(amount) || amount <= 0 || amount > balance || (type === 'partial' && amount >= balance) || Math.abs(Math.round(amount * 100) - amount * 100) > 1e-6) {
+    wrap.style.display = 'none'; wrap.innerHTML = ''; return;
+  }
   if (method === 'PaymentHub') {
-    wrap.innerHTML = `<button class="btn solid" onclick="payWithHub('${invId}', ${amount})">Pay $${amount.toFixed(2)} Now</button>`;
+    wrap.innerHTML = `<button class="btn solid" onclick="payWithHub('${invId}', ${amount.toFixed(2)})">Continue to Payment Hub — $${amount.toFixed(2)}</button>`;
     wrap.style.display = 'block';
     return;
   }
   const link = paymentLinkFor(method, amount);
-  const label = link ? `Pay via ${method === 'CashApp' ? 'Cash App' : method}` : 'Confirm Payment';
-  wrap.innerHTML = link
-    ? `<a class="btn solid" href="${link}" target="_blank" rel="noopener" onclick="recordPmtPayment('${invId}')">${label}</a>`
-    : `<button class="btn solid" onclick="recordPmtPayment('${invId}')">${label}</button>`;
-  wrap.style.display = 'block';
+  wrap.innerHTML = link ? `<a class="btn solid" href="${esc(link)}" target="_blank" rel="noopener">Pay $${amount.toFixed(2)} via ${method === 'CashApp' ? 'Cash App' : esc(method)}</a>` : '';
+  wrap.style.display = link ? 'block' : 'none';
 }
 
 async function payWithHub(invId, amount) {
@@ -1732,36 +1723,6 @@ async function payWithHub(invId, amount) {
     window.location.href = data.checkoutUrl;
   } catch (e) {
     wrap.innerHTML = original + `<p style="color:#E8A3A3;font-size:12px;margin-top:6px">${(e && e.message) || 'Could not start checkout.'}</p>`;
-  }
-}
-
-async function recordPmtPayment(invId) {
-  const method = document.getElementById('pmt-method').value;
-  const type = document.getElementById('pmt-type').value;
-  const wrap = document.getElementById('pmt-btn-wrap');
-  try {
-    const res = await fetch(`${PROXY_BASE}/invoices?t=${Date.now()}`, { cache: 'no-store' });
-    const data = await res.json();
-    const list = (data.record && data.record.invoices) || [];
-    const idx = list.findIndex(i => i.id === invId);
-    if (idx < 0) { alert('Could not find this invoice anymore. Please contact Richard Parma directly.'); return; }
-
-    const total = invoiceTotal(list[idx]);
-    const paidSoFar = paymentsTotal(list[idx].payments);
-    const balance = total - paidSoFar;
-    const amount = type === 'full' ? balance : (parseFloat(document.getElementById('pmt-amount').value) || 0);
-    if (amount <= 0) return;
-
-    list[idx].payments = list[idx].payments || [];
-    list[idx].payments.push({ date: todayLocal(), amount, method, source: 'client', type });
-    await fetch(`${PROXY_BASE}/invoices`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ invoices: list })
-    });
-    renderPaymentView(list[idx]);
-  } catch (e) {
-    wrap.insertAdjacentHTML('beforeend', '<p style="color:#E8A3A3;font-size:12px;margin-top:6px">Could not record payment — please let Richard know.</p>');
   }
 }
 
