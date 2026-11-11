@@ -1,0 +1,73 @@
+import { NEW_BUSINESS, LEGACY_BUSINESS } from './outbound-identity.js';
+
+export const ARTIST_PROFILE = Object.freeze({
+  name: 'Rick Parma',
+  base: 'Las Vegas, NV',
+  businessName: NEW_BUSINESS.name,
+  website: NEW_BUSINESS.website,
+  epk: 'https://rickparma.com/epk/',
+  calendar: 'https://rickparma.com/#calendar',
+  instagram: 'https://instagram.com/rickparmaofficial',
+  facebook: 'https://www.facebook.com/rickparmaofficial',
+  tiktok: 'https://www.tiktok.com/@rickparmaofficial',
+  personalEmail: 'saxman@rickparma.com',
+  bookingEmail: NEW_BUSINESS.email,
+  shortPromo: 'https://www.youtube.com/watch?v=A7bKax1LS_g',
+  compilation: 'https://www.youtube.com/watch?v=ePFoNTC85XY',
+  fullBandPromo: 'https://www.youtube.com/watch?v=6WmPyq6eoRk',
+  formats: ['solo singer/sax to tracks', 'duo', 'full band', 'DJ/MC'],
+  styles: ['R&B', 'Motown', 'soul', 'funk', 'pop', 'Top 40', 'neo-soul'],
+  positioning: [
+    'Chicago-born, Las Vegas-based vocalist, saxophonist, songwriter and entertainer',
+    'More than three decades of professional performance experience',
+    'Regular Las Vegas casino work including ARIA and Westgate',
+    'Show scales from polished solo singer/sax through full band',
+    'Available for DJ/MC bookings as a standalone service or, when appropriate, alongside live sax/vocal performance',
+    'Room-first performer who reads the audience rather than forcing a fixed set list'
+  ],
+  festivalCredits: [
+    'Newport Jazz Festival',
+    'Long Beach Jazz Festival',
+    'Taste of Soul in Los Angeles',
+    'Life Luxe Jazz Festival in Cabo San Lucas for three consecutive years'
+  ],
+  careerCredits: [
+    'Short touring period with trumpeter Tom Browne',
+    'Short touring period with R&B/funk group Heatwave',
+    'Longstanding performance relationship with the AKA organization for roughly a decade'
+  ]
+});
+
+export function campaignAssets(profile = 'room', business = NEW_BUSINESS) {
+  const p = ARTIST_PROFILE;
+  const assets = [{ label: 'EPK', url: p.epk }];
+  if (business.name === LEGACY_BUSINESS.name) {
+    assets.push({ label: 'Current Calendar', url: p.calendar });
+  } else {
+    assets.push({ label: 'Parma Entertainment Group Website', url: business.website });
+  }
+  if (profile === 'festival' || profile === 'agency') {
+    assets.push({ label: 'Full Band Promo', url: p.fullBandPromo });
+  }
+  return assets;
+}
+
+export function compactCredentials(profile = 'room') {
+  const p = ARTIST_PROFILE;
+  if (profile === 'festival') {
+    return `More than three decades performing professionally, with appearances at ${p.festivalCredits.join(', ')}, plus earlier touring work with Tom Browne and Heatwave.`;
+  }
+  if (profile === 'corporate') {
+    return 'More than three decades of professional performance experience across casino, corporate and private-event settings, including a longstanding AKA event relationship and regular ARIA/Westgate work.';
+  }
+  if (profile === 'dj') {
+    return 'Las Vegas-based professional entertainer available for DJ/MC bookings for hospitality, nightlife, corporate and private-event settings, with live sax/vocal performance available as an optional hybrid when it fits the event.';
+  }
+  if (profile === 'agency') {
+    return 'More than three decades of professional experience across casinos, lounges, festivals, corporate and private events, with a show that scales from solo singer/sax through full band.';
+  }
+  if (profile === 'buyer') {
+    return 'More than three decades of professional experience with regular Las Vegas casino work including ARIA and Westgate, scalable from solo singer/sax through full band.';
+  }
+  return 'More than three decades of professional performance experience with regular Las Vegas casino work including ARIA and Westgate.';
+}

@@ -1,0 +1,20 @@
+name: Booking alert audit
+on:
+  push:
+    branches: [booking-engine-v1]
+    paths: ['ops/booking-alert-audit.mjs', '.github/workflows/booking-alert-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read aggregate alert diagnostics
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node ops/booking-alert-audit.mjs
