@@ -1264,35 +1264,44 @@ function buildAddressLines(data) {
   return '';
 }
 
+function invoiceAddressParts(event, includeVenue = true) {
+  const parts = [];
+  if (includeVenue && event.venueName) parts.push(event.venueName.trim());
+  if (event.addrStreet) parts.push(event.addrStreet.trim());
+  if (event.addrUnit) parts.push(event.addrUnit.trim());
+  const cityStateZip = [[event.addrCity, event.addrState].filter(Boolean).join(', '), event.addrZip].filter(Boolean).join(' ');
+  if (cityStateZip) parts.push(cityStateZip);
+  if (!parts.length && event.clientAddress) parts.push(...event.clientAddress.split('\n').filter(Boolean));
+  return parts;
+}
+
+function invoiceDateTime(event) {
+  const time = isAllDay(event) ? 'All Day' : event.timeStart && event.timeEnd
+    ? `${fmtTime(event.timeStart)} – ${fmtTime(event.timeEnd)}` : fmtTime(event.timeStart);
+  return [event.eventDate ? fmtDateLong(event.eventDate) : 'Date to be set', time].filter(Boolean).join(' — ');
+}
+
 function buildInvoiceBody(data, total) {
   const hasEvents = Array.isArray(data.events) && data.events.length > 0;
-  const groups = hasEvents ? locationGroupsFor(data.events) : [];
+  const addresses = hasEvents ? data.events.map(invoiceAddressParts) : [];
+  const physicalAddresses = hasEvents ? data.events.map(event => invoiceAddressParts(event, false)) : [];
+  const samePhysicalAddress = physicalAddresses.length && physicalAddresses[0].length && physicalAddresses.every(parts => JSON.stringify(parts) === JSON.stringify(physicalAddresses[0]));
+  const sameVenue = hasEvents && data.events.every(event => event.venueName === data.events[0].venueName);
+  const commonAddress = samePhysicalAddress
+    ? [...(sameVenue && data.events[0].venueName ? [data.events[0].venueName.trim()] : []), ...physicalAddresses[0]]
+    : addresses.length && addresses[0].length && addresses.every(parts => JSON.stringify(parts) === JSON.stringify(addresses[0])) ? addresses[0] : null;
   const chargeRows = (data.lineItems || []).map((li, idx) => {
     let desc = li.description;
     if (!hasEvents && idx === 0 && data.guests) desc += ` — Guests: ${data.guests}`;
     return `<tr><td>${esc(desc)}</td><td class="amt">$${parseFloat(li.amount||0).toFixed(2)}</td></tr>`;
   }).join('');
-  const eventRows = hasEvents ? groups.map((group, groupIndex) => group.indices.map((idx, dateIndex) => {
-    const event = data.events[idx];
-    const service = event.description || event.perfType || event.eventType || event.eventName || 'Performance';
-    const desc = `Location ${groupIndex + 1}, Date ${dateIndex + 1}${event.eventDate ? ' (' + fmtDateLong(event.eventDate) + ')' : ''} — ${service}${event.guests ? ' — Guests: ' + event.guests : ''}`;
-    return `<tr><td>${esc(desc)}</td><td class="amt">$${(parseFloat(event.amount) || 0).toFixed(2)}</td></tr>`;
-  }).join('')).join('') : '';
+  const eventRows = hasEvents ? data.events.map((event, idx) => {
+    const description = [...(commonAddress ? [] : addresses[idx]), invoiceDateTime(event)];
+    return `<tr><td>${description.map(line => esc(line)).join('<br>')}</td><td class="amt">$${(parseFloat(event.amount) || 0).toFixed(2)}</td></tr>`;
+  }).join('') : '';
   const rows = eventRows + chargeRows;
   const timeRange = data.timeStart && data.timeEnd ? `${fmtTime(data.timeStart)} – ${fmtTime(data.timeEnd)}` : (fmtTime(data.timeStart) || '');
-  const eventDetails = hasEvents ? groups.map((group, groupIndex) => {
-    const event = data.events[group.indices[0]];
-    return `<div style="margin-bottom:12px;break-inside:avoid">
-      <div class="event-line" style="font-size:15px">Location ${groupIndex + 1}${event.eventName ? ' — ' + esc(event.eventName) : ''}</div>
-      ${event.venueName ? `<div class="event-line">${esc(event.venueName)}</div>` : ''}
-      ${buildAddressLines(event)}
-      ${group.indices.map((idx, dateIndex) => {
-        const date = data.events[idx];
-        const eventTime = isAllDay(date) ? 'All Day' : date.timeStart && date.timeEnd ? `${fmtTime(date.timeStart)} – ${fmtTime(date.timeEnd)}` : fmtTime(date.timeStart);
-        return `<div class="event-line" style="font-weight:400">Date ${dateIndex + 1}: ${date.eventDate ? fmtDateLong(date.eventDate) : 'To be set'}${eventTime ? ' — ' + eventTime : ''}</div>`;
-      }).join('')}
-    </div>`;
-  }).join('') : `
+  const eventDetails = hasEvents ? '' : `
     ${data.eventName ? `<div class="event-line" style="font-size:15px">${esc(data.eventName)}</div>` : ''}
     ${data.venueName ? `<div class="event-line">${esc(data.venueName)}</div>` : ''}
     ${buildAddressLines(data)}
@@ -1319,6 +1328,7 @@ function buildInvoiceBody(data, total) {
       <div class="detail">
         ${esc(data.clientPhone)}${data.clientPhone && data.clientEmail ? ' &nbsp;•&nbsp; ' : ''}${esc(data.clientEmail)}
       </div>
+      ${commonAddress ? `<div class="detail" style="margin-top:8px">${commonAddress.map(part => esc(part)).join('<br>')}</div>` : ''}
     </div>
 
     <div class="section-divider"></div>
