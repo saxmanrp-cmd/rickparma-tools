@@ -233,3 +233,28 @@ test('one app invoice produces separate date copies whose totals include shared 
   await context.shareAllDateLinks();
   assert.equal((shared.text.match(/invoice-creator\.html\?sign=one-record&date=/g) || []).length, 3);
 });
+
+test('combined print has one signature while each separate date link has its own', () => {
+  const { context, elements } = app();
+  firstLocation(context);
+  context.addInvoiceDate();
+  context.setInvoiceDate(1, 'eventDate', '2026-12-02');
+  context.addDate(0);
+  vm.runInContext("splitByDate=true; currentId='one-record';", context);
+  context.prepareInvoicePDF = () => {};
+  context.renderPrintView();
+  const combined = elements.get('print-content').innerHTML;
+  assert.equal((combined.match(/class="sig-grid"/g) || []).length, 1);
+  assert.doesNotMatch(combined, /Date 1 —|Date 2 —/);
+
+  const master = context.collectFormData();
+  const ids = Array.from(context.invoiceDateIds(master));
+  master.dateSignatures[ids[0]] = { clientSignatureImg:'data:image/png;base64,signed', clientSignedName:'First Signer', clientSignDate:'2026-12-01' };
+  context.renderClientInvoice(master, ids[0]);
+  assert.equal((elements.get('print-content').innerHTML.match(/class="sig-grid"/g) || []).length, 1);
+  assert.match(elements.get('print-content').innerHTML, /First Signer/);
+  context.renderClientInvoice(master, ids[1]);
+  assert.equal((elements.get('print-content').innerHTML.match(/class="sig-grid"/g) || []).length, 1);
+  assert.match(elements.get('print-content').innerHTML, /Client Signature/);
+  assert.doesNotMatch(elements.get('print-content').innerHTML, /First Signer/);
+});
