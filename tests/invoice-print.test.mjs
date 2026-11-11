@@ -42,7 +42,7 @@ test('signature pages have no payment controls while the separate payment link r
   assert.doesNotMatch(elements.get('print-content').innerHTML, /<h2>Payment<\/h2>|Pay \$100\.00 Now/);
   context.renderPaymentView(payable);
   assert.match(elements.get('print-content').innerHTML, /Partial Payment/);
-  assert.match(elements.get('print-content').innerHTML, /Card \/ Apple Pay \/ PayPal \(Payment Hub\)/);
+  assert.doesNotMatch(elements.get('print-content').innerHTML, /Payment Method|Zelle|Venmo|CashApp/);
   assert.doesNotMatch(elements.get('print-content').innerHTML, /already been paid in full/);
 });
 
@@ -51,11 +51,11 @@ test('partial payment requires a valid amount below balance and only opens check
   const payable = { ...inv, events:[{ eventDate:'2026-12-01', amount:'100' }] };
   context.renderPaymentView(payable);
   context.document.getElementById('pmt-type').value = 'partial';
-  context.document.getElementById('pmt-method').value = 'PaymentHub';
   context.document.getElementById('pmt-amount').value = '25.50';
   context.updatePmtButton('test', 100);
   assert.equal(elements.get('pmt-amount-wrap').style.display, 'block');
-  assert.match(elements.get('pmt-btn-wrap').innerHTML, /Continue to Payment Hub — \$25\.50/);
+  assert.match(elements.get('pmt-btn-wrap').innerHTML, /Continue to Payment/);
+  assert.doesNotMatch(elements.get('pmt-btn-wrap').innerHTML, /Payment Hub|PayPal/);
   elements.get('pmt-amount').value = '100';
   context.updatePmtButton('test', 100);
   assert.equal(elements.get('pmt-btn-wrap').style.display, 'none');
@@ -74,13 +74,23 @@ test('partial payment requires a valid amount below balance and only opens check
   assert.doesNotMatch(elements.get('print-content').innerHTML, /already been paid in full/);
 });
 
-test('external payment method does not mark invoice paid when link is opened', () => {
+test('full payment goes straight to checkout without a payment-method dropdown', () => {
   const { context, elements } = app();
   context.document.getElementById('pmt-type').value = 'full';
-  context.document.getElementById('pmt-method').value = 'Venmo';
   context.updatePmtButton('test', 100);
-  assert.match(elements.get('pmt-btn-wrap').innerHTML, /Pay \$100\.00 via Venmo/);
-  assert.doesNotMatch(elements.get('pmt-btn-wrap').innerHTML, /recordPmtPayment|Paid in Full/);
+  assert.match(elements.get('pmt-btn-wrap').innerHTML, /Continue to Payment/);
+  assert.doesNotMatch(elements.get('pmt-btn-wrap').innerHTML, /pmt-method|recordPmtPayment|Paid in Full/);
+});
+
+test('failed checkout restores one button and one error message for retry', async () => {
+  const { context, elements } = app();
+  context.document.getElementById('pmt-btn-wrap').innerHTML = '<button>Continue to Payment</button>';
+  context.fetch = async () => { throw new TypeError('Load failed'); };
+  await context.payWithHub('test', 25);
+  assert.equal(elements.get('pmt-btn-wrap').innerHTML, '<button>Continue to Payment</button>');
+  assert.match(elements.get('pmt-error').textContent, /Payment service unavailable/);
+  await context.payWithHub('test', 25);
+  assert.equal((elements.get('pmt-error').textContent.match(/Payment service unavailable/g) || []).length, 1);
 });
 
 test('signed shared invoice retains actual signer and both signatures without blank duplicate', () => {

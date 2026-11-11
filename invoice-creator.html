@@ -1575,15 +1575,6 @@ function renderClientInvoice(inv, dateId = null, sequenceStep = null) {
   if (dateInput) dateInput.value = todayLocal();
 }
 
-function paymentLinkFor(method, amount) {
-  const amt = amount ? (Number(amount) % 1 === 0 ? String(Number(amount)) : Number(amount).toFixed(2)) : null;
-  if (method === 'Venmo') return amt ? `${BIZ.venmo}?txn=pay&amount=${amt}&note=Invoice%20Payment` : BIZ.venmo;
-  if (method === 'CashApp') return amt ? `${BIZ.cashapp}/${amt}` : BIZ.cashapp;
-  if (method === 'Zelle') return BIZ.zelleLink;
-  if (method === 'PayPal') return amt ? `${BIZ.paypal}/${amt}` : BIZ.paypal;
-  return null;
-}
-
 async function submitClientSignature(invId, dateId = null) {
   const nameInput = document.getElementById('client-name-input');
   const dateInput = document.getElementById('client-date-input');
@@ -1667,14 +1658,6 @@ function renderPaymentView(inv) {
           <label for="pmt-amount" style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Amount</label>
           <input id="pmt-amount" type="number" min="0.01" max="${balance.toFixed(2)}" step="0.01" inputmode="decimal" oninput="updatePmtButton('${inv.id}', ${balance})">
         </div>
-        <div id="pmt-method-wrap" style="display:none">
-          <label for="pmt-method" style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Payment Method</label>
-          <select id="pmt-method" onchange="updatePmtButton('${inv.id}', ${balance})">
-            <option value="">Select...</option>
-            <option value="PaymentHub">Card / Apple Pay / PayPal (Payment Hub)</option>
-            <option>Zelle</option><option>Venmo</option><option>CashApp</option><option>PayPal</option>
-          </select>
-        </div>
         <div id="pmt-btn-wrap" style="display:none;margin-top:14px"></div>
         <p id="pmt-error" style="color:#E8A3A3;font-size:12px;margin:8px 0 0" role="status"></p>
       </div>`;
@@ -1686,31 +1669,24 @@ function renderPaymentView(inv) {
 function updatePmtButton(invId, balance) {
   const type = document.getElementById('pmt-type').value;
   const amountWrap = document.getElementById('pmt-amount-wrap');
-  const methodWrap = document.getElementById('pmt-method-wrap');
   const error = document.getElementById('pmt-error');
   amountWrap.style.display = type === 'partial' ? 'block' : 'none';
-  methodWrap.style.display = type ? 'block' : 'none';
-  const method = document.getElementById('pmt-method').value;
   const amount = type === 'partial' ? parseFloat(document.getElementById('pmt-amount').value) : balance;
   const wrap = document.getElementById('pmt-btn-wrap');
   error.textContent = type === 'partial' && Number.isFinite(amount) && (amount <= 0 || amount >= balance)
     ? `Enter an amount greater than $0.00 and less than $${balance.toFixed(2)}.` : '';
-  if (!type || !method || !Number.isFinite(amount) || amount <= 0 || amount > balance || (type === 'partial' && amount >= balance) || Math.abs(Math.round(amount * 100) - amount * 100) > 1e-6) {
+  if (!type || !Number.isFinite(amount) || amount <= 0 || amount > balance || (type === 'partial' && amount >= balance) || Math.abs(Math.round(amount * 100) - amount * 100) > 1e-6) {
     wrap.style.display = 'none'; wrap.innerHTML = ''; return;
   }
-  if (method === 'PaymentHub') {
-    wrap.innerHTML = `<button class="btn solid" onclick="payWithHub('${invId}', ${amount.toFixed(2)})">Continue to Payment Hub — $${amount.toFixed(2)}</button>`;
-    wrap.style.display = 'block';
-    return;
-  }
-  const link = paymentLinkFor(method, amount);
-  wrap.innerHTML = link ? `<a class="btn solid" href="${esc(link)}" target="_blank" rel="noopener">Pay $${amount.toFixed(2)} via ${method === 'CashApp' ? 'Cash App' : esc(method)}</a>` : '';
-  wrap.style.display = link ? 'block' : 'none';
+  wrap.innerHTML = `<button class="btn solid" onclick="payWithHub('${invId}', ${amount.toFixed(2)})">Continue to Payment</button>`;
+  wrap.style.display = 'block';
 }
 
 async function payWithHub(invId, amount) {
   const wrap = document.getElementById('pmt-btn-wrap');
+  const error = document.getElementById('pmt-error');
   const original = wrap.innerHTML;
+  error.textContent = '';
   wrap.innerHTML = '<button class="btn solid" disabled>Preparing checkout…</button>';
   try {
     const res = await fetch('https://rickparma.com/api/invoices/pay-link', {
@@ -1718,11 +1694,12 @@ async function payWithHub(invId, amount) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ invoiceId: invId, amountCents: Math.round(amount * 100) })
     });
-    const data = await res.json();
-    if (!res.ok || !data.checkoutUrl) throw new Error((data && data.error) || 'Could not start checkout.');
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.checkoutUrl) throw new Error((data && data.error) || 'Could not start checkout. Please try again later.');
     window.location.href = data.checkoutUrl;
   } catch (e) {
-    wrap.innerHTML = original + `<p style="color:#E8A3A3;font-size:12px;margin-top:6px">${(e && e.message) || 'Could not start checkout.'}</p>`;
+    wrap.innerHTML = original;
+    error.textContent = e?.name === 'TypeError' ? 'Payment service unavailable. Please try again later.' : (e && e.message) || 'Could not start checkout. Please try again later.';
   }
 }
 
