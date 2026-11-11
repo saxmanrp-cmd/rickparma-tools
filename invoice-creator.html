@@ -1726,7 +1726,8 @@ async function payWithHub(invId, amount) {
   error.textContent = '';
   wrap.innerHTML = '<button class="btn solid" disabled>Preparing checkout…</button>';
   try {
-    const res = await fetch('https://rickparma.com/api/invoices/pay-link', {
+    const endpoint = sharedProfile === BUSINESS_PROFILE ? 'business-pay-link' : 'pay-link';
+    const res = await fetch(`https://rickparma.com/api/invoices/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ invoiceId: invId, amountCents: Math.round(amount * 100), profileId: sharedProfile })
