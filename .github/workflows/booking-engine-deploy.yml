@@ -45,10 +45,15 @@ jobs:
             node --check "$file"
           done < <(find src -type f -name '*.js' -print0 | sort -z)
 
+      - name: Test Worker
+        run: node --test test/*.test.mjs
+
+      - name: Optimize D1 read queries
+        id: d1_indexes
+        run: node scripts/optimize-d1.mjs
+
       - name: Deploy Worker
-        run: |
-          node --test test/*.test.mjs
-          npm run deploy
+        run: npm run deploy
 
       - name: Live health smoke test
         run: |
@@ -56,12 +61,15 @@ jobs:
           grep -q '"ok":true' /tmp/booking-health.json
 
       - name: Activate authorized preferred vendor campaign
+        if: steps.d1_indexes.outputs.ready == 'true'
         run: node scripts/launch-vendor-campaign.mjs
 
       - name: Settle routine vendor receipt tasks without sending messages
+        if: steps.d1_indexes.outputs.ready == 'true'
         run: node scripts/settle-vendor-receipts.mjs
 
       - name: Verify aggregate alert diagnostics
+        if: steps.d1_indexes.outputs.ready == 'true'
         run: node ../ops/booking-alert-audit.mjs
 
       - name: Report deploy success

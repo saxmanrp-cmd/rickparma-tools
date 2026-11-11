@@ -215,3 +215,18 @@ CREATE TABLE IF NOT EXISTS auth_challenges (
 
 CREATE INDEX IF NOT EXISTS idx_auth_challenges_expiry
   ON auth_challenges(expires_at);
+
+-- Read optimizations for repeated outreach safety and sync lookups.
+CREATE INDEX IF NOT EXISTS idx_prospects_email_lower ON prospects(lower(email));
+
+CREATE INDEX IF NOT EXISTS idx_prospects_current_venue ON prospects(current_venue) WHERE current_venue=1;
+
+CREATE INDEX IF NOT EXISTS idx_prospects_performing ON prospects(room_preference) WHERE room_preference='PERFORMING';
+
+CREATE INDEX IF NOT EXISTS idx_prospects_eligible_order ON prospects(fit_score DESC,confidence DESC,discovered_at DESC) WHERE suppressed=0 AND current_venue=0 AND automation_safe='YES_TARGETED' AND email IS NOT NULL AND email!='';
+
+CREATE INDEX IF NOT EXISTS idx_messages_outbound_recipient_sender ON messages(lower(recipient),lower(sender),sent_at DESC,created_at DESC) WHERE direction='outbound' AND channel='email';
+
+CREATE INDEX IF NOT EXISTS idx_messages_inbound_queue ON messages(direction,status,channel,COALESCE(received_at,created_at));
+
+CREATE INDEX IF NOT EXISTS idx_crm_events_type_day ON crm_events(event_type,date(created_at));

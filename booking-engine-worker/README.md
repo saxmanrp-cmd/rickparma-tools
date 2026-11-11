@@ -222,3 +222,11 @@ Marks one exception resolved.
 - Do Not Contact, Pass, Booked, current venues and room-level skips stop automation.
 - Replies are processed before new sends so the agent cannot send a follow-up after a response has already arrived.
 - Local browser CRM remains usable if the Worker is unavailable.
+
+### D1 read-limit recovery
+
+The deploy workflow applies `src/d1-read-indexes.js` through `scripts/optimize-d1.mjs` before deployment. These additive indexes cover the existing case-insensitive recipient safety checks, current-venue exclusions, eligible-prospect ordering, inbound queues and daily event counts; outreach rules and contact data are preserved. Fresh databases receive the same indexes from `schema.sql`.
+
+If the account is already daily-quota blocked, deployment records the migration as pending and skips D1-dependent post-deploy tasks. The scheduled Worker checks the primary-keyed `sync_state` marker `booking-d1-read-indexes-v1` before other work. It applies the transactional index batch once D1 is available, then resumes the existing sync/campaign cycle. Failures do not set the marker and remain retryable. No billing plan is changed, and migrations send no messages. Index creation consumes a one-time amount of D1 read/write usage.
+
+Validation: `node --test test/*.test.mjs` includes the actual cross-recipient hold query against 20,001 synthetic prospects, verifies its plan changes from a table scan to indexed searches, and covers quota recovery and transactional migration retries.

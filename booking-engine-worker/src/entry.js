@@ -1,3 +1,4 @@
+import { ensureD1ReadIndexes, isD1DailyLimit } from './d1-read-indexes.js';
 import api from './index.js';
 import { handleTwilioWebhook, syncMicrosoftReplies } from './reply-sync.js';
 import { handleAgentApi } from './agent-api.js';
@@ -22,6 +23,14 @@ export default {
 
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
+      try { await ensureD1ReadIndexes(env); }
+      catch (error) {
+        if (isD1DailyLimit(error)) {
+          console.log('booking-d1-awaiting-daily-reset');
+          return; // No repeated sync/research/outreach attempts while D1 is blocked.
+        }
+        throw error; // Never run the expensive cycle before its indexes are ready.
+      }
       const mailboxVerification = await runPendingMailboxVerification(env);
       if (!mailboxVerification.skipped) console.log('booking-mailbox-verification', mailboxVerification);
 
