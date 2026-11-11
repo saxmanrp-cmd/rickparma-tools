@@ -227,11 +227,44 @@ test('one app invoice produces separate date copies whose totals include shared 
   vm.runInContext('invoices=[collectFormData()]', context);
   context.openMultipleInvoiceShares();
   assert.equal(elements.get('multiple-invoice-dialog').open, true);
-  assert.equal((elements.get('multiple-invoice-links').innerHTML.match(/Send \/ Share/g) || []).length, 3);
+  assert.equal((elements.get('multiple-invoice-links').innerHTML.match(/type="url"/g) || []).length, 1);
+  assert.match(elements.get('multiple-invoice-links').innerHTML, /One link for all 3 dates/);
+  assert.match(elements.get('multiple-invoice-links').innerHTML, /\?sign=one-record&amp;sequence=1/);
   let shared;
   context.navigator = { share: async value => { shared = value; } };
-  await context.shareAllDateLinks();
-  assert.equal((shared.text.match(/invoice-creator\.html\?sign=one-record&date=/g) || []).length, 3);
+  await context.shareSequenceLink();
+  assert.match(shared.text, /invoice-creator\.html\?sign=one-record&sequence=1/);
+  assert.doesNotMatch(shared.text, /&date=/);
+});
+
+test('one sequence link advances through three separate date signatures in selected order', () => {
+  const { context, elements } = app();
+  firstLocation(context);
+  context.addInvoiceDate();
+  context.setInvoiceDate(1, 'eventDate', '2026-12-02');
+  context.addInvoiceDate();
+  context.setInvoiceDate(2, 'eventDate', '2026-12-03');
+  context.addDate(0);
+  context.addDate(0);
+  const inv = context.collectFormData();
+  const ids = Array.from(context.invoiceDateIds(inv));
+  context.prepareInvoicePDF = () => {};
+  context.renderSequenceInvoice(inv);
+  assert.match(elements.get('print-content').innerHTML, /Invoice 1 of 3/);
+  assert.match(elements.get('print-content').innerHTML, /December 1, 2026/);
+  assert.doesNotMatch(elements.get('print-content').innerHTML, /Payment Type|December 2, 2026/);
+  inv.dateSignatures[ids[0]] = { clientSignatureImg:'data:image/png;base64,one', clientSignedName:'First Signer', clientSignDate:'2026-12-01' };
+  context.renderSequenceInvoice(inv);
+  assert.match(elements.get('print-content').innerHTML, /Invoice 2 of 3/);
+  assert.match(elements.get('print-content').innerHTML, /December 2, 2026/);
+  assert.doesNotMatch(elements.get('print-content').innerHTML, /December 1, 2026/);
+  inv.dateSignatures[ids[1]] = { clientSignatureImg:'data:image/png;base64,two', clientSignedName:'Second Signer', clientSignDate:'2026-12-02' };
+  context.renderSequenceInvoice(inv);
+  assert.match(elements.get('print-content').innerHTML, /Invoice 3 of 3/);
+  inv.dateSignatures[ids[2]] = { clientSignatureImg:'data:image/png;base64,three', clientSignedName:'Third Signer', clientSignDate:'2026-12-03' };
+  context.renderSequenceInvoice(inv);
+  assert.match(elements.get('print-content').innerHTML, /All 3 dates signed/);
+  assert.equal((elements.get('print-content').innerHTML.match(/class="sig-grid"/g) || []).length, 3);
 });
 
 test('previewing multiple invoices does not persist a sharing mode', async () => {

@@ -340,10 +340,10 @@
 </dialog>
 
 <dialog id="multiple-invoice-dialog" class="no-print" aria-labelledby="multiple-invoice-title">
-  <h2 id="multiple-invoice-title">Invoices by Date</h2>
-  <p class="hint">One invoice stays in your app. Each date has its own link and signature.</p>
+  <h2 id="multiple-invoice-title">Separate Signatures, One Link</h2>
+  <p class="hint">One invoice stays in your app. The client opens one link and signs each date in order.</p>
   <div id="multiple-invoice-links"></div>
-  <button class="btn solid" onclick="shareAllDateLinks()">Share All Links</button>
+  <div class="btn-row"><button class="btn solid" onclick="shareSequenceLink()">Send / Share</button><button class="btn" onclick="copySequenceLink()">Copy Link</button></div>
   <p id="multiple-invoice-status" class="hint" role="status" aria-live="polite"></p>
   <button class="btn" onclick="document.getElementById('multiple-invoice-dialog').close()">Close</button>
 </dialog>
@@ -396,6 +396,7 @@ const signId = urlParams.get('sign');
 const payId = urlParams.get('pay');
 const receiptId = urlParams.get('receipt');
 const signDateId = urlParams.get('date');
+const signSequence = urlParams.get('sequence') === '1';
 
 function setSyncStatus(text) {
   const el = document.getElementById('sync-status');
@@ -922,7 +923,9 @@ async function saveInvoice() {
 }
 
 function invoiceDateIds(inv) {
-  return [...new Set((inv.events || []).map(event => event.dateId).filter(Boolean))];
+  const used = [...new Set((inv.events || []).map(event => event.dateId).filter(Boolean))];
+  const selectedOrder = (inv.invoiceDates || []).map(date => date.id).filter(id => used.includes(id));
+  return [...new Set([...selectedOrder, ...used])];
 }
 
 function invoiceForDate(inv, dateId) {
@@ -1104,6 +1107,10 @@ function dateSignatureLink(invoiceId, dateId) {
   return invoiceShareLink('sign', invoiceId) + `&date=${encodeURIComponent(dateId)}`;
 }
 
+function sequenceSignatureLink(invoiceId) {
+  return invoiceShareLink('sign', invoiceId) + '&sequence=1';
+}
+
 function openMultipleInvoiceShares() {
   const inv = invoices.find(item => item.id === currentId);
   if (!inv) return;
@@ -1111,53 +1118,42 @@ function openMultipleInvoiceShares() {
   document.getElementById('multiple-invoice-links').innerHTML = ids.map((id, idx) => {
     const copy = invoiceForDate(inv, id);
     const event = copy.events[0];
-    const label = `Invoice ${idx + 1} — ${event.eventDate ? fmtDateLong(event.eventDate) : 'Date to be set'}`;
-    const link = dateSignatureLink(inv.id, id);
     const signed = (inv.dateSignatures || {})[id];
-    return `<div class="date-entry"><strong>${esc(label)}</strong>${signed ? ' ✓ Signed' : ''}
-      <div class="hint">${copy.events.length} location${copy.events.length === 1 ? '' : 's'} · $${invoiceTotal(copy).toFixed(2)}</div>
-      <input type="url" readonly value="${esc(link)}" aria-label="${esc(label)} link" onclick="this.select()">
-      <div class="btn-row"><button class="btn small" onclick="shareDateLink('${esc(id)}')">Send / Share</button><button class="btn small" onclick="copyDateLink('${esc(id)}')">Copy Link</button></div>
-    </div>`;
-  }).join('');
+    return `<div class="date-entry"><strong>${idx + 1}. ${esc(fmtDateLong(event.eventDate))}</strong>${signed ? ' ✓ Signed' : ''}
+      <div class="hint">${copy.events.length} location${copy.events.length === 1 ? '' : 's'} · $${invoiceTotal(copy).toFixed(2)}</div></div>`;
+  }).join('') + `<label for="multiple-invoice-link">One link for all ${ids.length} dates</label>
+    <input id="multiple-invoice-link" type="url" readonly value="${esc(sequenceSignatureLink(inv.id))}" onclick="this.select()">`;
   document.getElementById('multiple-invoice-status').textContent = '';
   document.getElementById('multiple-invoice-dialog').showModal();
 }
 
-async function copyDateLink(dateId) {
-  const link = dateSignatureLink(currentId, dateId);
+async function copySequenceLink() {
+  const input = document.getElementById('multiple-invoice-link');
   const status = document.getElementById('multiple-invoice-status');
   try {
-    await navigator.clipboard.writeText(link);
+    await navigator.clipboard.writeText(input.value);
     status.textContent = 'Link copied — paste it into an email or message.';
   } catch (error) {
-    const input = [...document.querySelectorAll('#multiple-invoice-links input')].find(el => el.value === link);
-    if (input) { input.focus(); input.select(); }
+    input.focus(); input.select();
     status.textContent = 'Touch and hold the selected link, then choose Copy.';
   }
 }
 
-async function shareDateLinks(ids) {
-  const links = ids.map((id, idx) => `Invoice ${idx + 1}: ${dateSignatureLink(currentId, id)}`);
-  const message = `Please review and sign ${ids.length === 1 ? 'your invoice' : 'these invoices'} from Rick Parma:\n${links.join('\n')}`;
+async function shareSequenceLink() {
+  const link = sequenceSignatureLink(currentId);
+  const message = `Please review and sign each date of your invoice from Rick Parma: ${link}`;
   if (navigator.share) {
     try { await navigator.share({ text:message }); return; }
     catch (error) { if (error.name === 'AbortError') return; }
   }
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(message);
-    document.getElementById('multiple-invoice-status').textContent = 'Links copied — paste them into a text or email.';
+    document.getElementById('multiple-invoice-status').textContent = 'Link copied — paste it into a text or email.';
   } else {
-    const input = document.querySelector('#multiple-invoice-links input');
-    if (input) { input.focus(); input.select(); }
-    document.getElementById('multiple-invoice-status').textContent = 'Select and copy the links above to send them.';
+    const input = document.getElementById('multiple-invoice-link');
+    input.focus(); input.select();
+    document.getElementById('multiple-invoice-status').textContent = 'Select and copy the link above to send it.';
   }
-}
-
-function shareDateLink(dateId) { return shareDateLinks([dateId]); }
-function shareAllDateLinks() {
-  const inv = invoices.find(item => item.id === currentId);
-  if (inv) return shareDateLinks(invoiceDateIds(inv));
 }
 
 async function openInvoiceShare(kind, label) {
@@ -1519,13 +1515,33 @@ async function initClientView(invId) {
       document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">This date is no longer on the invoice. Please request an updated link.</p>';
       return;
     }
-    renderClientInvoice(inv, signDateId);
+    if (signSequence) renderSequenceInvoice(inv);
+    else renderClientInvoice(inv, signDateId);
   } catch (e) {
     document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Could not load invoice. Check your connection and reload the page.</p>';
   }
 }
 
-function renderClientInvoice(inv, dateId = null) {
+function renderSequenceInvoice(inv) {
+  const ids = invoiceDateIds(inv);
+  if (!ids.length) {
+    document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">No dates are available on this invoice.</p>';
+    return;
+  }
+  const index = ids.findIndex(id => !(inv.dateSignatures || {})[id]?.clientSignatureImg);
+  if (index < 0) {
+    const actions = `<div class="no-print btn-row"><button class="btn solid" data-save-pdf onclick="saveInvoicePDF(this)">Save PDF</button><button class="btn" data-print-pdf data-ready-label="Print" onclick="printInvoice(this)">Print</button></div>`;
+    const signedCopies = ids.map(id => {
+      const copy = invoiceForDate(inv, id);
+      return `<div style="break-inside:avoid"><div class="section-divider"></div><div class="event-line">${esc(fmtDateLong(copy.events[0].eventDate))}</div>${buildSignatureBlock(copy)}</div>`;
+    }).join('');
+    setInvoicePrintContent(`${actions}<h2>All ${ids.length} dates signed</h2>${buildInvoiceBody(inv, invoiceTotal(inv))}${signedCopies}<p class="thanks">Thank you for signing each date!</p>`);
+    return;
+  }
+  renderClientInvoice(inv, ids[index], { index:index + 1, count:ids.length });
+}
+
+function renderClientInvoice(inv, dateId = null, sequenceStep = null) {
   const shown = dateId ? invoiceForDate(inv, dateId) : inv;
   if (!shown) return;
   const total = invoiceTotal(shown);
@@ -1534,41 +1550,13 @@ function renderClientInvoice(inv, dateId = null) {
 
   let sigSection;
   if (shown.clientSignatureImg) {
-    const clientPayment = (inv.payments || []).find(p => p.source === 'client' && (!dateId || p.dateId === dateId));
-    const paymentNote = clientPayment
-      ? `<p style="text-align:center;font-size:13.5px;color:#444;margin-top:10px">Payment reported: $${parseFloat(clientPayment.amount).toFixed(2)} (${clientPayment.type === 'partial' ? 'Partial Payment' : 'Paid in Full'}) via ${esc(clientPayment.method)}</p>`
-      : '';
     sigSection = `
       ${buildSignatureBlock(shown)}
-      ${paymentNote}
       <p class="thanks">Thank you — this invoice has been signed and confirmed.</p>
     `;
   } else {
     sigSection = `
       ${buildSignatureBlock(shown)}
-      <div class="sign-card no-print">
-        <h2>Payment</h2>
-        <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:4px">Payment Type</label>
-        <select id="client-pay-type" onchange="toggleClientPartialAmount(); revealClientPayMethod(); updateClientPayButton('${inv.id}', ${total})">
-          <option value="">Select...</option>
-          <option value="full">Paying in Full ($${total.toFixed(2)})</option>
-          <option value="partial">Partial Payment</option>
-        </select>
-        <div id="client-partial-amount-wrap" style="display:none">
-          <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Amount</label>
-          <input id="client-pay-amount" type="number" step="0.01" oninput="updateClientPayButton('${inv.id}', ${total})">
-        </div>
-        <div id="client-pay-method-wrap" style="display:none">
-          <label style="display:block;font-size:13px;color:#C9C9C9;margin:10px 0 4px">Payment Method</label>
-          <select id="client-pay-method" onchange="updateClientPayButton('${inv.id}', ${total})">
-            <option value="">Select...</option>
-            <option>Zelle</option><option>Venmo</option><option>CashApp</option>
-            <option>PayPal</option>
-          </select>
-        </div>
-        <div id="client-pay-btn-wrap" style="display:none;margin-top:14px"></div>
-      </div>
-
       <div class="sign-card no-print">
         <h2>Sign This Invoice</h2>
         <label style="display:block;font-size:13px;color:#C9C9C9;margin-bottom:4px">Type your full name</label>
@@ -1581,7 +1569,8 @@ function renderClientInvoice(inv, dateId = null) {
     `;
   }
 
-  setInvoicePrintContent(actions + body + sigSection);
+  const progress = sequenceStep ? `<div class="note-box no-print" style="margin:0 0 16px"><strong>Invoice ${sequenceStep.index} of ${sequenceStep.count}</strong><br>Sign this date to continue to the next invoice.</div>` : '';
+  setInvoicePrintContent(actions + progress + body + sigSection);
   const dateInput = document.getElementById('client-date-input');
   if (dateInput) dateInput.value = todayLocal();
 }
@@ -1593,65 +1582,6 @@ function paymentLinkFor(method, amount) {
   if (method === 'Zelle') return BIZ.zelleLink;
   if (method === 'PayPal') return amt ? `${BIZ.paypal}/${amt}` : BIZ.paypal;
   return null;
-}
-
-function revealClientPayMethod() {
-  const type = document.getElementById('client-pay-type').value;
-  const wrap = document.getElementById('client-pay-method-wrap');
-  wrap.style.display = type ? 'block' : 'none';
-  if (!type) {
-    document.getElementById('client-pay-method').value = '';
-    document.getElementById('client-pay-btn-wrap').style.display = 'none';
-    document.getElementById('client-pay-btn-wrap').innerHTML = '';
-  }
-}
-
-function updateClientPayButton(invId, total) {
-  const method = document.getElementById('client-pay-method').value;
-  const type = document.getElementById('client-pay-type').value;
-  const amount = type === 'partial' ? parseFloat(document.getElementById('client-pay-amount').value) : total;
-  const wrap = document.getElementById('client-pay-btn-wrap');
-  const valid = type && method && amount > 0;
-  if (!valid) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
-  const link = paymentLinkFor(method, amount);
-  const label = link ? `Pay via ${method === 'CashApp' ? 'Cash App' : method}` : 'Confirm Payment';
-  wrap.innerHTML = link
-    ? `<a class="btn solid" href="${link}" target="_blank" rel="noopener" onclick="recordClientPayment('${invId}')">${label}</a>`
-    : `<button class="btn solid" onclick="recordClientPayment('${invId}')">${label}</button>`;
-  wrap.style.display = 'block';
-}
-
-async function recordClientPayment(invId, dateId = signDateId) {
-  const method = document.getElementById('client-pay-method').value;
-  const type = document.getElementById('client-pay-type').value;
-  const wrap = document.getElementById('client-pay-btn-wrap');
-  try {
-    const res = await fetch(`${PROXY_BASE}/invoices?t=${Date.now()}`, { cache: 'no-store' });
-    const data = await res.json();
-    const list = (data.record && data.record.invoices) || [];
-    const idx = list.findIndex(i => i.id === invId);
-    if (idx < 0) return;
-    const selected = dateId ? invoiceForDate(list[idx], dateId) : list[idx];
-    if (!selected) return;
-    const total = invoiceTotal(selected);
-    const amount = type === 'full' ? total : (parseFloat(document.getElementById('client-pay-amount').value) || 0);
-    if (amount <= 0) return;
-    list[idx].payments = list[idx].payments || [];
-    list[idx].payments.push({ date: todayLocal(), amount, method, source: 'client', type, dateId });
-    await fetch(`${PROXY_BASE}/invoices`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ invoices: list })
-    });
-    wrap.innerHTML = '<p style="color:#8DB2E5;font-size:13px;margin-top:6px">✓ Payment recorded — thank you!</p>';
-  } catch (e) {
-    wrap.insertAdjacentHTML('beforeend', '<p style="color:#E8A3A3;font-size:12px;margin-top:6px">Could not record payment — please let Richard know.</p>');
-  }
-}
-
-function toggleClientPartialAmount() {
-  const type = document.getElementById('client-pay-type').value;
-  document.getElementById('client-partial-amount-wrap').style.display = type === 'partial' ? 'block' : 'none';
 }
 
 async function submitClientSignature(invId, dateId = null) {
@@ -1676,12 +1606,14 @@ async function submitClientSignature(invId, dateId = null) {
       list[idx].dateSignatures = list[idx].dateSignatures || {};
       list[idx].dateSignatures[dateId] = signed;
     } else Object.assign(list[idx], signed);
-    await fetch(`${PROXY_BASE}/invoices`, {
+    const saved = await fetch(`${PROXY_BASE}/invoices`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ invoices: list })
     });
-    renderClientInvoice(list[idx], dateId);
+    if (!saved.ok) throw new Error('Could not save signature');
+    if (signSequence) renderSequenceInvoice(list[idx]);
+    else renderClientInvoice(list[idx], dateId);
   } catch (e) {
     alert('Could not send. Check your connection and try again.');
     btn.disabled = false;

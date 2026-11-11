@@ -32,6 +32,16 @@ test('unsigned shared invoice includes a printable signature line and performer 
   assert.match(output, /class="rick-sig"/);
   assert.ok(output.indexOf('class="sig-grid"') < output.indexOf('class="sign-card no-print"'));
   assert.match(output, /saveInvoicePDF\(this\)/);
+  assert.doesNotMatch(output, /Payment Type|Paying in Full|Partial Payment|client-pay-/);
+});
+
+test('signature pages have no payment controls while the separate payment link retains checkout', () => {
+  const { context, elements } = app();
+  const payable = { ...inv, events:[{ eventDate:'2026-12-01', amount:'100' }] };
+  context.renderClientInvoice(payable);
+  assert.doesNotMatch(elements.get('print-content').innerHTML, /<h2>Payment<\/h2>|Pay \$100\.00 Now/);
+  context.renderPaymentView(payable);
+  assert.match(elements.get('print-content').innerHTML, /Pay \$100\.00 Now/);
 });
 
 test('signed shared invoice retains actual signer and both signatures without blank duplicate', () => {
