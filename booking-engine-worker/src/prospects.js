@@ -259,7 +259,7 @@ export async function upsertResearchedProspect(env, item = {}, fallbackId = '') 
   if (existing) {
     await env.DB.prepare(`
       UPDATE prospects SET
-        dedupe_key=?, entity=?, room=?, category=?, profile=?, contact_name=?, contact_role=?, email=?, phone=?,
+        dedupe_key=?, entity=?, room=?, category=?, profile=?, contact_name=?, contact_role=?, email=?, phone=COALESCE(NULLIF(?,''),phone),
         website_url=?, booking_url=?, contact_route=?, fit_score=?, confidence=?, automation_safe=?, fit_reason=?,
         evidence_summary=?, source_urls_json=?, campaign_type=?, verified_at=CURRENT_TIMESTAMP,
         last_researched_at=CURRENT_TIMESTAMP,
