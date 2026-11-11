@@ -98,6 +98,12 @@
   .event-entry .remove-x { width: auto; height: 34px; padding: 0 10px; font-size: 12px; }
   .event-entry input, .event-entry select { background: var(--panel); }
   .event-price { max-width: 180px; }
+  .date-entry { border-top: 1px dashed var(--border); padding-top: 12px; margin-top: 14px; }
+  .date-entry .entry-head { margin-bottom: 8px; }
+  .date-entry h4 { margin: 0; color: var(--text); font-size: 13px; }
+  .date-entry .all-day { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; }
+  .date-entry .all-day input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+  .date-entry .all-day label { margin: 0; color: var(--text); }
   .remove-x {
     background: transparent; border: 1px solid var(--border); color: var(--text-dim);
     border-radius: 8px; width: 42px; height: 42px; font-size: 16px;
@@ -242,10 +248,10 @@
     </section>
 
     <section class="card">
-      <h2>Events</h2>
-      <div class="hint" style="margin-bottom:12px">Add each event with its own location, date, and price. All events share one invoice total.</div>
+      <h2>Locations &amp; Dates</h2>
+      <div class="hint" style="margin-bottom:12px">Add dates under each location. Each date has its own schedule and price.</div>
       <div id="event-entries"></div>
-      <button class="btn small" onclick="addEvent()">+ Add Event</button>
+      <button class="btn small" onclick="addLocation()">+ Add Location</button>
     </section>
 
     <section class="card">
@@ -349,6 +355,7 @@ let invoices = [];
 let currentId = null;
 let currentInvoiceNumber = null;
 let events = [];
+let locationCounter = 0;
 let lineItems = [];
 let payments = [];
 const savedSignature = DEFAULT_SIGNATURE;
@@ -450,7 +457,7 @@ function renderHistory() {
     const signedBadge = inv.clientSignatureImg ? '<div class="status-badge paid">✓ CLIENT SIGNED</div>' : '';
     return `<div class="hist-card" onclick="editInvoice('${inv.id}')">
       <div class="top"><span class="name">${esc(inv.clientName||'Untitled')}</span><span class="amt">$${total.toFixed(2)}</span></div>
-      <div class="meta">${inv.events && inv.events.length ? `${inv.events.length} event${inv.events.length === 1 ? '' : 's'} — ${esc(inv.events.map(e => e.eventDate).filter(Boolean).sort().join(', ') || 'no date')}` : `${esc(inv.eventType||'')} — ${esc(inv.eventDate||'no date')}`}</div>
+      <div class="meta">${inv.events && inv.events.length ? `${inv.events.length} date${inv.events.length === 1 ? '' : 's'} — ${esc(inv.events.map(e => e.eventDate).filter(Boolean).sort().join(', ') || 'no date')}` : `${esc(inv.eventType||'')} — ${esc(inv.eventDate||'no date')}`}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <div class="status-badge ${status.cls}">${status.label}${bal>0 && paid>0 ? ' ($'+bal.toFixed(2)+' due)' : ''}</div>
         ${signedBadge}
@@ -509,7 +516,12 @@ function editInvoice(id) {
   document.getElementById('f-email').value = inv.clientEmail || '';
   document.getElementById('f-phone').value = inv.clientPhone || '';
   if (inv.events && inv.events.length) {
-    events = JSON.parse(JSON.stringify(inv.events));
+    events = inv.events.map(event => {
+      const blank = blankEvent();
+      return { ...blank, ...event,
+        locationId: event.locationId || blank.locationId,
+        allDay: event.allDay ?? (!!event.eventDate && !event.timeStart && !event.timeEnd) };
+    });
     lineItems = inv.lineItems ? JSON.parse(JSON.stringify(inv.lineItems)) : [];
   } else {
     const oldItems = inv.lineItems ? JSON.parse(JSON.stringify(inv.lineItems)) : [];
@@ -541,63 +553,151 @@ function deleteInvoice() {
 }
 
 function blankEvent() {
-  return { eventName:'', venueName:'', addrStreet:'', addrUnit:'', addrCity:'', addrState:'', addrZip:'', clientAddress:'',
-    eventDate:'', timeStart:'', timeEnd:'', eventType:'', perfType:'', venueType:'', guests:'',
+  return { locationId: newLocationId(), eventName:'', venueName:'', addrStreet:'', addrUnit:'', addrCity:'', addrState:'', addrZip:'', clientAddress:'',
+    eventDate:'', timeStart:'', timeEnd:'', allDay:false, eventType:'', perfType:'', venueType:'', guests:'',
     description:'', amount:'' };
+}
+
+function newLocationId() { return `loc_${Date.now()}_${++locationCounter}`; }
+
+function ensureLocationIds() {
+  events.forEach(event => { if (!event.locationId) event.locationId = newLocationId(); });
+}
+
+function locationGroupsFor(entries) {
+  const groups = [];
+  const byId = new Map();
+  entries.forEach((event, idx) => {
+    const id = event.locationId || `legacy_${idx}`;
+    if (!byId.has(id)) {
+      const group = { id, indices: [] };
+      groups.push(group);
+      byId.set(id, group);
+    }
+    byId.get(id).indices.push(idx);
+  });
+  return groups;
+}
+
+function isAllDay(event) {
+  return event.allDay === true || (event.allDay == null && !!event.eventDate && !event.timeStart && !event.timeEnd);
 }
 
 function eventInput(idx, field, label, type = 'text', extra = '') {
   return `<label>${label}</label><input type="${type}" value="${esc(String(events[idx][field] || ''))}" ${extra} oninput="events[${idx}].${field}=this.value${field === 'amount' ? '; updateBalance()' : ''}">`;
 }
 
+function locationInput(idx, field, label, extra = '') {
+  return `<label>${label}</label><input type="text" value="${esc(String(events[idx][field] || ''))}" ${extra} oninput="setLocationField(${idx}, '${field}', this.value)">`;
+}
+
 function eventSelect(idx, field, label, choices) {
-  return `<label>${label}</label><select onchange="events[${idx}].${field}=this.value">` +
+  return `<label>${label}</label><select onchange="setLocationField(${idx}, '${field}', this.value)">` +
     ['Select...', ...choices].map((choice, n) => `<option value="${n ? esc(choice) : ''}" ${events[idx][field] === choice ? 'selected' : ''}>${esc(choice)}</option>`).join('') + '</select>';
 }
 
+function setLocationField(idx, field, value) {
+  const id = events[idx]?.locationId;
+  if (!id) return;
+  events.forEach(event => { if (event.locationId === id) event[field] = value; });
+}
+
+function previousDateOptions(idx) {
+  const currentId = events[idx].locationId;
+  return events.slice(0, idx).map((event, sourceIndex) => ({ event, sourceIndex }))
+    .filter(({ event }) => event.locationId !== currentId && event.eventDate)
+    .map(({ event, sourceIndex }) => `<option value="${sourceIndex}">${esc(fmtDateLong(event.eventDate))}${isAllDay(event) ? ' — All Day' : event.timeStart ? ' — ' + esc(fmtTime(event.timeStart)) : ''}</option>`)
+    .join('');
+}
+
+function dateEntry(idx, dateNumber, datesInLocation) {
+  const event = events[idx];
+  const previousDates = previousDateOptions(idx);
+  return `<div class="date-entry">
+    <div class="entry-head"><h4>Date ${dateNumber}</h4>${datesInLocation > 1 ? `<button type="button" class="remove-x" onclick="removeDate(${idx})">Remove Date</button>` : ''}</div>
+    ${previousDates ? `<label for="previous-date-${idx}">Use a previous date</label><select id="previous-date-${idx}" onchange="usePreviousDate(${idx}, this.value)"><option value="">Choose date...</option>${previousDates}</select>` : ''}
+    ${eventInput(idx, 'eventDate', 'Date', 'date')}
+    <div class="all-day"><input id="all-day-${idx}" type="checkbox" ${isAllDay(event) ? 'checked' : ''} onchange="toggleAllDay(${idx}, this.checked)"><label for="all-day-${idx}">All Day</label></div>
+    ${isAllDay(event) ? '' : `<div class="row2"><div>${eventInput(idx, 'timeStart', 'Start Time', 'time', 'step="1800" onchange="snapTimeToHalfHour(this); events['+idx+'].timeStart=this.value"')}</div><div>${eventInput(idx, 'timeEnd', 'End Time', 'time', 'step="1800" onchange="snapTimeToHalfHour(this); events['+idx+'].timeEnd=this.value"')}</div></div>`}
+    <div class="event-price">${eventInput(idx, 'amount', 'Price for This Date', 'number', 'min="0" step="0.01"')}</div>
+  </div>`;
+}
+
 function renderEvents() {
-  document.getElementById('event-entries').innerHTML = events.map((event, idx) => `
+  ensureLocationIds();
+  const groups = locationGroupsFor(events);
+  document.getElementById('event-entries').innerHTML = groups.map((group, groupIndex) => {
+    const idx = group.indices[0];
+    return `
     <div class="event-entry">
-      <div class="entry-head"><h3>Event ${idx + 1}</h3><div class="entry-actions">
-        ${idx > 0 ? `<button type="button" class="copy-previous" aria-label="Use previous event information for Event ${idx + 1}" onclick="usePreviousEvent(${idx})">Use Previous</button>` : ''}
-        ${events.length > 1 ? `<button type="button" class="remove-x" onclick="removeEvent(${idx})">Remove</button>` : ''}
+      <div class="entry-head"><h3>Location ${groupIndex + 1}</h3><div class="entry-actions">
+        ${groupIndex > 0 ? `<button type="button" class="copy-previous" aria-label="Use previous location information for Location ${groupIndex + 1}" onclick="usePreviousEvent(${idx})">Use Previous</button>` : ''}
+        ${groups.length > 1 ? `<button type="button" class="remove-x" onclick="removeEvent(${idx})">Remove Location</button>` : ''}
       </div></div>
-      ${eventInput(idx, 'eventName', 'Event Name', 'text', 'placeholder="e.g. Sarah &amp; Tom\'s Wedding"')}
-      ${eventInput(idx, 'venueName', 'Venue Name (if applicable)')}
-      ${eventInput(idx, 'addrStreet', 'Street Address')}
-      ${eventInput(idx, 'addrUnit', 'Unit / Apt # (optional)')}
-      <div class="row2"><div style="flex:2">${eventInput(idx, 'addrCity', 'City')}</div><div style="flex:1">${eventInput(idx, 'addrState', 'State', 'text', 'maxlength="2"')}</div></div>
-      ${eventInput(idx, 'addrZip', 'ZIP Code', 'text', 'inputmode="numeric"')}
-      ${eventInput(idx, 'eventDate', 'Date', 'date')}
-      <div class="row2"><div>${eventInput(idx, 'timeStart', 'Start Time', 'time', 'step="1800" onchange="snapTimeToHalfHour(this); events['+idx+'].timeStart=this.value"')}</div><div>${eventInput(idx, 'timeEnd', 'End Time', 'time', 'step="1800" onchange="snapTimeToHalfHour(this); events['+idx+'].timeEnd=this.value"')}</div></div>
+      ${locationInput(idx, 'eventName', 'Event Name', 'placeholder="e.g. Sarah &amp; Tom\'s Wedding"')}
+      ${locationInput(idx, 'venueName', 'Venue Name (if applicable)')}
+      ${locationInput(idx, 'addrStreet', 'Street Address')}
+      ${locationInput(idx, 'addrUnit', 'Unit / Apt # (optional)')}
+      <div class="row2"><div style="flex:2">${locationInput(idx, 'addrCity', 'City')}</div><div style="flex:1">${locationInput(idx, 'addrState', 'State', 'maxlength="2"')}</div></div>
+      ${locationInput(idx, 'addrZip', 'ZIP Code', 'inputmode="numeric"')}
       ${eventSelect(idx, 'eventType', 'Event Type', ['Wedding','Private Party','Public Restaurant/Club','Festival/Concert/Public event','Baby/Bridal Shower','Anniversary','Birthday','Celebration of Life','Corporate Event','Holiday Party'])}
       ${eventSelect(idx, 'perfType', 'Performance Type', ['Solo: DJ/Singing/Saxophone/Emcee','Band: Full 6 piece','Combo: Band/DJ','Singer/Saxophonist'])}
       ${eventSelect(idx, 'venueType', 'Venue Type', ['Residential','Private business','Restaurant','Music Venue','Banquet Hall','Cruise Ship/Yacht','Concert Hall','Public Park'])}
       ${eventSelect(idx, 'guests', 'Guests Attending', ['1-50','50-150','150-300','300-500','500-1,000','1,000-5,000','5,000-10,000','10,000+'])}
-      ${eventInput(idx, 'description', 'Service / Description (optional)')}
-      <div class="event-price">${eventInput(idx, 'amount', 'Event Price', 'number', 'min="0" step="0.01"')}</div>
+      ${locationInput(idx, 'description', 'Service / Description (optional)')}
+      ${group.indices.map((dateIndex, dateNumber) => dateEntry(dateIndex, dateNumber + 1, group.indices.length)).join('')}
+      <button type="button" class="copy-previous" style="margin-top:12px" onclick="addDate(${idx})">+ Add Date</button>
     </div>
-  `).join('');
+  `; }).join('');
   const calendar = document.getElementById('calendar-event');
   const selected = calendar.value;
   calendar.style.display = events.length > 1 ? 'block' : 'none';
-  calendar.innerHTML = events.map((event, idx) => `<option value="${idx}">Calendar: Event ${idx + 1}${event.eventName ? ' — ' + esc(event.eventName) : ''}</option>`).join('');
+  calendar.innerHTML = groups.map((group, groupIndex) => group.indices.map((idx, dateIndex) => `<option value="${idx}">Location ${groupIndex + 1}, Date ${dateIndex + 1}${events[idx].eventDate ? ' — ' + esc(fmtDateLong(events[idx].eventDate)) : ''}</option>`).join('')).join('');
   if (selected && Number(selected) < events.length) calendar.value = selected;
 }
 
-function addEvent() { events.push(blankEvent()); renderEvents(); updateBalance(); }
-function removeEvent(idx) { events.splice(idx, 1); renderEvents(); updateBalance(); }
-function usePreviousEvent(idx) {
-  if (idx < 1 || idx >= events.length) return;
-  const current = events[idx];
-  events[idx] = {
-    ...blankEvent(), ...events[idx - 1],
-    eventDate: current.eventDate || '',
-    timeStart: current.timeStart || '',
-    timeEnd: current.timeEnd || ''
-  };
+function addLocation() { events.push(blankEvent()); renderEvents(); updateBalance(); }
+function addDate(idx) {
+  const id = events[idx]?.locationId;
+  if (!id) return;
+  const last = events.findLastIndex(event => event.locationId === id);
+  const previous = events[last];
+  events.splice(last + 1, 0, { ...previous, eventDate: '', timeStart: '', timeEnd: '', allDay: false });
   renderEvents();
   updateBalance();
+}
+function removeDate(idx) {
+  if (!events[idx] || events.filter(event => event.locationId === events[idx].locationId).length < 2) return;
+  events.splice(idx, 1);
+  renderEvents();
+  updateBalance();
+}
+function removeEvent(idx) {
+  const id = events[idx]?.locationId;
+  if (!id || locationGroupsFor(events).length < 2) return;
+  events = events.filter(event => event.locationId !== id);
+  renderEvents();
+  updateBalance();
+}
+function usePreviousEvent(idx) {
+  if (idx < 1 || idx >= events.length) return;
+  const targetId = events[idx].locationId;
+  const previous = events.find(event => event.locationId === events[idx - 1].locationId);
+  events.forEach(event => {
+    if (event.locationId !== targetId) return;
+    ['eventName','venueName','addrStreet','addrUnit','addrCity','addrState','addrZip','clientAddress',
+      'eventType','perfType','venueType','guests','description','amount'].forEach(field => { event[field] = previous[field] || ''; });
+  });
+  renderEvents();
+  updateBalance();
+}
+function toggleAllDay(idx, checked) { if (!events[idx]) return; events[idx].allDay = checked; renderEvents(); }
+function usePreviousDate(idx, sourceValue) {
+  const source = events[Number(sourceValue)];
+  if (!sourceValue || !events[idx] || !source?.eventDate || source.locationId === events[idx].locationId) return;
+  ['eventDate','timeStart','timeEnd'].forEach(field => { events[idx][field] = source[field] || ''; });
+  events[idx].allDay = isAllDay(source);
+  renderEvents();
 }
 
 function addLineItem() {
@@ -782,14 +882,14 @@ function calendarEventDetails(data) {
 
 function selectedCalendarEvent(invoice) {
   const index = Number(document.getElementById('calendar-event').value) || 0;
-  return { ...invoice, ...(invoice.events[index] || invoice.events[0] || {}) };
+  return { ...invoice, ...(invoice.events[index] || invoice.events[0] || {}), calendarDateIndex: index };
 }
 
 function addToGoogleCalendar() {
   const data = selectedCalendarEvent(collectFormData());
   if (!data.eventDate) { alert('Please set an event date first.'); return; }
   let dates;
-  if (data.timeStart) {
+  if (!isAllDay(data) && data.timeStart) {
     const start = `${data.eventDate.replace(/-/g,'')}T${data.timeStart.replace(':','')}00`;
     const end = data.timeEnd
       ? `${data.eventDate.replace(/-/g,'')}T${data.timeEnd.replace(':','')}00`
@@ -815,7 +915,7 @@ function addToAppleCalendar() {
   const data = selectedCalendarEvent(collectFormData());
   if (!data.eventDate) { alert('Please set an event date first.'); return; }
   let dtStart, dtEnd, allDay = false;
-  if (data.timeStart) {
+  if (!isAllDay(data) && data.timeStart) {
     dtStart = `${data.eventDate.replace(/-/g,'')}T${data.timeStart.replace(':','')}00`;
     dtEnd = data.timeEnd
       ? `${data.eventDate.replace(/-/g,'')}T${data.timeEnd.replace(':','')}00`
@@ -829,7 +929,7 @@ function addToAppleCalendar() {
   const summary = icsEscape(data.eventName || data.eventType || 'Event');
   const description = icsEscape(calendarEventDetails(data));
   const location = icsEscape(calendarEventLocation(data));
-  const uid = `${data.id || 'evt' + Date.now()}@rickparma.com`;
+  const uid = `${data.id || 'evt' + Date.now()}-${data.calendarDateIndex}@rickparma.com`;
 
   const ics = [
     'BEGIN:VCALENDAR',
@@ -968,26 +1068,31 @@ function buildAddressLines(data) {
 
 function buildInvoiceBody(data, total) {
   const hasEvents = Array.isArray(data.events) && data.events.length > 0;
+  const groups = hasEvents ? locationGroupsFor(data.events) : [];
   const chargeRows = (data.lineItems || []).map((li, idx) => {
     let desc = li.description;
     if (!hasEvents && idx === 0 && data.guests) desc += ` — Guests: ${data.guests}`;
     return `<tr><td>${esc(desc)}</td><td class="amt">$${parseFloat(li.amount||0).toFixed(2)}</td></tr>`;
   }).join('');
-  const eventRows = hasEvents ? data.events.map((event, idx) => {
+  const eventRows = hasEvents ? groups.map((group, groupIndex) => group.indices.map((idx, dateIndex) => {
+    const event = data.events[idx];
     const service = event.description || event.perfType || event.eventType || event.eventName || 'Performance';
-    const desc = `Event ${idx + 1} — ${service}${event.guests ? ' — Guests: ' + event.guests : ''}`;
+    const desc = `Location ${groupIndex + 1}, Date ${dateIndex + 1}${event.eventDate ? ' (' + fmtDateLong(event.eventDate) + ')' : ''} — ${service}${event.guests ? ' — Guests: ' + event.guests : ''}`;
     return `<tr><td>${esc(desc)}</td><td class="amt">$${(parseFloat(event.amount) || 0).toFixed(2)}</td></tr>`;
-  }).join('') : '';
+  }).join('')).join('') : '';
   const rows = eventRows + chargeRows;
   const timeRange = data.timeStart && data.timeEnd ? `${fmtTime(data.timeStart)} – ${fmtTime(data.timeEnd)}` : (fmtTime(data.timeStart) || '');
-  const eventDetails = hasEvents ? data.events.map((event, idx) => {
-    const eventTime = event.timeStart && event.timeEnd ? `${fmtTime(event.timeStart)} – ${fmtTime(event.timeEnd)}` : fmtTime(event.timeStart);
+  const eventDetails = hasEvents ? groups.map((group, groupIndex) => {
+    const event = data.events[group.indices[0]];
     return `<div style="margin-bottom:12px;break-inside:avoid">
-      <div class="event-line" style="font-size:15px">Event ${idx + 1}${event.eventName ? ' — ' + esc(event.eventName) : ''}</div>
+      <div class="event-line" style="font-size:15px">Location ${groupIndex + 1}${event.eventName ? ' — ' + esc(event.eventName) : ''}</div>
       ${event.venueName ? `<div class="event-line">${esc(event.venueName)}</div>` : ''}
       ${buildAddressLines(event)}
-      ${event.eventDate ? `<div class="event-line">${fmtDateLong(event.eventDate)}</div>` : ''}
-      ${eventTime ? `<div class="event-line">${eventTime}</div>` : ''}
+      ${group.indices.map((idx, dateIndex) => {
+        const date = data.events[idx];
+        const eventTime = isAllDay(date) ? 'All Day' : date.timeStart && date.timeEnd ? `${fmtTime(date.timeStart)} – ${fmtTime(date.timeEnd)}` : fmtTime(date.timeStart);
+        return `<div class="event-line" style="font-weight:400">Date ${dateIndex + 1}: ${date.eventDate ? fmtDateLong(date.eventDate) : 'To be set'}${eventTime ? ' — ' + eventTime : ''}</div>`;
+      }).join('')}
     </div>`;
   }).join('') : `
     ${data.eventName ? `<div class="event-line" style="font-size:15px">${esc(data.eventName)}</div>` : ''}
