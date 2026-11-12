@@ -609,6 +609,17 @@ function editInvoice(id) {
   renderPayments();
   updateBalance();
   showView('form');
+  if (invoiceProfile(inv) === BUSINESS_PROFILE) {
+    refreshBusinessInvoice(id).then(updated => {
+      if (currentId !== id || activeProfile !== BUSINESS_PROFILE) return;
+      const index = invoices.findIndex(item => item.id === id);
+      if (index >= 0) invoices[index] = updated;
+      payments = JSON.parse(JSON.stringify(updated.payments || []));
+      renderPayments();
+      updateBalance();
+      renderHistory();
+    }).catch(() => setSyncStatus('Business payment status unavailable — retry Sync'));
+  }
 }
 
 function deleteInvoice() {
@@ -944,6 +955,12 @@ async function saveInvoiceCore() {
     data.clientSignatureImg = invoices[idx].clientSignatureImg || data.clientSignatureImg;
     data.clientSignDate = invoices[idx].clientSignDate || data.clientSignDate;
     data.clientSignedName = invoices[idx].clientSignedName || data.clientSignedName;
+    if (activeProfile === BUSINESS_PROFILE) {
+      // A Hub confirmation or refund can arrive while the owner is editing.
+      // Keep the server-confirmed ledger rows rather than restoring a stale form copy.
+      data.payments = data.payments.filter(payment => payment.source !== 'business_payment_hub')
+        .concat((invoices[idx].payments || []).filter(payment => payment.source === 'business_payment_hub'));
+    }
   }
   if (idx >= 0) invoices[idx] = data; else invoices.push(data);
   const synced = await persistInvoices();
@@ -1660,10 +1677,18 @@ async function initPaymentView(invId) {
       document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Invoice not found. Please contact Richard Parma directly.</p>';
       return;
     }
-    renderPaymentView(inv);
+    renderPaymentView(sharedProfile === BUSINESS_PROFILE ? await refreshBusinessInvoice(invId) : inv);
   } catch (e) {
-    document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Could not load invoice. Check your connection and reload the page.</p>';
+    document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Could not verify the current invoice balance. Check your connection and reload the page.</p>';
   }
+}
+
+async function refreshBusinessInvoice(invoiceId) {
+  const response = await fetch(`https://rickparma.com/api/invoices/business-status?invoiceId=${encodeURIComponent(invoiceId)}`, { cache:'no-store' });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.invoice || invoiceProfile(result.invoice) !== BUSINESS_PROFILE)
+    throw new Error(result.error || 'Business payment status is unavailable.');
+  return result.invoice;
 }
 
 function renderPaymentView(inv) {
@@ -1752,9 +1777,9 @@ async function initReceiptView(invId) {
       document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Receipt not found. Please contact Richard Parma directly.</p>';
       return;
     }
-    renderReceiptView(inv);
+    renderReceiptView(sharedProfile === BUSINESS_PROFILE ? await refreshBusinessInvoice(invId) : inv);
   } catch (e) {
-    document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Could not load receipt. Check your connection and reload the page.</p>';
+    document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Could not verify the current receipt. Check your connection and reload the page.</p>';
   }
 }
 
@@ -1856,6 +1881,12 @@ if (signId) {
   setInterval(() => {
     if (!document.hidden) manualSync();
   }, 20000);
+}
+
+if (sharedProfile === BUSINESS_PROFILE && (payId || receiptId)) {
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) (payId ? initPaymentView(payId) : initReceiptView(receiptId));
+  });
 }
 </script>
 
