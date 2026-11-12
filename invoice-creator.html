@@ -450,12 +450,13 @@ async function loadInvoices() {
     localStorage.setItem(CACHE_KEY, JSON.stringify(invoices));
     setSyncStatus('Synced');
     renderHistory();
+    await refreshBusinessHistory();
   } catch (e) {
     setSyncStatus('Offline — showing last saved copy');
   }
 }
 
-async function manualSync() {
+async function manualSync(reconcileBusiness = true) {
   setSyncStatus('Syncing…');
   try {
     const res = await fetch(`${PROXY_BASE}/invoices?t=${Date.now()}`, {
@@ -466,9 +467,26 @@ async function manualSync() {
     localStorage.setItem(CACHE_KEY, JSON.stringify(invoices));
     setSyncStatus('Synced');
     if (document.getElementById('view-history').style.display !== 'none') renderHistory();
+    if (reconcileBusiness) await refreshBusinessHistory();
   } catch (e) {
     setSyncStatus('Sync failed — check connection');
   }
+}
+
+async function refreshBusinessHistory() {
+  if (activeProfile !== BUSINESS_PROFILE || document.getElementById('view-history').style.display === 'none') return;
+  const ids = visibleInvoices().map(invoice => invoice.id);
+  if (!ids.length) return;
+  const results = await Promise.allSettled(ids.map(refreshBusinessInvoice));
+  let failed = false;
+  results.forEach((result, index) => {
+    if (result.status !== 'fulfilled') { failed = true; return; }
+    const position = invoices.findIndex(invoice => invoice.id === ids[index] && invoiceProfile(invoice) === BUSINESS_PROFILE);
+    if (position >= 0) invoices[position] = result.value;
+  });
+  localStorage.setItem(CACHE_KEY, JSON.stringify(invoices));
+  renderHistory();
+  if (failed) setSyncStatus('Business payment status unavailable — tap Sync to retry');
 }
 
 async function persistInvoices() {
@@ -1879,7 +1897,7 @@ if (signId) {
     if (!document.hidden) manualSync();
   });
   setInterval(() => {
-    if (!document.hidden) manualSync();
+    if (!document.hidden) manualSync(false);
   }, 20000);
 }
 
