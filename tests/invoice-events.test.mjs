@@ -53,6 +53,22 @@ test('business invoices have their own list, issuer, and shared client link', ()
   assert.doesNotMatch(context.invoiceShareLink('pay', 'legacy'), /profile=/);
 });
 
+test('opening LLC history reconciles a confirmed payment into its status badge', async () => {
+  const { context, elements } = app();
+  context.localStorage = { setItem() {} };
+  vm.runInContext(`activeProfile=BUSINESS_PROFILE; invoices=[{
+    id:'llc-paid', profileId:BUSINESS_PROFILE, clientName:'Test Client',
+    events:[{amount:'3.00',eventDate:''}], lineItems:[], payments:[]
+  }]`, context);
+  context.refreshBusinessInvoice = async () => ({
+    id:'llc-paid', profileId:'parma-entertainment-group-llc', clientName:'Test Client',
+    events:[{amount:'3.00',eventDate:''}], lineItems:[], payments:[{amount:3,source:'business_payment_hub'}]
+  });
+  await context.refreshBusinessHistory();
+  assert.match(elements.get('history-list').innerHTML, /PAID IN FULL/);
+  assert.doesNotMatch(elements.get('history-list').innerHTML, /UNPAID/);
+});
+
 test('dates appear between client and event info and control each chosen location date', () => {
   const { context, elements, events } = app();
   firstLocation(context);
