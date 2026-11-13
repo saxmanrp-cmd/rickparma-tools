@@ -1657,26 +1657,16 @@ async function submitClientSignature(invId, dateId = null) {
   btn.textContent = 'Sending…';
   try {
     const sigDataUrl = canvas.toDataURL('image/png');
-    const res = await fetch(`${PROXY_BASE}/invoices?t=${Date.now()}`, { cache: 'no-store' });
-    const data = await res.json();
-    const list = (data.record && data.record.invoices) || [];
-    const idx = list.findIndex(i => i.id === invId && invoiceProfile(i) === sharedProfile);
-    if (idx < 0) { alert('Could not find this invoice anymore. Please contact Richard Parma directly.'); return; }
-
-    const signed = { clientSignatureImg:sigDataUrl, clientSignDate:dateInput.value || todayLocal(), clientSignedName:nameInput.value.trim() };
-    if (dateId) {
-      if (!invoiceForDate(list[idx], dateId)) throw new Error('Date no longer exists');
-      list[idx].dateSignatures = list[idx].dateSignatures || {};
-      list[idx].dateSignatures[dateId] = signed;
-    } else Object.assign(list[idx], signed);
-    const saved = await fetch(`${PROXY_BASE}/invoices`, {
-      method: 'PUT',
+    const saved = await fetch('https://rickparma.com/api/invoices/sign', {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ invoices: list })
+      body: JSON.stringify({ invoiceId:invId, profileId:sharedProfile, dateId,
+        name:nameInput.value.trim(), date:dateInput.value || todayLocal(), signature:sigDataUrl })
     });
     if (!saved.ok) throw new Error('Could not save signature');
-    if (signSequence) renderSequenceInvoice(list[idx]);
-    else renderClientInvoice(list[idx], dateId);
+    const result = await saved.json();
+    if (signSequence) renderSequenceInvoice(result.invoice);
+    else renderClientInvoice(result.invoice, dateId);
   } catch (e) {
     alert('Could not send. Check your connection and try again.');
     btn.disabled = false;

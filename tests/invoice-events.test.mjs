@@ -69,6 +69,25 @@ test('opening LLC history reconciles a confirmed payment into its status badge',
   assert.doesNotMatch(elements.get('history-list').innerHTML, /UNPAID/);
 });
 
+test('client signature posts to website so the saved signature can trigger an alert', async () => {
+  const { context, elements } = app();
+  elements.set('client-name-input', { value:'Jane Client' });
+  elements.set('client-date-input', { value:'2026-11-13' });
+  elements.set('cursive-canvas', { toDataURL:() => 'data:image/png;base64,AAAA' });
+  elements.set('sign-submit-btn', { disabled:false, textContent:'' });
+  let request;
+  context.fetch = async (url, options) => {
+    request = { url, options };
+    return { ok:true, json:async () => ({ invoice:{ id:'business', clientSignatureImg:'data:image/png;base64,AAAA' } }) };
+  };
+  context.renderClientInvoice = () => {};
+  await context.submitClientSignature('business', 'day-1');
+  assert.equal(request.url, 'https://rickparma.com/api/invoices/sign');
+  assert.equal(request.options.method, 'POST');
+  assert.equal(JSON.parse(request.options.body).dateId, 'day-1');
+  assert.equal(JSON.parse(request.options.body).name, 'Jane Client');
+});
+
 test('dates appear between client and event info and control each chosen location date', () => {
   const { context, elements, events } = app();
   firstLocation(context);
