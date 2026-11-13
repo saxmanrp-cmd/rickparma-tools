@@ -1663,10 +1663,33 @@ async function submitClientSignature(invId, dateId = null) {
       body: JSON.stringify({ invoiceId:invId, profileId:sharedProfile, dateId,
         name:nameInput.value.trim(), date:dateInput.value || todayLocal(), signature:sigDataUrl })
     });
-    if (!saved.ok) throw new Error('Could not save signature');
-    const result = await saved.json();
-    if (signSequence) renderSequenceInvoice(result.invoice);
-    else renderClientInvoice(result.invoice, dateId);
+    let invoice;
+    if (saved.status === 404) {
+      // The invoice page can publish before the website's API deployment.
+      // Keep client signing available until /api/invoices/sign is live.
+      const fresh = await fetch(`${PROXY_BASE}/invoices?t=${Date.now()}`, { cache:'no-store' });
+      if (!fresh.ok) throw new Error('Could not load invoice');
+      const list = (await fresh.json()).record?.invoices || [];
+      const idx = list.findIndex(item => item.id === invId && invoiceProfile(item) === sharedProfile);
+      if (idx < 0) throw new Error('Invoice not found');
+      invoice = list[idx];
+      const signed = { clientSignatureImg:sigDataUrl, clientSignDate:dateInput.value || todayLocal(),
+        clientSignedName:nameInput.value.trim() };
+      if (dateId) {
+        if (!invoiceForDate(invoice, dateId)) throw new Error('Date no longer exists');
+        invoice.dateSignatures ||= {};
+        if (!invoice.dateSignatures[dateId]?.clientSignatureImg) invoice.dateSignatures[dateId] = signed;
+      } else if (!invoice.clientSignatureImg) Object.assign(invoice, signed);
+      const fallback = await fetch(`${PROXY_BASE}/invoices`, {
+        method:'PUT', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ invoices:list })
+      });
+      if (!fallback.ok) throw new Error('Could not save signature');
+    } else {
+      if (!saved.ok) throw new Error('Could not save signature');
+      invoice = (await saved.json()).invoice;
+    }
+    if (signSequence) renderSequenceInvoice(invoice);
+    else renderClientInvoice(invoice, dateId);
   } catch (e) {
     alert('Could not send. Check your connection and try again.');
     btn.disabled = false;
