@@ -88,6 +88,23 @@ test('client signature posts to website so the saved signature can trigger an al
   assert.equal(JSON.parse(request.options.body).name, 'Jane Client');
 });
 
+test('client signing remains available while the website endpoint is publishing', async () => {
+  const { context, elements } = app();
+  elements.set('client-name-input', { value:'Jane Client' });
+  elements.set('client-date-input', { value:'2026-11-13' });
+  elements.set('cursive-canvas', { toDataURL:() => 'data:image/png;base64,AAAA' });
+  elements.set('sign-submit-btn', { disabled:false, textContent:'' });
+  let saved;
+  context.fetch = async (url, options = {}) => {
+    if (url.includes('/api/invoices/sign')) return { ok:false, status:404 };
+    if (options.method === 'PUT') { saved = JSON.parse(options.body); return { ok:true }; }
+    return { ok:true, json:async () => ({ record:{ invoices:[{ id:'personal', clientName:'Client' }] } }) };
+  };
+  context.renderClientInvoice = () => {};
+  await context.submitClientSignature('personal');
+  assert.equal(saved.invoices[0].clientSignedName, 'Jane Client');
+});
+
 test('dates appear between client and event info and control each chosen location date', () => {
   const { context, elements, events } = app();
   firstLocation(context);
