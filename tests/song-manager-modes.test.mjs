@@ -25,3 +25,22 @@ test('performance and DJ switches persist separately from the master switch', as
   assert.equal(elements.get('djModeToggleBtn').textContent,'DJ Mode: ON');
   assert.match(html,/songRequestLive, performanceModeEnabled, djModeEnabled, fanCamLive/);
 });
+
+test('performance and DJ request prices save independently', async () => {
+  const fields = {priceGeneral:{value:'7.50'},priceDj:{value:'12'}};
+  let saved;
+  const context = vm.createContext({
+    document:{getElementById(id){ return fields[id]; }},
+    prices:{general:5,dj:5},
+    alert(message){ throw new Error(message); },
+    async saveToCloud(){ saved = vm.runInContext('({...prices})',context); return true; },
+    renderList(){}
+  });
+  vm.runInContext(script.slice(script.indexOf('async function savePrices()'),script.indexOf('/* ============ EDIT / ADD SHEET ============ */')),context);
+  await context.savePrices();
+  assert.equal(saved.general,7.5);
+  assert.equal(saved.dj,12);
+  fields.priceDj.value='4';
+  await assert.rejects(() => context.savePrices(),/at least \$5/);
+  assert.equal(saved.dj,12);
+});
