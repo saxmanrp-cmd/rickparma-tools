@@ -202,11 +202,14 @@
     <option value="artist-desc">Artist Z → A</option>
   </select>
   <div class="price-settings">
-    <label>Price per request ($)
-      <input type="number" id="priceGeneral" min="0" step="1">
+    <label>Performance request ($)
+      <input type="number" id="priceGeneral" min="5" step="0.01">
+    </label>
+    <label>DJ request ($)
+      <input type="number" id="priceDj" min="5" step="0.01">
     </label>
   </div>
-  <button class="btn btn-outline btn-full" style="margin-top:10px;" onclick="savePrices()">Save Price</button>
+  <button class="btn btn-outline btn-full" style="margin-top:10px;" onclick="savePrices()">Save Prices</button>
 
   <div class="csv-row">
     <button class="btn btn-outline" onclick="exportCSV()">⬇ Download CSV</button>
@@ -433,12 +436,13 @@ async function loadFromCloud(){
     const data = await res.json();
     const record = data.record || {};
     songs = record.songs || [];
-    prices = { ...DEFAULT_PRICES, ...(record.prices || {}) }; songRequestLive = record.songRequestLive !== false; performanceModeEnabled = record.performanceModeEnabled !== false; djModeEnabled = record.djModeEnabled === true; fanCamLive = record.fanCamLive !== false; spinEnabled = record.spinEnabled !== false; powerSongsAvailable = record.powerSongsAvailable === true; dinnerMusicOnly = record.dinnerMusicOnly === true; smsRequestsEnabled = record.smsRequestsEnabled !== false; renderHeroToggle();
+    prices = { ...DEFAULT_PRICES, ...(record.prices || {}), dj: record.prices?.dj ?? record.prices?.general ?? DEFAULT_PRICES.general }; songRequestLive = record.songRequestLive !== false; performanceModeEnabled = record.performanceModeEnabled !== false; djModeEnabled = record.djModeEnabled === true; fanCamLive = record.fanCamLive !== false; spinEnabled = record.spinEnabled !== false; powerSongsAvailable = record.powerSongsAvailable === true; dinnerMusicOnly = record.dinnerMusicOnly === true; smsRequestsEnabled = record.smsRequestsEnabled !== false; renderHeroToggle();
     rebuildTagList();
     renderSetupBox(true);
     document.getElementById('controlsArea').style.display = 'block';
     document.getElementById('fab').style.display = 'flex';
     document.getElementById('priceGeneral').value = prices.general;
+    document.getElementById('priceDj').value = prices.dj;
     renderChips();
     renderList();
   } catch(err){
@@ -699,9 +703,17 @@ document.getElementById('sortSelect').addEventListener('change', e => { sortMode
 
 /* ============ PRICES ============ */
 async function savePrices(){
-  prices.general = parseFloat(document.getElementById('priceGeneral').value) || DEFAULT_PRICES.general;
+  const performance = Number(document.getElementById('priceGeneral').value);
+  const dj = Number(document.getElementById('priceDj').value);
+  if(![performance,dj].every(n => Number.isFinite(n) && n >= 5 && Math.abs(Math.round(n*100)-n*100) < 1e-7)){
+    alert('Enter a price of at least $5.00 for each mode, with no more than two decimal places.');
+    return;
+  }
+  const previous = prices;
+  prices = { ...prices, general:performance, dj };
   const ok = await saveToCloud();
   if(ok) renderList();
+  else prices = previous;
 }
 
 /* ============ EDIT / ADD SHEET ============ */
