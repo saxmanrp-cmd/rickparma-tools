@@ -149,6 +149,7 @@
 <button class="btn btn-full" id="fanCamToggleBtn" onclick="toggleFanCamLive()" style="margin-top:8px;"></button>
 <button class="btn btn-full" id="spinToggleBtn" onclick="toggleSpinEnabled()" style="margin-top:8px;"></button>
 <button class="btn btn-full" id="powerSongsToggleBtn" onclick="togglePowerSongsAvailable()" style="margin-top:8px;"></button>
+<button class="btn btn-full" id="dinnerMusicToggleBtn" onclick="toggleDinnerMusic()" style="margin-top:8px;"></button>
 <button class="btn btn-full" id="smsToggleBtn" onclick="toggleSmsRequestsEnabled()" style="margin-top:8px;"></button>
 </div>
 
@@ -221,6 +222,10 @@
     <input type="checkbox" id="fPowerSong">
     <span><strong>Power Song</strong><small>Hide this song from guests while Power Songs are held back.</small></span>
   </label>
+  <label class="power-song-field" for="fDinnerMusic">
+    <input type="checkbox" id="fDinnerMusic">
+    <span><strong>Dinner Music</strong><small>Available during dinner or cocktail hour when Dinner Music mode is on.</small></span>
+  </label>
 
   <div class="sheet-actions">
     <button class="btn btn-outline" onclick="closeSheet()">Cancel</button>
@@ -273,13 +278,21 @@ let sortMode = "title-asc";
 let editingId = null;
 let selectedTags = [];
 let polls = [];
-let activePollId = null; let songRequestLive = true; let fanCamLive = true; let spinEnabled = true; let powerSongsAvailable = false; let smsRequestsEnabled = true; function renderHeroToggle(){ renderToggleRow('songRequestToggleBtn','Song Requests',songRequestLive); renderToggleRow('fanCamToggleBtn','Fan Cam',fanCamLive); renderSpinToggle(); renderPowerSongsToggle(); renderSmsToggle(); }
+let activePollId = null; let songRequestLive = true; let fanCamLive = true; let spinEnabled = true; let powerSongsAvailable = false; let dinnerMusicOnly = false; let smsRequestsEnabled = true; function renderHeroToggle(){ renderToggleRow('songRequestToggleBtn','Song Requests',songRequestLive); renderToggleRow('fanCamToggleBtn','Fan Cam',fanCamLive); renderSpinToggle(); renderPowerSongsToggle(); renderDinnerMusicToggle(); renderSmsToggle(); }
 function renderSpinToggle(){ var btn=document.getElementById('spinToggleBtn'); if(!btn) return; if(spinEnabled){ btn.textContent='Spin Wheel: ON'; btn.className='btn btn-hero-on btn-full'; } else { btn.textContent='Spin Wheel: Paid-Only'; btn.className='btn btn-outline btn-full'; } }
 function renderPowerSongsToggle(){ var btn=document.getElementById('powerSongsToggleBtn'); if(!btn) return; if(powerSongsAvailable){ btn.textContent='Power Songs: Available'; btn.className='btn btn-hero-on btn-full'; } else { btn.textContent='Power Songs: Held Back'; btn.className='btn btn-outline btn-full'; } }
+function renderDinnerMusicToggle(){ var btn=document.getElementById('dinnerMusicToggleBtn'); if(!btn) return; btn.textContent=dinnerMusicOnly?'Dinner Music: ON':'Dinner Music: OFF'; btn.className='btn '+(dinnerMusicOnly?'btn-hero-on':'btn-outline')+' btn-full'; }
 function renderToggleRow(btnId,label,isLive){ var btn=document.getElementById(btnId); if(!btn) return; if(isLive){ btn.textContent=label+': LIVE'; btn.className='btn btn-hero-on btn-full'; } else { btn.textContent=label+': Hidden'; btn.className='btn btn-outline btn-full'; } }
 async function toggleSongRequestLive(){ var wasLive = songRequestLive; songRequestLive = !songRequestLive; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ songRequestLive = !songRequestLive; renderHeroToggle(); } else if(!wasLive && songRequestLive){ fetch(`${PROXY_BASE}/song-requests-log`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({requests:[]})}).catch(function(){}); } } async function toggleFanCamLive(){ fanCamLive = !fanCamLive; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ fanCamLive = !fanCamLive; renderHeroToggle(); } } async function toggleSpinEnabled(){ spinEnabled = !spinEnabled; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ spinEnabled = !spinEnabled; renderHeroToggle(); } } function renderSmsToggle(){ var btn=document.getElementById('smsToggleBtn'); if(!btn) return; if(smsRequestsEnabled){ btn.textContent='Text Alerts: ON'; btn.className='btn btn-hero-on btn-full'; } else { btn.textContent='Text Alerts: Muted'; btn.className='btn btn-outline btn-full'; } }
 async function toggleSmsRequestsEnabled(){ smsRequestsEnabled = !smsRequestsEnabled; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ smsRequestsEnabled = !smsRequestsEnabled; renderHeroToggle(); } }
 async function togglePowerSongsAvailable(){ powerSongsAvailable = !powerSongsAvailable; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ powerSongsAvailable = !powerSongsAvailable; renderHeroToggle(); } }
+async function toggleDinnerMusic(){
+  if(!dinnerMusicOnly && !songs.some(s => s.dinnerMusic === true && (powerSongsAvailable || s.powerSong !== true))){
+    alert('Mark at least one available song as Dinner Music first.'); return;
+  }
+  dinnerMusicOnly = !dinnerMusicOnly; renderHeroToggle();
+  if(!await saveToCloud()){ dinnerMusicOnly = !dinnerMusicOnly; renderHeroToggle(); }
+}
 
 
 /* Seed data used only when creating a brand-new bin for the first time */
@@ -311,7 +324,7 @@ async function loadFromCloud(){
     const data = await res.json();
     const record = data.record || {};
     songs = record.songs || [];
-    prices = { ...DEFAULT_PRICES, ...(record.prices || {}) }; songRequestLive = record.songRequestLive !== false; fanCamLive = record.fanCamLive !== false; spinEnabled = record.spinEnabled !== false; powerSongsAvailable = record.powerSongsAvailable === true; smsRequestsEnabled = record.smsRequestsEnabled !== false; renderHeroToggle();
+    prices = { ...DEFAULT_PRICES, ...(record.prices || {}) }; songRequestLive = record.songRequestLive !== false; fanCamLive = record.fanCamLive !== false; spinEnabled = record.spinEnabled !== false; powerSongsAvailable = record.powerSongsAvailable === true; dinnerMusicOnly = record.dinnerMusicOnly === true; smsRequestsEnabled = record.smsRequestsEnabled !== false; renderHeroToggle();
     rebuildTagList();
     renderSetupBox(true);
     document.getElementById('controlsArea').style.display = 'block';
@@ -330,7 +343,7 @@ async function saveToCloud(){
     const res = await fetch(`${PROXY_BASE}/songs`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ songs, prices, songRequestLive, fanCamLive, spinEnabled, powerSongsAvailable, smsRequestsEnabled })
+      body: JSON.stringify({ songs, prices, songRequestLive, fanCamLive, spinEnabled, powerSongsAvailable, dinnerMusicOnly, smsRequestsEnabled })
     });
     if(!res.ok) throw new Error("save failed");
     return true;
@@ -373,14 +386,15 @@ function csvEscape(val){
 }
 
 function exportCSV(){
-  const header = ['id','title','artist','tier','tags','powerSong'];
+  const header = ['id','title','artist','tier','tags','powerSong','dinnerMusic'];
   const rows = songs.map(s => [
     s.id,
     s.t,
     s.a || '',
     s.tier || 'general',
     (s.tags || []).join(';'),
-    s.powerSong ? 'yes' : ''
+    s.powerSong ? 'yes' : '',
+    s.dinnerMusic ? 'yes' : ''
   ].map(csvEscape).join(','));
 
   const csv = [header.join(','), ...rows].join('\n');
@@ -446,6 +460,7 @@ async function handleCSVUpload(event){
   const tierIdx = header.indexOf('tier');
   const tagsIdx = header.indexOf('tags');
   const powerSongIdx = header.indexOf('powersong');
+  const dinnerMusicIdx = header.indexOf('dinnermusic');
 
   if(titleIdx === -1){
     alert('CSV must have a "title" column. Download the current list first to see the expected format.');
@@ -466,6 +481,7 @@ async function handleCSVUpload(event){
     const tags = tagsIdx > -1 ? (r[tagsIdx] || '').split(';').map(t => t.trim()).filter(Boolean) : [];
     const id = idIdx > -1 ? (r[idIdx] || '').trim() : '';
     const powerSong = powerSongIdx > -1 && /^(1|true|yes)$/i.test((r[powerSongIdx] || '').trim());
+    const dinnerMusic = dinnerMusicIdx > -1 && /^(1|true|yes)$/i.test((r[dinnerMusicIdx] || '').trim());
 
     const existing = id ? songs.find(s => s.id === id) : null;
     if(existing){
@@ -474,9 +490,10 @@ async function handleCSVUpload(event){
       existing.tier = tier;
       existing.tags = tags;
       if(powerSongIdx > -1) existing.powerSong = powerSong;
+      if(dinnerMusicIdx > -1) existing.dinnerMusic = dinnerMusic;
       updatedCount++;
     } else {
-      songs.push({ id: 's' + Date.now() + Math.floor(Math.random()*10000), t: title, a: artist, tier, tags, powerSong });
+      songs.push({ id: 's' + Date.now() + Math.floor(Math.random()*10000), t: title, a: artist, tier, tags, powerSong, dinnerMusic });
       addedCount++;
     }
   }
@@ -556,7 +573,7 @@ function renderList(){
         <div class="song-title">${escapeHtml(s.t)}</div>
         <div class="song-meta">${escapeHtml(s.a||'—')}${s.tags && s.tags.length ? ' · ' + s.tags.join(', ') : ''}</div>
       </div>
-      <div class="song-badges">${s.powerSong ? '<span class="badge power">Power</span>' : ''}${tierBadge()}</div>
+      <div class="song-badges">${s.powerSong ? '<span class="badge power">Power</span>' : ''}${s.dinnerMusic ? '<span class="badge power">Dinner</span>' : ''}${tierBadge()}</div>
     </div>`).join('');
 
   [...listEl.querySelectorAll('.song-row')].forEach(row => {
@@ -587,6 +604,7 @@ function openEditor(id){
   document.getElementById('fTitle').value = s ? s.t : '';
   document.getElementById('fArtist').value = s ? (s.a||'') : '';
   document.getElementById('fPowerSong').checked = !!(s && s.powerSong);
+  document.getElementById('fDinnerMusic').checked = !!(s && s.dinnerMusic);
   document.getElementById('deleteBtn').style.display = s ? 'inline-flex' : 'none';
 
   selectedTags = s ? [...(s.tags||[])] : [];
@@ -630,13 +648,14 @@ async function saveSong(){
   if(!title){ alert('Song title is required.'); return; }
   const artist = document.getElementById('fArtist').value.trim();
   const powerSong = document.getElementById('fPowerSong').checked;
+  const dinnerMusic = document.getElementById('fDinnerMusic').checked;
 
   if(editingId){
     const s = songs.find(x => x.id === editingId);
-    s.t = title; s.a = artist; s.tier = 'general'; s.tags = [...selectedTags]; s.powerSong = powerSong;
+    s.t = title; s.a = artist; s.tier = 'general'; s.tags = [...selectedTags]; s.powerSong = powerSong; s.dinnerMusic = dinnerMusic;
   } else {
     const newId = 's' + Date.now();
-    songs.push({ id: newId, t: title, a: artist, tier: 'general', tags: [...selectedTags], powerSong });
+    songs.push({ id: newId, t: title, a: artist, tier: 'general', tags: [...selectedTags], powerSong, dinnerMusic });
   }
 
   rebuildTagList();
