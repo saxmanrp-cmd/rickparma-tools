@@ -130,6 +130,22 @@
   .power-song-field input{width:20px; height:20px; margin:1px 0 0; accent-color:var(--accent);}
   .power-song-field strong{display:block; font-size:14px;}
   .power-song-field small{display:block; color:var(--dim); font-size:12px; line-height:1.4; margin-top:3px;}
+  #bulkOverlay{position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; z-index:110;}
+  #bulkOverlay.show{display:block;}
+  #bulkSheet{position:fixed; left:0; right:0; bottom:0; z-index:111; background:#160303; border-top:1px solid var(--line); border-radius:18px 18px 0 0; padding:16px; max-height:90vh; max-height:90dvh; display:none; flex-direction:column;}
+  #bulkSheet.show{display:flex;}
+  #bulkSheet h2{margin:0 0 6px; font-size:21px;}
+  #bulkSheet p{margin:0 0 12px; color:var(--dim); font-size:13px; line-height:1.4;}
+  #bulkSearch{width:100%; padding:12px; font-size:16px; border-radius:9px; border:1px solid var(--line); background:var(--card-solid); color:var(--white);}
+  #bulkCount{font-size:12px; color:var(--accent); padding:10px 0;}
+  #bulkList{overflow-y:auto; min-height:0; flex:1; border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
+  .bulk-song{display:flex; align-items:center; gap:12px; padding:13px 5px; border-bottom:1px solid var(--line); cursor:pointer;}
+  .bulk-song input{width:22px; height:22px; flex:0 0 22px; accent-color:var(--accent);}
+  .bulk-song span{min-width:0;}
+  .bulk-song strong{display:block; font-size:15px;}
+  .bulk-song small{display:block; color:var(--dim); font-size:12px; margin-top:2px;}
+  .bulk-actions{display:flex; gap:10px; padding-top:14px;}
+  .bulk-actions .btn{flex:1;}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
@@ -151,6 +167,10 @@
 <button class="btn btn-full" id="powerSongsToggleBtn" onclick="togglePowerSongsAvailable()" style="margin-top:8px;"></button>
 <button class="btn btn-full" id="dinnerMusicToggleBtn" onclick="toggleDinnerMusic()" style="margin-top:8px;"></button>
 <button class="btn btn-full" id="smsToggleBtn" onclick="toggleSmsRequestsEnabled()" style="margin-top:8px;"></button>
+<div class="csv-row" style="margin-top:14px;">
+  <button class="btn btn-outline" onclick="openBulkSongs('powerSong')">Select Power Songs</button>
+  <button class="btn btn-outline" onclick="openBulkSongs('dinnerMusic')">Select Dinner Music</button>
+</div>
 </div>
 
 <div class="section" id="pollSection" style="display:none;">
@@ -234,6 +254,19 @@
   </div>
 </div>
 
+<div id="bulkOverlay" onclick="closeBulkSongs()"></div>
+<div id="bulkSheet" role="dialog" aria-modal="true" aria-labelledby="bulkHeading">
+  <h2 id="bulkHeading"></h2>
+  <p id="bulkHelp"></p>
+  <input type="search" id="bulkSearch" placeholder="Search song or artist…" oninput="renderBulkSongs()">
+  <div id="bulkCount"></div>
+  <div id="bulkList"></div>
+  <div class="bulk-actions">
+    <button class="btn btn-outline" onclick="closeBulkSongs()">Cancel</button>
+    <button class="btn btn-primary" id="bulkSaveBtn" onclick="saveBulkSongs()">Save Songs</button>
+  </div>
+</div>
+
 <div id="pollOverlay" onclick="closePollSheet()"></div>
 <div id="pollSheet">
   <div class="sheet-handle"></div>
@@ -292,6 +325,77 @@ async function toggleDinnerMusic(){
   }
   dinnerMusicOnly = !dinnerMusicOnly; renderHeroToggle();
   if(!await saveToCloud()){ dinnerMusicOnly = !dinnerMusicOnly; renderHeroToggle(); }
+}
+
+let bulkCategory = null;
+let bulkSelected = new Set();
+let bulkSaving = false;
+function openBulkSongs(category){
+  if(category !== 'powerSong' && category !== 'dinnerMusic') return;
+  bulkCategory = category;
+  bulkSelected = new Set(songs.filter(song => song[category] === true).map(song => song.id));
+  document.getElementById('bulkHeading').textContent = category === 'powerSong' ? 'Select Power Songs' : 'Select Dinner Music';
+  document.getElementById('bulkHelp').textContent = category === 'powerSong'
+    ? 'Choose songs to hold back when Power Songs are unavailable. Saving this list does not change their availability.'
+    : 'Choose songs guests can request during dinner or cocktail hour. Saving this list does not turn Dinner Music mode on.';
+  document.getElementById('bulkSearch').value = '';
+  document.getElementById('bulkOverlay').classList.add('show');
+  document.getElementById('bulkSheet').classList.add('show');
+  renderBulkSongs();
+}
+function renderBulkSongs(){
+  if(!bulkCategory) return;
+  const term = document.getElementById('bulkSearch').value.trim().toLowerCase();
+  const visible = songs.filter(song => !term || song.t.toLowerCase().includes(term) || (song.a||'').toLowerCase().includes(term))
+    .sort((a,b) => a.t.localeCompare(b.t));
+  document.getElementById('bulkCount').textContent = `${bulkSelected.size} selected · ${visible.length} shown of ${songs.length} songs`;
+  const list = document.getElementById('bulkList');
+  list.innerHTML = visible.length ? visible.map((song,index) => `
+    <label class="bulk-song"><input type="checkbox" data-index="${index}" ${bulkSelected.has(song.id) ? 'checked' : ''}>
+      <span><strong>${escapeHtml(song.t)}</strong><small>${escapeHtml(song.a||'—')}</small></span></label>`).join('')
+    : '<div style="padding:18px 4px; color:var(--dim);">No songs match this search.</div>';
+  [...list.querySelectorAll('input[type="checkbox"]')].forEach(input => {
+    input.addEventListener('change', () => {
+      const song = visible[Number(input.dataset.index)];
+      if(input.checked) bulkSelected.add(song.id); else bulkSelected.delete(song.id);
+      document.getElementById('bulkCount').textContent = `${bulkSelected.size} selected · ${visible.length} shown of ${songs.length} songs`;
+    });
+  });
+}
+function closeBulkSongs(){
+  if(bulkSaving) return;
+  bulkCategory = null;
+  bulkSelected = new Set();
+  document.getElementById('bulkOverlay').classList.remove('show');
+  document.getElementById('bulkSheet').classList.remove('show');
+}
+async function saveBulkSongs(){
+  if(!bulkCategory || bulkSaving) return;
+  if(bulkCategory === 'dinnerMusic' && dinnerMusicOnly && !songs.some(song => bulkSelected.has(song.id) && (powerSongsAvailable || song.powerSong !== true))){
+    alert('Turn Dinner Music mode off before removing every available dinner song.'); return;
+  }
+  const category = bulkCategory;
+  const before = songs.map(song => song[category]);
+  songs.forEach(song => { song[category] = bulkSelected.has(song.id); });
+  bulkSaving = true;
+  const button = document.getElementById('bulkSaveBtn');
+  button.disabled = true;
+  button.textContent = 'Saving…';
+  let saved = false;
+  try {
+    const ok = await saveToCloud();
+    if(!ok){ songs.forEach((song,index) => { song[category] = before[index]; }); return; }
+    saved = true;
+    renderList();
+  } catch(error) {
+    songs.forEach((song,index) => { song[category] = before[index]; });
+    alert('Could not save the selection. Please try again.');
+  } finally {
+    bulkSaving = false;
+    button.disabled = false;
+    button.textContent = 'Save Songs';
+    if(saved) closeBulkSongs();
+  }
 }
 
 
