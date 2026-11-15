@@ -1,3 +1,4 @@
+import { nextResearchCoverage, finishResearchCoverage } from './research-coverage.js';
 import { researchBookingProspects } from './providers/research.js';
 import { verificationTargets, upsertResearchedProspect } from './prospects.js';
 import { stageDiscoveredProspect, trustedSourceList } from './prospect-staging.js';
@@ -7,6 +8,9 @@ export async function runResearchCycle(env, config) {
   const runId = await startRun(env, 'research', config.mode);
   try {
     const batchSize = 10;
+    const coverage = await nextResearchCoverage(env);
+    const seen = [];
+    let researchedBatches = 0;
     const targets = await verificationTargets(env, config.verifyDailyTarget, { preferVendor: config.vendorCampaignEnabled });
     const totalBatches = Math.max(
       1,
@@ -39,8 +43,11 @@ export async function runResearchCycle(env, config) {
           profile: x.profile,
           invalidEmails: x.invalidEmails || []
         })),
-        discoverCount
+        discoverCount,
+        coverage,
+        seen
       });
+      researchedBatches++;
 
       for (const item of ai.data.verified || []) {
         if (!item.requestedId) continue;
@@ -54,6 +61,7 @@ export async function runResearchCycle(env, config) {
       // verification targets were snapshotted before batching, a newly discovered
       // lead cannot become send-eligible until a later research run verifies it.
       for (const item of ai.data.discovered || []) {
+        seen.push({ entity: item.entity || '', room: item.room || '' });
         const itemSources = trustedSourceList(item.sourceUrls, ai.sources);
         const stagedId = await stageDiscoveredProspect(env, item, itemSources);
         if (stagedId) discovered++;
@@ -67,11 +75,13 @@ export async function runResearchCycle(env, config) {
     const summary = {
       verified,
       discovered,
+      coverage: { id: coverage.id, name: coverage.name, pass: coverage.pass, researchedBatches },
       stagedForSecondPass: discovered,
       notes: notes.join(' | '),
       responseIds,
       sources: [...sources].slice(0, 60)
     };
+    if (researchedBatches > 0) await finishResearchCoverage(env, coverage, summary);
     await finishRun(env, runId, summary);
     return summary;
   } catch (error) {
