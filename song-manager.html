@@ -162,6 +162,8 @@
 <a href="song-requests.html" target="_blank" class="btn btn-outline btn-full" style="margin-top:12px;">Song Requests</a>
 </header><div class="section" id="heroSection">
 <button class="btn btn-full" id="songRequestToggleBtn" onclick="toggleSongRequestLive()"></button>
+<button class="btn btn-full" id="performanceModeToggleBtn" onclick="togglePerformanceMode()" style="margin-top:8px;"></button>
+<button class="btn btn-full" id="djModeToggleBtn" onclick="toggleDjMode()" style="margin-top:8px;"></button>
 <button class="btn btn-full" id="fanCamToggleBtn" onclick="toggleFanCamLive()" style="margin-top:8px;"></button>
 <button class="btn btn-full" id="spinToggleBtn" onclick="toggleSpinEnabled()" style="margin-top:8px;"></button>
 <button class="btn btn-full" id="powerSongsToggleBtn" onclick="togglePowerSongsAvailable()" style="margin-top:8px;"></button>
@@ -311,7 +313,10 @@ let sortMode = "title-asc";
 let editingId = null;
 let selectedTags = [];
 let polls = [];
-let activePollId = null; let songRequestLive = true; let fanCamLive = true; let spinEnabled = true; let powerSongsAvailable = false; let dinnerMusicOnly = false; let smsRequestsEnabled = true; function renderHeroToggle(){ renderToggleRow('songRequestToggleBtn','Song Requests',songRequestLive); renderToggleRow('fanCamToggleBtn','Fan Cam',fanCamLive); renderSpinToggle(); renderPowerSongsToggle(); renderDinnerMusicToggle(); renderSmsToggle(); }
+let activePollId = null; let songRequestLive = true; let performanceModeEnabled = true; let djModeEnabled = false; let fanCamLive = true; let spinEnabled = true; let powerSongsAvailable = false; let dinnerMusicOnly = false; let smsRequestsEnabled = true; function renderHeroToggle(){ renderToggleRow('songRequestToggleBtn','Song Requests',songRequestLive); renderModeToggle('performanceModeToggleBtn','Performance Mode',performanceModeEnabled); renderModeToggle('djModeToggleBtn','DJ Mode',djModeEnabled); renderToggleRow('fanCamToggleBtn','Fan Cam',fanCamLive); renderSpinToggle(); renderPowerSongsToggle(); renderDinnerMusicToggle(); renderSmsToggle(); }
+function renderModeToggle(id,label,enabled){ const btn=document.getElementById(id); if(!btn)return; btn.textContent=label+': '+(enabled?'ON':'OFF'); btn.className='btn '+(enabled?'btn-hero-on':'btn-outline')+' btn-full'; }
+async function togglePerformanceMode(){ performanceModeEnabled=!performanceModeEnabled; renderHeroToggle(); if(!await saveToCloud()){ performanceModeEnabled=!performanceModeEnabled; renderHeroToggle(); } }
+async function toggleDjMode(){ djModeEnabled=!djModeEnabled; renderHeroToggle(); if(!await saveToCloud()){ djModeEnabled=!djModeEnabled; renderHeroToggle(); } }
 function renderSpinToggle(){ var btn=document.getElementById('spinToggleBtn'); if(!btn) return; if(spinEnabled){ btn.textContent='Spin Wheel: ON'; btn.className='btn btn-hero-on btn-full'; } else { btn.textContent='Spin Wheel: Paid-Only'; btn.className='btn btn-outline btn-full'; } }
 function renderPowerSongsToggle(){ var btn=document.getElementById('powerSongsToggleBtn'); if(!btn) return; if(powerSongsAvailable){ btn.textContent='Power Songs: Available'; btn.className='btn btn-hero-on btn-full'; } else { btn.textContent='Power Songs: Held Back'; btn.className='btn btn-outline btn-full'; } }
 function renderDinnerMusicToggle(){ var btn=document.getElementById('dinnerMusicToggleBtn'); if(!btn) return; btn.textContent=dinnerMusicOnly?'Dinner Music: ON':'Dinner Music: OFF'; btn.className='btn '+(dinnerMusicOnly?'btn-hero-on':'btn-outline')+' btn-full'; }
@@ -428,7 +433,7 @@ async function loadFromCloud(){
     const data = await res.json();
     const record = data.record || {};
     songs = record.songs || [];
-    prices = { ...DEFAULT_PRICES, ...(record.prices || {}) }; songRequestLive = record.songRequestLive !== false; fanCamLive = record.fanCamLive !== false; spinEnabled = record.spinEnabled !== false; powerSongsAvailable = record.powerSongsAvailable === true; dinnerMusicOnly = record.dinnerMusicOnly === true; smsRequestsEnabled = record.smsRequestsEnabled !== false; renderHeroToggle();
+    prices = { ...DEFAULT_PRICES, ...(record.prices || {}) }; songRequestLive = record.songRequestLive !== false; performanceModeEnabled = record.performanceModeEnabled !== false; djModeEnabled = record.djModeEnabled === true; fanCamLive = record.fanCamLive !== false; spinEnabled = record.spinEnabled !== false; powerSongsAvailable = record.powerSongsAvailable === true; dinnerMusicOnly = record.dinnerMusicOnly === true; smsRequestsEnabled = record.smsRequestsEnabled !== false; renderHeroToggle();
     rebuildTagList();
     renderSetupBox(true);
     document.getElementById('controlsArea').style.display = 'block';
@@ -447,7 +452,7 @@ async function saveToCloud(){
     const res = await fetch(`${PROXY_BASE}/songs`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ songs, prices, songRequestLive, fanCamLive, spinEnabled, powerSongsAvailable, dinnerMusicOnly, smsRequestsEnabled })
+      body: JSON.stringify({ songs, prices, songRequestLive, performanceModeEnabled, djModeEnabled, fanCamLive, spinEnabled, powerSongsAvailable, dinnerMusicOnly, smsRequestsEnabled })
     });
     if(!res.ok) throw new Error("save failed");
     return true;

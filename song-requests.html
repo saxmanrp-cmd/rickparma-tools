@@ -32,6 +32,7 @@ header h1{font-size:32px; line-height:1;}
 .song-info{flex:1; min-width:0;}
 .song-title{font-size:40px; line-height:1.02; font-weight:900; letter-spacing:-0.6px; overflow-wrap:anywhere;}
 .song-meta{font-size:30px; line-height:1.16; color:var(--dim); margin-top:12px; font-weight:700; overflow-wrap:anywhere;}
+.song-link{font-size:16px; color:var(--accent); margin-top:10px; overflow-wrap:anywhere; user-select:text;}
 .dismiss-btn{width:66px; height:66px; min-width:66px; padding:0; border-radius:16px; font-size:34px;}
 .empty-state{padding:32px 4px; color:var(--dim); font-size:30px; font-weight:700;}
 .clear-btn{margin-top:22px; min-height:64px; font-size:22px;}
@@ -114,7 +115,9 @@ function renderRequests(){
   el.innerHTML = sorted.map(function(r){
     var when = r.ts ? new Date(r.ts).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) : '';
     var songLabel = escapeHtml(r.song||'') + (r.artist ? ' — ' + escapeHtml(r.artist) : '');
-    return '<div class="song-row" data-id="'+escapeHtml(r.id||'')+'"><div class="song-info"><div class="song-title">'+escapeHtml(r.name||'Someone')+'</div><div class="song-meta">'+songLabel+' · '+escapeHtml(r.outcome||'')+' · '+when+'</div></div><button class="btn btn-outline dismiss-btn" onclick="dismissRequest(\''+escapeHtml(r.id||'')+'\')">✓</button></div>';
+    var typeLabel = r.requestType === 'dj' ? 'DJ · ' : '';
+    var source = r.requestLink ? '<div class="song-link">Shared link: '+escapeHtml(r.requestLink)+'</div>' : '';
+    return '<div class="song-row" data-id="'+escapeHtml(r.id||'')+'"><div class="song-info"><div class="song-title">'+escapeHtml(r.name||'Someone')+'</div><div class="song-meta">'+typeLabel+songLabel+' · '+escapeHtml(r.outcome||'')+' · '+when+'</div>'+source+'</div><button class="btn btn-outline dismiss-btn" onclick="dismissRequest(\''+escapeHtml(r.id||'')+'\')">✓</button></div>';
   }).join('');
 }
 
