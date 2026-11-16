@@ -556,12 +556,14 @@ async function metaStatus(env, profile = MUSIC_PROFILE) {
     SELECT page_id, page_name, instagram_id, instagram_username, instagram_name
     FROM meta_page_candidates ORDER BY page_name
   `).all();
-  if (results.length) {
+  const otherProfilePage = await loadSocialAccount(env, 'facebook', profile === FUEL_PROFILE ? MUSIC_PROFILE : FUEL_PROFILE);
+  const candidates = results.filter(r => r.page_id !== otherProfilePage?.external_account_id);
+  if (candidates.length) {
     return json({
       configured: true,
       connected: false,
       needsSelection: true,
-      candidates: results.map(r => ({
+      candidates: candidates.map(r => ({
         pageId: r.page_id,
         pageName: r.page_name,
         instagramId: r.instagram_id,
@@ -570,7 +572,7 @@ async function metaStatus(env, profile = MUSIC_PROFILE) {
       })),
     });
   }
-  return json({ configured: true, connected: false });
+  return json({ configured: true, connected: false, needsDifferentPage:profile === FUEL_PROFILE && results.length > 0 });
 }
 
 async function exchangeCodeForToken(env, code, redirectUri) {
