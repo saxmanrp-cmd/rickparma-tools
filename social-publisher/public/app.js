@@ -908,7 +908,10 @@ async function refreshMetaStatus() {
       details.classList.remove('hidden'); return;
     }
     if (!data.connected) {
-      text.textContent = 'Not connected'; connect.textContent = 'Connect Meta'; connect.disabled = false; connect.classList.remove('hidden'); disconnect.classList.add('hidden'); return;
+      text.textContent = data.needsDifferentPage ? 'Fuel Page not found' : 'Not connected';
+      connect.textContent = data.needsDifferentPage ? 'Find Fuel Page' : 'Connect Meta'; connect.disabled = false; connect.classList.remove('hidden'); disconnect.classList.add('hidden');
+      if (data.needsDifferentPage) { details.textContent = 'The available Page belongs to Music. Connect the Facebook account that manages your Fuel Page, then choose that Page and its linked Instagram account.'; details.classList.remove('hidden'); }
+      return;
     }
     text.textContent = 'Connected'; connect.classList.add('hidden'); disconnect.classList.remove('hidden');
     details.innerHTML = `<div class="detail-row"><span>Facebook</span><strong>${escapeHtml(data.facebook?.name || 'Connected')}</strong></div><div class="detail-row"><span>Instagram</span><strong>${escapeHtml(data.instagram?.username ? '@'+data.instagram.username : data.instagram?.name || 'Not linked')}</strong></div>`;
