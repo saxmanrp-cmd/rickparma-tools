@@ -116,7 +116,7 @@ test('Threads video jobs and retries are cron-owned and failed-only', () => {
   assert.equal(backend.includes("p === 'facebook_reel' || p === 'threads'"), true);
   assert.equal(backend.includes('const attempts = 17;'), true);
   assert.equal(backend.includes('const intervalMs = 15_000;'), true);
-  assert.equal(backend.includes('SELECT status, publish_results FROM posts WHERE id=?'), true);
+  assert.equal(backend.includes('SELECT status, publish_results FROM posts WHERE id=? AND profile_id=?'), true);
   assert.equal(backend.includes("post.platforms.filter(platform => !previousResults[platform]?.ok)"), true);
   assert.equal(backend.includes("const results = isRetry ? { ...previousResults } : {};"), true);
   const retryBlock = backend.match(/if \(url\.pathname\.match\(\/\^\\\/api\\\/posts.*?failedPlatforms \}\);\n    \}/s)?.[0] || '';

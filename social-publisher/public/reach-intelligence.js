@@ -74,7 +74,8 @@
   async function loadPerformanceProfile() {
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-      const r = await fetch(`/api/intelligence/profile?timezone=${encodeURIComponent(timezone)}`, { headers:{accept:'application/json'} });
+      const selectedProfile = localStorage.getItem('socialPublisherProfile') === 'fuel' ? 'fuel' : 'music';
+      const r = await fetch(`/api/intelligence/profile?timezone=${encodeURIComponent(timezone)}&profileId=${selectedProfile}`, { headers:{accept:'application/json'} });
       if (!r.ok) return;
       performanceProfile = await r.json();
       profileLoaded = true;
@@ -286,6 +287,12 @@
   setTimeout(loadPerformanceProfile, 400);
   window.addEventListener('focus', () => {
     if (!profileLoaded) loadPerformanceProfile();
+  });
+  window.addEventListener('publisher-profile-changed', () => {
+    performanceProfile = null;
+    profileLoaded = false;
+    renderReachIntelligence();
+    loadPerformanceProfile();
   });
   setInterval(loadPerformanceProfile, 5 * 60 * 1000);
 })();
