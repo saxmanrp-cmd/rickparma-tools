@@ -22,6 +22,8 @@
       <button id="headerSettingsBtn" class="icon-button" type="button" aria-label="Settings">⚙</button>
     </header>
 
+    <div class="profile-bar"><label for="publisherProfile">Publishing as</label><select id="publisherProfile" aria-label="Publishing profile"><option value="music">Rick Parma · Music</option><option value="fuel">Fuel · Instagram &amp; Facebook</option></select></div>
+
     <main class="main">
       <section id="view-create" class="view active">
         <div class="composer">
@@ -129,8 +131,8 @@
       <section id="view-settings" class="view">
         <div class="page-row"><h2>Settings</h2></div>
         <div class="card account-card"><div class="account-heading"><div class="meta-mark">M</div><div><strong>Facebook + Instagram</strong><span id="metaStatusText">Checking connection…</span></div></div><div id="metaAccountDetails" class="account-details hidden"></div><button id="connectMetaBtn" class="button primary full" type="button">Connect Meta</button><button id="disconnectMetaBtn" class="button secondary full hidden" type="button">Disconnect</button></div>
-        <div class="card account-card"><div class="account-heading"><span class="platform-icon threads">@</span><div><strong>Threads</strong><span id="threadsStatusText">Checking connection…</span></div></div><div id="threadsAccountDetails" class="account-details hidden"></div><button id="connectThreadsBtn" class="button primary full" type="button">Connect Threads</button><button id="disconnectThreadsBtn" class="button secondary full hidden" type="button">Disconnect</button></div>
-        <div class="card account-card"><div class="account-heading"><span class="platform-icon tiktok">♪</span><div><strong>TikTok</strong><span id="tiktokStatusText">Checking connection…</span></div></div><div id="tiktokAccountDetails" class="account-details hidden"></div><button id="connectTikTokBtn" class="button primary full" type="button">Connect TikTok</button><button id="disconnectTikTokBtn" class="button secondary full hidden" type="button">Disconnect</button></div>
+        <div class="card account-card music-only"><div class="account-heading"><span class="platform-icon threads">@</span><div><strong>Threads</strong><span id="threadsStatusText">Checking connection…</span></div></div><div id="threadsAccountDetails" class="account-details hidden"></div><button id="connectThreadsBtn" class="button primary full" type="button">Connect Threads</button><button id="disconnectThreadsBtn" class="button secondary full hidden" type="button">Disconnect</button></div>
+        <div class="card account-card music-only"><div class="account-heading"><span class="platform-icon tiktok">♪</span><div><strong>TikTok</strong><span id="tiktokStatusText">Checking connection…</span></div></div><div id="tiktokAccountDetails" class="account-details hidden"></div><button id="connectTikTokBtn" class="button primary full" type="button">Connect TikTok</button><button id="disconnectTikTokBtn" class="button secondary full hidden" type="button">Disconnect</button></div>
         <div id="installCard" class="card account-card install-card hidden"><div class="account-heading"><div class="install-mark">↗</div><div><strong>Add to iPhone</strong><span id="installStatusText">Open like an app from your Home Screen.</span></div></div><button id="installAppBtn" class="button secondary full hidden" type="button">Install App</button><div id="iosInstallSteps" class="ios-install-steps hidden"><b>Safari:</b> Share → Add to Home Screen → Add</div></div>
         <div id="setupHelp" class="card setup-card hidden"><strong>Meta setup needed</strong><p>Add the Meta App ID + Secret to Cloudflare, then connect here.</p></div>
         <button id="logoutBtn" class="button secondary full hidden" type="button">Log Out</button>

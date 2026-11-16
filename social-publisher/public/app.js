@@ -3,6 +3,9 @@ const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 
 const STORAGE_KEY = 'socialPublisherV3';
 const ACTIVE_VIEW_KEY = 'socialPublisherActiveView';
+const PROFILE_KEY = 'socialPublisherProfile';
+let activeProfile = 'music';
+try { if (localStorage.getItem(PROFILE_KEY) === 'fuel') activeProfile = 'fuel'; } catch {}
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 const defaults = { posts: [], media: [], currentMedia: null };
 let state = loadState();
@@ -15,12 +18,49 @@ let instagramOptions = { userTags: [], collaborators: [], audioName: '' };
 let placingTagIndex = null;
 let pendingTagPosition = null;
 
+function profileQuery() { return `profileId=${encodeURIComponent(activeProfile)}`; }
+function profileStorageKey() { return activeProfile === 'fuel' ? `${STORAGE_KEY}:fuel` : STORAGE_KEY; }
+function applyProfileUi() {
+  $('#publisherProfile').value = activeProfile;
+  document.body.classList.toggle('fuel-profile', activeProfile === 'fuel');
+  $('.app-header .logo').textContent = activeProfile === 'fuel' ? 'F' : 'RP';
+  $('#insertTemplateBtn').textContent = activeProfile === 'fuel' ? 'Fuel Template' : 'Gig Template';
+  if (activeProfile === 'fuel') {
+    for (const platform of ['threads','tiktok']) {
+      const chip = $(`.platform-chip[data-platform="${platform}"]`);
+      const input = chip?.querySelector('input');
+      if (input) input.checked = false;
+      chip?.classList.remove('selected');
+      chip?.classList.add('disabled-platform');
+    }
+  } else if (remoteMode) {
+    refreshThreadsStatus(); refreshTikTokStatus();
+  }
+  $('#previewSheet .avatar').textContent = activeProfile === 'fuel' ? 'F' : 'RP';
+}
+$('#publisherProfile').addEventListener('change', async e => {
+  const next = e.target.value;
+  if (next === activeProfile) return;
+  if ((caption.value.trim() || editingPostId || state.currentMedia) && !confirm('Switch profiles? Save this post first if you want to keep your unsaved changes.')) {
+    e.target.value = activeProfile; return;
+  }
+  activeProfile = next;
+  try { localStorage.setItem(PROFILE_KEY, next); } catch {}
+  if (!remoteMode) state = loadState();
+  window.dispatchEvent(new CustomEvent('publisher-profile-changed', { detail:{ profileId:next } }));
+  editingPostId = null;
+  clearComposer(); applyComposerMode(); applyProfileUi();
+  if (remoteMode) { state.posts = []; await syncRemotePosts(); refreshMetaStatus(); }
+  renderHistory(); renderCalendar(); renderMediaLibrary();
+  toast(next === 'fuel' ? 'Fuel profile selected.' : 'Music profile selected.');
+});
+
 function loadState() {
-  try { return { ...defaults, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'), currentMedia: null }; }
+  try { return { ...defaults, ...JSON.parse(localStorage.getItem(profileStorageKey()) || '{}'), currentMedia: null }; }
   catch { return { ...defaults }; }
 }
 function saveState() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ posts: state.posts, media: state.media })); }
+  try { localStorage.setItem(profileStorageKey(), JSON.stringify({ posts: state.posts, media: state.media })); }
   catch { toast('Local storage is full.'); }
 }
 function toast(message) {
@@ -60,7 +100,7 @@ caption.addEventListener('input', () => {
   $('#previewCaption').textContent = caption.value || 'Your caption will appear here.';
 });
 $('#insertTemplateBtn').addEventListener('click', () => {
-  caption.value = `🎷 LIVE TONIGHT!\n\n📍 Venue:\n🗓 Date:\n⏰ Time:\n\nCome hang with me!`;
+  caption.value = activeProfile === 'fuel' ? `⛽ FUEL CHECK-IN\n\n[Your update or tip]\n\nWhat’s working for you this week?` : `🎷 LIVE TONIGHT!\n\n📍 Venue:\n🗓 Date:\n⏰ Time:\n\nCome hang with me!`;
   caption.dispatchEvent(new Event('input'));
 });
 
@@ -551,7 +591,7 @@ async function submitRemotePost(draft) {
   const apiStatus = draft.status === 'ready' ? 'queued' : draft.status;
   const r = await fetch('/api/posts', {
     method:'POST', headers:{'content-type':'application/json'},
-    body:JSON.stringify({ caption:draft.caption, platforms:draft.platforms, status:apiStatus, scheduledAt:draft.scheduledAt, mediaKey, mediaType, instagramOptions:draft.instagramOptions, timezone:Intl.DateTimeFormat().resolvedOptions().timeZone || null }),
+    body:JSON.stringify({ caption:draft.caption, platforms:draft.platforms, status:apiStatus, scheduledAt:draft.scheduledAt, mediaKey, mediaType, instagramOptions:draft.instagramOptions, timezone:Intl.DateTimeFormat().resolvedOptions().timeZone || null, profileId:activeProfile }),
   });
   const data = await r.json().catch(()=>({}));
   if (!r.ok) throw new Error(data.error || 'Could not create post.');
@@ -567,7 +607,7 @@ async function updateRemoteScheduledPost(id, draft) {
     mediaKey = uploaded.mediaKey;
     mediaType = uploaded.mediaType;
   }
-  const r = await fetch(`/api/posts/${encodeURIComponent(id)}`, {
+  const r = await fetch(`/api/posts/${encodeURIComponent(id)}?${profileQuery()}`, {
     method:'PATCH',
     headers:{'content-type':'application/json'},
     body:JSON.stringify({
@@ -590,7 +630,7 @@ function submitLocalPost(draft) {
   if (media && !state.media.some(m => m.dataUrl === media.dataUrl)) state.media.unshift(media);
   state.posts.unshift({
     id:crypto.randomUUID?.() || String(Date.now()), caption:draft.caption, platforms:draft.platforms, media,
-    status:draft.status, scheduledAt:draft.scheduledAt, instagramOptions:draft.instagramOptions, createdAt:new Date().toISOString(),
+    status:draft.status, scheduledAt:draft.scheduledAt, instagramOptions:draft.instagramOptions, createdAt:new Date().toISOString(), profileId:activeProfile,
   });
   saveState(); renderHistory(); renderCalendar(); renderMediaLibrary();
 }
@@ -669,7 +709,7 @@ async function deleteScheduledPost(id) {
   if (!confirm('Delete this scheduled post?')) return;
   try {
     if (remoteMode) {
-      const r = await fetch(`/api/posts/${encodeURIComponent(id)}`, { method:'DELETE' });
+      const r = await fetch(`/api/posts/${encodeURIComponent(id)}?${profileQuery()}`, { method:'DELETE' });
       const data = await r.json().catch(()=>({}));
       if (!r.ok) throw new Error(data.error || 'Could not delete scheduled post.');
       await syncRemotePosts();
@@ -755,7 +795,7 @@ $('#historyContent').addEventListener('click', async e => {
   if (reuse) return reusePost(reuse.dataset.useAgain);
   const btn=e.target.closest('[data-retry]'); if(!btn) return;
   btn.disabled=true;
-  const r=await fetch(`/api/posts/${encodeURIComponent(btn.dataset.retry)}/retry`,{method:'POST'});
+  const r=await fetch(`/api/posts/${encodeURIComponent(btn.dataset.retry)}/retry?${profileQuery()}`,{method:'POST'});
   if(r.ok){toast('Retry queued.'); await syncRemotePosts(); setTimeout(syncRemotePosts,3500);} else {toast('Retry failed.'); btn.disabled=false;}
 });
 
@@ -831,21 +871,23 @@ $('#mediaLibrary').addEventListener('click', e => {
 
 async function syncRemotePosts() {
   if (!remoteMode) return;
+  const requestedProfile = activeProfile;
   try {
-    const r = await fetch('/api/posts');
+    const r = await fetch(`/api/posts?${profileQuery()}`);
     if (r.status === 401) return showLogin();
     const data = await r.json();
-    if (!r.ok) return;
+    if (!r.ok || requestedProfile !== activeProfile) return;
     state.posts = (data.posts || []).map(p => ({
       id:p.id, caption:p.caption, platforms:p.platforms || [], mediaKey:p.media_key, mediaType:p.media_type,
       status:p.status, scheduledAt:p.scheduled_at, publishedAt:p.published_at, publishResults:p.publish_results,
-      instagramOptions:p.instagram_options || null, lastError:p.last_error, createdAt:p.created_at, updatedAt:p.updated_at,
+      instagramOptions:p.instagram_options || null, lastError:p.last_error, createdAt:p.created_at, updatedAt:p.updated_at, profileId:p.profile_id,
     }));
     renderHistory(); renderCalendar(); renderMediaLibrary();
   } catch {}
 }
 
 async function refreshMetaStatus() {
+  const requestedProfile = activeProfile;
   const text = $('#metaStatusText'), connect = $('#connectMetaBtn'), disconnect = $('#disconnectMetaBtn'), details = $('#metaAccountDetails'), help = $('#setupHelp');
   $('#logoutBtn').classList.toggle('hidden', !remoteMode);
   text.textContent = 'Checking…'; details.classList.add('hidden'); help.classList.add('hidden');
@@ -853,14 +895,15 @@ async function refreshMetaStatus() {
     text.textContent = 'Local test mode'; connect.textContent='Cloud setup needed'; connect.disabled=true; connect.classList.remove('hidden'); disconnect.classList.add('hidden'); help.classList.remove('hidden'); return;
   }
   try {
-    const r = await fetch('/api/meta/status', { headers:{accept:'application/json'} });
+    const r = await fetch(`/api/meta/status?${profileQuery()}`, { headers:{accept:'application/json'} });
     if (r.status===401) return showLogin();
     const data = await r.json();
+    if (requestedProfile !== activeProfile) return;
     if (r.status === 503 || data.configured === false) {
       text.textContent = 'Needs Meta setup'; connect.textContent = 'Connect Meta'; connect.disabled = false; connect.classList.remove('hidden'); disconnect.classList.add('hidden'); help.classList.remove('hidden'); return;
     }
     if (data.needsSelection && data.candidates?.length) {
-      text.textContent = 'Choose Facebook Page'; connect.classList.add('hidden'); disconnect.classList.remove('hidden');
+      text.textContent = 'Choose Facebook Page'; connect.textContent='Refresh Pages'; connect.disabled=false; connect.classList.remove('hidden'); disconnect.classList.add('hidden');
       details.innerHTML = data.candidates.map(c => `<button class="candidate-button" type="button" data-page-id="${escapeHtml(c.pageId)}"><span><strong>${escapeHtml(c.pageName)}</strong><small>${c.instagramUsername ? '@'+escapeHtml(c.instagramUsername) : 'No Instagram linked'}</small></span><b>Choose</b></button>`).join('');
       details.classList.remove('hidden'); return;
     }
@@ -876,19 +919,20 @@ async function refreshMetaStatus() {
 $('#metaAccountDetails').addEventListener('click', async e => {
   const btn = e.target.closest('[data-page-id]'); if (!btn) return;
   btn.disabled = true;
-  const r = await fetch('/api/meta/select', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({ pageId:btn.dataset.pageId }) });
-  if (r.ok) { toast('Page selected.'); refreshMetaStatus(); } else { btn.disabled=false; toast('Could not select Page.'); }
+  const r = await fetch('/api/meta/select', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({ pageId:btn.dataset.pageId, profileId:activeProfile }) });
+  const data = await r.json().catch(()=>({}));
+  if (r.ok) { toast('Page selected.'); refreshMetaStatus(); } else { btn.disabled=false; toast(data.error || 'Could not select Page.'); }
 });
 $('#connectMetaBtn').addEventListener('click', async () => {
   if (!remoteMode) return toast('Deploy the Cloudflare build first.');
-  const r = await fetch('/api/meta/status');
+  const r = await fetch(`/api/meta/status?${profileQuery()}`);
   const data = await r.json().catch(()=>({}));
   if (!r.ok || data.configured === false) { $('#setupHelp').classList.remove('hidden'); toast('Add Meta credentials first.'); return; }
   location.href = '/api/meta/connect';
 });
 $('#disconnectMetaBtn').addEventListener('click', async () => {
-  if (!confirm('Disconnect Facebook and Instagram?')) return;
-  const r = await fetch('/api/meta/disconnect',{method:'POST'});
+  if (!confirm(`Disconnect Facebook and Instagram from ${activeProfile === 'fuel' ? 'Fuel' : 'Music'}?`)) return;
+  const r = await fetch('/api/meta/disconnect',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({profileId:activeProfile})});
   if (r.ok) { toast('Disconnected.'); refreshMetaStatus(); } else toast('Could not disconnect.');
 });
 async function refreshThreadsStatus() {
@@ -983,7 +1027,7 @@ $('#loginForm').addEventListener('submit', async e => {
   try {
     const r=await fetch('/api/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:$('#appPassword').value})});
     if(!r.ok){$('#loginError').classList.remove('hidden'); return;}
-    remoteMode=true; hideLogin(); await syncRemotePosts(); refreshMetaStatus(); refreshThreadsStatus(); refreshTikTokStatus();
+    remoteMode=true; hideLogin(); await syncRemotePosts(); refreshMetaStatus(); if (activeProfile === 'music') { refreshThreadsStatus(); refreshTikTokStatus(); }
   } finally {btn.disabled=false;}
 });
 $('#logoutBtn').addEventListener('click', async()=>{ await fetch('/api/auth/logout',{method:'POST'}).catch(()=>{}); remoteMode=false; showLogin(); });
@@ -999,7 +1043,7 @@ async function initBackendMode() {
     else {
       hideLogin();
       await syncRemotePosts();
-      await Promise.allSettled([refreshMetaStatus(), refreshThreadsStatus(), refreshTikTokStatus()]);
+      await Promise.allSettled([refreshMetaStatus(), ...(activeProfile === 'music' ? [refreshThreadsStatus(), refreshTikTokStatus()] : [])]);
     }
   } catch { remoteMode = false; }
 }
@@ -1073,6 +1117,6 @@ if (params.get('tiktok') === 'connected') { history.replaceState({},'',location.
 if (params.get('tiktok') === 'error') { const message=params.get('message'); history.replaceState({},'',location.pathname); setTimeout(()=>{ navigate('settings'); toast(message || 'TikTok connection failed.'); },100); }
 
 const hasConnectionResult = ['meta','threads','tiktok'].some(key => params.has(key));
-renderCurrentMedia(); renderHistory(); renderCalendar(); renderMediaLibrary(); applyComposerMode();
+applyProfileUi(); renderCurrentMedia(); renderHistory(); renderCalendar(); renderMediaLibrary(); applyComposerMode();
 if (!hasConnectionResult) restoreLastView();
 initBackendMode();

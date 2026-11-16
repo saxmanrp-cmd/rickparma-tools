@@ -3,6 +3,12 @@ const json = (data, init = {}) => new Response(JSON.stringify(data), {
   headers: { 'content-type': 'application/json; charset=utf-8', ...(init.headers || {}) },
 });
 
+const MUSIC_PROFILE = 'music';
+const FUEL_PROFILE = 'fuel';
+function profileId(value) {
+  return value === FUEL_PROFILE ? FUEL_PROFILE : value === MUSIC_PROFILE || !value ? MUSIC_PROFILE : null;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -62,7 +68,8 @@ export default {
     }
 
     if (url.pathname === '/api/meta/status' && request.method === 'GET') {
-      return metaStatus(env);
+      const profile = profileId(url.searchParams.get('profileId'));
+      return profile ? metaStatus(env, profile) : json({ error:'Unknown profile.' }, { status:400 });
     }
 
     if (url.pathname === '/api/meta/connect' && request.method === 'GET') {
@@ -89,12 +96,40 @@ export default {
     if (url.pathname === '/api/meta/select' && request.method === 'POST') {
       if (!metaConfigured(env)) return json({ configured: false }, { status: 503 });
       const body = await request.json().catch(() => ({}));
+      const profile = profileId(body.profileId);
+      if (!profile) return json({ error:'Unknown profile.' }, { status:400 });
       if (!body.pageId) return json({ error: 'pageId is required.' }, { status: 400 });
       const candidate = await env.DB.prepare(`
         SELECT page_id, page_name, page_token_encrypted, instagram_id, instagram_username, instagram_name
         FROM meta_page_candidates WHERE page_id = ?
       `).bind(body.pageId).first();
       if (!candidate) return json({ error: 'Page not found.' }, { status: 404 });
+
+      if (profile === FUEL_PROFILE) {
+        const music = await loadSocialAccount(env, 'facebook', MUSIC_PROFILE);
+        if (music?.external_account_id === candidate.page_id) return json({ error:'This Page is already connected to Music. Choose your Fuel Page.' }, { status:409 });
+        const now = new Date().toISOString();
+        const accounts = [env.DB.prepare(`
+          INSERT INTO profile_social_accounts (profile_id, platform, account_name, external_account_id, access_token_encrypted, created_at, updated_at)
+          VALUES (?, 'facebook', ?, ?, ?, ?, ?)
+          ON CONFLICT(profile_id, platform) DO UPDATE SET account_name=excluded.account_name, external_account_id=excluded.external_account_id,
+          access_token_encrypted=excluded.access_token_encrypted, updated_at=excluded.updated_at
+        `).bind(profile, candidate.page_name, candidate.page_id, candidate.page_token_encrypted, now, now)];
+        if (candidate.instagram_id) accounts.push(env.DB.prepare(`
+          INSERT INTO profile_social_accounts (profile_id, platform, account_name, username, external_account_id, parent_account_id, access_token_encrypted, created_at, updated_at)
+          VALUES (?, 'instagram', ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(profile_id, platform) DO UPDATE SET account_name=excluded.account_name, username=excluded.username,
+          external_account_id=excluded.external_account_id, parent_account_id=excluded.parent_account_id,
+          access_token_encrypted=excluded.access_token_encrypted, updated_at=excluded.updated_at
+        `).bind(profile, candidate.instagram_name || candidate.instagram_username || 'Instagram', candidate.instagram_username || null,
+          candidate.instagram_id, candidate.page_id, candidate.page_token_encrypted, now, now));
+        else accounts.push(env.DB.prepare("DELETE FROM profile_social_accounts WHERE profile_id=? AND platform='instagram'").bind(profile));
+        await env.DB.batch(accounts);
+        return json({ ok:true });
+      }
+
+      const fuel = await loadSocialAccount(env, 'facebook', FUEL_PROFILE);
+      if (fuel?.external_account_id === candidate.page_id) return json({ error:'This Page is already connected to Fuel. Choose your Music Page.' }, { status:409 });
 
       const now = new Date().toISOString();
       await env.DB.batch([
@@ -132,9 +167,15 @@ export default {
 
     if (url.pathname === '/api/meta/disconnect' && request.method === 'POST') {
       if (!env.DB) return json({ error: 'D1 is not configured.' }, { status: 503 });
+      const body = await request.json().catch(() => ({}));
+      const profile = profileId(body.profileId);
+      if (!profile) return json({ error:'Unknown profile.' }, { status:400 });
+      if (profile === FUEL_PROFILE) {
+        await env.DB.prepare('DELETE FROM profile_social_accounts WHERE profile_id=?').bind(profile).run();
+        return json({ ok:true });
+      }
       await env.DB.batch([
         env.DB.prepare("DELETE FROM social_accounts WHERE platform IN ('facebook','instagram')"),
-        env.DB.prepare('DELETE FROM meta_page_candidates'),
       ]);
       return json({ ok: true });
     }
@@ -196,37 +237,48 @@ export default {
     if (url.pathname === '/api/intelligence/profile' && request.method === 'GET') {
       if (!env.DB) return json({ error:'D1 binding DB is not configured.' }, { status:503 });
       const timezone = url.searchParams.get('timezone') || '';
-      return json(await buildPerformanceProfile(env, timezone));
+      const profile = profileId(url.searchParams.get('profileId'));
+      return profile ? json(await buildPerformanceProfile(env, timezone, profile)) : json({ error:'Unknown profile.' }, { status:400 });
     }
 
     if (url.pathname === '/api/intelligence/refresh' && request.method === 'POST') {
       if (!env.DB) return json({ error:'D1 binding DB is not configured.' }, { status:503 });
       await processPerformanceTracking(env);
       const timezone = url.searchParams.get('timezone') || '';
-      return json(await buildPerformanceProfile(env, timezone));
+      const profile = profileId(url.searchParams.get('profileId'));
+      return profile ? json(await buildPerformanceProfile(env, timezone, profile)) : json({ error:'Unknown profile.' }, { status:400 });
     }
 
     if (url.pathname === '/api/posts' && request.method === 'GET') {
       if (!env.DB) return json({ error: 'D1 binding DB is not configured.' }, { status: 503 });
+      const profile = profileId(url.searchParams.get('profileId'));
+      if (!profile) return json({ error:'Unknown profile.' }, { status:400 });
       const { results } = await env.DB.prepare(`
         SELECT id, caption, platforms, media_key, media_type, status, scheduled_at, published_at,
-               publish_results, instagram_options, timezone, last_error, created_at, updated_at
-        FROM posts ORDER BY created_at DESC LIMIT 100
-      `).all();
+               publish_results, instagram_options, timezone, last_error, created_at, updated_at, profile_id
+        FROM posts WHERE profile_id=? ORDER BY created_at DESC LIMIT 100
+      `).bind(profile).all();
       return json({ posts: results.map(parsePost) });
     }
 
     if (url.pathname === '/api/posts' && request.method === 'POST') {
       if (!env.DB) return json({ error: 'D1 binding DB is not configured.' }, { status: 503 });
       const body = await request.json().catch(() => ({}));
+      const profile = profileId(body.profileId);
+      if (!profile) return json({ error:'Unknown profile.' }, { status:400 });
       if (!body.caption || !Array.isArray(body.platforms) || !body.platforms.length) {
         return json({ error: 'caption and at least one platform are required.' }, { status: 400 });
       }
       const allowedPlatforms = ['facebook','facebook_reel','instagram','instagram_post','instagram_story','instagram_reel','threads','tiktok'];
       const unsupported = body.platforms.filter(p => !allowedPlatforms.includes(p));
       if (unsupported.length) return json({ error: `Not connected yet: ${unsupported.join(', ')}` }, { status: 400 });
-
+      if (profile === FUEL_PROFILE && body.platforms.some(p => !['facebook','facebook_reel','instagram','instagram_post','instagram_story','instagram_reel'].includes(p))) {
+        return json({ error:'Fuel supports Facebook and Instagram only.' }, { status:400 });
+      }
       const status = ['draft', 'scheduled', 'queued'].includes(body.status) ? body.status : 'draft';
+      for (const platform of new Set(body.platforms.map(p => p.startsWith('instagram') ? 'instagram' : p.startsWith('facebook') ? 'facebook' : p))) {
+        if (profile === FUEL_PROFILE && status !== 'draft' && !await loadSocialAccount(env, platform, profile)) return json({ error:`Connect Fuel ${platform} before posting.` }, { status:400 });
+      }
       if (status === 'scheduled' && !body.scheduledAt) return json({ error: 'scheduledAt is required.' }, { status: 400 });
       if ((body.platforms.some(p => p === 'instagram' || p.startsWith('instagram_')) || body.platforms.includes('tiktok')) && !body.mediaKey) {
         return json({ error: 'Instagram and TikTok require a photo or video.' }, { status: 400 });
@@ -242,8 +294,8 @@ export default {
       const id = crypto.randomUUID();
       const now = new Date().toISOString();
       await env.DB.prepare(`
-        INSERT INTO posts (id, caption, platforms, media_key, media_type, status, scheduled_at, instagram_options, timezone, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO posts (id, caption, platforms, media_key, media_type, status, scheduled_at, instagram_options, timezone, created_at, updated_at, profile_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         id,
         String(body.caption).trim(),
@@ -255,7 +307,8 @@ export default {
         instagramOptions ? JSON.stringify(instagramOptions) : null,
         timezone,
         now,
-        now
+        now,
+        profile
       ).run();
 
       if (status === 'queued') {
@@ -275,9 +328,11 @@ export default {
     if (postMatch && request.method === 'PATCH') {
       if (!env.DB) return json({ error: 'D1 binding DB is not configured.' }, { status: 503 });
       const id = decodeURIComponent(postMatch[1]);
+      const profile = profileId(url.searchParams.get('profileId'));
+      if (!profile) return json({ error:'Unknown profile.' }, { status:400 });
       const existing = await env.DB.prepare(`
-        SELECT id, status, media_key, media_type FROM posts WHERE id=?
-      `).bind(id).first();
+        SELECT id, status, media_key, media_type FROM posts WHERE id=? AND profile_id=?
+      `).bind(id, profile).first();
       if (!existing) return json({ error: 'Post not found.' }, { status: 404 });
       if (existing.status !== 'scheduled') {
         return json({ error: 'Only scheduled posts can be edited.' }, { status: 409 });
@@ -290,6 +345,7 @@ export default {
       const allowedPlatforms = ['facebook','facebook_reel','instagram','instagram_post','instagram_story','instagram_reel','threads','tiktok'];
       const unsupported = body.platforms.filter(p => !allowedPlatforms.includes(p));
       if (unsupported.length) return json({ error: `Not connected yet: ${unsupported.join(', ')}` }, { status: 400 });
+      if (profile === FUEL_PROFILE && body.platforms.some(p => !['facebook','facebook_reel','instagram','instagram_post','instagram_story','instagram_reel'].includes(p))) return json({ error:'Fuel supports Facebook and Instagram only.' }, { status:400 });
       if (!body.scheduledAt) return json({ error: 'scheduledAt is required.' }, { status: 400 });
       const scheduledDate = new Date(body.scheduledAt);
       if (Number.isNaN(scheduledDate.getTime()) || scheduledDate <= new Date()) {
@@ -317,7 +373,7 @@ export default {
         UPDATE posts
         SET caption=?, platforms=?, media_key=?, media_type=?, scheduled_at=?, instagram_options=?, timezone=?,
             last_error=NULL, publish_results=NULL, updated_at=?
-        WHERE id=? AND status='scheduled'
+        WHERE id=? AND profile_id=? AND status='scheduled'
       `).bind(
         String(body.caption).trim(),
         JSON.stringify(body.platforms),
@@ -327,7 +383,8 @@ export default {
         instagramOptions ? JSON.stringify(instagramOptions) : null,
         timezone,
         now,
-        id
+        id,
+        profile
       ).run();
       if (!updated.meta?.changes) {
         return json({ error: 'This post is no longer scheduled. Refresh and try again.' }, { status: 409 });
@@ -342,14 +399,16 @@ export default {
     if (postMatch && request.method === 'DELETE') {
       if (!env.DB) return json({ error: 'D1 binding DB is not configured.' }, { status: 503 });
       const id = decodeURIComponent(postMatch[1]);
+      const profile = profileId(url.searchParams.get('profileId'));
+      if (!profile) return json({ error:'Unknown profile.' }, { status:400 });
       const existing = await env.DB.prepare(`
-        SELECT id, status, media_key FROM posts WHERE id=?
-      `).bind(id).first();
+        SELECT id, status, media_key FROM posts WHERE id=? AND profile_id=?
+      `).bind(id, profile).first();
       if (!existing) return json({ error: 'Post not found.' }, { status: 404 });
       if (existing.status !== 'scheduled') {
         return json({ error: 'Only scheduled posts can be deleted.' }, { status: 409 });
       }
-      const deleted = await env.DB.prepare("DELETE FROM posts WHERE id=? AND status='scheduled'").bind(id).run();
+      const deleted = await env.DB.prepare("DELETE FROM posts WHERE id=? AND profile_id=? AND status='scheduled'").bind(id, profile).run();
       if (!deleted.meta?.changes) {
         return json({ error: 'This post is no longer scheduled. Refresh and try again.' }, { status: 409 });
       }
@@ -359,9 +418,11 @@ export default {
 
     if (url.pathname.match(/^\/api\/posts\/[^/]+\/retry$/) && request.method === 'POST') {
       const id = decodeURIComponent(url.pathname.split('/')[3]);
+      const profile = profileId(url.searchParams.get('profileId'));
+      if (!profile) return json({ error:'Unknown profile.' }, { status:400 });
       const existing = await env.DB.prepare(`
-        SELECT status, publish_results FROM posts WHERE id=?
-      `).bind(id).first();
+        SELECT status, publish_results FROM posts WHERE id=? AND profile_id=?
+      `).bind(id, profile).first();
       if (!existing) return json({ error:'Post not found.' }, { status:404 });
       if (!['failed','partial_failed'].includes(existing.status)) {
         return json({ error:'Only failed posts can be retried.' }, { status:409 });
@@ -371,7 +432,7 @@ export default {
         .filter(([, result]) => !result?.ok)
         .map(([platform]) => platform);
       const now = new Date().toISOString();
-      await env.DB.prepare("UPDATE posts SET status='queued', last_error=NULL, updated_at=? WHERE id=?").bind(now, id).run();
+      await env.DB.prepare("UPDATE posts SET status='queued', last_error=NULL, updated_at=? WHERE id=? AND profile_id=?").bind(now, id, profile).run();
       // Cron owns retries so long-running video processing is not tied to an HTTP request lifetime.
       return json({ ok:true, status:'queued', failedPlatforms });
     }
@@ -475,10 +536,14 @@ async function handleMetaCallback(url, env) {
   }
 }
 
-async function metaStatus(env) {
+async function metaStatus(env, profile = MUSIC_PROFILE) {
   if (!metaConfigured(env)) return json({ configured: false, connected: false }, { status: 503 });
-  const fb = await env.DB.prepare("SELECT account_name, external_account_id FROM social_accounts WHERE platform='facebook'").first();
-  const ig = await env.DB.prepare("SELECT account_name, username, external_account_id FROM social_accounts WHERE platform='instagram'").first();
+  const fb = profile === MUSIC_PROFILE
+    ? await env.DB.prepare("SELECT account_name, external_account_id FROM social_accounts WHERE platform='facebook'").first()
+    : await env.DB.prepare("SELECT account_name, external_account_id FROM profile_social_accounts WHERE profile_id=? AND platform='facebook'").bind(profile).first();
+  const ig = profile === MUSIC_PROFILE
+    ? await env.DB.prepare("SELECT account_name, username, external_account_id FROM social_accounts WHERE platform='instagram'").first()
+    : await env.DB.prepare("SELECT account_name, username, external_account_id FROM profile_social_accounts WHERE profile_id=? AND platform='instagram'").bind(profile).first();
   if (fb) {
     return json({
       configured: true,
@@ -599,7 +664,7 @@ async function processDuePosts(env) {
 
 async function processPost(env, id) {
   const row = await env.DB.prepare(`
-    SELECT id, caption, platforms, media_key, media_type, status, scheduled_at, instagram_options, publish_results
+    SELECT id, caption, platforms, media_key, media_type, status, scheduled_at, instagram_options, publish_results, profile_id
     FROM posts WHERE id=?
   `).bind(id).first();
   if (!row || !['queued', 'scheduled', 'ready_to_publish', 'failed', 'partial_failed'].includes(row.status)) return;
@@ -719,7 +784,7 @@ async function processPerformanceTracking(env) {
   let rows;
   try {
     ({ results: rows } = await env.DB.prepare(`
-      SELECT t.post_id, t.platform, t.external_id, t.check_index, p.published_at
+      SELECT t.post_id, t.platform, t.external_id, t.check_index, p.published_at, p.profile_id
       FROM performance_tracking t
       JOIN posts p ON p.id=t.post_id
       WHERE t.completed=0 AND t.next_check_at IS NOT NULL AND t.next_check_at <= ?
@@ -734,7 +799,7 @@ async function processPerformanceTracking(env) {
     const publishedAt = row.published_at ? new Date(row.published_at) : now;
     const ageHours = Math.max(0, (now.getTime() - publishedAt.getTime()) / 3600000);
     try {
-      const performance = await fetchPlatformPerformance(env, row.platform, row.external_id);
+      const performance = await fetchPlatformPerformance(env, row.platform, row.external_id, row.profile_id);
       const capturedAt = new Date().toISOString();
       await env.DB.prepare(`
         INSERT INTO performance_snapshots
@@ -773,9 +838,9 @@ async function processPerformanceTracking(env) {
   }
 }
 
-async function fetchPlatformPerformance(env, platform, externalId) {
-  if (platform === 'instagram_post' || platform === 'instagram_reel') return fetchInstagramPerformance(env, externalId);
-  if (platform === 'facebook' || platform === 'facebook_reel') return fetchFacebookPerformance(env, externalId);
+async function fetchPlatformPerformance(env, platform, externalId, profile = MUSIC_PROFILE) {
+  if (platform === 'instagram_post' || platform === 'instagram_reel') return fetchInstagramPerformance(env, externalId, profile);
+  if (platform === 'facebook' || platform === 'facebook_reel') return fetchFacebookPerformance(env, externalId, profile);
   if (platform === 'threads') return fetchThreadsPerformance(env, externalId);
   throw new Error('Performance metrics are not supported for this destination yet.');
 }
@@ -792,8 +857,8 @@ function weightedPerformanceScore(metrics = {}) {
   return denominator > 0 ? (engagements / denominator) * 1000 : engagements;
 }
 
-async function fetchInstagramPerformance(env, externalId) {
-  const account = await loadSocialAccount(env, 'instagram');
+async function fetchInstagramPerformance(env, externalId, profile = MUSIC_PROFILE) {
+  const account = await loadSocialAccount(env, 'instagram', profile);
   if (!account) throw new Error('Instagram is not connected.');
   const token = await decryptSecret(account.access_token_encrypted, env.TOKEN_ENCRYPTION_KEY);
   const version = env.META_GRAPH_VERSION || 'v24.0';
@@ -813,8 +878,8 @@ async function fetchInstagramPerformance(env, externalId) {
   return { metrics, score:weightedPerformanceScore(metrics), source:metrics.reach || metrics.views ? 'instagram_insights' : 'instagram_engagement' };
 }
 
-async function fetchFacebookPerformance(env, externalId) {
-  const account = await loadSocialAccount(env, 'facebook');
+async function fetchFacebookPerformance(env, externalId, profile = MUSIC_PROFILE) {
+  const account = await loadSocialAccount(env, 'facebook', profile);
   if (!account) throw new Error('Facebook is not connected.');
   const token = await decryptSecret(account.access_token_encrypted, env.TOKEN_ENCRYPTION_KEY);
   const version = env.META_GRAPH_VERSION || 'v24.0';
@@ -888,7 +953,7 @@ function formatWindowLabel(weekday, startHour, endHour) {
   return `${days[weekday]} ${fmt(startHour)}–${fmt(endHour)}`;
 }
 
-async function buildPerformanceProfile(env, timezoneOverride = '') {
+async function buildPerformanceProfile(env, timezoneOverride = '', profile = MUSIC_PROFILE) {
   const targetSamples = 5;
   let rows;
   try {
@@ -897,9 +962,9 @@ async function buildPerformanceProfile(env, timezoneOverride = '') {
              p.caption, p.platforms, p.media_type, p.published_at, p.timezone
       FROM performance_snapshots s
       JOIN posts p ON p.id=s.post_id
-      WHERE p.published_at IS NOT NULL
+      WHERE p.published_at IS NOT NULL AND p.profile_id=?
       ORDER BY s.captured_at DESC LIMIT 500
-    `).all());
+    `).bind(profile).all());
   } catch (err) {
     if (String(err?.message || err).includes('no such table')) {
       return { available:false, migrationNeeded:true, ready:false, sampleCount:0, targetSamples, learningProgress:0 };
@@ -1303,7 +1368,7 @@ async function waitForThreadsContainer(id,token) {
 async function threadsGraphPost(endpoint, form) { const r=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:form}); const data=await r.json().catch(()=>({})); if(!r.ok || data.error) throw new Error(data.error?.message || data.error_message || `Threads request failed (${r.status}).`); return data; }
 
 async function publishFacebook(env, post) {
-  const account = await loadSocialAccount(env, 'facebook');
+  const account = await loadSocialAccount(env, 'facebook', post.profile_id);
   if (!account) throw new Error('Facebook is not connected.');
   const token = await decryptSecret(account.access_token_encrypted, env.TOKEN_ENCRYPTION_KEY);
   const version = env.META_GRAPH_VERSION || 'v24.0';
@@ -1334,7 +1399,7 @@ async function publishFacebook(env, post) {
 }
 
 async function publishFacebookReel(env, post) {
-  const account = await loadSocialAccount(env, 'facebook');
+  const account = await loadSocialAccount(env, 'facebook', post.profile_id);
   if (!account) throw new Error('Facebook is not connected.');
   if (!post.media_key || !String(post.media_type || '').startsWith('video/')) throw new Error('Facebook Reel requires a video.');
   const token = await decryptSecret(account.access_token_encrypted, env.TOKEN_ENCRYPTION_KEY);
@@ -1371,7 +1436,7 @@ async function publishFacebookReel(env, post) {
 }
 
 async function publishInstagram(env, post, publishType = 'post') {
-  const account = await loadSocialAccount(env, 'instagram');
+  const account = await loadSocialAccount(env, 'instagram', post.profile_id);
   if (!account) throw new Error('Instagram is not connected to the selected Facebook Page.');
   if (!post.media_key) throw new Error('Instagram requires a photo or video.');
   const token = await decryptSecret(account.access_token_encrypted, env.TOKEN_ENCRYPTION_KEY);
@@ -1451,11 +1516,15 @@ async function graphPost(endpoint, form) {
   return data;
 }
 
-async function loadSocialAccount(env, platform) {
-  return env.DB.prepare(`
+async function loadSocialAccount(env, platform, profile = MUSIC_PROFILE) {
+  if (profile === MUSIC_PROFILE) return env.DB.prepare(`
     SELECT platform, external_account_id, parent_account_id, access_token_encrypted
     FROM social_accounts WHERE platform=?
   `).bind(platform).first();
+  return env.DB.prepare(`
+    SELECT platform, external_account_id, parent_account_id, access_token_encrypted
+    FROM profile_social_accounts WHERE profile_id=? AND platform=?
+  `).bind(profile, platform).first();
 }
 
 function publicMediaUrl(env, key) {
