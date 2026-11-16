@@ -1,0 +1,14 @@
+{
+  "id": "./song-manager.html",
+  "name": "Song Manager — Rick Parma",
+  "short_name": "Song Manager",
+  "start_url": "./song-manager.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#130101",
+  "theme_color": "#130101",
+  "icons": [
+    { "src": "./images/song-manager-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./images/song-manager-icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
