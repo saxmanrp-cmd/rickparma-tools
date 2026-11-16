@@ -317,7 +317,7 @@ let sortMode = "title-asc";
 let editingId = null;
 let selectedTags = [];
 let polls = [];
-let activePollId = null; let songRequestLive = true; let performanceModeEnabled = true; let djModeEnabled = false; let fanCamLive = true; let spinEnabled = true; let powerSongsAvailable = false; let dinnerMusicOnly = false; let smsRequestsEnabled = true; function renderHeroToggle(){ renderToggleRow('songRequestToggleBtn','Song Requests',songRequestLive); renderModeToggle('performanceModeToggleBtn','Performance Mode',performanceModeEnabled); renderModeToggle('djModeToggleBtn','DJ Mode',djModeEnabled); renderToggleRow('fanCamToggleBtn','Fan Cam',fanCamLive); renderSpinToggle(); renderPowerSongsToggle(); renderDinnerMusicToggle(); renderSmsToggle(); }
+let activePollId = null; let songRequestLive = true; let spinCycleId = 'legacy'; let performanceModeEnabled = true; let djModeEnabled = false; let fanCamLive = true; let spinEnabled = true; let powerSongsAvailable = false; let dinnerMusicOnly = false; let smsRequestsEnabled = true; function renderHeroToggle(){ renderToggleRow('songRequestToggleBtn','Song Requests',songRequestLive); renderModeToggle('performanceModeToggleBtn','Performance Mode',performanceModeEnabled); renderModeToggle('djModeToggleBtn','DJ Mode',djModeEnabled); renderToggleRow('fanCamToggleBtn','Fan Cam',fanCamLive); renderSpinToggle(); renderPowerSongsToggle(); renderDinnerMusicToggle(); renderSmsToggle(); }
 function renderModeToggle(id,label,enabled){ const btn=document.getElementById(id); if(!btn)return; btn.textContent=label+': '+(enabled?'ON':'OFF'); btn.className='btn '+(enabled?'btn-hero-on':'btn-outline')+' btn-full'; }
 async function togglePerformanceMode(){ performanceModeEnabled=!performanceModeEnabled; renderHeroToggle(); if(!await saveToCloud()){ performanceModeEnabled=!performanceModeEnabled; renderHeroToggle(); } }
 async function toggleDjMode(){ djModeEnabled=!djModeEnabled; renderHeroToggle(); if(!await saveToCloud()){ djModeEnabled=!djModeEnabled; renderHeroToggle(); } }
@@ -325,7 +325,7 @@ function renderSpinToggle(){ var btn=document.getElementById('spinToggleBtn'); i
 function renderPowerSongsToggle(){ var btn=document.getElementById('powerSongsToggleBtn'); if(!btn) return; if(powerSongsAvailable){ btn.textContent='Power Songs: Available'; btn.className='btn btn-hero-on btn-full'; } else { btn.textContent='Power Songs: Held Back'; btn.className='btn btn-outline btn-full'; } }
 function renderDinnerMusicToggle(){ var btn=document.getElementById('dinnerMusicToggleBtn'); if(!btn) return; btn.textContent=dinnerMusicOnly?'Dinner Music: ON':'Dinner Music: OFF'; btn.className='btn '+(dinnerMusicOnly?'btn-hero-on':'btn-outline')+' btn-full'; }
 function renderToggleRow(btnId,label,isLive){ var btn=document.getElementById(btnId); if(!btn) return; if(isLive){ btn.textContent=label+': LIVE'; btn.className='btn btn-hero-on btn-full'; } else { btn.textContent=label+': Hidden'; btn.className='btn btn-outline btn-full'; } }
-async function toggleSongRequestLive(){ songRequestLive = !songRequestLive; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ songRequestLive = !songRequestLive; renderHeroToggle(); } } async function toggleFanCamLive(){ fanCamLive = !fanCamLive; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ fanCamLive = !fanCamLive; renderHeroToggle(); } } async function toggleSpinEnabled(){ spinEnabled = !spinEnabled; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ spinEnabled = !spinEnabled; renderHeroToggle(); } } function renderSmsToggle(){ var btn=document.getElementById('smsToggleBtn'); if(!btn) return; if(smsRequestsEnabled){ btn.textContent='Text Alerts: ON'; btn.className='btn btn-hero-on btn-full'; } else { btn.textContent='Text Alerts: Muted'; btn.className='btn btn-outline btn-full'; } }
+async function toggleSongRequestLive(){ const previousCycle=spinCycleId; songRequestLive = !songRequestLive; spinCycleId=crypto.randomUUID(); renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ songRequestLive = !songRequestLive; spinCycleId=previousCycle; renderHeroToggle(); } } async function toggleFanCamLive(){ fanCamLive = !fanCamLive; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ fanCamLive = !fanCamLive; renderHeroToggle(); } } async function toggleSpinEnabled(){ spinEnabled = !spinEnabled; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ spinEnabled = !spinEnabled; renderHeroToggle(); } } function renderSmsToggle(){ var btn=document.getElementById('smsToggleBtn'); if(!btn) return; if(smsRequestsEnabled){ btn.textContent='Text Alerts: ON'; btn.className='btn btn-hero-on btn-full'; } else { btn.textContent='Text Alerts: Muted'; btn.className='btn btn-outline btn-full'; } }
 async function toggleSmsRequestsEnabled(){ smsRequestsEnabled = !smsRequestsEnabled; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ smsRequestsEnabled = !smsRequestsEnabled; renderHeroToggle(); } }
 async function togglePowerSongsAvailable(){ powerSongsAvailable = !powerSongsAvailable; renderHeroToggle(); var ok = await saveToCloud(); if(!ok){ powerSongsAvailable = !powerSongsAvailable; renderHeroToggle(); } }
 async function toggleDinnerMusic(){
@@ -437,6 +437,7 @@ async function loadFromCloud(){
     const data = await res.json();
     const record = data.record || {};
     songs = record.songs || [];
+    spinCycleId = String(record.spinCycleId || 'legacy');
     prices = { ...DEFAULT_PRICES, ...(record.prices || {}), dj: record.prices?.dj ?? record.prices?.general ?? DEFAULT_PRICES.general }; songRequestLive = record.songRequestLive !== false; performanceModeEnabled = record.performanceModeEnabled !== false; djModeEnabled = record.djModeEnabled === true; fanCamLive = record.fanCamLive !== false; spinEnabled = record.spinEnabled !== false; powerSongsAvailable = record.powerSongsAvailable === true; dinnerMusicOnly = record.dinnerMusicOnly === true; smsRequestsEnabled = record.smsRequestsEnabled !== false; renderHeroToggle();
     rebuildTagList();
     renderSetupBox(true);
@@ -457,7 +458,7 @@ async function saveToCloud(){
     const res = await fetch(`${PROXY_BASE}/songs`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ songs, prices, songRequestLive, performanceModeEnabled, djModeEnabled, fanCamLive, spinEnabled, powerSongsAvailable, dinnerMusicOnly, smsRequestsEnabled })
+      body: JSON.stringify({ songs, prices, songRequestLive, spinCycleId, performanceModeEnabled, djModeEnabled, fanCamLive, spinEnabled, powerSongsAvailable, dinnerMusicOnly, smsRequestsEnabled })
     });
     if(!res.ok) throw new Error("save failed");
     return true;
