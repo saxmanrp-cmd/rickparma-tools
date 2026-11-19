@@ -274,6 +274,14 @@
     </section>
 
     <section class="card">
+      <h2>Invoice Price Options</h2>
+      <label style="display:flex;align-items:center;gap:10px"><input id="f-online-price" type="checkbox" onchange="setOnlinePriceOption(this.checked)" style="width:auto"> Show online and cash/bank prices</label>
+      <div class="hint">The standard invoice price applies to every online payment method, including debit cards and PayPal. A lower price is available for cash, check, Zelle, or a bank transfer arranged with you. Bank transfer is not offered in this Pay Hub yet.</div>
+      <div id="price-preview" class="hint" style="margin-top:10px"></div>
+      <button id="apply-cash-price" class="btn small" style="display:none;margin-top:10px" onclick="applyCashBankPrice()">Apply Cash/Bank Price</button>
+    </section>
+
+    <section class="card">
       <h2>Payments</h2>
       <div id="payments-list"></div>
       <div class="row2" style="margin-top:6px">
@@ -409,6 +417,7 @@ let invoiceDates = [];
 let dateCounter = 0;
 let lineItems = [];
 let payments = [];
+let priceOption = { onlinePriceEnabled:false, cashDiscountApplied:false };
 const savedSignature = DEFAULT_SIGNATURE;
 
 function nextInvoiceNumber() {
@@ -567,8 +576,20 @@ function statusFor(total, paid) {
 }
 
 function lineItemsTotal(items) { return (items||[]).reduce((s,i)=>s+(parseFloat(i.amount)||0),0); }
+function invoiceBaseCents(inv) {
+  return [...(inv.events || []), ...(inv.lineItems || [])]
+    .reduce((sum, item) => sum + Math.round((parseFloat(item.amount) || 0) * 100), 0);
+}
+function standardPriceCents(baseCents) {
+  return baseCents > 0 ? Math.ceil((baseCents + 30) / 0.971 - 1e-8) : 0;
+}
+function invoiceTotalCents(inv) {
+  const base = invoiceBaseCents(inv);
+  if (!inv.priceOption?.onlinePriceEnabled || inv.priceOption.cashDiscountApplied) return base;
+  return Number.isSafeInteger(inv.priceOption.standardPriceCents) ? inv.priceOption.standardPriceCents : standardPriceCents(base);
+}
 function invoiceTotal(inv) {
-  return lineItemsTotal(inv.lineItems) + ((inv.events || []).reduce((sum, event) => sum + (parseFloat(event.amount) || 0), 0));
+  return invoiceTotalCents(inv) / 100;
 }
 function paymentsTotal(pmts) { return (pmts||[]).reduce((s,p)=>s+(parseFloat(p.amount)||0),0); }
 
@@ -581,6 +602,8 @@ function clearForm() {
   events = [{ ...blankEvent(), dateId: invoiceDates[0].id }];
   lineItems = [];
   payments = [];
+  priceOption = { onlinePriceEnabled:false, cashDiscountApplied:false };
+  document.getElementById('f-online-price').checked = false;
   ['f-name','f-email','f-phone'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('delete-btn').style.display = 'none';
   renderInvoiceDates();
@@ -620,6 +643,8 @@ function editInvoice(id) {
   }
   restoreInvoiceDates(inv);
   payments = inv.payments ? JSON.parse(JSON.stringify(inv.payments)) : [];
+  priceOption = { onlinePriceEnabled:false, cashDiscountApplied:false, ...(inv.priceOption || {}) };
+  document.getElementById('f-online-price').checked = priceOption.onlinePriceEnabled;
   document.getElementById('delete-btn').style.display = 'block';
   renderInvoiceDates();
   renderEvents();
@@ -892,7 +917,10 @@ function renderPayments() {
 }
 
 function updateBalance() {
-  const total = invoiceTotal({events, lineItems});
+  const pricing = {events, lineItems, priceOption};
+  const total = invoiceTotal(pricing);
+  const base = invoiceBaseCents(pricing);
+  const standard = standardPriceCents(base);
   const paid = paymentsTotal(payments);
   const bal = total - paid;
   document.getElementById('invoice-total').textContent = 'Invoice Total: $' + total.toFixed(2);
@@ -901,6 +929,29 @@ function updateBalance() {
   const badge = document.getElementById('status-badge');
   badge.className = 'status-badge ' + status.cls;
   badge.textContent = status.label;
+  document.getElementById('price-preview').textContent = priceOption.onlinePriceEnabled
+    ? `Standard online price: $${(standard / 100).toFixed(2)} · Cash/bank savings: $${((standard - base) / 100).toFixed(2)} · Cash/bank price: $${(base / 100).toFixed(2)}${priceOption.cashDiscountApplied ? ' (applied)' : ''}`
+    : '';
+  document.getElementById('apply-cash-price').style.display = priceOption.onlinePriceEnabled && !priceOption.cashDiscountApplied ? '' : 'none';
+}
+
+function setOnlinePriceOption(enabled) {
+  if (payments.some(payment => payment.source === 'payment_hub' || payment.source === 'business_payment_hub')) {
+    document.getElementById('f-online-price').checked = priceOption.onlinePriceEnabled;
+    alert('Online pricing cannot be changed after a Pay Hub payment.');
+    return;
+  }
+  priceOption = { onlinePriceEnabled:enabled, cashDiscountApplied:false };
+  updateBalance();
+}
+
+function applyCashBankPrice() {
+  if (payments.some(payment => payment.source === 'payment_hub' || payment.source === 'business_payment_hub')) {
+    alert('The cash/bank price cannot be applied after an online payment.');
+    return;
+  }
+  priceOption.cashDiscountApplied = true;
+  updateBalance();
 }
 
 function collectFormData() {
@@ -947,6 +998,7 @@ function collectFormData() {
     events: events.map(event => ({...event})),
     invoiceDates: invoiceDates.map(date => ({...date})),
     lineItems: lineItems.filter(li => li.description || li.amount),
+    priceOption: { ...priceOption },
     payments: payments,
     clientSignatureImg: existingInv ? existingInv.clientSignatureImg : undefined,
     clientSignDate: existingInv ? existingInv.clientSignDate : undefined,
@@ -1010,7 +1062,23 @@ function invoiceForDate(inv, dateId) {
     return { ...item, amount: (share / 100).toFixed(2) };
   });
   const signature = (inv.dateSignatures || {})[dateId] || {};
-  return { ...inv, events:inv.events.filter(event => event.dateId === dateId), lineItems,
+  const dateInvoice = { ...inv, events:inv.events.filter(event => event.dateId === dateId), lineItems };
+  if (inv.priceOption?.onlinePriceEnabled && !inv.priceOption.cashDiscountApplied && invoiceBaseCents(inv) > 0) {
+    const adjustment = invoiceTotalCents(inv) - invoiceBaseCents(inv);
+    const base = invoiceBaseCents(inv);
+    const shares = dateIds.map(id => {
+      const index = dateIds.indexOf(id);
+      const charges = (inv.lineItems || []).map(item => {
+        const cents = Math.round((parseFloat(item.amount) || 0) * 100);
+        return Math.trunc(cents / count) + (index < Math.abs(cents % count) ? Math.sign(cents) : 0);
+      });
+      return (inv.events || []).filter(event => event.dateId === id).reduce((sum, event) => sum + Math.round((parseFloat(event.amount) || 0) * 100), 0) + charges.reduce((sum, cents) => sum + cents, 0);
+    });
+    const allocatedBefore = shares.slice(0, dateIndex).reduce((sum, share) => sum + Math.floor(adjustment * share / base), 0);
+    const share = dateIndex === count - 1 ? adjustment - allocatedBefore : Math.floor(adjustment * shares[dateIndex] / base);
+    dateInvoice.priceOption = { ...inv.priceOption, standardPriceCents:invoiceBaseCents(dateInvoice) + share };
+  }
+  return { ...dateInvoice,
     clientSignatureImg:signature.clientSignatureImg,
     clientSignDate:signature.clientSignDate,
     clientSignedName:signature.clientSignedName };
@@ -1348,14 +1416,24 @@ function buildInvoiceBody(data, total) {
   const commonAddress = samePhysicalAddress
     ? [...(sameVenue && data.events[0].venueName ? [data.events[0].venueName.trim()] : []), ...physicalAddresses[0]]
     : addresses.length && addresses[0].length && addresses.every(parts => JSON.stringify(parts) === JSON.stringify(addresses[0])) ? addresses[0] : null;
+  const baseCents = invoiceBaseCents(data);
+  const adjustment = invoiceTotalCents(data) - baseCents;
+  const baseRows = [...(data.events || []).map(event => Math.round((parseFloat(event.amount) || 0) * 100)),
+    ...(data.lineItems || []).map(item => Math.round((parseFloat(item.amount) || 0) * 100))];
+  let allocated = 0;
+  const shownCents = baseRows.map((cents, index) => {
+    const extra = index === baseRows.length - 1 ? adjustment - allocated : baseCents > 0 ? Math.floor(adjustment * cents / baseCents) : 0;
+    allocated += extra;
+    return cents + extra;
+  });
   const chargeRows = (data.lineItems || []).map((li, idx) => {
     let desc = li.description;
     if (!hasEvents && idx === 0 && data.guests) desc += ` — Guests: ${data.guests}`;
-    return `<tr><td>${esc(desc)}</td><td class="amt">$${parseFloat(li.amount||0).toFixed(2)}</td></tr>`;
+    return `<tr><td>${esc(desc)}</td><td class="amt">$${((shownCents[(data.events || []).length + idx] || 0) / 100).toFixed(2)}</td></tr>`;
   }).join('');
   const eventRows = hasEvents ? data.events.map((event, idx) => {
     const description = [...(commonAddress ? [] : addresses[idx]), invoiceDateTime(event)];
-    return `<tr><td>${description.map(line => esc(line)).join('<br>')}</td><td class="amt">$${(parseFloat(event.amount) || 0).toFixed(2)}</td></tr>`;
+    return `<tr><td>${description.map(line => esc(line)).join('<br>')}</td><td class="amt">$${((shownCents[idx] || 0) / 100).toFixed(2)}</td></tr>`;
   }).join('') : '';
   const rows = eventRows + chargeRows;
   const timeRange = data.timeStart && data.timeEnd ? `${fmtTime(data.timeStart)} – ${fmtTime(data.timeEnd)}` : (fmtTime(data.timeStart) || '');
@@ -1400,6 +1478,7 @@ function buildInvoiceBody(data, total) {
         <tr class="total-row"><td>Total</td><td class="amt">$${total.toFixed(2)}</td></tr>
       </tbody>
     </table>
+    ${data.priceOption?.onlinePriceEnabled ? `<div class="detail" style="margin-top:12px">Standard online invoice price: $${((baseCents + (data.priceOption.cashDiscountApplied ? standardPriceCents(baseCents) - baseCents : adjustment)) / 100).toFixed(2)}<br>Cash, check, Zelle, or arranged bank transfer savings: $${((data.priceOption.cashDiscountApplied ? standardPriceCents(baseCents) - baseCents : adjustment) / 100).toFixed(2)}<br>Cash/bank price: $${(baseCents / 100).toFixed(2)}${data.priceOption.cashDiscountApplied ? ' — applied to this invoice' : ' — contact us to arrange payment'}</div>` : ''}
   `;
 }
 
@@ -1737,6 +1816,8 @@ function renderPaymentView(inv) {
         <p style="font-size:14px;color:#C9C9C9">This invoice has already been paid in full. Thank you!</p>
       </div>
     `;
+  } else if (inv.priceOption?.onlinePriceEnabled && inv.priceOption.cashDiscountApplied) {
+    paySection = `<div class="sign-card no-print"><h2>Cash/bank price arranged</h2><p>Contact ${esc(issuerFor(inv).name)} to complete this payment directly.</p></div>`;
   } else {
     paySection = `
       <div class="sign-card no-print">
