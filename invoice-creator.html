@@ -276,7 +276,7 @@
     <section class="card">
       <h2>Invoice Price Options</h2>
       <label style="display:flex;align-items:center;gap:10px"><input id="f-online-price" type="checkbox" onchange="setOnlinePriceOption(this.checked)" style="width:auto"> Show online and cash/bank prices</label>
-      <div class="hint">The standard invoice price applies to every online payment method, including debit cards and PayPal. A lower price is available for cash, check, Zelle, or a bank transfer arranged with you. Bank transfer is not offered in this Pay Hub yet.</div>
+      <div class="hint">When enabled, the standard online invoice price includes a flat 2.9% price adjustment, with no additional 30¢. It applies to every online payment method, including debit cards and PayPal. A lower price is available for cash, check, Zelle, or a bank transfer arranged with you. Bank transfer is not offered in this Pay Hub yet.</div>
       <div id="price-preview" class="hint" style="margin-top:10px"></div>
       <button id="apply-cash-price" class="btn small" style="display:none;margin-top:10px" onclick="applyCashBankPrice()">Apply Cash/Bank Price</button>
     </section>
@@ -581,7 +581,7 @@ function invoiceBaseCents(inv) {
     .reduce((sum, item) => sum + Math.round((parseFloat(item.amount) || 0) * 100), 0);
 }
 function standardPriceCents(baseCents) {
-  return baseCents > 0 ? Math.ceil((baseCents + 30) / 0.971 - 1e-8) : 0;
+  return baseCents > 0 ? baseCents + Math.round(baseCents * 0.029) : 0;
 }
 function invoiceTotalCents(inv) {
   const base = invoiceBaseCents(inv);
@@ -930,7 +930,7 @@ function updateBalance() {
   badge.className = 'status-badge ' + status.cls;
   badge.textContent = status.label;
   document.getElementById('price-preview').textContent = priceOption.onlinePriceEnabled
-    ? `Standard online price: $${(standard / 100).toFixed(2)} · Cash/bank savings: $${((standard - base) / 100).toFixed(2)} · Cash/bank price: $${(base / 100).toFixed(2)}${priceOption.cashDiscountApplied ? ' (applied)' : ''}`
+    ? `Standard online price (base + flat 2.9%): $${(standard / 100).toFixed(2)} · 2.9% adjustment: $${((standard - base) / 100).toFixed(2)} · Cash/bank price: $${(base / 100).toFixed(2)}${priceOption.cashDiscountApplied ? ' (applied)' : ''}`
     : '';
   document.getElementById('apply-cash-price').style.display = priceOption.onlinePriceEnabled && !priceOption.cashDiscountApplied ? '' : 'none';
 }
@@ -1478,7 +1478,7 @@ function buildInvoiceBody(data, total) {
         <tr class="total-row"><td>Total</td><td class="amt">$${total.toFixed(2)}</td></tr>
       </tbody>
     </table>
-    ${data.priceOption?.onlinePriceEnabled ? `<div class="detail" style="margin-top:12px">Standard online invoice price: $${((baseCents + (data.priceOption.cashDiscountApplied ? standardPriceCents(baseCents) - baseCents : adjustment)) / 100).toFixed(2)}<br>Cash, check, Zelle, or arranged bank transfer savings: $${((data.priceOption.cashDiscountApplied ? standardPriceCents(baseCents) - baseCents : adjustment) / 100).toFixed(2)}<br>Cash/bank price: $${(baseCents / 100).toFixed(2)}${data.priceOption.cashDiscountApplied ? ' — applied to this invoice' : ' — contact us to arrange payment'}</div>` : ''}
+    ${data.priceOption?.onlinePriceEnabled ? `<div class="detail" style="margin-top:12px">Standard online invoice price (base + flat 2.9%): $${((baseCents + (data.priceOption.cashDiscountApplied ? standardPriceCents(baseCents) - baseCents : adjustment)) / 100).toFixed(2)}<br>Online price adjustment (2.9%): $${((data.priceOption.cashDiscountApplied ? standardPriceCents(baseCents) - baseCents : adjustment) / 100).toFixed(2)}<br>Cash, check, Zelle, or arranged bank transfer price: $${(baseCents / 100).toFixed(2)}${data.priceOption.cashDiscountApplied ? ' — applied to this invoice' : ' — contact us to arrange payment'}</div>` : ''}
   `;
 }
 
