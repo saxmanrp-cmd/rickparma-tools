@@ -373,3 +373,32 @@ test('combined print has one signature while each separate date link has its own
   assert.match(elements.get('print-content').innerHTML, /Client Signature/);
   assert.doesNotMatch(elements.get('print-content').innerHTML, /First Signer/);
 });
+
+test('invoice-only online pricing shows the quoted total and lower offline price', () => {
+  const { context, elements } = app();
+  firstLocation(context);
+  vm.runInContext("events[0].amount='2555'; priceOption={onlinePriceEnabled:true,cashDiscountApplied:false}", context);
+  context.updateBalance();
+  const invoice = context.collectFormData();
+  assert.equal(context.invoiceTotal(invoice), 2631.62);
+  assert.match(elements.get('price-preview').textContent, /Cash\/bank savings: \$76\.62/);
+  const body = context.buildInvoiceBody(invoice, context.invoiceTotal(invoice));
+  assert.match(body, /\$2631\.62/);
+  assert.match(body, /Cash\/bank price: \$2555\.00/);
+  assert.equal((body.match(/\$2631\.62/g) || []).length >= 2, true);
+  context.applyCashBankPrice();
+  assert.equal(context.invoiceTotal(context.collectFormData()), 2555);
+});
+
+test('separate date prices add to the one saved invoice total', () => {
+  const { context } = app();
+  firstLocation(context);
+  context.addInvoiceDate();
+  context.setInvoiceDate(1, 'eventDate', '2026-12-02');
+  context.addDate(0);
+  vm.runInContext("events[0].amount='100'; events[1].amount='200'; priceOption={onlinePriceEnabled:true,cashDiscountApplied:false}", context);
+  const master = context.collectFormData();
+  const copies = Array.from(context.invoiceDateIds(master)).map(id => context.invoiceForDate(master, id));
+  assert.equal(copies.reduce((sum, invoice) => sum + Math.round(context.invoiceTotal(invoice) * 100), 0),
+    Math.round(context.invoiceTotal(master) * 100));
+});
