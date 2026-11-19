@@ -380,12 +380,13 @@ test('invoice-only online pricing shows the quoted total and lower offline price
   vm.runInContext("events[0].amount='2555'; priceOption={onlinePriceEnabled:true,cashDiscountApplied:false}", context);
   context.updateBalance();
   const invoice = context.collectFormData();
-  assert.equal(context.invoiceTotal(invoice), 2631.62);
-  assert.match(elements.get('price-preview').textContent, /Cash\/bank savings: \$76\.62/);
+  assert.equal(context.invoiceTotal(invoice), 2629.10);
+  assert.match(elements.get('price-preview').textContent, /2\.9% adjustment: \$74\.10/);
   const body = context.buildInvoiceBody(invoice, context.invoiceTotal(invoice));
-  assert.match(body, /\$2631\.62/);
-  assert.match(body, /Cash\/bank price: \$2555\.00/);
-  assert.equal((body.match(/\$2631\.62/g) || []).length >= 2, true);
+  assert.match(body, /\$2629\.10/);
+  assert.match(body, /Online price adjustment \(2\.9%\): \$74\.10/);
+  assert.match(body, /Cash, check, Zelle, or arranged bank transfer price: \$2555\.00/);
+  assert.equal((body.match(/\$2629\.10/g) || []).length >= 2, true);
   context.applyCashBankPrice();
   assert.equal(context.invoiceTotal(context.collectFormData()), 2555);
 });
