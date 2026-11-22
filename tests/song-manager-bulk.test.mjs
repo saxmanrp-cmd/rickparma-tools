@@ -28,7 +28,7 @@ function setup(){
   vm.runInContext(`let songs=[{id:'a',t:'A Song',a:'Artist',powerSong:true},
     {id:'b',t:'B Song',a:'Another Artist',dinnerMusic:true},
     {id:'c',t:'C Song',a:'Third Artist'}];
-    let dinnerMusicOnly=false; let powerSongsAvailable=false;
+    let dinnerMusicOnly=false; let rnbSoulOnly=false; let powerSongsAvailable=false;
     function escapeHtml(value){return value;} function renderList(){}; ${code}`, context);
   const state = () => JSON.parse(vm.runInContext('JSON.stringify({songs,dinnerMusicOnly,powerSongsAvailable})', context));
   return { context, elements, getElementById, state };
@@ -66,4 +66,18 @@ test('power selection is independent; Cancel and failed Save discard edits', asy
   assert.equal(state().songs[1].powerSong, undefined);
   assert.equal(state().songs[1].dinnerMusic, true);
   assert.equal(getElementById('bulkSaveBtn').disabled, false);
+});
+
+test('R&B and Soul selection saves independently without activating its mode', async () => {
+  const { context, getElementById, state } = setup();
+  let saved;
+  context.saveToCloud = async () => { saved = state(); return true; };
+  context.openBulkSongs('rnbSoul');
+  assert.match(getElementById('bulkHeading').textContent, /R&B and Soul/);
+  const checkboxes = getElementById('bulkList').querySelectorAll();
+  checkboxes[1].checked = true; checkboxes[1].change();
+  await context.saveBulkSongs();
+  assert.deepEqual(saved.songs.map(s => !!s.rnbSoul), [false,true,false]);
+  assert.equal(vm.runInContext('rnbSoulOnly',context), false);
+  assert.equal(saved.songs[1].dinnerMusic, true);
 });
