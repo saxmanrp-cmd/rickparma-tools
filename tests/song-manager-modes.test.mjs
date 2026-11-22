@@ -23,7 +23,7 @@ test('performance and DJ switches persist separately from the master switch', as
   assert.equal(state.performanceModeEnabled,false);
   assert.equal(state.djModeEnabled,true);
   assert.equal(elements.get('djModeToggleBtn').textContent,'DJ Mode: ON');
-  assert.match(html,/songRequestLive, performanceModeEnabled, djModeEnabled, fanCamLive/);
+  assert.match(html,/songRequestLive, spinCycleId, performanceModeEnabled, djModeEnabled, fanCamLive/);
 });
 
 test('performance and DJ request prices save independently', async () => {
