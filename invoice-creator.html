@@ -406,6 +406,7 @@ function switchInvoiceProfile(profileId) {
   renderHistory();
   clearForm();
   showView('history');
+  refreshPaymentHistory();
 }
 
 let invoices = [];
@@ -459,13 +460,13 @@ async function loadInvoices() {
     localStorage.setItem(CACHE_KEY, JSON.stringify(invoices));
     setSyncStatus('Synced');
     renderHistory();
-    await refreshBusinessHistory();
+    await refreshPaymentHistory();
   } catch (e) {
     setSyncStatus('Offline — showing last saved copy');
   }
 }
 
-async function manualSync(reconcileBusiness = true) {
+async function manualSync(reconcilePayments = true) {
   setSyncStatus('Syncing…');
   try {
     const res = await fetch(`${PROXY_BASE}/invoices?t=${Date.now()}`, {
@@ -476,26 +477,30 @@ async function manualSync(reconcileBusiness = true) {
     localStorage.setItem(CACHE_KEY, JSON.stringify(invoices));
     setSyncStatus('Synced');
     if (document.getElementById('view-history').style.display !== 'none') renderHistory();
-    if (reconcileBusiness) await refreshBusinessHistory();
+    if (reconcilePayments) await refreshPaymentHistory();
   } catch (e) {
     setSyncStatus('Sync failed — check connection');
   }
 }
 
-async function refreshBusinessHistory() {
-  if (activeProfile !== BUSINESS_PROFILE || document.getElementById('view-history').style.display === 'none') return;
+async function refreshPaymentHistory() {
+  if (document.getElementById('view-history').style.display === 'none') return;
+  const profileId = activeProfile;
   const ids = visibleInvoices().map(invoice => invoice.id);
   if (!ids.length) return;
-  const results = await Promise.allSettled(ids.map(refreshBusinessInvoice));
   let failed = false;
-  results.forEach((result, index) => {
-    if (result.status !== 'fulfilled') { failed = true; return; }
-    const position = invoices.findIndex(invoice => invoice.id === ids[index] && invoiceProfile(invoice) === BUSINESS_PROFILE);
-    if (position >= 0) invoices[position] = result.value;
-  });
+  for (const id of ids) {
+    try {
+      const updated = await refreshInvoicePayment(id, profileId);
+      if (activeProfile !== profileId) return;
+      const position = invoices.findIndex(invoice => invoice.id === id && invoiceProfile(invoice) === profileId);
+      if (position >= 0) invoices[position] = updated;
+    } catch (error) { failed = true; }
+  }
+  if (activeProfile !== profileId) return;
   localStorage.setItem(CACHE_KEY, JSON.stringify(invoices));
   renderHistory();
-  if (failed) setSyncStatus('Business payment status unavailable — tap Sync to retry');
+  if (failed) setSyncStatus('Payment status unavailable — tap Sync to retry');
 }
 
 async function persistInvoices() {
@@ -652,16 +657,16 @@ function editInvoice(id) {
   renderPayments();
   updateBalance();
   showView('form');
-  if (invoiceProfile(inv) === BUSINESS_PROFILE) {
-    refreshBusinessInvoice(id).then(updated => {
-      if (currentId !== id || activeProfile !== BUSINESS_PROFILE) return;
+  {
+    refreshInvoicePayment(id, activeProfile).then(updated => {
+      if (currentId !== id || activeProfile !== invoiceProfile(updated)) return;
       const index = invoices.findIndex(item => item.id === id);
       if (index >= 0) invoices[index] = updated;
       payments = JSON.parse(JSON.stringify(updated.payments || []));
       renderPayments();
       updateBalance();
       renderHistory();
-    }).catch(() => setSyncStatus('Business payment status unavailable — retry Sync'));
+    }).catch(() => setSyncStatus('Payment status unavailable — retry Sync'));
   }
 }
 
@@ -900,6 +905,7 @@ function addPayment() {
   updateBalance();
 }
 function removePayment(idx) {
+  if (['payment_hub','business_payment_hub'].includes(payments[idx]?.source)) return;
   payments.splice(idx,1);
   renderPayments();
   updateBalance();
@@ -911,7 +917,7 @@ function renderPayments() {
     <div class="payment-row">
       <span>${p.date} — ${esc(p.method)}${p.source === 'client' ? ` (client-reported, ${p.type === 'partial' ? 'partial' : 'full'})` : ''}</span>
       <span>$${parseFloat(p.amount).toFixed(2)}</span>
-      <button class="remove-x" onclick="removePayment(${idx})">✕</button>
+      ${['payment_hub','business_payment_hub'].includes(p.source) ? '' : `<button class="remove-x" onclick="removePayment(${idx})">✕</button>`}
     </div>
   `).join('');
 }
@@ -1025,12 +1031,11 @@ async function saveInvoiceCore() {
     data.clientSignatureImg = invoices[idx].clientSignatureImg || data.clientSignatureImg;
     data.clientSignDate = invoices[idx].clientSignDate || data.clientSignDate;
     data.clientSignedName = invoices[idx].clientSignedName || data.clientSignedName;
-    if (activeProfile === BUSINESS_PROFILE) {
-      // A Hub confirmation or refund can arrive while the owner is editing.
-      // Keep the server-confirmed ledger rows rather than restoring a stale form copy.
-      data.payments = data.payments.filter(payment => payment.source !== 'business_payment_hub')
-        .concat((invoices[idx].payments || []).filter(payment => payment.source === 'business_payment_hub'));
-    }
+    // A Hub confirmation or refund can arrive while the owner is editing.
+    // Keep confirmed ledger rows from either profile instead of a stale form copy.
+    const hubSources = ['payment_hub', 'business_payment_hub'];
+    data.payments = data.payments.filter(payment => !hubSources.includes(payment.source))
+      .concat((invoices[idx].payments || []).filter(payment => hubSources.includes(payment.source)));
   }
   if (idx >= 0) invoices[idx] = data; else invoices.push(data);
   const synced = await persistInvoices();
@@ -1787,7 +1792,7 @@ async function initPaymentView(invId) {
       document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Invoice not found. Please contact Richard Parma directly.</p>';
       return;
     }
-    renderPaymentView(sharedProfile === BUSINESS_PROFILE ? await refreshBusinessInvoice(invId) : inv);
+    renderPaymentView(await refreshInvoicePayment(invId, sharedProfile));
   } catch (e) {
     document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Could not verify the current invoice balance. Check your connection and reload the page.</p>';
   }
@@ -1798,6 +1803,15 @@ async function refreshBusinessInvoice(invoiceId) {
   const result = await response.json().catch(() => ({}));
   if (!response.ok || !result.invoice || invoiceProfile(result.invoice) !== BUSINESS_PROFILE)
     throw new Error(result.error || 'Business payment status is unavailable.');
+  return result.invoice;
+}
+
+async function refreshInvoicePayment(invoiceId, profileId) {
+  if (profileId === BUSINESS_PROFILE) return refreshBusinessInvoice(invoiceId);
+  const response = await fetch(`https://rickparma.com/api/invoices/personal-status?invoiceId=${encodeURIComponent(invoiceId)}`, { cache:'no-store' });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.invoice || invoiceProfile(result.invoice) !== PERSONAL_PROFILE)
+    throw new Error(result.error || 'Payment status is unavailable.');
   return result.invoice;
 }
 
@@ -1889,7 +1903,7 @@ async function initReceiptView(invId) {
       document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Receipt not found. Please contact Richard Parma directly.</p>';
       return;
     }
-    renderReceiptView(sharedProfile === BUSINESS_PROFILE ? await refreshBusinessInvoice(invId) : inv);
+    renderReceiptView(await refreshInvoicePayment(invId, sharedProfile));
   } catch (e) {
     document.getElementById('print-content').innerHTML = '<p style="padding:20px;text-align:center">Could not verify the current receipt. Check your connection and reload the page.</p>';
   }
@@ -1991,11 +2005,11 @@ if (signId) {
     if (!document.hidden) manualSync();
   });
   setInterval(() => {
-    if (!document.hidden) manualSync(false);
-  }, 20000);
+    if (!document.hidden) manualSync();
+  }, 60000);
 }
 
-if (sharedProfile === BUSINESS_PROFILE && (payId || receiptId)) {
+if (payId || receiptId) {
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) (payId ? initPaymentView(payId) : initReceiptView(receiptId));
   });
