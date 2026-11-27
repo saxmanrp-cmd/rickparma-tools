@@ -1,0 +1,11 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>The Limo Man — Subscriber List</title><link rel="icon" href="/assets/favicon.svg"><link rel="stylesheet" href="/admin.css"><script src="/admin.js" defer></script></head>
+<body><main class="admin-shell">
+  <header class="admin-header"><div><p class="admin-brand">THE LIMO MAN</p><h1>Subscriber list</h1><p class="admin-subtitle">Every signup, saved here automatically.</p></div><span class="private-label">PRIVATE · OWNER ONLY</span></header>
+  <section class="admin-summary"><div><strong id="active-count">—</strong><span>Subscribed readers</span></div><p>Your list stays saved. Repeat signups use the existing email record.</p></section>
+  <div class="admin-toolbar"><label>Search email<input type="search" id="search" placeholder="Find a reader"></label><label>Status<select id="filter"><option value="subscribed">Subscribed</option><option value="unsubscribed">Unsubscribed</option><option value="all">All readers</option></select></label><button id="refresh">Refresh</button><a class="admin-primary" href="/api/admin/subscribers/export">Export subscribed CSV</a><a href="/api/admin/subscribers/export?all=1">Export all</a></div>
+  <p id="admin-message" role="status" hidden></p>
+  <div class="admin-table-wrap"><table><thead><tr><th>Email address</th><th>Joined</th><th>Status</th><th>Source</th><th>Manage</th></tr></thead><tbody id="reader-rows"></tbody></table><p class="admin-empty" id="empty">Loading readers…</p></div>
+  <div class="admin-pagination"><span id="matching"></span><div><button id="previous" disabled>Previous</button><span id="page">Page 1</span><button id="next" disabled>Next</button></div></div>
+  <section class="admin-import"><div><h2>Bring over an existing list</h2><p>Import a CSV with Email and Consent columns. Existing addresses stay in place.</p></div><input type="file" id="import" accept=".csv,text/csv" aria-label="Import subscriber CSV"></section>
+  <footer class="admin-footer"><span>The Limo Man · Subscriber manager</span><a href="/signout-with-chatgpt?return_to=%2Fadmin%2Fsubscribers">Sign out</a></footer>
+</main></body></html>

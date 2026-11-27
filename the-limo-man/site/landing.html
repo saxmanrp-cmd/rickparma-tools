@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#151714">
+  <title>The Limo Man — Coming Soon</title>
+  <meta name="description" content="He never planned to start a limousine company. Life handed him the keys. The Limo Man: an unexpected life, an unforgettable ride. Coming soon.">
+  <meta property="og:title" content="The Limo Man — Coming Soon"><meta property="og:description" content="An unexpected life. An unforgettable ride. Get book news and release updates.">
+  <meta property="og:image" content="https://thelimoman.com/assets/limo-night.jpg"><meta property="og:type" content="website">
+  <link rel="canonical" href="https://thelimoman.com/"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preload" as="font" href="/assets/barlow-condensed-bold.ttf" type="font/ttf" crossorigin>
+  <link rel="preload" as="image" href="/assets/limo-night.jpg"><link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="backdrop" role="img" aria-label="A classic black stretch limousine beneath warm city lights"></div><div class="shade"></div>
+  <header><span class="wordmark">THE LIMO MAN<span></span></span><span class="coming-tag">BOOK COMING SOON</span></header>
+  <main>
+    <div class="hero-content">
+      <p class="eyebrow"><span></span> AN UNEXPECTED LIFE. AN UNFORGETTABLE RIDE.</p>
+      <h1><span>LIFE HAD</span> <span>OTHER</span> <em>PLANS.</em></h1>
+      <p class="description">He never planned to start a limousine company.<br> Life handed him the keys. The stories came next.</p>
+      <form id="signup-form" action="/api/subscribe" method="POST" aria-label="Book updates signup">
+        <label for="signup-email">Be first to hear when the book arrives.</label>
+        <div class="signup-controls"><input id="signup-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="Your email address" maxlength="254" required aria-describedby="signup-note signup-status"><button type="submit">Keep me posted</button></div>
+        <label class="signup-consent"><input type="checkbox" name="consent" value="I agree to receive The Limo Man book news and release updates by email." required><span>Yes, send me book news and release updates.</span></label>
+        <input class="signup-honey" type="checkbox" name="botcheck" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <p id="signup-note">Your email is saved to The Limo Man reader list.<br>To opt out, email info@thelimoman.com.</p>
+        <p id="signup-status" role="status" aria-live="polite" tabindex="-1"></p>
+      </form>
+    </div>
+  </main>
+  <footer><span>THELIMOMAN.COM</span><span>A LIFE BEHIND THE WHEEL.</span></footer>
+</body>
+</html>
